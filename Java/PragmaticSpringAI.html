@@ -1,0 +1,1436 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Pragmatic Bytes on Spring AI">
+    <meta name="subject" content="Pragmatic Bytes on Spring AI">
+    <meta name="keywords" content="java, llm, ollama, spring-ai">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Pragmatic Bytes on Spring AI</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Pragmatic Bytes on Spring AI</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">06/21/2025</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>Large Enterprise(s) typically use the <span class="bold">Java</span> stack in combination with the <span class="bold">Spring
+        Boot</span> framework. <span class="hi-yellow">Spring AI</span> is a new addition to the <span class="bold">Spring</span>
+        framework family and provides portable API support across a range of LLM model providers (such as, Anthropic, Google, Ollama,
+        OpenAI, etc.) for developing generative AI applications in Java.</p>
+      <p>The <span class="bold">Spring AI</span> offers the following core API:</p>
+      <ul id="blue-disc-ul">
+        <li><p><span class="hi-vanila">Prompt</span> is the input to the LLM model that generate a response from the LLM model</p></li>
+        <li><p><span class="hi-vanila">ChatModel</span> allows one to interact with an LLM model using a chat style interaction in
+          which the previous chat input can be used as a context</p></li>
+        <li><p><span class="hi-vanila">ChatClient</span> supports a fluent style API for communicating with the ChatModel for a given
+          AI model provider and offers both synchronous and streaming patterns</p></li>
+        <li><p><span class="hi-vanila">Structured Output</span> enables an LLM model to generate a response as an instance of a specific
+          Java class</p></li>
+        <li><p><span class="hi-vanila">Embedding Model</span> are designed to convert an input text to a numerical embedding vector
+          that capture the meaning of the given text</p></li>
+        <li><p><span class="hi-vanila">Vector Database</span> support storing of embedding vectors and allow one to perform efficient
+          similarity searches</p></li>
+        <li><p><span class="hi-vanila">Advisor</span> provide a flexible and powerful way to intercept, modify, and enhance LLM model
+          interactions</p></li>
+      </ul>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Installation and Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The installation and setup will can on a <span class="bold">Ubuntu 24.04 LTS</span> based Linux desktop. Ensure that <span
+        class="bold">Docker</span> is installed and setup on the desktop (see <a href="http://polarsparc.github.io/Docker/Docker.html"
+        target="_blank"><span class="bold">instructions</span></a>).</p>
+      <p>Also, ensure that <span class="bold">Ollama</span> platform is installed and setup on the desktop (see <a href=
+        "http://polarsparc.github.io/GenAI/Ollama.html" target="_blank"><span class="bold">instructions</span></a>).</p>
+    </div>
+    <div id="para-div">
+      <p>Further, ensure at least <span class="bold">Java 17</span> or above is installed and setup. In addition, ensure <a href=
+        "http://maven.apache.org/" target="_blank"><span class="hi-yellow">Apache Maven</span></a> is installed and setup.</p>
+      <p>We will use <span class="bold">Spring AI</span></a> with <span class="bold">Spring Boot</span> for all the demonstrations in
+        this article.</p>
+    </div>
+    <div id="para-div">
+      <p>To pull and download the docker image for <span class="bold">pgvector</span>, execute the following command in a terminal
+        window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker pull pgvector/pgvector:pg17</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Assuming that the ip address on the Linux desktop is <span class="hi-grey">192.168.1.25</span>, start the <span class="bold">
+        Ollama</span> platform by executing the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name ollama -p 192.168.1.25:11434:11434 -v $HOME/.ollama:/root/.ollama ollama/ollama:0.9.0</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>If the linux desktop has <span class="hi-green">Nvidia GPU</span> with decent amount of VRAM (at least 16 GB) and has been
+        enabled for use with <span class="bold">docker</span> (see <a href="https://polarsparc.github.io/Docker/DockerNVidia.html"
+        target="_blank"><span class="bold">instructions</span></a>), then execute the following command instead to start <span class
+        ="bold">Ollama</span>:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name ollama --gpus=all -p 192.168.1.25:11434:11434 -v $HOME/.ollama:/root/.ollama ollama/ollama:0.9.0</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the LLM model, we will be using the recently released <span class="hi-purple">IBM Granite 3.3</span> 2B model.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a new terminal window and execute the following <span class="bold">docker</span> command to download the LLM model:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker exec -it ollama ollama run granite3.3:2b</p>
+    </div>
+    <br/>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>PgVector vector embedding in Spring AI <span class="underbold">CANNOT</span> have more than 2000 dimensions - IBM Granite 3.3 2B model generates a 2048 dimension vector !!!</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the LLM embedding model, we will be using the latest <span class="hi-purple">nomic-embed-text:v1.5</span> model.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a new terminal window and execute the following <span class="bold">docker</span> command to download the LLM embedding
+        model:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker exec -it ollama ollama run nomic-embed-text:v1.5</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To start the <span class="bold">PgVector</span> server, execute the following command in a new terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name pgvector -e POSTGRES_DB=ps_vector -e POSTGRES_USER=pgusr -e POSTGRES_PASSWORD=pgusr\$123 -p 5432:5432 -v /tmp/pgvector:/var/lib/postgresql/data pgvector/pgvector:pg17</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To setup the root Java directory structure for the demonstrations in this article, execute the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME</p>
+      <p>$ mkdir -p $HOME/java/SpringAI</p>
+      <p>$ cd $HOME/java/SpringAI</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the parent <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span>
+        that will be located at <span class="hi-yellow">$HOME/java/SpringAI</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;name&gt;SpringAI&lt;/name&gt;
+    &lt;description&gt;Pragmatic Bytes on SpringAI&lt;/description&gt;
+    &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+    &lt;artifactId&gt;SpringAI&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+    &lt;packaging&gt;pom&lt;/packaging&gt;
+
+    &lt;parent&gt;
+      &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+      &lt;artifactId&gt;spring-boot-starter-parent&lt;/artifactId&gt;
+      &lt;version&gt;3.5.0&lt;/version&gt;
+      &lt;relativePath/&gt;
+    &lt;/parent&gt;
+
+    &lt;properties&gt;
+      &lt;java.version&gt;17&lt;/java.version&gt;
+      &lt;spring-ai.version&gt;1.0.0&lt;/spring-ai.version&gt;
+    &lt;/properties&gt;
+
+    &lt;dependencies&gt;
+      &lt;dependency&gt;
+        &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+        &lt;artifactId&gt;spring-boot-starter&lt;/artifactId&gt;
+      &lt;/dependency&gt;
+      &lt;dependency&gt;
+        &lt;groupId&gt;org.springframework.ai&lt;/groupId&gt;
+        &lt;artifactId&gt;spring-ai-starter-model-ollama&lt;/artifactId&gt;
+      &lt;/dependency&gt;
+      &lt;dependency&gt;
+        &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+        &lt;artifactId&gt;spring-boot-starter-test&lt;/artifactId&gt;
+        &lt;scope&gt;test&lt;/scope&gt;
+      &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+
+    &lt;dependencyManagement&gt;
+      &lt;dependencies&gt;
+        &lt;dependency&gt;
+          &lt;groupId&gt;org.springframework.ai&lt;/groupId&gt;
+          &lt;artifactId&gt;spring-ai-bom&lt;/artifactId&gt;
+          &lt;version&gt;${spring-ai.version}&lt;/version&gt;
+          &lt;type&gt;pom&lt;/type&gt;
+          &lt;scope&gt;import&lt;/scope&gt;
+        &lt;/dependency&gt;
+      &lt;/dependencies&gt;
+    &lt;/dependencyManagement&gt;
+
+    &lt;build&gt;
+      &lt;plugins&gt;
+        &lt;plugin&gt;
+          &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+          &lt;artifactId&gt;spring-boot-maven-plugin&lt;/artifactId&gt;
+        &lt;/plugin&gt;
+      &lt;/plugins&gt;
+    &lt;/build&gt;
+
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This completes all the system installation and setup for the <span class="bold">Spring AI</span> hands-on demonstration.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on with Spring AI</p>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">First</span> application, we will have the AI application send a user prompt request to the Granite
+        3.3 model running on the <span class="bold">Ollama</span> platform.</p>
+    </div>
+    <div id="step-div">
+      <p>First Application</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the First application, execute the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringAI</p>
+      <p>$ mkdir -p First/{src,target}</p>
+      <p>$ mkdir -p First/src/{main/java/com/polarsparc/springai,main/resources}</p>
+      <p>$ mkdir -p First/src/main/java/com/polarsparc/springai/{config,service}</p>
+      <p>$ cd $HOME/java/SpringAI/First</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+
+  &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+  &lt;parent&gt;
+    &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+    &lt;artifactId&gt;SpringAI&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+  &lt;/parent&gt;
+
+  &lt;name&gt;First&lt;/name&gt;
+  &lt;description&gt;First SpringAI Application&lt;/description&gt;
+  &lt;artifactId&gt;First&lt;/artifactId&gt;
+  &lt;version&gt;1.0&lt;/version&gt;
+
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the logger properties file <span class="hi-green">simplelogger.properties</span> located
+        in the directory <span class="bold">src/main/resources</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">simplelogger.properties</div>
+      <div class="src-body-1">
+<pre>#
+### SLF4J Simple Logger properties
+#
+org.slf4j.simpleLogger.defaultLogLevel=info
+org.slf4j.simpleLogger.showDateTime=true
+org.slf4j.simpleLogger.dateTimeFormat=yyyy-MM-dd HH:mm:ss:SSS
+org.slf4j.simpleLogger.showThreadName=true</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Spring Boot</span> application properties file <span class="hi-green">
+        application.properties</span> located in the directory <span class="bold">src/main/resources</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">application.properties</div>
+      <div class="src-body-1">
+<pre>spring.main.banner-mode=off
+spring.application.name=First-SpringAI
+spring.main.web-application-type=none
+spring.ai.ollama.base-url=http://192.168.1.25:11434
+spring.ai.ollama.chat.model=granite3.3:2b
+spring.ai.ollama.chat.options.temperature=0.2</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Spring Boot configuration class that defines the <span class="bold">Ollama</span> specific ChatClient
+        container bean:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.1</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   OllamaChatConfig
+ * Author: Bhaskar S
+ * Date:   06/19/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.springai.config;
+
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class OllamaChatConfig {
+  @Bean
+  public ChatClient getOllamaChatClient(ChatClient.Builder chatClientBuilder) {
+    return chatClientBuilder.build();
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Spring Boot service class that exposes a method to interact with the LLM model running on the <span
+        class="bold">Ollama</span> platform:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.2</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   OllamaChatService
+ * Author: Bhaskar S
+ * Date:   06/19/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.springai.service;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.stereotype.Service;
+
+@Service
+public class OllamaChatService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OllamaChatService.class);
+
+  private final ChatClient chatClient;
+
+  public OllamaChatService(ChatClient chatClient) {
+    this.chatClient = chatClient;
+  }
+
+  public void getChatResponse(String prompt) {
+    String response = null;
+
+    LOGGER.info("User provided prompt for chat:\n {}", prompt);
+
+    if (chatClient != null) {
+      response = chatClient.prompt()
+              .user(prompt)
+              .call()
+              .content();
+
+      LOGGER.info("Response from chat:\n {}", response);
+    } else {
+      LOGGER.warn("Chat client NOT initialized !!!");
+    }
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the main <span class="bold">Spring Boot</span> application to test the <span class="bold">SpringAI</span>
+        chat functionality:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.3</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   FirstSpringAiApplication
+ * Author: Bhaskar S
+ * Date:   06/19/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.springai;
+
+import com.polarsparc.springai.service.OllamaChatService;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication(scanBasePackages = "com.polarsparc")
+public class FirstSpringAiApplication implements CommandLineRunner {
+  private final OllamaChatService chatService;
+
+  public FirstSpringAiApplication(OllamaChatService chatService) {
+    this.chatService = chatService;
+  }
+
+  public static void main(String[] args) {
+    SpringApplication.run(FirstSpringAiApplication.class, args);
+  }
+
+  @Override
+  public void run(String... args) throws Exception {
+    String prompt = "describe the spring boot framework in les than 50 words";
+    chatService.getChatResponse(prompt);
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.3</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringAI/First</p>
+      <p>$ mvn spring-boot:run</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>[INFO] --- spring-boot:3.5.0:run (default-cli) @ First ---
+[INFO] Attaching agents: []
+2025-06-20T20:58:30.627-04:00  INFO 147139 --- [First-SpringAI] [           main] c.p.springai.FirstSpringAiApplication    : Starting FirstSpringAiApplication using Java 23.0.1 with PID 147139 (/home/polarsparc/java/SpringAI/First/target/classes started by polarsparc in /home/polarsparc/java/SpringAI/First)
+2025-06-20T20:58:30.629-04:00  INFO 147139 --- [First-SpringAI] [           main] c.p.springai.FirstSpringAiApplication    : No active profile set, falling back to 1 default profile: "default"
+2025-06-20T20:58:31.147-04:00  INFO 147139 --- [First-SpringAI] [           main] c.p.springai.FirstSpringAiApplication    : Started FirstSpringAiApplication in 0.723 seconds (process running for 0.87)
+2025-06-20T20:58:31.148-04:00  INFO 147139 --- [First-SpringAI] [           main] c.p.springai.service.OllamaChatService   : User provided prompt for chat:
+ describe the spring boot framework in les than 50 words
+2025-06-20T20:58:33.026-04:00  INFO 147139 --- [First-SpringAI] [           main] c.p.springai.service.OllamaChatService   : Response from chat:
+ Spring Boot is an open-source Java framework for building microservices and applications. It simplifies development with conventions, auto-configuration, and embedded servers, enabling rapid application development and easy deployment on various platforms.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.063 s
+[INFO] Finished at: 2025-06-20T20:58:33-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the <span class="bold">Second</span> application, we will have the AI application display a structured output response.</p>
+    </div>
+    <div id="step-div">
+      <p>Second Application</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the Second application, execute the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringAI</p>
+      <p>$ mkdir -p Second/{src,target}</p>
+      <p>$ mkdir -p Second/src/{main/java/com/polarsparc/springai,main/resources}</p>
+      <p>$ mkdir -p Second/src/main/java/com/polarsparc/springai/{config,model,service}</p>
+      <p>$ cd $HOME/java/SpringAI/Second</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+
+  &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+  &lt;parent&gt;
+    &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+    &lt;artifactId&gt;SpringAI&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+  &lt;/parent&gt;
+
+  &lt;name&gt;Second&lt;/name&gt;
+  &lt;description&gt;Second SpringAI Application&lt;/description&gt;
+  &lt;artifactId&gt;Second&lt;/artifactId&gt;
+  &lt;version&gt;1.0&lt;/version&gt;
+
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the logger properties file <span class="hi-green">simplelogger.properties</span> located
+        in the directory <span class="bold">src/main/resources</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">simplelogger.properties</div>
+      <div class="src-body-1">
+<pre>#
+### SLF4J Simple Logger properties
+#
+org.slf4j.simpleLogger.defaultLogLevel=info
+org.slf4j.simpleLogger.showDateTime=true
+org.slf4j.simpleLogger.dateTimeFormat=yyyy-MM-dd HH:mm:ss:SSS
+org.slf4j.simpleLogger.showThreadName=true</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Spring Boot</span> application properties file <span class="hi-green">
+        application.properties</span> located in the directory <span class="bold">src/main/resources</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">application.properties</div>
+      <div class="src-body-1">
+<pre>spring.main.banner-mode=off
+spring.application.name=Second-SpringAI
+spring.main.web-application-type=none
+spring.ai.ollama.base-url=http://192.168.1.25:11434
+spring.ai.ollama.chat.model=granite3.3:2b
+spring.ai.ollama.chat.options.temperature=0.2</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Spring Boot configuration class that defines the <span class="bold">Ollama</span> specific ChatClient
+        container bean:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.4</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   OllamaChatConfig
+ * Author: Bhaskar S
+ * Date:   06/19/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.springai.config;
+
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class OllamaChatConfig {
+  @Bean
+  public ChatClient getOllamaChatClient(ChatClient.Builder chatClientBuilder) {
+    return chatClientBuilder.build();
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the structured output model class that the <span class="bold">Ollama</span> response will be mapped to:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.5</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CapitalCity
+ * Author: Bhaskar S
+ * Date:   06/19/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.springai.model;
+
+public record CapitalCity(String country, String city, float areaInSqft, long population) {}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Spring Boot service class that exposes a method to interact with the LLM model running on the <span
+        class="bold">Ollama</span> platform:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.6</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   OllamaChatService
+ * Author: Bhaskar S
+ * Date:   06/19/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.springai.service;
+
+import com.polarsparc.springai.model.CapitalCity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.stereotype.Service;
+
+@Service
+public class OllamaChatService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OllamaChatService.class);
+
+  private final ChatClient chatClient;
+
+  public OllamaChatService(ChatClient chatClient) {
+    this.chatClient = chatClient;
+  }
+
+  public void getCapitalCity(String prompt) {
+    CapitalCity capitalCity = null;
+
+    LOGGER.info("User provided prompt:\n {}", prompt);
+
+    if (chatClient != null) {
+      capitalCity = chatClient.prompt()
+              .user(prompt)
+              .call()
+              .entity(CapitalCity.class);
+
+      LOGGER.info("CapitalCity response from chat:\n {}", capitalCity);
+    } else {
+      LOGGER.warn("Chat client NOT initialized !!!");
+    }
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the main <span class="bold">Spring Boot</span> application to test the <span class="bold">SpringAI</span>
+        structured output chat functionality:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.7</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   SecondSpringAiApplication
+ * Author: Bhaskar S
+ * Date:   06/19/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.springai;
+
+import com.polarsparc.springai.service.OllamaChatService;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication(scanBasePackages = "com.polarsparc")
+public class SecondSpringAiApplication implements CommandLineRunner {
+  private final OllamaChatService chatService;
+
+  public SecondSpringAiApplication(OllamaChatService chatService) {
+    this.chatService = chatService;
+  }
+
+  public static void main(String[] args) {
+    SpringApplication.run(SecondSpringAiApplication.class, args);
+  }
+
+  @Override
+  public void run(String... args) throws Exception {
+    String prompt = "what is the capital of the country India and fetch its details";
+    chatService.getCapitalCity(prompt);
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.7</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringAI/Second</p>
+      <p>$ mvn spring-boot:run</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>[INFO] --- spring-boot:3.5.0:run (default-cli) @ Second ---
+[INFO] Attaching agents: []
+2025-06-20T21:24:57.709-04:00  INFO 156689 --- [Second-SpringAI] [           main] c.p.springai.SecondSpringAiApplication   : Starting SecondSpringAiApplication using Java 23.0.1 with PID 156689 (/home/polarsparc/java/SpringAI/Second/target/classes started by polarsparc in /home/polarsparc/java/SpringAI/Second)
+2025-06-20T21:24:57.711-04:00  INFO 156689 --- [Second-SpringAI] [           main] c.p.springai.SecondSpringAiApplication   : No active profile set, falling back to 1 default profile: "default"
+2025-06-20T21:24:58.220-04:00  INFO 156689 --- [Second-SpringAI] [           main] c.p.springai.SecondSpringAiApplication   : Started SecondSpringAiApplication in 0.705 seconds (process running for 0.846)
+2025-06-20T21:24:58.221-04:00  INFO 156689 --- [Second-SpringAI] [           main] c.p.springai.service.OllamaChatService   : User provided prompt:
+ what is the capital of the country India and fetch its details
+2025-06-20T21:25:00.217-04:00  INFO 156689 --- [Second-SpringAI] [           main] c.p.springai.service.OllamaChatService   : CapitalCity response from chat:
+ CapitalCity[country=India, city=New Delhi, areaInSqft=344750.0, population=302909388]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.142 s
+[INFO] Finished at: 2025-06-20T21:25:00-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the <span class="bold">Third</span> application, we will have the AI application leverage the vector database to store the
+        <a href="https://www.polarsparc.com/pdf/NVIDIA-4Q-2024.pdf" target="_blank"><span class="bold">Nvidia 4th Quarter 2024</span>
+        </a> financial report and query the vector database to analyze it.</p>
+    </div>
+    <div id="step-div">
+      <p>Third Application</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the Third application, execute the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringAI</p>
+      <p>$ mkdir -p Third/{src,target}</p>
+      <p>$ mkdir -p Third/src/{main/java/com/polarsparc/springai,main/resources}</p>
+      <p>$ mkdir -p Third/src/main/java/com/polarsparc/springai/{config,service}</p>
+      <p>$ cd $HOME/java/SpringAI/Third</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;parent&gt;
+      &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+      &lt;artifactId&gt;SpringAI&lt;/artifactId&gt;
+      &lt;version&gt;1.0&lt;/version&gt;
+    &lt;/parent&gt;
+
+    &lt;name&gt;Third&lt;/name&gt;
+    &lt;description&gt;Third SpringAI Application&lt;/description&gt;
+    &lt;artifactId&gt;Third&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+
+    &lt;dependencies&gt;
+      &lt;dependency&gt;
+        &lt;groupId&gt;org.springframework.ai&lt;/groupId&gt;
+        &lt;artifactId&gt;spring-ai-starter-vector-store-pgvector&lt;/artifactId&gt;
+      &lt;/dependency&gt;
+      &lt;dependency&gt;
+        &lt;groupId&gt;org.springframework.ai&lt;/groupId&gt;
+        &lt;artifactId&gt;spring-ai-pdf-document-reader&lt;/artifactId&gt;
+      &lt;/dependency&gt;
+      &lt;dependency&gt;
+        &lt;groupId&gt;org.springframework.ai&lt;/groupId&gt;
+        &lt;artifactId&gt;spring-ai-advisors-vector-store&lt;/artifactId&gt;
+      &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the logger properties file <span class="hi-green">simplelogger.properties</span> located
+        in the directory <span class="bold">src/main/resources</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">simplelogger.properties</div>
+      <div class="src-body-1">
+<pre>#
+### SLF4J Simple Logger properties
+#
+org.slf4j.simpleLogger.defaultLogLevel=info
+org.slf4j.simpleLogger.showDateTime=true
+org.slf4j.simpleLogger.dateTimeFormat=yyyy-MM-dd HH:mm:ss:SSS
+org.slf4j.simpleLogger.showThreadName=true</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Spring Boot</span> application properties file <span class="hi-green">
+        application.properties</span> located in the directory <span class="bold">src/main/resources</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">application.properties</div>
+      <div class="src-body-1">
+<pre>spring.main.banner-mode=off
+spring.application.name=Third-SpringAI
+spring.main.web-application-type=none
+spring.ai.ollama.base-url=http://192.168.1.25:11434
+spring.ai.ollama.chat.model=granite3.3:2b
+spring.ai.ollama.chat.options.temperature=0.2
+spring.ai.ollama.embedding.options.model=nomic-embed-text:v1.5
+spring.datasource.url=jdbc:postgresql://192.168.1.25:5432/ps_vector
+spring.datasource.username=pgusr
+spring.datasource.password=pgusr$123
+spring.ai.vectorstore.pgvector.initialize-schema=true
+spring.ai.vectorstore.pgvector.index-type=HNSW
+spring.ai.vectorstore.pgvector.distance-type=COSINE_DISTANCE
+spring.ai.vectorstore.pgvector.dimensions=768</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Ensure that the PDF file <span class="hi-green">NVIDIA-4Q-2024.pdf</span> is downloaded and stored in the directory <span
+        class="bold">src/main/resources</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Spring Boot configuration class that defines the <span class="bold">Ollama</span> specific ChatClient
+        container bean:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.8</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   OllamaChatConfig
+ * Author: Bhaskar S
+ * Date:   06/19/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.springai.config;
+
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class OllamaChatConfig {
+  @Bean
+  public ChatClient getOllamaChatClient(ChatClient.Builder chatClientBuilder) {
+    return chatClientBuilder.build();
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Spring Boot service class that exposes a method to store a PDF file to the vector database:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.9</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   PgVectorService
+ * Author: Bhaskar S
+ * Date:   06/19/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.springai.service;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.reader.ExtractedTextFormatter;
+import org.springframework.ai.reader.pdf.PagePdfDocumentReader;
+import org.springframework.ai.reader.pdf.config.PdfDocumentReaderConfig;
+import org.springframework.ai.transformer.splitter.TokenTextSplitter;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.stereotype.Service;
+
+import java.net.MalformedURLException;
+import java.util.List;
+
+@Service
+public class PgVectorService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PgVectorService.class);
+
+  private final VectorStore vectorStore;
+
+  public PgVectorService(VectorStore vectorStore) {
+    this.vectorStore = vectorStore;
+  }
+
+  public void storePDF(String file) throws MalformedURLException {
+    ClassPathResource pdfResource = new ClassPathResource(file);
+
+    LOGGER.info("PDF to store: {}", pdfResource.getFilename());
+
+    if (vectorStore != null) {
+      PagePdfDocumentReader pdfDocumentReader = new PagePdfDocumentReader(pdfResource,
+              PdfDocumentReaderConfig.builder()
+                      .withPageExtractedTextFormatter(ExtractedTextFormatter.builder()
+                              .build())
+                      .withPagesPerDocument(1)
+                      .build());
+
+      TokenTextSplitter tokenTextSplitter = new TokenTextSplitter();
+
+      List<Document> splitDocuments = tokenTextSplitter.split(pdfDocumentReader.read());
+      for (Document splitDocument: splitDocuments) {
+        splitDocument.getMetadata().put("filename", pdfResource.getFilename());
+      }
+
+      vectorStore.write(splitDocuments);
+
+      LOGGER.info("Successfully stored the PDF: {}", pdfResource.getFilename());
+    } else {
+      LOGGER.warn("Vector store NOT initialized !!!");
+    }
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Spring Boot service class that exposes a method to interact with the LLM model running on the <span
+        class="bold">Ollama</span> platform, which uses the content from the vector database:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.10</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   OllamaChatService
+ * Author: Bhaskar S
+ * Date:   06/19/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.springai.service;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.stereotype.Service;
+
+@Service
+public class OllamaChatService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OllamaChatService.class);
+
+  private final ChatClient chatClient;
+  private final VectorStore vectorStore;
+
+  public OllamaChatService(ChatClient chatClient, VectorStore vectorStore) {
+    this.chatClient = chatClient;
+    this.vectorStore = vectorStore;
+  }
+
+  public void queryVectorStore(String prompt) {
+    String response = null;
+
+    if (chatClient != null && vectorStore != null) {
+      LOGGER.info("User provided prompt:\n {}", prompt);
+
+      response = chatClient.prompt()
+              .user(prompt)
+              .advisors(new QuestionAnswerAdvisor(vectorStore))
+              .call()
+              .content();
+
+      LOGGER.info("Response from vector store:\n {}", response);
+    } else {
+      LOGGER.warn("Chat client AND/OR Vector store NOT initialized !!!");
+    }
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the main <span class="bold">Spring Boot</span> application to test the <span class="bold">SpringAI</span>
+        functionality of using the vector database:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.11</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   ThirdSpringAiApplication
+ * Author: Bhaskar S
+ * Date:   06/19/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.springai;
+
+import com.polarsparc.springai.service.OllamaChatService;
+import com.polarsparc.springai.service.PgVectorService;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication(scanBasePackages = "com.polarsparc")
+public class ThirdSpringAiApplication implements CommandLineRunner {
+  private final OllamaChatService chatService;
+  private final PgVectorService vectorService;
+
+  public ThirdSpringAiApplication(OllamaChatService chatService, PgVectorService vectorService) {
+    this.chatService = chatService;
+    this.vectorService = vectorService;
+  }
+
+  public static void main(String[] args) {
+    SpringApplication.run(ThirdSpringAiApplication.class, args);
+  }
+
+  @Override
+  public void run(String... args) throws Exception {
+    vectorService.storePDF("NVIDIA-4Q-2024.pdf");
+
+    String prompt = "what was the total revenue and total expenses for nvidia in q4 2024";
+    chatService.queryVectorStore(prompt);
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.11</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringAI/Third</p>
+      <p>$ mvn spring-boot:run</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>[INFO] --- spring-boot:3.5.0:run (default-cli) @ Third ---
+[INFO] Attaching agents: []
+2025-06-20T22:00:50.545-04:00  INFO 169678 --- [Third-SpringAI] [           main] c.p.springai.ThirdSpringAiApplication    : Starting ThirdSpringAiApplication using Java 23.0.1 with PID 169678 (/home/polarsparc/java/SpringAI/Third/target/classes started by polarsparc in /home/polarsparc/java/SpringAI/Third)
+2025-06-20T22:00:50.550-04:00  INFO 169678 --- [Third-SpringAI] [           main] c.p.springai.ThirdSpringAiApplication    : No active profile set, falling back to 1 default profile: "default"
+2025-06-20T22:00:51.309-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.a.v.pgvector.PgVectorStore           : Using the vector table name: vector_store. Is empty: false
+2025-06-20T22:00:51.311-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.a.v.pgvector.PgVectorStore           : Initializing PGVectorStore schema for table: vector_store in schema: public
+2025-06-20T22:00:51.311-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.a.v.pgvector.PgVectorStore           : vectorTableValidationsEnabled false
+2025-06-20T22:00:51.313-04:00  INFO 169678 --- [Third-SpringAI] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2025-06-20T22:00:51.400-04:00  INFO 169678 --- [Third-SpringAI] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@56be10fa
+2025-06-20T22:00:51.401-04:00  INFO 169678 --- [Third-SpringAI] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2025-06-20T22:00:51.476-04:00  INFO 169678 --- [Third-SpringAI] [           main] c.p.springai.ThirdSpringAiApplication    : Started ThirdSpringAiApplication in 1.129 seconds (process running for 1.271)
+2025-06-20T22:00:51.477-04:00  INFO 169678 --- [Third-SpringAI] [           main] c.p.springai.service.PgVectorService     : PDF to store: NVIDIA-4Q-2024.pdf
+2025-06-20T22:00:51.579-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.ai.reader.pdf.PagePdfDocumentReader  : Processing PDF page: 1
+2025-06-20T22:00:51.641-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.ai.reader.pdf.PagePdfDocumentReader  : Processing PDF page: 2
+2025-06-20T22:00:51.659-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.ai.reader.pdf.PagePdfDocumentReader  : Processing PDF page: 3
+2025-06-20T22:00:51.680-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.ai.reader.pdf.PagePdfDocumentReader  : Processing PDF page: 4
+2025-06-20T22:00:51.695-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.ai.reader.pdf.PagePdfDocumentReader  : Processing PDF page: 5
+2025-06-20T22:00:51.706-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.ai.reader.pdf.PagePdfDocumentReader  : Processing PDF page: 6
+2025-06-20T22:00:51.725-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.ai.reader.pdf.PagePdfDocumentReader  : Processing PDF page: 7
+2025-06-20T22:00:51.744-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.ai.reader.pdf.PagePdfDocumentReader  : Processing PDF page: 8
+2025-06-20T22:00:51.762-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.ai.reader.pdf.PagePdfDocumentReader  : Processing PDF page: 9
+2025-06-20T22:00:51.783-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.ai.reader.pdf.PagePdfDocumentReader  : Processing PDF page: 10
+2025-06-20T22:00:51.786-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.ai.reader.pdf.PagePdfDocumentReader  : Processing 10 pages
+2025-06-20T22:00:51.800-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.a.transformer.splitter.TextSplitter  : Splitting up document into 2 chunks.
+2025-06-20T22:00:51.807-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.a.transformer.splitter.TextSplitter  : Splitting up document into 2 chunks.
+2025-06-20T22:00:51.815-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.a.transformer.splitter.TextSplitter  : Splitting up document into 2 chunks.
+2025-06-20T22:00:51.825-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.a.transformer.splitter.TextSplitter  : Splitting up document into 2 chunks.
+2025-06-20T22:00:51.827-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.a.transformer.splitter.TextSplitter  : Splitting up document into 2 chunks.
+2025-06-20T22:00:51.830-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.a.transformer.splitter.TextSplitter  : Splitting up document into 2 chunks.
+2025-06-20T22:00:51.834-04:00  INFO 169678 --- [Third-SpringAI] [           main] o.s.a.transformer.splitter.TextSplitter  : Splitting up document into 2 chunks.
+2025-06-20T22:00:53.025-04:00  INFO 169678 --- [Third-SpringAI] [           main] c.p.springai.service.PgVectorService     : Successfully stored the PDF: NVIDIA-4Q-2024.pdf
+2025-06-20T22:00:53.025-04:00  INFO 169678 --- [Third-SpringAI] [           main] c.p.springai.service.OllamaChatService   : User provided prompt:
+ what was the total revenue and total expenses for nvidia in q4 2024
+2025-06-20T22:00:56.794-04:00  INFO 169678 --- [Third-SpringAI] [           main] c.p.springai.service.OllamaChatService   : Response from vector store:
+ Based on the provided financial results for NVIDIA's Q4 2024, here are the total revenue and total expenses:
+
+- Total Revenue (Q4 2024): $22.1 billion
+- Total Expenses (Q4 2024): $11.329 billion
+
+Please note that the context does not provide a breakdown of these figures into GAAP and Non-GAAP expenses, so I couldn't provide those details separately.
+2025-06-20T22:00:56.796-04:00  INFO 169678 --- [Third-SpringAI] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2025-06-20T22:00:56.798-04:00  INFO 169678 --- [Third-SpringAI] [ionShutdownHook] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  7.518 s
+[INFO] Finished at: 2025-06-20T22:00:57-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the <span class="bold">Fourth</span> application, we will have the AI application leverage external tools for processing.</p>
+    </div>
+    <div id="step-div">
+      <p>Fourth Application</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the Fourth application, execute the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringAI</p>
+      <p>$ mkdir -p Fourth/{src,target}</p>
+      <p>$ mkdir -p Fourth/src/{main/java/com/polarsparc/springai,main/resources}</p>
+      <p>$ mkdir -p Fourth/src/main/java/com/polarsparc/springai/{config,service,util}</p>
+      <p>$ cd $HOME/java/SpringAI/Fourth</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+
+  &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+  &lt;parent&gt;
+    &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+    &lt;artifactId&gt;SpringAI&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+  &lt;/parent&gt;
+
+  &lt;name&gt;Fourth&lt;/name&gt;
+  &lt;description&gt;Fourth SpringAI Application&lt;/description&gt;
+  &lt;artifactId&gt;Fourth&lt;/artifactId&gt;
+  &lt;version&gt;1.0&lt;/version&gt;
+
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the logger properties file <span class="hi-green">simplelogger.properties</span> located
+        in the directory <span class="bold">src/main/resources</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">simplelogger.properties</div>
+      <div class="src-body-1">
+<pre>#
+### SLF4J Simple Logger properties
+#
+org.slf4j.simpleLogger.defaultLogLevel=info
+org.slf4j.simpleLogger.showDateTime=true
+org.slf4j.simpleLogger.dateTimeFormat=yyyy-MM-dd HH:mm:ss:SSS
+org.slf4j.simpleLogger.showThreadName=true</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Spring Boot</span> application properties file <span class="hi-green">
+        application.properties</span> located in the directory <span class="bold">src/main/resources</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">application.properties</div>
+      <div class="src-body-1">
+<pre>spring.main.banner-mode=off
+spring.application.name=Fourth-SpringAI
+spring.main.web-application-type=none
+spring.ai.ollama.base-url=http://192.168.1.25:11434
+spring.ai.ollama.chat.model=granite3.3:2b
+spring.ai.ollama.chat.options.temperature=0.2</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the utility class that provides access to a simple interest calculator tool which can be used by the LLM
+        model:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.12</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   OllamaCalculatorTools
+ * Author: Bhaskar S
+ * Date:   06/19/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.springai.util;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.tool.annotation.Tool;
+
+public class OllamaCalculatorTools {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OllamaCalculatorTools.class);
+
+  @Tool(description = "Tool to compute simple interest rate for a year")
+  public float simple_interest(float principal, float rate) {
+    LOGGER.info("Input - principal: {}, rate: {}", principal, rate);
+
+    float interest = (principal * rate) / 100.00f;
+
+    LOGGER.info("Simple interest for principal: {}, rate: {} is: {}", principal, rate, interest);
+
+    return interest;
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Spring Boot configuration class that defines the <span class="bold">Ollama</span> specific ChatClient
+        and calculator tool container beans:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.13</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   OllamaChatConfig
+ * Author: Bhaskar S
+ * Date:   06/19/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.springai.config;
+
+import com.polarsparc.springai.util.OllamaCalculatorTools;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class OllamaChatConfig {
+  @Bean
+  public ChatClient getOllamaChatClient(ChatClient.Builder chatClientBuilder) {
+    return chatClientBuilder.build();
+  }
+
+  @Bean
+  public OllamaCalculatorTools getOllamaCalculatorTools() {
+    return new OllamaCalculatorTools();
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Spring Boot service class that exposes a method to interact with the LLM model running on the <span
+        class="bold">Ollama</span> platform which will use the calculator tool:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.14</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   OllamaChatService
+ * Author: Bhaskar S
+ * Date:   06/19/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.springai.service;
+
+import com.polarsparc.springai.util.OllamaCalculatorTools;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.stereotype.Service;
+
+@Service
+public class OllamaChatService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(OllamaChatService.class);
+
+  private final ChatClient chatClient;
+  private final OllamaCalculatorTools calculatorTools;
+
+  public OllamaChatService(ChatClient chatClient, OllamaCalculatorTools calculatorTools) {
+    this.chatClient = chatClient;
+    this.calculatorTools = calculatorTools;
+  }
+
+  public void getSimpleInterest(String prompt) {
+    String response = null;
+
+    LOGGER.info("User provided prompt using tools:\n {}", prompt);
+
+    if (chatClient != null) {
+      response = chatClient.prompt()
+              .user(prompt)
+              .tools(calculatorTools)
+              .call()
+              .content();
+
+      LOGGER.info("Response from chat using tools:\n {}", response);
+    } else {
+      LOGGER.warn("Chat client NOT initialized !!!");
+    }
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the main <span class="bold">Spring Boot</span> application to test the <span class="bold">SpringAI</span>
+        tool usage functionality:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.15</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   FourthSpringAiApplication
+ * Author: Bhaskar S
+ * Date:   06/19/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.springai;
+
+import com.polarsparc.springai.service.OllamaChatService;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication(scanBasePackages = "com.polarsparc")
+public class FourthSpringAiApplication implements CommandLineRunner {
+  private final OllamaChatService chatService;
+
+  public FourthSpringAiApplication(OllamaChatService chatService) {
+    this.chatService = chatService;
+  }
+
+  public static void main(String[] args) {
+    SpringApplication.run(FourthSpringAiApplication.class, args);
+  }
+
+  @Override
+  public void run(String... args) throws Exception {
+    String prompt = "compute the simple interest for a principal of 1000 at the rate of 4.75";
+    chatService.getSimpleInterest(prompt);
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.15</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringAI/Fourth</p>
+      <p>$ mvn spring-boot:run</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>[INFO] --- spring-boot:3.5.0:run (default-cli) @ Fourth ---
+[INFO] Attaching agents: []
+2025-06-20T22:21:01.813-04:00  INFO 178448 --- [Fourth-SpringAI] [           main] c.p.springai.FourthSpringAiApplication   : Starting FourthSpringAiApplication using Java 23.0.1 with PID 178448 (/home/polarsparc/java/SpringAI/Fourth/target/classes started by polarsparc in /home/polarsparc/java/SpringAI/Fourth)
+2025-06-20T22:21:01.814-04:00  INFO 178448 --- [Fourth-SpringAI] [           main] c.p.springai.FourthSpringAiApplication   : No active profile set, falling back to 1 default profile: "default"
+2025-06-20T22:21:02.319-04:00  INFO 178448 --- [Fourth-SpringAI] [           main] c.p.springai.FourthSpringAiApplication   : Started FourthSpringAiApplication in 0.699 seconds (process running for 0.84)
+2025-06-20T22:21:02.321-04:00  INFO 178448 --- [Fourth-SpringAI] [           main] c.p.springai.service.OllamaChatService   : User provided prompt using tools:
+ compute the simple interest for a principal of 1000 at the rate of 4.75
+2025-06-20T22:21:04.138-04:00  INFO 178448 --- [Fourth-SpringAI] [           main] c.p.springai.util.OllamaCalculatorTools  : Input - principal: 1000.0, rate: 4.75
+2025-06-20T22:21:04.138-04:00  INFO 178448 --- [Fourth-SpringAI] [           main] c.p.springai.util.OllamaCalculatorTools  : Simple interest for principal: 1000.0, rate: 4.75 is: 47.5
+2025-06-20T22:21:04.448-04:00  INFO 178448 --- [Fourth-SpringAI] [           main] c.p.springai.service.OllamaChatService   : Response from chat using tools:
+ The simple interest for a principal of 1000 at the rate of 4.75% per annum is 47.5.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.234 s
+[INFO] Finished at: 2025-06-20T22:21:04-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>With this, we conclude the various demonstrations on using the <span class="bold">Spring AI</span> framework !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://docs.spring.io/spring-ai/reference/index.html"><span class="bold">Spring AI Documentation</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
