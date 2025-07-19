@@ -1,0 +1,1448 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=windows-1252">
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Understanding OAuth2 and OpenID Connect">
+    <meta name="subject" content="Understanding OAuth2 and OpenID Connect">
+    <meta name="keywords" content="oauth2, oidc, python, security">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Understanding OAuth2 and OpenID Connect</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br>
+    <table borber="0">
+      <tbody><tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </tbody></table>
+    <br>
+    <div id="title-div">
+      <p>Understanding OAuth2 and OpenID Connect</p>
+    </div>
+    <br>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td"><span class="hi-yellow">*UPDATED*</span>04/26/2025</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr">
+    <br>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>There seems to be a lot of confusion around <span class="hi-grey">OAuth2</span> and <span class="hi-grey">OpenID Connect</span>
+        (<span class="hi-yellow">OIDC</span> for short). In this article, we will go on a journey to understand and clarify what
+        OAuth2 and OIDC really are.</p>
+      <p>Alice is hosting a party and wants to send an invite to a select group of friends. She plans to send a digital invitation
+        via a site called <span class="bold">KoolInvitez</span>. The site needs a list of emails to send out the invitation. Alice
+        stores all her contacts (as a collection of groups) in a site called <span class="bold">EzGroupContacts</span>. How should
+        Alice provide access to the group called 'CloseFriends' in EzGroupContacts to KoolInvitez to send the invites ??? Should
+        Alice provide her credentials for EzGroupContacts to KoolInvitez so it can access the contacts in the group 'CloseFriends'
+        ??? This is a security <span class="bold">anti-pattern</span> and *<span class="underbold">NOT</span>* recommended. This is
+        where OAuth2 comes in handy. Think of OAuth2 as a way of handing someone a <span class="bold">Valet</span> key, who will
+        have limited access to perform their task. In other words, OAuth2 is an open standard for users to grant access to their
+        information on a site or application to another site, but without revealing their credentials.</p>
+      <p>OIDC, on the other hand, is an extension on top of OAuth2, that is used to verify the identify of a user (authentication)
+        in a standard way. As an example, there are many sites that do not have any user registration and rely on Google or Facebook
+        for identity verification (authentication).</p>
+    </div>
+    <div id="para-div">
+      <p>Before we go any further, let us define some terms that will be useful in the context of OAuth2 and OIDC as follows:</p>
+    </div>
+    <br/>
+    <table id="col2-table">
+      <thead><tr>
+        <th>Term</th>
+        <th>Description</th>
+      </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">Resource</span></td>
+          <td class="col2-c2-odd">Data or information that a user owns (Ex: the contact list 'CloseFriends')</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">Resource Owner</span></td>
+          <td class="col2-c2-even">The owner of a Resource (Ex: Alice)</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">Resource Server</span></td>
+          <td class="col2-c2-odd">The server where the Resource is hosted (Ex: EzGroupContacts)</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">Client</span></td>
+          <td class="col2-c2-even">An application or a site that needs access to a user Resource (Ex: KoolInvitez)</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">Authorization Server</span></td>
+          <td class="col2-c2-odd">The OAuth2/ODIC server where a user grants a consent to a Client, to access their Resource(s)</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">Access Token</span></td>
+          <td class="col2-c2-even">A security token which the Client can present to the Resource Server to get access to a user's
+            Resource</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">Front Channel</span></td>
+          <td class="col2-c2-odd">Requests coming from a user agent (such as a web browser) to a server</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">Back Channel</span></td>
+          <td class="col2-c2-even">Requests coming from a server to another server. This is done for security reasons</td>
+        </tr>
+      </tbody>
+    </table>
+    <br/>
+    <div id="para-div">
+      <p>The basic *<span class="underbold">FUNDAMENTAL</span>* flow of OAuth2 is referred to as the <span class="hi-yellow">Authorization
+        Code</span> flow and all the other flows are variations of this basic flow. The Authorization Code flow works as follows:</p>
+    </div>
+    <div id="para-div">
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-grey">1</span> :: the Resource Owner launches the Client to initiate the flow</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">2</span> :: the Client makes a request to the Authorization Server from the Front Channel for an
+            authorization code (<span class="bold">/auth_code</span>) passing in an URL to respond back to (<span class="bold">/callback
+            </span>) at the Client</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">3</span> :: the Authorization Server redirects the Resource Owner to the Resource Server for user
+            authentication and access grant</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">4</span> :: the Resource Owner enters valid credentials that is verified by the Resource Server and
+            redirects back to the Authorization Server</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">5</span> :: the Authorization Server generates an Authorization Code and responds back to the Client
+            with the authorization code on the Back Channel at the specified URL (<span class="bold">/callback</span>)</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">6</span> :: the Client makes a request to the Authorization Server for an Access Token through the
+            Back Channel</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">7</span> :: the Authorization Server responds back to the Client with an Access Token on the Back
+            Channel</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">8</span> :: the Client uses the Access Token to make a request to access the Resource at the Resource
+            Server</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">9</span> :: the Resource Server responds with the data associated with the Resource</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the basic Authorization Code flow:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-01.png" class="img-cls" alt="Basic Flow">
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="underbold">NOTE</span> :: In some cases, the Authorization Server and the Resource Server may be ONE.</p>
+    </div>
+    <div id="section-div">
+      <p>Installation and Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The installation will be on a <span class="bold">Ubuntu 24.04 LTS</span> based Linux desktop.</p>
+      <p>Ensure <span class="bold">Docker</span> is installed on the system. Else, follow the instructions provided in the article
+        <a href="https://polarsparc.github.io/Docker/Docker.html" target="_blank"><span class="bold">Introduction to Docker</span>
+        </a> to complete the installation.</p>
+    </div>
+    <div id="para-div">
+      <p>There are few open source implementations of the Authorization Server that implement the OAuth2/OIDC standards as follows:</p>
+    </div>
+    <div id="para-div">
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><a href="https://www.gluu.org/" target="_blank"><span class="bold">Gluu Server</span></a></p>
+        </li>
+        <li>
+          <p><a href="https://www.keycloak.org/" target="_blank"><span class="bold">Keycloak</span></a></p>
+        </li>
+        <li>
+          <p><a href="https://www.ory.sh/" target="_blank"><span class="bold">Ory</span></a></p>
+        </li>
+        <li>
+          <p><a href="https://wso2.com/identity-and-access-management/" target="_blank"><span class="bold">WSO2 Identity Server</span></a></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>For our setup and demonstration, we will use the <span class="hi-yellow">Keycloak</span> Authorization Server in conjuction
+        with the <span class="hi-yellow">PostgreSQL</span> database.</p>
+      <p>Check the latest stable version for <a href="https://hub.docker.com/_/postgres" target="_blank"><span class="bold">Postgres
+        </span></a> docker image. Version <span class="hi-yellow">17.4</span> was the latest at the time of this article.</p>
+      <p>To download the latest docker image for <span class="bold">Postgres</span>, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker pull postgres:17.4</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>17.4: Pulling from library/postgres
+8a628cdd7ccc: Already exists 
+e4847368ad17: Pull complete 
+97cdd47d9131: Pull complete 
+2817206b0512: Pull complete 
+3a6f8814136c: Pull complete 
+07db60713289: Pull complete 
+0c942aac37b1: Pull complete 
+8c63b71925de: Pull complete 
+97f28320a07a: Pull complete 
+2a08aad74366: Pull complete 
+6cea4d95608f: Pull complete 
+c1b7de8085d1: Pull complete 
+f15c43cffa70: Pull complete 
+6948dc7760c1: Pull complete 
+Digest: sha256:fe3f571d128e8efadcd8b2fde0e2b73ebab6dbec33f6bfe69d98c682c7d8f7bd
+Status: Downloaded newer image for postgres:17.4
+docker.io/library/postgres:17.4</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Check the latest stable version for <a href="https://hub.docker.com/r/keycloak/keycloak" target="_blank"><span class="bold">
+        Keycloak</span></a> docker image. Version <span class="hi-yellow">26.2</span> was the latest at the time of this article.</p>
+      <p>To download the latest docker image for <span class="bold">Keycloak</span>, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker pull keycloak/keycloak:26.2</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>26.2: Pulling from keycloak/keycloak
+d949f716ce77: Pull complete 
+8c577d69454d: Pull complete 
+9b46be75f4e8: Pull complete 
+9b751c10ff39: Pull complete 
+ecae49820766: Pull complete 
+Digest: sha256:87758ff2293c78c942c7a1f0df2bc13e0f943fcf0c0d027c12fdfac54a35d93b
+Status: Downloaded newer image for keycloak/keycloak:26.2
+docker.io/keycloak/keycloak:26.2</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a new bridge network called <span class="hi-yellow">my-iam-net</span>, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker network create my-iam-net</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>b67ca5859be5d691dc3fd1ea36d858b08b5f5afdbe18174c0f463a6aa978ce76</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will store the database files in the directory <span class="hi-yellow">$HOME/Downloads/DATA/postgres</span> on the host.</p>
+      <p>To start the Postgres database, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run -d --rm --name postgres --net my-iam-net -e POSTGRES_DB=keycloak -e POSTGRES_USER=keycloak -e POSTGRES_PASSWORD=keycloak\$123 -p 5432:5432 -v $HOME/Downloads/DATA/postgres:/var/lib/postgresql/data postgres:17.4</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>1ece53dcc021a0810a50b302f4f6081cdc299725ff635b305982878aca76ad58</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To check the Postgres database logs, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker logs postgres</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>...[SNIP]...
+PostgreSQL init process complete; ready for start up.
+
+2025-04-26 10:53:49.290 UTC [1] LOG:  starting PostgreSQL 17.4 (Debian 17.4-1.pgdg120+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+2025-04-26 10:53:49.290 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2025-04-26 10:53:49.290 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2025-04-26 10:53:49.292 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2025-04-26 10:53:49.297 UTC [65] LOG:  database system was shut down at 2025-04-26 11:53:49 UTC
+2025-04-26 10:53:49.302 UTC [1] LOG:  database system is ready to accept connections</pre>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>Logs in the article have been trimmed to just show the pieces relevant to the context<br/>The lines with three dots '...[SNIP]...' indicates code that has been truncated</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To start the Keycloak OAuth2/ODIC server, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name keycloak --net my-iam-net -e KC_DB=postgres -e KC_DB_URL="jdbc:postgresql://postgres:5432/keycloak" -e KC_DB_URL_HOST=postgres -e KC_DB_URL_PORT=5432 -e KC_DB_USERNAME=keycloak -e KC_DB_PASSWORD=keycloak\$123 -e KC_BOOTSTRAP_ADMIN_USERNAME=admin -e KC_BOOTSTRAP_ADMIN_PASSWORD=kc_admin\$123 -e KC_HTTP_ENABLED=true -e KC_HOSTNAME=localhost -p 8080:8080 keycloak/keycloak:26.2 start</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>Changes detected in configuration. Updating the server image.
+Updating the configuration and installing your custom providers, if any. Please wait.
+2025-04-26 11:59:04,183 INFO  [io.quarkus.deployment.QuarkusAugmentor] (main) Quarkus augmentation completed in 3457ms
+Server configuration updated and persisted. Run the following command to review the configuration:
+
+  kc.sh show-config
+
+Next time you run the server, just run:
+
+  kc.sh start --optimized
+
+WARNING: Hostname v1 options [hostname-port] are still in use, please review your configuration
+2025-04-26 10:59:07,410 INFO  [org.keycloak.quarkus.runtime.storage.database.liquibase.QuarkusJpaUpdaterProvider] (main) Initializing database schema. Using changelog META-INF/jpa-changelog-master.xml
+2025-04-26 10:59:11,674 INFO  [org.keycloak.quarkus.runtime.storage.infinispan.CacheManagerFactory] (main) Starting Infinispan embedded cache manager
+2025-04-26 10:59:11,677 INFO  [org.keycloak.quarkus.runtime.storage.infinispan.CacheManagerFactory] (main) JGroups JDBC_PING discovery enabled.
+2025-04-26 10:59:11,956 INFO  [org.keycloak.quarkus.runtime.storage.infinispan.CacheManagerFactory] (main) JGroups Encryption enabled (mTLS).
+2025-04-26 10:59:12,019 INFO  [org.infinispan.CONTAINER] (main) Virtual threads support enabled
+2025-04-26 10:59:12,062 INFO  [org.keycloak.infinispan.module.certificates.CertificateReloadManager] (main) Starting JGroups certificate reload manager
+2025-04-26 10:59:12,141 INFO  [org.infinispan.CONTAINER] (main) ISPN000556: Starting user marshaller 'org.infinispan.commons.marshall.ImmutableProtoStreamMarshaller'
+2025-04-26 10:59:12,258 INFO  [org.infinispan.CLUSTER] (main) ISPN000078: Starting JGroups channel `ISPN` with stack `jdbc-ping`
+2025-04-26 10:59:12,259 INFO  [org.jgroups.JChannel] (main) local_addr: 12ccdf8e-7a22-407f-8f8d-3f41686f2157, name: 00ff9c7ffa5c-9594
+2025-04-26 10:59:12,265 INFO  [org.jgroups.protocols.FD_SOCK2] (main) server listening on *:57800
+2025-04-26 10:59:12,268 INFO  [org.jgroups.protocols.pbcast.GMS] (main) 00ff9c7ffa5c-9594: no members discovered after 2 ms: creating cluster as coordinator
+2025-04-26 10:59:12,280 INFO  [org.infinispan.CLUSTER] (main) ISPN000094: Received new cluster view for channel ISPN: [00ff9c7ffa5c-9594|0] (1) [00ff9c7ffa5c-9594]
+2025-04-26 10:59:12,282 INFO  [org.keycloak.infinispan.module.certificates.CertificateReloadManager] (main) Reloading JGroups Certificate
+2025-04-26 10:59:12,314 INFO  [org.infinispan.CLUSTER] (main) ISPN000079: Channel `ISPN` local address is `00ff9c7ffa5c-9594`, physical addresses are `[172.18.0.3:7800]`
+2025-04-26 10:59:12,550 INFO  [org.keycloak.connections.infinispan.DefaultInfinispanConnectionProviderFactory] (main) Node name: 00ff9c7ffa5c-9594, Site name: null
+2025-04-26 10:59:12,649 INFO  [org.keycloak.services] (main) KC-SERVICES0050: Initializing master realm
+2025-04-26 10:59:13,576 INFO  [org.keycloak.services] (main) KC-SERVICES0077: Created temporary admin user with username admin
+2025-04-26 10:59:13,662 INFO  [io.quarkus] (main) Keycloak 26.2.0 on JVM (powered by Quarkus 3.20.0) started in 9.260s. Listening on: http://0.0.0.0:8080
+2025-04-26 10:59:13,662 INFO  [io.quarkus] (main) Profile prod activated. 
+2025-04-26 10:59:13,663 INFO  [io.quarkus] (main) Installed features: [agroal, cdi, hibernate-orm, jdbc-postgresql, keycloak, narayana-jta, opentelemetry, reactive-routes, rest, rest-jackson, smallrye-context-propagation, vertx]</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Rather than execute the two docker commands individually, one can use the following <span class="bold">docker-compose</span>
+        file:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-cap">postgres-keycloak.yml</div>
+        <div class="gen-src-body">
+          <pre>networks:
+  default:
+    external:
+      name: my-iam-net
+
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:17.4
+    volumes:
+      - ${HOME}/Downloads/DATA/postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=keycloak
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - 5432:5432
+
+  keycloak:
+    container_name: keycloak
+    image: keycloak/keycloak:26.2
+    environment:
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://postgres:5432/keycloak
+      - KC_DB_URL_HOST=postgres
+      - KC_DB_URL_PORT=5432
+      - KC_DB_USERNAME=keycloak
+      - KC_DB_PASSWORD=${POSTGRES_PASSWORD}
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=${KEYCLOAK_PASSWORD}
+      - KC_HTTP_ENABLED=true
+      - KC_HOSTNAME=localhost
+    command: start
+    ports:
+      - 8080:8080
+    depends_on:
+      - postgres</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The variables POSTGRES_PASSWORD and KEYCLOAK_PASSWORD are defined in a file called <span class="bold">vars.env</span> as
+        follows:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-cap">vars.env</div>
+        <div class="gen-src-body">
+          <pre>POSTGRES_PASSWORD=keycloak$123
+KEYCLOAK_PASSWORD=kc_admin$123</pre>
+        </div>
+      </div>
+    <br/>
+    <div id="para-div">
+      <p>To start both the <span class="bold">Postgres</span> database as well as the <span class="bold">Keycloak</span> server on
+        the same bridge network called <span class="bold">my-iam-net</span> using <span class="bold">docker-compose</span>, execute
+        the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker-compose --env-file vars.env -f postgres-keycloak.yml up</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical trimmed output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>Creating postgres ... done
+Creating keycloak ... done
+Attaching to postgres, keycloak
+[... SNIP ...]
+postgres    | fixing permissions on existing directory /var/lib/postgresql/data ... ok
+postgres    | creating subdirectories ... ok
+postgres    | selecting dynamic shared memory implementation ... posix
+postgres    | selecting default "max_connections" ... 100
+postgres    | selecting default "shared_buffers" ... 128MB
+postgres    | selecting default time zone ... Etc/UTC
+postgres    | creating configuration files ... ok
+postgres    | running bootstrap script ... ok
+postgres    | performing post-bootstrap initialization ... ok
+postgres    | syncing data to disk ... ok
+[... SNIP ...]
+postgres    | PostgreSQL init process complete; ready for start up.
+postgres    | 
+postgres    | 2025-04-26 15:14:25.008 UTC [1] LOG:  starting PostgreSQL 17.4 (Debian 17.4-1.pgdg120+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit
+postgres    | 2025-04-26 15:14:25.008 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+postgres    | 2025-04-26 15:14:25.008 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+postgres    | 2025-04-26 15:14:25.011 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+postgres    | 2025-04-26 15:14:25.017 UTC [65] LOG:  database system was shut down at 2025-04-26 15:14:24 UTC
+postgres    | 2025-04-26 15:14:25.025 UTC [1] LOG:  database system is ready to accept connections
+keycloak    | 2025-04-26 15:14:28,720 INFO  [io.quarkus.deployment.QuarkusAugmentor] (main) Quarkus augmentation completed in 3474ms
+[... SNIP ...]
+keycloak    | 2025-04-26 15:14:31,948 INFO  [org.keycloak.quarkus.runtime.storage.database.liquibase.QuarkusJpaUpdaterProvider] (main) Initializing database schema. Using changelog META-INF/jpa-changelog-master.xml
+keycloak    | 2025-04-26 15:14:36,089 INFO  [org.keycloak.quarkus.runtime.storage.infinispan.CacheManagerFactory] (main) Starting Infinispan embedded cache manager
+keycloak    | 2025-04-26 15:14:36,092 INFO  [org.keycloak.quarkus.runtime.storage.infinispan.CacheManagerFactory] (main) JGroups JDBC_PING discovery enabled.
+keycloak    | 2025-04-26 15:14:36,488 INFO  [org.keycloak.quarkus.runtime.storage.infinispan.CacheManagerFactory] (main) JGroups Encryption enabled (mTLS).
+keycloak    | 2025-04-26 15:14:36,551 INFO  [org.infinispan.CONTAINER] (main) Virtual threads support enabled
+keycloak    | 2025-04-26 15:14:36,616 INFO  [org.keycloak.infinispan.module.certificates.CertificateReloadManager] (main) Starting JGroups certificate reload manager
+keycloak    | 2025-04-26 15:14:36,671 INFO  [org.infinispan.CONTAINER] (main) ISPN000556: Starting user marshaller 'org.infinispan.commons.marshall.ImmutableProtoStreamMarshaller'
+keycloak    | 2025-04-26 15:14:36,787 INFO  [org.infinispan.CLUSTER] (main) ISPN000078: Starting JGroups channel `ISPN` with stack `jdbc-ping`
+keycloak    | 2025-04-26 15:14:36,788 INFO  [org.jgroups.JChannel] (main) local_addr: 8d5cecac-840e-4d2d-9c7c-8aef892fa95f, name: 55523aff7bc4-16390
+keycloak    | 2025-04-26 15:14:36,796 INFO  [org.jgroups.protocols.FD_SOCK2] (main) server listening on *:57800
+keycloak    | 2025-04-26 15:14:36,799 INFO  [org.jgroups.protocols.pbcast.GMS] (main) 55523aff7bc4-16390: no members discovered after 2 ms: creating cluster as coordinator
+keycloak    | 2025-04-26 15:14:36,813 INFO  [org.infinispan.CLUSTER] (main) ISPN000094: Received new cluster view for channel ISPN: [55523aff7bc4-16390|0] (1) [55523aff7bc4-16390]
+keycloak    | 2025-04-26 15:14:36,814 INFO  [org.keycloak.infinispan.module.certificates.CertificateReloadManager] (main) Reloading JGroups Certificate
+keycloak    | 2025-04-26 15:14:36,847 INFO  [org.infinispan.CLUSTER] (main) ISPN000079: Channel `ISPN` local address is `55523aff7bc4-16390`, physical addresses are `[172.18.0.3:7800]`
+keycloak    | 2025-04-26 15:14:37,092 INFO  [org.keycloak.connections.infinispan.DefaultInfinispanConnectionProviderFactory] (main) Node name: 55523aff7bc4-16390, Site name: null
+keycloak    | 2025-04-26 15:14:37,192 INFO  [org.keycloak.services] (main) KC-SERVICES0050: Initializing master realm
+keycloak    | 2025-04-26 15:14:38,064 INFO  [org.keycloak.services] (main) KC-SERVICES0077: Created temporary admin user with username admin
+keycloak    | 2025-04-26 15:14:38,148 INFO  [io.quarkus] (main) Keycloak 26.2.0 on JVM (powered by Quarkus 3.20.0) started in 9.208s. Listening on: http://0.0.0.0:8080
+keycloak    | 2025-04-26 15:14:38,148 INFO  [io.quarkus] (main) Profile prod activated. 
+keycloak    | 2025-04-26 15:14:38,148 INFO  [io.quarkus] (main) Installed features: [agroal, cdi, hibernate-orm, jdbc-postgresql, keycloak, narayana-jta, opentelemetry, reactive-routes, rest, rest-jackson, smallrye-context-propagation, vertx]</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To shutdown both the <span class="bold">Postgres</span> database as well as the <span class="bold">Keycloak</span> server,
+        execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker-compose --env-file vars.env -f postgres-keycloak.yml down</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Launch a web browser and open the URL <span class="hi-yellow">http://localhost:8080/admin</span>. It will prompt us with
+        a login screen as shown in the following illustration:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-02.png" class="img-cls" alt="Login Screen">
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>Enter the username of <span class="hi-blue">admin</span> and password of <span class="hi-blue">kc_admin$123</span> and
+        click on the <span class="bold">Sign In</span> button as shown in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-03.png" class="img-cls" alt="Login Submit">
+      <div class="img-cap">Figure.3</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>On successful login, it will take us to the <span class="hi-yellow">Master</span> realm page as shown in the illustration
+        below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-04.png" class="img-cls" alt="Master Realm">
+      <div class="img-cap">Figure.4</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>A <span class="hi-yellow">Realm</span> is like a namespace where all the instance setup objects reside. We need to create
+        a new realm for our setup. To create a new realm click on <span class="bold">Manage realms</span> side menu iten (on the top
+        left-hand corner) and click on the <span class="bold">Create realm</span> button as shown in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-05.png" class="img-cls" alt="Add Realm">
+      <div class="img-cap">Figure.5</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>We will create a new realm called <span class="hi-green">testing</span> for our setup and click on the <span class="bold">
+        Create</span> button as shown in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-06.png" class="img-cls" alt="Testing Realm">
+      <div class="img-cap">Figure.6</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>On successful creation, it will take us back to the <span class="bold">Manage realms</span> page. Choose the <span class=
+        "bold">testing</span> realm and click on the <span class="bold">Realm settings</span> menu item (on the left-hand side) as
+        shown in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-07.png" class="img-cls" alt="Choose Testing Realm">
+      <div class="img-cap">Figure.7</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>On the <span class="bold">testing</span> realms settings page, enter the <span class="bold">Display name</span> and leave
+        the remaining options as is, and click on the <span class="bold">Save</span> button as shown in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-08.png" class="img-cls" alt="Testing Realm Display Name">
+      <div class="img-cap">Figure.8</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>Scroll to the bottom of the <span class="bold">testing</span> realms settings page and click on <span class="bold">OpenID
+        Endpoint Configuration</span> endpoint as shown in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-09.png" class="img-cls" alt="Endpoint Configuration">
+      <div class="img-cap">Figure.9</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>This will take us to the <span class="bold">Endpoint Configuration</span> page, where we can make a note of the various
+        URL endpoints for our demonstration later, as shown in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-10.png" class="img-cls" alt="Endpoint URLs">
+      <div class="img-cap">Figure.10</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>Every application that interacts with <span class="bold">Keycloak</span> needs to be pre-registered. To create a new client,
+        click on the <span class="bold">Clients</span> menu item (on the left-hand side), and the click on the <span class="bold">
+        Create client</span> button as shown in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-11.png" class="img-cls" alt="New Client">
+      <div class="img-cap">Figure.11</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>On the <span class="bold">Create client</span> page, we will leave the <span class="bold">Client type</span> as is, enter
+        a new <span class="bold">Client ID</span> called <span class="hi-yellow">test-client</span>, followed by the <span class=
+        "bold">Name</span>, <span class="bold">Description</span>, and then click on the <span class="bold">Next</span> button as
+        shown in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-12.png" class="img-cls" alt="New Client">
+      <div class="img-cap">Figure.12</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>On the next <span class="bold">Create client</span> page, enable <span class="bold">Client authentication</span>, choose
+        the option <span class="bold">Standard flow</span> and <span class="bold">Direct access grants</span>, and then click on
+        the <span class="bold">Next</span> button as shown in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-13.png" class="img-cls" alt="New Client Options">
+      <div class="img-cap">Figure.13</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>On the next <span class="bold">Create client</span> page, enter the <span class="bold">Root URL</span> value to be <span
+        class="hi-grey">http://localhost:5000/</span>, enter the <span class="bold">Valid redirect URIs</span> value to be <span
+        class="hi-grey">http://localhost:5000/*</span>, enter the <span class="bold">Web origins</span> value to be <span class=
+        "hi-grey">http://localhost:5000</span>, and then finally click on the <span class="bold">Save</span> button as shown in
+        the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-14.png" class="img-cls" alt="Test-client Client">
+      <div class="img-cap">Figure.14</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>In Figure.14 above, the option <span class="bold">Standard flow</span> is what enables the OAuth2 flow.</p>
+    </div>
+    <div id="para-div">
+      <p>On successful client creation, we will end up on the client details page of the just created client called <span class=
+        "bold">test-client</span>. We need to make a note of the secret token associated with this client. To do that, click on the
+        <span class="bold">Credentials</span> tab and then click on the <span class="bold">Client Secret</span> eye icon as shown
+        in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-15.png" class="img-cls" alt="Client Secret">
+      <div class="img-cap">Figure.15</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>For the OAuth2 flow to work in <span class="bold">Keycloak</span>, we need to pre-registered a user (Resource Owner). To
+        create a new user, click on the <span class="bold">Users</span> menu item (on the left-hand side), and then click on the
+        <span class="bold">Create new user</span> button as shown in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-16.png" class="img-cls" alt="Create New User">
+      <div class="img-cap">Figure.16</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>On the <span class="bold">Create user</span> page, we will enter the <span class="bold">Username</span> called <span class
+        ="hi-blue">test-user</span>, with an <span class="bold">Email</span> as <span class="hi-yellow">test-user@localhost</span>,
+        with a <span class="bold">First Name</span> as <span class="hi-yellow">Test</span>, with a <span class="bold">Last Name</span>
+        as <span class="hi-yellow">User</span>, and click on the <span class="bold">Create</span> button as shown in the illustration
+        below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-17.png" class="img-cls" alt="Save New User">
+      <div class="img-cap">Figure.17</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>Next, we need to set a user credential (password) for the newly created user <span class="bold">test-user</span>. To set
+        the user password, click on the <span class="bold">Credentials</span> tab, and then click on the <span class="bold">Set
+        password</span> button. This will pop-up a window for us to enter a <span class="bold">Password</span> of <span class=
+        "hi-blue">test-user$123</span>, re-enter the same password in <span class="bold">Password confirmation</span>, turn OFF
+        the option <span class="bold">Temporary</span>, and then click on the <span class="bold">Save</span> button as shown in
+        the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-18.png" class="img-cls" alt="Set User Password">
+      <div class="img-cap">Figure.18</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>This completes the installation and setup for the demonstration for the <span class="underbold">OAuth2</span> flow.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on OAuth2 Authorization Code Flow</p>
+    </div>
+    <div id="para-div">
+      <p>This <span class="bold">OAuth</span> flow is sometimes referred to as the <span class="hi-yellow">3-Legged OAuth</span>
+        flow as it involves the three parties - the client, the authorization server, and the resource owner.</p>
+    </div>
+    <div id="para-div">
+      <p>We will use <span class="bold">Python</span> to implement the Client (as a standalone webserver) and display the data
+        elements of the OAuth2 Authorization Code flow on a simple <span class="bold">HTML</span> page.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the directory structure for the Client source code:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-19.png" class="img-cls" alt="Dir Structure">
+      <div class="img-cap">Figure.19</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>The following is the listing of the HTML file for the Authorization Code flow:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-cap">index.html</div>
+        <div class="gen-src-body">
+          <pre>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+  &lt;head&gt;
+    &lt;!-- Required meta tags --&gt;
+    &lt;meta charset="utf-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"&gt;
+    &lt;title&gt;Understanding OAuth2&lt;/title&gt;
+    &lt;link rel="stylesheet" href="../static/css/bootstrap.min.css"&gt;
+    &lt;link rel="shortcut icon" href="../static/images/favicon.ico"&gt;
+    &lt;style&gt;
+      td {
+        white-space: normal !important;
+        word-wrap: break-word;
+      }
+      table {
+        table-layout: fixed;
+      }
+    &lt;/style&gt;
+  &lt;/head&gt;
+  &lt;body class="bg-light"&gt;
+    &lt;div class="container"&gt;
+      &lt;br/&gt;
+      &lt;div class="display-4 text-center text-secondary"&gt;Understanding OAuth2&lt;/div&gt;
+      &lt;br/&gt;
+      &lt;hr/&gt;
+      &lt;nav class="nav nav-tabs nav-justified"&gt;
+        &lt;a id="code" class="nav-item nav-link" href="http://localhost:5000/auth_code"&gt;Authorization Code&lt;/a&gt;
+        &lt;a id="token" class="nav-item nav-link" href="http://localhost:5000/access_token"&gt;Access Token&lt;/a&gt;
+        &lt;a id="profile" class="nav-item nav-link" href="http://localhost:5000/user_profile"&gt;User Profile&lt;/a&gt;
+        &lt;a id="logout" class="nav-item nav-link" href="http://localhost:5000/logout"&gt;Logout&lt;/a&gt;
+      &lt;/nav&gt;
+      &lt;br/&gt;
+      &lt;table class="table table-striped table-bordered"&gt;
+        &lt;thead&gt;
+          &lt;tr class="bg-secondary text-light"&gt;
+            &lt;th width="20%"&gt;Key&lt;/th&gt;
+            &lt;th width="80%"&gt;Value&lt;/th&gt;
+          &lt;/tr&gt;
+        &lt;/thead&gt;
+        &lt;tbody&gt;
+          &lt;tr&gt;
+            &lt;td&gt;State&lt;/td&gt;
+            &lt;td&gt;{{ data['state'] }}&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr&gt;
+            &lt;td&gt;Authorization Code&lt;/td&gt;
+            &lt;td id="a_code"&gt;{{ data['code'] }}&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr&gt;
+            &lt;td&gt;Session&lt;/td&gt;
+            &lt;td&gt;{{ data['session'] }}&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr&gt;
+            &lt;td&gt;Access Token&lt;/td&gt;
+            &lt;td&gt;{{ data['a_token'] }}&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr&gt;
+            &lt;td&gt;Refresh Token&lt;/td&gt;
+            &lt;td&gt;{{ data['r_token'] }}&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr&gt;
+            &lt;td&gt;Token Type&lt;/td&gt;
+            &lt;td&gt;{{ data['t_type'] }}&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr&gt;
+            &lt;td&gt;Scope&lt;/td&gt;
+            &lt;td&gt;{{ data['scope'] }}&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr&gt;
+            &lt;td&gt;User Email&lt;/td&gt;
+            &lt;td&gt;{{ data['email'] }}&lt;/td&gt;
+          &lt;/tr&gt;
+        &lt;/tbody&gt;
+      &lt;/table&gt;
+    &lt;/div&gt;
+    &lt;script src="../static/js/jquery.slim.min.js"&gt;&lt;/script&gt;
+    &lt;script src="../static/js/bootstrap.bundle.min.js"&gt;&lt;/script&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing of the Python Client for the Authorization Code flow:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-cap">AuthCode.py</div>
+        <div class="gen-src-body">
+          <pre>###
+# @Author: Bhaskar S
+# @Blog:   https://www.polarsparc.com
+# @Date:   26 Apr 2025
+###
+
+import requests
+from flask import Flask, render_template, redirect, request
+from urllib.parse import urlencode
+
+app = Flask(__name__)
+
+OAuthConfig = {
+  'authURL': 'http://localhost:8080/realms/testing/protocol/openid-connect/auth?',
+  'tokenURL': 'http://localhost:8080/realms/testing/protocol/openid-connect/token',
+  'profileURL': 'http://localhost:8080/realms/testing/protocol/openid-connect/userinfo',
+  'logoutURL': 'http://localhost:8080/realms/testing/protocol/openid-connect/logout?'
+}
+
+oauth = {
+  'code': '',
+  'state': '',
+  'session': '',
+  'a_token': '',
+  'r_token': '',
+  't_type': '',
+  'scope': '',
+  'email': ''
+}
+
+def oauth_init():
+  oauth['code'] = ''
+  oauth['state'] = ''
+  oauth['session'] = ''
+  oauth['a_token'] = ''
+  oauth['r_token'] = ''
+  oauth['t_type'] = ''
+  oauth['scope'] = ''
+  oauth['email'] = ''
+
+@app.route('/')
+def login():
+  oauth_init()
+  return render_template('index.html', data=oauth)
+
+@app.route('/auth_code')
+def authenticate():
+  params = {'client_id': 'test-client',
+            'response_type': 'code',
+            'redirect_uri': 'http://localhost:5000/callback',
+            'scope': 'openid'}
+  query_str = urlencode(params)
+  print(f"Ready to redirect to URL: {OAuthConfig['authURL'] + query_str}")
+  return redirect(OAuthConfig['authURL'] + query_str, 302)
+
+@app.route('/callback')
+def callback():
+  oauth['code'] = request.args.get('code')
+  oauth['session'] = request.args.get('session_state')
+  print(f"Received code: {oauth['code']}, session: {oauth['session']}, state: {request.args.get('state')}")
+  return render_template('index.html', data=oauth)
+
+@app.route('/access_token')
+def token():
+  data = {
+    'client_id': 'test-client',
+    'grant_type': 'authorization_code',
+    'code': oauth['code'],
+    'client_secret': 'g9YAmxsqegIvI1c4Bxsn3z949vcGsIf6',
+    'redirect_uri': 'http://localhost:5000/callback'
+  }
+  res = requests.post(OAuthConfig['tokenURL'], data=data)
+  print(f"Access Token - Status code: {res.status_code}")
+  if res.status_code == 200:
+    json = res.json()
+    print(f"Received response: {json}")
+    oauth['a_token'] = json['access_token']
+    oauth['r_token'] = json['refresh_token']
+    oauth['t_type'] = json['token_type']
+    oauth['scope'] = json['scope']
+  else:
+    oauth['a_token'] = '*** FAILED ***'
+  return render_template('index.html', data=oauth)
+
+@app.route('/user_profile')
+def profile():
+  res = requests.get(OAuthConfig['profileURL'], headers={'Authorization': 'Bearer ' + oauth['a_token']})
+  print(f"User Profile - Status code: {res.status_code}")
+  if res.status_code == 200:
+    json = res.json()
+    print(f"Received response: {json}")
+    oauth['email'] = json['email']
+  else:
+    oauth['email'] = '*** UNKNOWN ***'
+  return render_template('index.html', data=oauth)
+
+@app.route('/logout')
+def logout():
+    params = {'redirect_uri': 'http://localhost:5000/'}
+    query_str = urlencode(params)
+    return redirect(OAuthConfig['logoutURL'] + query_str)
+
+if __name__ == '__main__':
+  app.run(debug=True)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To start the Python Client <span class="hi-yellow">AuthCode.py</span>, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python ./AuthCode.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre> * Serving Flask app 'AuthCode'
+* Debug mode: on
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+* Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+* Restarting with stat
+* Debugger is active!
+* Debugger PIN: 316-284-951</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now, launch a web browser and open the URL <span class="hi-yellow">http://localhost:5000</span>. We will land on a page as
+        shown in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-20.png" class="img-cls" alt="OAuth2 Screen">
+      <div class="img-cap">Figure.20</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>Clicking on the item <span class="bold">Authorization Code</span> triggers the execution of the Python method <span class=
+        "hi-yellow">authenticate()</span>, which sends a HTTP redirect request to the URL endpoint <span class="hi-yellow">
+        http://localhost:8080/realms/testing/protocol/openid-connect/auth</span> on the Keycloak Authorization Server.</p>
+    </div>
+    <div id="para-div">
+      <p>In our setup, the Keycloak instance acts as both the Authorization Server and the Resource Server. Once the Keycloak
+        Authorization Server receives the authorization code request, it redirects the user (Resource Owner) to authenticate as
+        shown in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-21.png" class="img-cls" alt="User Authentication">
+      <div class="img-cap">Figure.21</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>Enter the username of <span class="hi-blue">test-user</span> and password of <span class="hi-blue">test-user$123</span> and
+        click on the <span class="bold">Sign In</span> button.</p>
+    </div>
+    <div id="para-div">
+      <p>On successful authentication, the Keycloak Authorization Server responds back on the callback URL of the Python Client <span
+        class="hi-yellow">http://localhost:5000/callback</span> with a valid authorization code.</p>
+    </div>
+    <div id="para-div">
+      <p>The browser now refreshes and we will land on a page as shown in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-22.png" class="img-cls" alt="Authorization Code Screen">
+      <div class="img-cap">Figure.22</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>Next, clicking on the item <span class="bold">Access Token</span> triggers the execution of the Python method <span class=
+        "hi-yellow">token()</span>, which sends a HTTP POST request (with the authorization code and the Client secret) to the URL
+        endpoint <span class="hi-yellow">http://localhost:8080/realms/testing/protocol/openid-connect/token</span> on the Keycloak
+        Authorization Server.</p>
+    </div>
+    <div id="para-div">
+      <p>On success, the Keycloak Authorization Server responds back with an Access Token to the Python Client.</p>
+    </div>
+    <div id="para-div">
+      <p>The browser now refreshes and we will land on a page as shown in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-23.png" class="img-cls" alt="Access Token Screen">
+      <div class="img-cap">Figure.23</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>Next, clicking on the item <span class="bold">User Profile</span> triggers the execution of the Python method <span class
+        ="hi-yellow">profile()</span>, which sends a HTTP request (with the access token in the HTTP Authorization header as a Bearer
+        token) to the URL endpoint <span class="hi-yellow">http://localhost:8080/realms/testing/protocol/openid-connect/userinfo</span>
+        on the Keycloak Resource Server.</p>
+    </div>
+    <div id="para-div">
+      <p>On success, the Keycloak Resource Server responds back with the profile information of the user (Resource Owner) which includes
+        their email-id to the Python Client.</p>
+    </div>
+    <div id="para-div">
+      <p>The browser now refreshes and we will land on a page as shown in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-24.png" class="img-cls" alt="User Email Screen">
+      <div class="img-cap">Figure.24</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>Finally, clicking on the item <span class="bold">Logout</span> triggers the execution of the Python method <span class=
+        "hi-yellow">logout()</span>, which sends a HTTP request to the URL endpoint <span class
+        ="hi-yellow">http://localhost:8080/realms/testing/protocol/openid-connect/logout</span> on the Keycloak Authorization Server
+        to logout and terminate the active user session and invalidating the Access Token.</p>
+    </div>
+    <div id="section-div">
+      <p>OAuth2 Implicit Grant Flow</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="hi-yellow">Implicit Grant</span> flow is a simplified and *<span class="underbold">LESS</span>* secure
+        version of the OAuth2 flow, primarily targeted for a single-page <span class="bold">JavaScript</span> based application,
+        to get an Access Token directly without getting an Authorization Code first and then exchaning for an Access Token. All
+        interactions happen only via the <span class="underbold">Front Channel</span>. The Implicit Grant flow is vulnerable to
+        Access Token leakage (the token is returned in the URL and will be logged in the web browser&apos;s history) and replay
+        attack (malicious reuse of an Access Token by an attacker). The Implicit Grant flow works as follows:</p>
+    </div>
+    <div id="para-div">
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-grey">1</span> :: the Resource Owner launches the JavaScript Client application to initiate the flow</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">2</span> :: the Client makes a request to the Authorization Server from the Front Channel for an
+            access token (skipping the authorization code step) passing in a <span class="bold">request_type=token</span> and a URL
+            to respond back to (<span class="bold">/callback</span>) at the Client</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">3</span> :: the Authorization Server redirects the Resource Owner to the Resource Server for user
+            authentication and access grant</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">4</span> :: the Resource Owner enters valid credentials that is verified by the Resource Server and
+            redirects back to the Authorization Server</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">5</span> :: the Authorization Server directly generates an Access Token and responds back to the
+            Client with the Access Token as a *<span class="underbold">FRAGMENT ID</span>* in the specified URL (<span class="bold">
+            /callback</span>). This allows the JavaScript application in the web browser to have access to the token from the URL, but
+            prevent the web browser from sending the Access Token to the web server</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">6</span> :: the Client uses the Access Token to make a request to access the Resource at the Resource
+            Server</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">7</span> :: the Resource Server responds with the data associated with the Resource</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>We will *<span class="underbold">NOT</span>* demonstrate this flow in this article.</p>
+    </div>
+    <div id="section-div">
+      <p>OAuth2 Resource Owner Password Flow</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="hi-yellow">Resource Owner Password</span> flow is targeted for use-cases where the Client is trusted by the
+        user (Resource Owner) or migrating legacy Clients (using direct authentication schemes such as HTTP Basic or Digest) to get an
+        Access Token directly in exchange for the username/password of the Resource Owner without getting an Authorization Code first
+        and then exchaning for an Access Token. All interactions happen only via the <span class="underbold">Back Channel</span>. The
+        Resource Owner Password flow works as follows:</p>
+    </div>
+    <div id="para-div">
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-grey">1</span> :: the Resource Owner launches the Client application to initiate the flow</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">2</span> :: the Client makes a request to the Authorization Server through the Back Channel for an
+            access token (skipping the authorization code step) passing in a <span class="bold">grant_type=password</span>, the client
+            id and secret, along with the username and password of the Resource Owner</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">3</span> :: the Authorization Server validates the Resource Owner credential and on success generates
+            an Access Token and responds back to the Client (with the Access Token)</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">4</span> :: the Client uses the Access Token to make a request to access the Resource at the Resource
+            Server</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">5</span> :: the Resource Server responds with the data associated with the Resource</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The Resource Owner Password flow is *<span class="underbold">NOT</span>* recommended as it uses the user&apos;s (Resource
+        Owner) username and password on behalf of the user, which is impersonation (no way to know if the request was initiated by
+        the Resource Owner or an attacker).</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the listing of the HTML file for both the Resource Owner Password and Client Credentials flows:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-cap">index2.html</div>
+        <div class="gen-src-body">
+          <pre>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+  &lt;head&gt;
+    &lt;!-- Required meta tags --&gt;
+    &lt;meta charset="utf-8"&gt;
+    &lt;meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"&gt;
+    &lt;title&gt;Understanding OAuth2 ({{ data['flow'] }})&lt;/title&gt;
+    &lt;link rel="stylesheet" href="../static/css/bootstrap.min.css"&gt;
+    &lt;link rel="shortcut icon" href="../static/images/favicon.ico"&gt;
+    &lt;style&gt;
+      td {
+        white-space: normal !important;
+        word-wrap: break-word;
+      }
+      table {
+        table-layout: fixed;
+      }
+    &lt;/style&gt;
+  &lt;/head&gt;
+  &lt;body class="bg-light"&gt;
+    &lt;div class="container"&gt;
+      &lt;br/&gt;
+      &lt;div class="display-4 text-center text-secondary"&gt;Understanding OAuth2 ({{ data['flow'] }})&lt;/div&gt;
+      &lt;br/&gt;
+      &lt;hr/&gt;
+      &lt;nav class="nav nav-tabs nav-justified"&gt;
+        &lt;a id="token" class="nav-item nav-link" href="http://localhost:5000/access_token"&gt;Access Token&lt;/a&gt;
+        &lt;a id="profile" class="nav-item nav-link" href="http://localhost:5000/user_profile"&gt;User Profile&lt;/a&gt;
+        &lt;a id="logout" class="nav-item nav-link" href="http://localhost:5000/logout"&gt;Logout&lt;/a&gt;
+      &lt;/nav&gt;
+      &lt;br/&gt;
+      &lt;table class="table table-striped table-bordered"&gt;
+        &lt;thead&gt;
+          &lt;tr class="bg-secondary text-light"&gt;
+            &lt;th width="20%"&gt;Key&lt;/th&gt;
+            &lt;th width="80%"&gt;Value&lt;/th&gt;
+          &lt;/tr&gt;
+        &lt;/thead&gt;
+        &lt;tbody&gt;
+          &lt;tr&gt;
+            &lt;td&gt;Session&lt;/td&gt;
+            &lt;td&gt;{{ data['session'] }}&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr&gt;
+            &lt;td&gt;Access Token&lt;/td&gt;
+            &lt;td&gt;{{ data['a_token'] }}&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr&gt;
+            &lt;td&gt;Refresh Token&lt;/td&gt;
+            &lt;td&gt;{{ data['r_token'] }}&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr&gt;
+            &lt;td&gt;Token Type&lt;/td&gt;
+            &lt;td&gt;{{ data['t_type'] }}&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr&gt;
+            &lt;td&gt;Scope&lt;/td&gt;
+            &lt;td&gt;{{ data['scope'] }}&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr&gt;
+            &lt;td&gt;User Email&lt;/td&gt;
+            &lt;td&gt;{{ data['email'] }}&lt;/td&gt;
+          &lt;/tr&gt;
+        &lt;/tbody&gt;
+      &lt;/table&gt;
+    &lt;/div&gt;
+    &lt;script src="../static/js/jquery.slim.min.js"&gt;&lt;/script&gt;
+    &lt;script src="../static/js/bootstrap.bundle.min.js"&gt;&lt;/script&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</pre>
+        </div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing of the Python Client for the Resource Owner Password flows:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-cap">OwnerPass.py</div>
+        <div class="gen-src-body">
+          <pre>###
+# @Author: Bhaskar S
+# @Blog:   https://www.polarsparc.com
+# @Date:   26 Apr 2025
+###
+
+import requests
+from flask import Flask, render_template, redirect
+from urllib.parse import urlencode
+
+app = Flask(__name__)
+
+OAuthConfig = {
+  'tokenURL': 'http://localhost:8080/realms/testing/protocol/openid-connect/token',
+  'profileURL': 'http://localhost:8080/realms/testing/protocol/openid-connect/userinfo',
+  'logoutURL': 'http://localhost:8080/realms/testing/protocol/openid-connect/logout?'
+}
+
+oauth = {
+  'flow': 'Resource Owner',
+  'session': '',
+  'a_token': '',
+  'r_token': '',
+  't_type': '',
+  'scope': '',
+  'email': ''
+}
+
+def oauth_init():
+  oauth['session'] = ''
+  oauth['a_token'] = ''
+  oauth['r_token'] = ''
+  oauth['t_type'] = ''
+  oauth['scope'] = ''
+  oauth['email'] = ''
+
+@app.route('/')
+def login():
+  oauth_init()
+  return render_template('index2.html', data=oauth)
+
+@app.route('/access_token')
+def token():
+  data = {
+    'client_id': 'test-client',
+    'client_secret': 'g9YAmxsqegIvI1c4Bxsn3z949vcGsIf6',
+    'grant_type': 'password',
+    'username': 'test-user',
+    'password': 'test-user$123',
+    'scope': 'openid',
+  }
+  res = requests.post(OAuthConfig['tokenURL'], data=data)
+  print(f"Access Token - Status code: {res.status_code}")
+  if res.status_code == 200:
+    json = res.json()
+    print(f"Received response: {json}")
+    oauth['session'] = json['session_state']
+    oauth['a_token'] = json['access_token']
+    oauth['r_token'] = json['refresh_token']
+    oauth['t_type'] = json['token_type']
+    oauth['scope'] = json['scope']
+  else:
+    oauth['a_token'] = '*** FAILED ***'
+  return render_template('index2.html', data=oauth)
+
+@app.route('/user_profile')
+def profile():
+  res = requests.get(OAuthConfig['profileURL'], headers={'Authorization': 'Bearer ' + oauth['a_token']})
+  print(f"User Profile - Status code: {res.status_code}")
+  if res.status_code == 200:
+    json = res.json()
+    print(f"Received response: {json}")
+    oauth['email'] = json['email']
+  else:
+    oauth['email'] = '*** UNKNOWN ***'
+  return render_template('index2.html', data=oauth)
+
+@app.route('/logout')
+def logout():
+  params = {'redirect_uri': 'http://localhost:5000/'}
+  query_str = urlencode(params)
+  return redirect(OAuthConfig['logoutURL'] + query_str)
+
+if __name__ == '__main__':
+  app.run(debug=True)</pre>
+        </div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Stop the Python Client <span class="hi-yellow">AuthCode.py</span> if is already running, and start the Python Client <span
+        class="hi-yellow">OwnerPass.py</span> to see this flow in action.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration shows the browser page after going through the items Access Token and User Profile:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-25.png" class="img-cls" alt="Resource Owner Password Flow">
+      <div class="img-cap">Figure.25</div>
+    </div>
+    <br>
+    <div id="section-div">
+      <p>OAuth2 Client Credentials Flow</p>
+    </div>
+    <div id="para-div">
+      <p>This <span class="bold">OAuth</span> flow is sometimes referred to as the <span class="hi-yellow">2-Legged OAuth</span>
+        flow as it involves the two parties - the client (who is also the resource owner) and the authorization server.</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="hi-yellow">Client Credentials</span> flow is targeted for use-cases where the Client is a service as well
+        as a Resource Owner and wants to get an Access Token to access its own Resource. All interactions happen only via the
+        <span class="underbold">Back Channel</span>. The Client Credentials flow works as follows:</p>
+    </div>
+    <div id="para-div">
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-grey">1</span> :: the Client makes a request to the Authorization Server through the Back Channel for an
+            access token (skipping the authorization code step) passing in a <span class="bold">grant_type=client_credentials</span>
+            along with the client id (service account) and secret</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">2</span> :: the Authorization Server validates the service account and on success generates an
+            Access Token and responds back to the Client (with the Access Token)</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">3</span> :: the Client uses the Access Token to make a request to access its Resource at the
+            Resource Server</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">4</span> :: the Resource Server responds with the data associated with the Resource</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Before we proceed, we need to make a small change in the <span class="bold">test-client</span> client page. We need to
+        enable the option <span class="bold">Service accounts roles</span> and click on the <span class="bold">Save</span> button
+        as shown in the illustration below:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-26.png" class="img-cls" alt="Enable Service Account">
+      <div class="img-cap">Figure.26</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>The following is the listing of the Python Client for the Client Credentials flow:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-cap">ClientCredential.py</div>
+        <div class="gen-src-body">
+          <pre>###
+# @Author: Bhaskar S
+# @Blog:   https://www.polarsparc.com
+# @Date:   26 Apr 2026
+###
+
+import requests
+from flask import Flask, render_template, redirect
+from urllib.parse import urlencode
+
+app = Flask(__name__)
+
+OAuthConfig = {
+  'tokenURL': 'http://localhost:8080/realms/testing/protocol/openid-connect/token',
+  'profileURL': 'http://localhost:8080/realms/testing/protocol/openid-connect/userinfo',
+  'logoutURL': 'http://localhost:8080/realms/testing/protocol/openid-connect/logout?'
+}
+
+oauth = {
+  'flow': 'Client Credentials',
+  'session': '',
+  'a_token': '',
+  'r_token': '',
+  't_type': '',
+  'scope': '',
+  'email': ''
+}
+
+def oauth_init():
+  oauth['session'] = ''
+  oauth['a_token'] = ''
+  oauth['r_token'] = ''
+  oauth['t_type'] = ''
+  oauth['scope'] = ''
+  oauth['email'] = ''
+
+@app.route('/')
+def login():
+  oauth_init()
+  return render_template('index2.html', data=oauth)
+
+@app.route('/access_token')
+def token():
+  data = {
+    'client_id': 'test-client',
+    'client_secret': 'g9YAmxsqegIvI1c4Bxsn3z949vcGsIf6',
+    'grant_type': 'client_credentials',
+    'scope': 'openid'
+  }
+  res = requests.post(OAuthConfig['tokenURL'], data=data)
+  print(f"Status code: {res.status_code}")
+  if res.status_code == 200:
+    json = res.json()
+    print(f"Received response: {json}")
+    oauth['a_token'] = json['access_token']
+    oauth['t_type'] = json['token_type']
+    oauth['scope'] = json['scope']
+  else:
+    oauth['a_token'] = '*** FAILED ***'
+  return render_template('index2.html', data=oauth)
+
+@app.route('/user_profile')
+def profile():
+  res = requests.get(OAuthConfig['profileURL'], headers={'Authorization': 'Bearer ' + oauth['a_token']})
+  print(f"Status code: {res.status_code}")
+  if res.status_code == 200:
+    json = res.json()
+    print(f"Received response: {json}")
+    # Service account - no email
+    oauth['email'] = json['preferred_username']
+  else:
+    oauth['email'] = '*** UNKNOWN ***'
+  return render_template('index2.html', data=oauth)
+
+@app.route('/logout')
+def logout():
+  params = {'redirect_uri': 'http://localhost:5000/'}
+  query_str = urlencode(params)
+  return redirect(OAuthConfig['logoutURL'] + query_str)
+
+if __name__ == '__main__':
+  app.run(debug=True)</pre>
+        </div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Stop the Python Client <span class="hi-yellow">AuthCode.py</span> or <span class="hi-yellow">OwnerPass.py</span> if is already
+        running, and start the Python Client <span class="hi-yellow">ClientCredential.py</span> to see this flow in action.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration shows the browser page after going through the items Access Token and User Profile:</p>
+    </div>
+    <br>
+    <div id="img-outer-div"> <img src="./images/oauth-27.png" class="img-cls" alt="Client Credentials Flow">
+      <div class="img-cap">Figure.27</div>
+    </div>
+    <br>
+    <div id="para-div">
+      <p>This concludes our practical hands-on approach to understanding the OAuth2 and OpenID Connect standards.</p>
+    </div>
+    <br/>
+    <div id="error-div">
+      <h4>!!! DISCLAIMER !!!</h4>
+      <pre>The code in this article is to understand OAuth2 and OIDC flows - it is PURELY for learning purposes.</pre>
+    </div>
+    <br>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://tools.ietf.org/html/rfc6749" target="_blank"><span class="bold">The OAuth 2.0 Authorization Framework</span></a></p>
+      <p><a href="https://tools.ietf.org/html/draft-ietf-oauth-security-topics-15" target="_blank"><span class="bold">OAuth 2.0 Security Best Current Practice</span></a></p>
+      <p><a href="https://www.youtube.com/watch?v=996OiexHze0" target="_blank"><span class="bold">OAuth 2.0 and OpenID Connect (in plain English)</span></a></p>
+      <p><a href="https://www.keycloak.org/" target="_blank"><span class="bold">Keycloak - Open Source Identity and Access Management</span></a></p>
+      <p><a href="https://github.com/bhaskars-repo/OAuth2-OIDC" target="_blank"><span class="bold">GitHub - OAuth2 and OpenID Connect</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
