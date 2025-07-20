@@ -1,0 +1,620 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Introduction to Byte Buddy">
+    <meta name="subject" content="Introduction to Byte Buddy">
+    <meta name="keywords" content="java, byte_buddy">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Introduction to Byte Buddy</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Introduction to Byte Buddy</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">05/12/2024</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>Have you ever pondered on what is the one common magical ingredient behind two of the most popular <span class="bold">Java
+        </span> frameworks - <a href="https://hibernate.org/" target="_blank"><span class="hi-vanila">Hibernate</span></a> AND <a href=
+        "https://site.mockito.org/" target="_blank"><span class="hi-vanila">Mockito</span></a> ???</p>
+      <p>In the case of <span class="bold">Hibernate</span>, once a data class is annotated as an <span class="bold">Entity</span>,
+        one is able to perform database <span class="bold">CRUD</span> operations using instances of that data class. Similarly, with
+        <span class="bold">Mockito</span>, one is able to "<span class="bold">mock</span>" the functionality of any class.</p>
+      <p>That common "<span class="bold">magical</span>" ingredient between the two frameworks is - <a href="https://bytebuddy.net/"
+        target="_blank"><span class="hi-orange">Byte Buddy</span></a> !!!</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Byte Buddy</span> is a popular <span class="bold">Java</span> code generation and manipulation library
+        that can create and/or modify <span class="bold">Java</span> classes at runtime.</p>
+      <p>Of course, there are the other popular <span class="bold">Java</span> code generation and manipulation libraries such as,
+        <a href="https://asm.ow2.io/" target="_blank"><span class="hi-orange">ASM</span></a> and <a href="https://www.javassist.org/"
+        target="_blank"><span class="hi-orange">Javassist</span></a>. These other frameworks require a little more intimate knowledge
+        of the <span class="bold">JVM</span> instruction set in order to use them effectively.</p>
+      <p>For those interested, had published an article on <a href="https://polarsparc.github.io/Java/JavaASM.html" target="_blank">
+        <span class="hi-orange">Bytecode Handling with ASM</span></a> a while back.</p>
+      <p>What <span class="bold">Byte Buddy</span> brings to the table is a higher level, user-friendly "<span class="bold">fluent
+        </span>" style APIs, which do not require any prior knowledge of the <span class="bold">JVM</span> instruction set.</p>
+    </div>
+    <div id="section-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The setup will be on a <span class="bold">Ubuntu 22.04 LTS</span> based Linux desktop. Ensure at least <span class="bold">
+        Java 11</span> or above is installed and setup. Also, ensure <a href="http://maven.apache.org/" target="_blank"><span class=
+        "hi-yellow">Apache Maven</span></a> is installed and setup.</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the demonstrations in this article, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME</p>
+      <p>$ mkdir -p $HOME/java/ByteBuddy</p>
+      <p>$ cd $HOME/java/ByteBuddy</p>
+      <p>$ mkdir -p src/main/java src/main/resources</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/bytebuddy</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;groupId&gt;com.polarsparc.bytebuddy&lt;/groupId&gt;
+    &lt;artifactId&gt;ByteBuddy&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+
+    &lt;properties&gt;
+        &lt;maven.compiler.source&gt;21&lt;/maven.compiler.source&gt;
+        &lt;maven.compiler.target&gt;21&lt;/maven.compiler.target&gt;
+        &lt;slf4j.version&gt;2.0.13&lt;/slf4j.version&gt;
+        &lt;mockito.version&gt;5.11.0&lt;/mockito.version&gt;
+        &lt;bytebuddy.version&gt;1.14.15&lt;/bytebuddy.version&gt;
+    &lt;/properties&gt;
+
+    &lt;dependencies&gt;
+      &lt;dependency&gt;
+        &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+        &lt;artifactId&gt;slf4j-simple&lt;/artifactId&gt;
+        &lt;version&gt;${slf4j.version}&lt;/version&gt;
+      &lt;/dependency&gt;
+
+      &lt;dependency&gt;
+        &lt;groupId&gt;org.mockito&lt;/groupId&gt;
+        &lt;artifactId&gt;mockito-core&lt;/artifactId&gt;
+        &lt;version&gt;${mockito.version}&lt;/version&gt;
+      &lt;/dependency&gt;
+
+      &lt;dependency&gt;
+        &lt;groupId&gt;net.bytebuddy&lt;/groupId&gt;
+        &lt;artifactId&gt;byte-buddy&lt;/artifactId&gt;
+        &lt;version&gt;${bytebuddy.version}&lt;/version&gt;
+      &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="hi-yellow">slf4j-simple</span> logger properties file
+        <span class="hi-green">simplelogger.properties</span> located in the directory <span class="bold">src/main/resources</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">simplelogger.properties</div>
+      <div class="src-body-1">
+<pre>#
+### SLF4J Simple Logger properties
+#
+
+org.slf4j.simpleLogger.defaultLogLevel=info
+org.slf4j.simpleLogger.showDateTime=true
+org.slf4j.simpleLogger.dateTimeFormat=yyyy-MM-dd HH:mm:ss:SSS
+org.slf4j.simpleLogger.showThreadName=true</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on with Byte Buddy</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Java code for a simple message class:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.1</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   SimpleMessage
+ * Author: Bhaskar S
+ * Date:   05/11/2024
+ * Blog:   https://polarsparc.github.io
+ */
+ 
+package com.polarsparc.bytebuddy;
+
+import java.util.concurrent.TimeUnit;
+
+public class SimpleMessage {
+    public String getMessage() {
+        return "Hello from getMessage !!!";
+    }
+
+    public String getMessageAfterDelay(long delay) throws InterruptedException {
+        TimeUnit.MILLISECONDS.sleep(delay);
+
+        return "Hello from getMessageAfterDelay !!!";
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In order to demonstrate what the "<span class="bold">magical</span>" ingredient implies, let us consider the following
+        Java code using <span class="bold">Mockito</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.2</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   SimpleMock
+ * Author: Bhaskar S
+ * Date:   05/11/2024
+ * Blog:   https://polarsparc.github.io
+ */
+ 
+ package com.polarsparc.bytebuddy;
+ 
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
+ import org.mockito.Mockito;
+ 
+ public class SimpleMock {
+     private static final Logger LOGGER = LoggerFactory.getLogger(SimpleMock.class);
+ 
+     public static void main(String[] args) {
+         SimpleMessage message = Mockito.mock(SimpleMessage.class);
+ 
+         Mockito.when(message.getMessage()).thenReturn("Hello from Mockito !!!");
+ 
+         LOGGER.info(message.getMessage());
+     }
+ }</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The call <span class="hi-vanila">Mockito.mock(SimpleMessage.class)</span> creates a "<span class="bold">mock</span>" version
+        of the given class.</p>
+      <p>Next, the call <span class="hi-vanila">Mockito.when(message.getMessage()).thenReturn("Hello from Mockito !!!")</span> uses
+        the "<span class="bold">mock</span>" version of the class to return the string value <span class="hi-grey">Hello from Mockito
+        !!!</span> when the method <span class="hi-blue">getMessage()</span> is invoked.</p>
+      <p>Under the hood the <span class="bold">Mockito</span> library uses <span class="bold">Byte Buddy</span> code to intercept
+        the call to the <span class="hi-blue">getMessage()</span> to return the desired string value.</p>
+    </div>
+    <div id="para-div">
+      <p>To demonstrate a simple "<span class="bold">HelloWorld</span>" style example, let us consider the following Java code that
+        uses <span class="bold">Byte Buddy</span> to dynamically create a Java class at run-time:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.3</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Sample_1
+ * Author: Bhaskar S
+ * Date:   05/11/2024
+ * Blog:   https://polarsparc.github.io
+ */
+ 
+package com.polarsparc.bytebuddy;
+
+import java.lang.reflect.InvocationTargetException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.implementation.FixedValue;
+import net.bytebuddy.matcher.ElementMatchers;
+
+public class Sample_1 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Sample_1.class);
+
+    public static void main(String[] args) {
+        try {
+            LOGGER.info(fixedValueToString());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Class&lt;?&gt; generateDynamicClass() {
+        return new ByteBuddy()
+            .subclass(Object.class)
+            .method(ElementMatchers.isToString())
+            .intercept(FixedValue.value("Hello from PolarSPARC !!!"))
+            .make()
+            .load(Sample_1.class.getClassLoader())
+            .getLoaded();
+    }
+
+    public static String fixedValueToString()
+            throws InstantiationException,
+                IllegalAccessException,
+                NoSuchMethodException,
+                InvocationTargetException {
+        Class&lt;?&gt; clazz = generateDynamicClass();
+
+        return clazz.getDeclaredConstructor().newInstance().toString();
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The instance of the class <span class="hi-yellow">net.bytebuddy.ByteBuddy</span> is the main entry point for performing any
+        form of code generation or manipulation using <span class="bold">Byte Buddy</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The method <span class="hi-blue">subclass(Class&lt;T&gt; type)</span> returns a builder that subclasses using the specified
+        Java class.</p>
+    </div>
+    <div id="para-div">
+      <p>The class <span class="hi-yellow">ElementMatchers</span> is a utility class that provides various methods for matching code
+        elements such as fields, methods, etc.</p>
+    </div>
+    <div id="para-div">
+      <p>The method <span class="hi-blue">isToString()</span> on the utility class matches the <span class="hi-blue">toString()</span>
+        method of the Java <span class="hi-yellow">Object.class</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The method <span class="hi-blue">FixedValue.value(value)</span> allows one to return a desired fixed value.</p>
+    </div>
+    <div id="para-div">
+      <p>The method <span class="hi-blue">intercept()</span> redefines the matched code element with the specified implementation.</p>
+    </div>
+    <div id="para-div">
+      <p>The method <span class="hi-blue">make()</span> creates the new class type from the configured builder.</p>
+    </div>
+    <div id="para-div">
+      <p>The method <span class="hi-blue">load(ClassLoader loader)</span> loads the create class into the Java class loader.</p>
+    </div>
+    <div id="para-div">
+      <p>The method <span class="hi-blue">getLoaded()</span> returns the loaded Java class to the caller.</p>
+    </div>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.3</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/ByteBuddy</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.bytebuddy.Sample_1"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------&lt; com.polarsparc.bytebuddy:ByteBuddy &gt;-----------------
+[INFO] Building ByteBuddy 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.2.0:java (default-cli) @ ByteBuddy ---
+2024-05-12 07:27:43:777 [com.polarsparc.bytebuddy.Sample_1.main()] INFO com.polarsparc.bytebuddy.Sample_1 - Hello from PolarSPARC !!!
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.382 s
+[INFO] Finished at: 2024-05-12T07:27:43-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Next, to demonstrate how one could mimic the behavior of <span class="bold">Mockito</span> using <span class="bold">Byte
+        Buddy</span> to intercept the call to the method <span class="hi-blue">getMessage()</span> from the Java class <span class=
+        "hi-yellow">SimpleMessage</span>, let us consider the following Java code which dynamically modifies the given Java class
+        at run-time:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.4</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Sample_2
+ * Author: Bhaskar S
+ * Date:   05/11/2024
+ * Blog:   https://polarsparc.github.io
+ */
+ 
+package com.polarsparc.bytebuddy;
+
+import java.lang.reflect.InvocationTargetException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.implementation.MethodDelegation;
+import net.bytebuddy.matcher.ElementMatchers;
+
+public class Sample_2 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Sample_2.class);
+
+    public static void main(String[] args) {
+        try {
+            LOGGER.info(interceptorForToString());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Class&lt;? extends SimpleMessage&gt; generateDynamicInterceptedClass() {
+        return new ByteBuddy()
+            .subclass(SimpleMessage.class)
+            .method(
+              ElementMatchers.named("getMessage")
+                .and(ElementMatchers.isDeclaredBy(SimpleMessage.class))
+                .and(ElementMatchers.returns(String.class))
+            )
+            .intercept(MethodDelegation.to(Sample_2.SimpleInterceptor.class))
+            .make()
+            .load(Sample_3.class.getClassLoader())
+            .getLoaded();
+    }
+
+    public static String interceptorForToString()
+            throws InstantiationException,
+            IllegalAccessException,
+            NoSuchMethodException,
+            InvocationTargetException {
+        Class&lt;? extends SimpleMessage&gt; clazz = generateDynamicInterceptedClass();
+
+        return clazz.getDeclaredConstructor().newInstance().getMessage();
+    }
+
+    public static class SimpleInterceptor {
+        public static String interceptor() {
+            return "Hola from SimpleInterceptor !!!";
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The method <span class="hi-blue">ElementMatchers.returns(class)</span> tries to match the specify method element with the
+        specific return type.</p>
+    </div>
+    <div id="para-div">
+      <p>The method <span class="hi-blue">ElementMatchers.isDeclaredBy(class)</span> tries to match the specify named type element
+        in the specified class.</p>
+    </div>
+    <div id="para-div">
+      <p>The method <span class="hi-blue">ElementMatchers.named(name)</span> tries to match the specify named code element from the
+        specific subclass.</p>
+    </div>
+    <div id="para-div">
+      <p>The method <span class="hi-blue">MethodDelegation.to(class)</span> tries to delegate the specified method call to another
+        method in a different class. Note that one must provide reference to the delegated class if the delegated method is static
+        OR provide an instance of the delegated class if delegated method is an instance method.</p>
+    </div>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.4</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/ByteBuddy</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.bytebuddy.Sample_2"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the interaction and the corresponding output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------&lt; com.polarsparc.bytebuddy:ByteBuddy &gt;-----------------
+[INFO] Building ByteBuddy 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.2.0:java (default-cli) @ ByteBuddy ---
+2024-05-12 07:29:55:350 [com.polarsparc.bytebuddy.Sample_2.main()] INFO com.polarsparc.bytebuddy.Sample_2 - Hola from SimpleInterceptor !!!
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.373 s
+[INFO] Finished at: 2024-05-12T07:29:55-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">BAM</span> !!! We have successfully demonstrated the behavior of <span class="bold">Mockito</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>There are situations when one would like to determine the execution time of some of the method(s) in a Java class. One can
+        easily achieve this capability using <span class="bold">Byte Buddy</span> method interceptor.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Java code demonstrates how one could determine the execution time of a specific method at run-time using a
+        method interceptor:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.5</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Sample_3
+ * Author: Bhaskar S
+ * Date:   05/11/2024
+ * Blog:   https://polarsparc.github.io
+ */
+ 
+package com.polarsparc.bytebuddy;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.implementation.MethodDelegation;
+import net.bytebuddy.matcher.ElementMatchers;
+import net.bytebuddy.implementation.bind.annotation.*;
+
+public class Sample_3 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Sample_3.class);
+
+    public static void main(String[] args) {
+        try {
+            LOGGER.info(interceptorForToString());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static Class&lt;? extends SimpleMessage&gt; generateDynamicInterceptedClass() {
+        return new ByteBuddy()
+            .subclass(SimpleMessage.class)
+            .method(ElementMatchers.hasMethodName("getMessageAfterDelay"))
+            .intercept(MethodDelegation.to(Sample_3.TimingInterceptor.class))
+            .make()
+            .load(Sample_3.class.getClassLoader())
+            .getLoaded();
+    }
+
+    public static String interceptorForToString()
+            throws InstantiationException,
+            IllegalAccessException,
+            NoSuchMethodException,
+            InvocationTargetException,
+            InterruptedException {
+        Class&lt;? extends SimpleMessage&gt; clazz = generateDynamicInterceptedClass();
+
+        return clazz.getDeclaredConstructor().newInstance().getMessageAfterDelay(500);
+    }
+
+    public static class TimingInterceptor {
+        @RuntimeType
+        public static String interceptor(@This Object self,
+                                        @Origin Method method,
+                                        @AllArguments Object[] allArguments,
+                                        @SuperMethod Method superMethod) throws Exception {
+            long start = System.currentTimeMillis();
+            try {
+                superMethod.invoke(self, allArguments);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            } finally {
+                long elapsed = System.currentTimeMillis() - start;
+
+                LOGGER.info("{} took {} ms", method.getName(), elapsed);
+            }
+
+            return "Hola from TimingInterceptor !!!";
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The annotation <span class="hi-green">RuntimeType</span> will attempt to cast the return type to the method's return type.</p>
+    </div>
+    <div id="para-div">
+      <p>The annotation <span class="hi-green">This</span> maps the object reference to the specific instrumented source object at
+        run-time.</p>
+    </div>
+    <div id="para-div">
+      <p>The annotation <span class="hi-green">Origin</span> provides metadata information about the instrumented source method at
+        run-time.</p>
+    </div>
+    <div id="para-div">
+      <p>The annotation <span class="hi-green">SuperMethod</span> maps the method instance to the instrumented source super method
+        at run-time.</p>
+    </div>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.5</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/ByteBuddy</p>
+      <p>$ mvn mvn exec:java -Dexec.mainClass="com.polarsparc.bytebuddy.Sample_3"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>[INFO] -----------------&lt; com.polarsparc.bytebuddy:ByteBuddy &gt;-----------------
+[INFO] Building ByteBuddy 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.2.0:java (default-cli) @ ByteBuddy ---
+2024-05-12 08:00:20:601 [com.polarsparc.bytebuddy.Sample_3.main()] INFO com.polarsparc.bytebuddy.Sample_3 - getMessageAfterDelay took 501 ms
+2024-05-12 08:00:20:602 [com.polarsparc.bytebuddy.Sample_3.main()] INFO com.polarsparc.bytebuddy.Sample_3 - Hola from TimingInterceptor !!!
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.898 s
+[INFO] Finished at: 2024-05-12T08:00:20-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">BINGO !!!</span> We have successfully demonstrated how one could intercept method(s) to determine their
+        execution time.</p>
+      <p>Note that we have barely scratched the surface of this very powerful swiss-army knife framework !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://bytebuddy.net/"><span class="bold">Byte Buddy</span></a></p>
+      <p><a target="_blank" href="https://javadoc.io/doc/net.bytebuddy/byte-buddy/latest/index.html"><span class="bold">Byte Buddy API</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,744 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Introduction to Bytecode Handling with ASM">
+    <meta name="subject" content="Introduction to Bytecode Handling with ASM">
+    <meta name="keywords" content="bytecode, java, jvm">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Introduction to Bytecode Handling with ASM</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Introduction to Bytecode Handling with ASM</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">12/26/2021</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://asm.ow2.io/"><span class="hi-yellow">ASM</span></a> is a fast, robust, small, and low-level
+        Java bytecode framework that can be used for either analysing existing java bytecode (from Java classes) or for dynamically
+        generating or manipulating Java bytecode.</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">ASM</span> uses the <span class="hi-blue">Visitor</span> behavioral design pattern. This design pattern
+        is used for separating the operations from an object structure hierarchy (where there are different object types). This results
+        in the flexibility to add newer operations on the objects in the hierarchy without modifying them.</p>
+      <p>To elaborate, often times there is a need to perform some kind of an operation on each of the objects in the hierarchy, for
+        example, say <span class="hi-grey">print</span>. Adding this operation to each of the objects in the hierarchy is a little
+        cumbersome when there are many objects in the hierarchy to deal with. Now, what happens when we have to add another operation,
+        say <span class="hi-grey">get_size</span> later ??? This will imply modifying all the objects in the hierarchy again.</p>
+      <p>To solve this problem, create a <span class="hi-yellow">visitor</span> class with all the operations and add an
+        <span class="hi-grey">accept</span> method to all the objects in the hierarchy which takes in the visitor as a parameter.</p>
+      <p>One can think of a Java class as an hierarchy of objects (or nodes). There is the class, then the fields, then the methods,
+        and so on.</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">ASM</span> framework provides two types of API interfaces:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-blue">Event Based</span> :: traversing the objects (nodes) of the hierarchy result in events (in the
+          form of callbacks). The advantage with this approach is that it is much faster and more memory efficient. The drawback,
+          however, is that it is more difficult to perform transformations as we only have access to the current object (node) in
+          the hierarchy</p></li>
+        <li><p><span class="hi-blue">Tree Based</span> :: traversing the objects (nodes) of the hierarchy implies storing of all the
+          objects (nodes) of the hierarchy in memory. The advantage with this approach is that it lends itself well for performing
+          complex transformations. However, the drawback is that it is more memory intensive</p></li>
+      </ul>
+    </div>
+    <div id="section-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The setup will be on a <span class="bold">Ubuntu 20.04 LTS</span> based Linux desktop. Ensure at least <span class="bold">
+        Java 11</span> or above is installed and setup. Also, ensure <a href="http://maven.apache.org/" target="_blank">
+        <span class="hi-yellow">Apache Maven</span></a> is installed and setup.</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the demonstrations in this article, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME</p>
+      <p>$ mkdir -p $HOME/java/JavaASM</p>
+      <p>$ cd $HOME/java/JavaASM</p>
+      <p>$ mkdir -p src/main/java src/main/resources target</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/asm</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/visitor</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;groupId&gt;com.polarsparc.asm&lt;/groupId&gt;
+    &lt;artifactId&gt;JavaASM&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+
+    &lt;properties&gt;
+        &lt;maven.compiler.source&gt;17&lt;/maven.compiler.source&gt;
+        &lt;maven.compiler.target&gt;17&lt;/maven.compiler.target&gt;
+    &lt;/properties&gt;
+
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.ow2.asm&lt;/groupId&gt;
+            &lt;artifactId&gt;asm&lt;/artifactId&gt;
+            &lt;version&gt;9.2&lt;/version&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Visitor Pattern</p>
+    </div>
+    <div id="para-div">
+      <p>Before we dig into <span class="bold">ASM</span>, let us get a grasp on the <span class="bold">Visitor</span> behavioral
+        design pattern through an example.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the code for <span class="hi-yellow">FieldNode</span> that represents a field in an object hierarchy:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.1</div>
+      <div class="src-body-1">
+<pre>/*
+ * Description: Simple class that represents a Field
+ * Author:      Bhaskar S
+ * Date:        12/25/2021
+ * Blog:        https://polarsparc.github.io
+ */
+
+package com.polarsparc.visitor;
+
+public class FieldNode {
+    private final String name;
+    private final String type;
+
+    public FieldNode(String n, String t) {
+        this.name = n;
+        this.type = t;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void accept(Visitor v) {
+        v.visit(this);
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the code for <span class="hi-yellow">MethodNode</span> that represents a method in an object hierarchy:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.2</div>
+      <div class="src-body-1">
+<pre>/*
+ * Description: Simple class that represents a Method
+ * Author:      Bhaskar S
+ * Date:        12/25/2021
+ * Blog:        https://polarsparc.github.io
+ */
+
+package com.polarsparc.visitor;
+
+public class MethodNode {
+    private final String name;
+
+    public MethodNode(String n) {
+        this.name = n;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void accept(Visitor v) {
+        v.visit(this);
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the code for <span class="hi-yellow">Visitor</span> that represents an interface for the various
+        operations on the nodes of the object hierarchy:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.3</div>
+      <div class="src-body-1">
+<pre>/*
+ * Description: Interface that indicates the various operations
+ * Author:      Bhaskar S
+ * Date:        12/25/2021
+ * Blog:        https://polarsparc.github.io
+ */
+
+package com.polarsparc.visitor;
+
+public interface Visitor {
+    void visit(FieldNode node);
+    void visit(MethodNode node);
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the code for <span class="hi-yellow">NodeVisitor</span> that implements the <span class="bold">Visitor</span>
+        interface for printing the details of the nodes of the object hierarchy:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.4</div>
+      <div class="src-body-1">
+<pre>/*
+ * Description: Concrete class that implements Visitor to perform print operation
+ * Author:      Bhaskar S
+ * Date:        12/25/2021
+ * Blog:        https://polarsparc.github.io
+ */
+
+package com.polarsparc.visitor;
+
+public class NodeVisitor implements Visitor {
+    @Override
+    public void visit(FieldNode node) {
+        System.out.printf("FIELD: Name: %s, Type: %s\n", node.getName(), node.getType());
+    }
+
+    @Override
+    public void visit(MethodNode node) {
+        System.out.printf("METHOD: Name: %s\n", node.getName());
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Finally, the following is the code for <span class="hi-yellow">DemoVisitor</span> that demonstrates the <span class="bold">
+        Visitor</span> pattern:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.5</div>
+      <div class="src-body-1">
+<pre>/*
+ * Description: Demo of the Visitor Pattern
+ * Author:      Bhaskar S
+ * Date:        12/25/2021
+ * Blog:        https://polarsparc.github.io
+ */
+
+package com.polarsparc.visitor;
+
+public class DemoVisitor {
+    public static void main(String[] args) {
+        FieldNode fn = new FieldNode("name", "string");
+        MethodNode mn = new MethodNode("greet");
+        Visitor visitor = new NodeVisitor();
+        fn.accept(visitor);
+        mn.accept(visitor);
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the code in <span class="bold">Listing.5</span> above would result in the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>FIELD: Name: name, Type: string
+METHOD: Name: greet</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Later, when we need to add a new operation, say <span class="hi-grey">getSize()</span>, we can add it to the <span class="bold">
+        Visitor</span> and not modify any of the nodes in the object hierarchy.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with ASM</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the code for <span class="hi-yellow">SimpleHello</span> that will print a simple message on the console:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.6</div>
+      <div class="src-body-1">
+<pre>/*
+ * Description: Simple Java class to print 'Hello ASM !!!'
+ * Author:      Bhaskar S
+ * Date:        12/25/2021
+ * Blog:        https://polarsparc.github.io
+ */
+
+package com.polarsparc.asm;
+
+public class SimpleHello {
+    private final static String MESSAGE = "Hello ASM !!!";
+
+    public static void main(String[] args) {
+        System.out.println(MESSAGE);
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the code for <span class="hi-yellow">SimpleVisitorUsingASM</span> that will demonstrate the event based
+        approach of <span class="bold">ASM</span> that will print details of the different nodes (class, field, method, etc) of a
+        Java class object hierachy:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.7</div>
+      <div class="src-body-1">
+<pre>/*
+ * Description: Simple Java class to visit nodes of a class using ASM
+ * Author:      Bhaskar S
+ * Date:        12/25/2021
+ * Blog:        https://polarsparc.github.io
+ */
+
+package com.polarsparc.asm;
+
+import org.objectweb.asm.*;
+
+public class SimpleVisitorUsingASM {
+    static class SimpleMethodVisitor extends MethodVisitor {
+        public SimpleMethodVisitor() {
+            super(Opcodes.ASM9);
+        }
+
+        public void visitVarInsn(int opcode, int var) {
+            System.out.printf("visitVarInsn: opcode = %d, var = %d\n", opcode, var);
+        }
+
+        public void visitLocalVariable(String name, String desc, String signature, Label start, Label end, int index) {
+            System.out.printf("visitLocalVariable: Name = %s, Desc = %s, Signature = %s, Index = %d\n",
+                    name, desc, signature, index);
+        }
+
+        public void visitMaxs(int maxStack, int maxLocals) {
+            System.out.printf("visitMaxs: max stack = %d, max locals = %d\n", maxStack, maxLocals);
+        }
+    }
+
+    static class SimpleClassVisitor extends ClassVisitor {
+        public SimpleClassVisitor() {
+            super(Opcodes.ASM9);
+        }
+
+        public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
+          System.out.printf("visitField: Name = %s, Desc = %s, Signature = %s, Value = %s\n",
+                  name, desc, signature, value);
+
+          return super.visitField(access, name, desc, signature, value);
+        }
+
+        public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+            System.out.printf("visitMethod: Name = %s, Desc = %s, Signature = %s\n", name, desc, signature);
+
+            return new SimpleMethodVisitor();
+        }
+    }
+
+    public static void main(String[] args) {
+        if (args.length != 1) {
+            System.out.printf("Usage: java %s &lt;class-name&gt;\n", SimpleVisitorUsingASM.class.getName());
+            System.exit(1);
+        }
+
+        try {
+            ClassReader reader = new ClassReader(args[0]);
+            reader.accept(new SimpleClassVisitor(), ClassReader.SKIP_FRAMES | ClassReader.SKIP_DEBUG);
+        }
+        catch (Exception ex) {
+            ex.printStackTrace(System.out);
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The code in <span class="bold">Listing.7</span> above needs some explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-green">Opcodes</span> :: the <span class="bold">ASM</span> interface that defines all the constants
+          including the Java JVM opcodes</p></li>
+        <li><p><span class="hi-green">MethodVisitor(API_VERSION)</span> :: is an abstract visitor class for visiting the object
+          structure within a Java method. The constructor method takes the API version of <span class="bold">ASM</span> to use.
+          As of this article, the most current version of <span class="bold">ASM</span> is <span class="hi-grey">Opcodes.ASM9</span></p></li>
+        <li><p><span class="hi-green">SimpleMethodVisitor</span> :: is our custom method visitor that extends MethodVisitor so we
+          can intercept some of the interesting node visits of the method object structure</p></li>
+        <li><p><span class="hi-green">visitVarInsn(OPCODE, VAR)</span> :: callback method that is invoked when a local variable
+          instruction is visited. The OPCODE is the Java JVM opcode of the instruction and VAR is the index of the local variable</p></li>
+        <li><p><span class="hi-green">visitLocalVariable(NAME, DESC, SIGNATURE, START, END, INDEX)</span> :: callback method that
+          is invoked when a local variable declaration is visited. NAME is the name of the local variable, DESC is the JVM type
+          descriptor for the local variable, SIGNATURE is the JVM type signature associated with the local variable, START is the
+          first instruction corresponding to the scope of the local variable, END is the last instruction corresponding to the scope
+          of the local variable, and INDEX is the index of the local variable</p></li>
+        <li><p><span class="hi-green">visitMaxs(STACK, LOCALS)</span> :: callback method that is invoked when interrogating the java
+          method details like the maximum stack size (STACK) and the number of local variables (LOCALS)</p></li>
+        <li><p><span class="hi-green">ClassVisitor(API_VERSION)</span> :: is an abstract visitor class for visiting the object
+          structure within a Java class. The constructor method takes the API version of <span class="bold">ASM</span> to use.
+          As of this article, the most current version of <span class="bold">ASM</span> is <span class="hi-grey">Opcodes.ASM9</span></p></li>
+        <li><p><span class="hi-green">SimpleClassVisitor</span> :: is our custom class visitor that extends ClassVisitor so we can
+          intercept some of the interesting node visits of the class object structure</p></li>
+        <li><p><span class="hi-green">visitField(ACCESS, NAME, DESC, SIGNATURE, VALUE)</span> :: callback method that is invoked
+          when a field in a class is visited. ACCESS is the access modifier of the field, NAME is the name of the field, DESC is
+          the JVM type descriptor for the field, SIGNATURE is the JVM type signature associated with the field, and VALUE is the
+          initial value of the field</p></li>
+        <li><p><span class="hi-green">visitMethod(ACCESS, NAME, DESC, SIGNATURE, EXCEPTIONS)</span> :: callback method that is
+          invoked when a method in a class is visited. ACCESS is the access modifier of the method, NAME is the name of the method,
+          DESC is the JVM type descriptor associated with the method, SIGNATURE is the JVM signature associated with the method,
+          and EXCEPTIONS is the internal names corresponding to the exception classes the method throws</p></li>
+        <li><p><span class="hi-green">ClassReader(CLASS_NAME)</span> :: a parser that reads the bytecode of the specified CLASS_NAME
+          using the current class loader and allows one to traverse all the object nodes of the class file structure</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Executing the code in <span class="bold">Listing.7</span> above would result in the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>visitField: Name = MESSAGE, Desc = Ljava/lang/String;, Signature = null, Value = Hello ASM !!!
+visitMethod: Name = &lt;init&gt;, Desc = ()V, Signature = null
+visitVarInsn: opcode = 25, var = 0
+visitMaxs: max stack = 1, max locals = 1
+visitMethod: Name = main, Desc = ([Ljava/lang/String;)V, Signature = null
+visitMaxs: max stack = 2, max locals = 1</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the next example, we will recreate the Java bytecode for <span class="bold">SimpleHello</span> using <span class="bold">
+        ASM</span>.</p>
+      <p>Before we do that, we will dump the bytecode instructions from the <span class="bold">SimpleHello</span> class using the
+        utility program <span class="hi-purple">javap</span> that is installed as part of Java SE installation.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a terminal window and execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/JavaASM</p>
+      <p>$ javap -v target/classes/com/polarsparc/asm/SimpleHello.class</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>Classfile com/polarsparc/asm/SimpleHello.class
+Last modified Dec 25, 2021; size 639 bytes
+SHA-256 checksum 6089eb88882ebc34754f1b1b093640d37a45db9c9bd3c03b7c00c738915bd3fd
+Compiled from "SimpleHello.java"
+public class com.polarsparc.asm.SimpleHello
+minor version: 0
+major version: 61
+flags: (0x0021) ACC_PUBLIC, ACC_SUPER
+this_class: #13                         // com/polarsparc/asm/SimpleHello
+super_class: #2                         // java/lang/Object
+interfaces: 0, fields: 1, methods: 2, attributes: 1
+Constant pool:
+  #1 = Methodref          #2.#3          // java/lang/Object."&lt;init&gt;":()V
+  #2 = Class              #4             // java/lang/Object
+  #3 = NameAndType        #5:#6          // "&lt;init&gt;":()V
+  #4 = Utf8               java/lang/Object
+  #5 = Utf8               &lt;init&gt;
+  #6 = Utf8               ()V
+  #7 = Fieldref           #8.#9          // java/lang/System.out:Ljava/io/PrintStream;
+  #8 = Class              #10            // java/lang/System
+  #9 = NameAndType        #11:#12        // out:Ljava/io/PrintStream;
+#10 = Utf8               java/lang/System
+#11 = Utf8               out
+#12 = Utf8               Ljava/io/PrintStream;
+#13 = Class              #14            // com/polarsparc/asm/SimpleHello
+#14 = Utf8               com/polarsparc/asm/SimpleHello
+#15 = String             #16            // Hello ASM !!!
+#16 = Utf8               Hello ASM !!!
+#17 = Methodref          #18.#19        // java/io/PrintStream.println:(Ljava/lang/String;)V
+#18 = Class              #20            // java/io/PrintStream
+#19 = NameAndType        #21:#22        // println:(Ljava/lang/String;)V
+#20 = Utf8               java/io/PrintStream
+#21 = Utf8               println
+#22 = Utf8               (Ljava/lang/String;)V
+#23 = Utf8               MESSAGE
+#24 = Utf8               Ljava/lang/String;
+#25 = Utf8               ConstantValue
+#26 = Utf8               Code
+#27 = Utf8               LineNumberTable
+#28 = Utf8               LocalVariableTable
+#29 = Utf8               this
+#30 = Utf8               Lcom/polarsparc/asm/SimpleHello;
+#31 = Utf8               main
+#32 = Utf8               ([Ljava/lang/String;)V
+#33 = Utf8               args
+#34 = Utf8               [Ljava/lang/String;
+#35 = Utf8               SourceFile
+#36 = Utf8               SimpleHello.java
+{
+public com.polarsparc.asm.SimpleHello();
+  descriptor: ()V
+  flags: (0x0001) ACC_PUBLIC
+  Code:
+    stack=1, locals=1, args_size=1
+        0: aload_0
+        1: invokespecial #1                  // Method java/lang/Object."&lt;init&gt;":()V
+        4: return
+    LineNumberTable:
+      line 10: 0
+    LocalVariableTable:
+      Start  Length  Slot  Name   Signature
+          0       5     0  this   Lcom/polarsparc/asm/SimpleHello;
+
+public static void main(java.lang.String[]);
+  descriptor: ([Ljava/lang/String;)V
+  flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+  Code:
+    stack=2, locals=1, args_size=1
+        0: getstatic     #7                  // Field java/lang/System.out:Ljava/io/PrintStream;
+        3: ldc           #15                 // String Hello ASM !!!
+        5: invokevirtual #17                 // Method java/io/PrintStream.println:(Ljava/lang/String;)V
+        8: return
+    LineNumberTable:
+      line 14: 0
+      line 15: 8
+    LocalVariableTable:
+      Start  Length  Slot  Name   Signature
+          0       9     0  args   [Ljava/lang/String;
+}
+SourceFile: "SimpleHello.java"</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The <span class="bold">Output.3</span> from above will guide us to invoke the appropriate <span class="bold">ASM</span>
+        <span class="hi-red">visitXXX</span> calls to generate the equivalent Java bytecode.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the code for <span class="hi-yellow">SimpleHelloUsingASM</span> that will generate the Java bytecode
+        equivalent of <span class="bold">SimpleHello</span> using the <span class="bold">ASM</span> framework:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.8</div>
+      <div class="src-body-1">
+<pre>/*
+ * Description: Simple Java class to print '*** Hello using ASM !!!' created using ASM
+ * Author:      Bhaskar S
+ * Date:        12/25/2021
+ * Blog:        https://polarsparc.github.io
+ */
+
+package com.polarsparc.asm;
+
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+import java.lang.reflect.Method;
+
+public class SimpleHelloUsingASM {
+    private static void createJavaClass(ClassWriter writer) {
+        writer.visit(Opcodes.V17,
+                Opcodes.ACC_PUBLIC,
+                "com/polarsparc/asm/SimpleHelloASM",
+                null,
+                "java/lang/Object",
+                null);
+    }
+
+    private static void createDefaultConstructor(ClassWriter writer) {
+        MethodVisitor visitor = writer.visitMethod(Opcodes.ACC_PUBLIC,
+                "&lt;init&gt;",
+                "()V",
+                null,
+                null);
+        visitor.visitCode();
+        visitor.visitVarInsn(Opcodes.ALOAD, 0); // this
+        visitor.visitMethodInsn(Opcodes.INVOKESPECIAL,
+                "java/lang/Object",
+                "&lt;init&gt;",
+                "()V",
+                false);
+        visitor.visitInsn(Opcodes.RETURN);
+        visitor.visitMaxs(1, 1);
+        visitor.visitEnd();
+    }
+
+    private static void createStaticMainMethod(ClassWriter writer) {
+        MethodVisitor visitor = writer.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC,
+                "main",
+                "([Ljava/lang/String;)V",
+                null,
+                null);
+        visitor.visitCode();
+        visitor.visitFieldInsn(Opcodes.GETSTATIC,
+                "java/lang/System",
+                "out",
+                "Ljava/io/PrintStream;");
+        visitor.visitLdcInsn("*** Hello using ASM !!!");
+        visitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL,
+                "java/io/PrintStream",
+                "println",
+                "(Ljava/lang/String;)V",
+                false);
+        visitor.visitInsn(Opcodes.RETURN);
+        visitor.visitMaxs(2, 1);
+        visitor.visitEnd();
+        writer.visitEnd();
+    }
+
+    static class ByteCodeClassLoader extends ClassLoader {
+        public Class&lt;?&gt; defile(String name, byte[] code) {
+            return super.defineClass(name, code, 0, code.length);
+        }
+    }
+
+    public static void main(String[] args) {
+        ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+        createJavaClass(writer);
+        createDefaultConstructor(writer);
+        createStaticMainMethod(writer);
+
+        ByteCodeClassLoader loader = new ByteCodeClassLoader();
+
+        try {
+            Class&lt;?&gt; helloUsingASMClazz = loader.defile("com.polarsparc.asm.SimpleHelloASM",
+                    writer.toByteArray());
+            Method main = helloUsingASMClazz.getMethod("main", String[].class);
+            main.invoke(null, (Object) new String[] {});
+        }
+        catch (Exception ex) {
+            ex.printStackTrace(System.out);
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The code in <span class="bold">Listing.8</span> above needs some explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-green">ClassWriter(ClassWriter.COMPUTE_MAXS)</span> :: is a class that allows one to visit the various
+          nodes to create the Java class structure in memory. The passed in argument indicates that the class automatically compute
+          the maximum size of the stack and the maximum number of local variables of the methods in the generated class</p></li>
+        <li><p><span class="hi-green">visit(VERSION, ACCESS, NAME, SIGNATURE, PARENT, INTERFACES)</span> :: before one can start, we
+          need a Java class structure to hold the other nodes in the class hierarchy. This method visits the class structure. The
+          VERSION is the JDK class version, ACCESS is the access modifier of the class, NAME is the name of the class, SIGNATURE is
+          the JVM type signature associated with the class, PARENT is the internal name of the super class, and INTERFACES is the
+          internal names corresponding to the interfaces this class implements</p>
+          <p>The following illustration depicts how the details from Output.3 related to the class maps to the visit call:</p>
+          <br/>
+          <div id="img-outer-div">
+            <img class="img-cls" src="./images/asm-1.png" alt="Class Creation" />
+            <div class="img-cap">Figure.1</div>
+          </div>
+          <br/>
+        </li>
+        <li><p><span class="hi-green">visitMethod(Opcodes.ACC_PUBLIC, "&lt;init&gt;", "()V", null, null)</span> :: this method visit
+          allows us to create the default constructor - notice the name "&lt;init&gt;" and descriptor "()V"</p></li>
+        <li><p><span class="hi-green">visitCode()</span> :: this method visit begins the methods code</p></li>
+        <li><p><span class="hi-green">visitEnd()</span> :: this method visit ends a method code or a class code</p></li>
+        <li><p><span class="hi-green">visitVarInsn(Opcodes.ALOAD, 0)</span> :: this method visit instructs the load of a local
+          variable, which <span class="hi-grey">this</span> in this example</p></li>
+        <li><p><span class="hi-green">visitMethodInsn(OPCODE, OWNER, NAME, DESC, FLAG)</span> :: this method visit instructs a method
+          call of type OPCODE, OWNER indicates the internal name of the class that owns this method, NAME indicates the name of the
+          method, DESC indicates the JVM type descriptor for the method, and FLAG indicates if the OWNER class is an interface</p></li>
+        <li><p><span class="hi-green">visitInsn(OPCODE)</span> :: this method visit injects a zero operand instruction indicated by
+          OPCODE</p></li>
+        <li><p><span class="hi-green">visitMaxs(STACK, LOCALS)</span> :: this method visit sets the maximum size of the stack and the
+          number of local variables</p>
+          <p>The following illustration depicts how the details from Output.3 related to the default constructor maps to the various
+            visit calls:</p>
+          <br/>
+          <div id="img-outer-div">
+            <img class="img-cls" src="./images/asm-2.png" alt="Default Constructor" />
+            <div class="img-cap">Figure.2</div>
+          </div>
+          <br/>
+        </li>
+        <li><p><span class="hi-green">visitFieldInsn(OPCODE, OWNER, NAME, DESC)</span> :: this method visit allows one to instruct
+          either a load or store of a field object. OPCODE specifies the type of instruction, OWNER indicates the internal name of
+          the class that owns this field, NAME indicates the name of the field, and DESC indicates the JVM type descriptor for the
+          field type</p></li>
+        <li><p><span class="hi-green">visitLdcInsn(VALUE)</span> :: this method visit allows one to load a constant value that is
+          provided in VALUE</p>
+          <p>The following illustration depicts how the details from Output.3 related to the main method maps to the various visit
+            calls:</p>
+          <br/>
+          <div id="img-outer-div">
+            <img class="img-cls" src="./images/asm-3.png" alt="Main Method" />
+            <div class="img-cap">Figure.3</div>
+          </div>
+          <br/>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Executing the code in <span class="bold">Listing.8</span> above would result in the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>*** Hello using ASM !!!</pre>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://github.com/bhaskars-repo/JavaASM"><span class="bold">Github - Source Code</span></a></p>
+      <p><a target="_blank" href="https://asm.ow2.io/asm4-guide.pdf"><span class="bold">ASM User Guide</span></a></p>
+      <p><a target="_blank" href="https://asm.ow2.io/javadoc/org/objectweb/asm/package-summary.html"><span class="bold">ASM Java API</span></a></p>
+      <p><a target="_blank" href="https://docs.oracle.com/javase/specs/jvms/se17/html/index.html"><span class="bold">JVM Specification - Java SE 17</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
