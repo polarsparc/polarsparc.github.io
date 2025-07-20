@@ -1,0 +1,721 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Quick Primer on Java Method Handles">
+    <meta name="subject" content="Quick Primer on Java Method Handles">
+    <meta name="keywords" content="java, methodhandle">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Quick Primer on Java Method Handles</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Quick Primer on Java Method Handles</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">03/07/2025</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">Java Reflection</span> is a very flexible and powerful mechanism that provides one with an ability
+        to dynamically retrieve information about the properties of classes (variables and methods) by name and manipulate or modify
+        their behavior at runtime.</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">Method Handles</span> were first introduced in <span class="bold">Java 7</span> and are a typesafe,
+        directly invocable references to an underlying method or field of any Java object at runtime. In other words, they are the
+        newer, more efficient type of <span class="bold">Java Reflection</span> technique for introspecting and manipulating Java
+        objects at runtime.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The setup will be on a <span class="bold">Ubuntu 24.04 LTS</span> based Linux desktop. Ensure at least <span class="bold">
+        Java 17</span> or above is installed and setup. Also, ensure <a href="http://maven.apache.org/" target="_blank">
+        <span class="hi-yellow">Apache Maven</span></a> is installed and setup.</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the demonstrations in this article, execute the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME</p>
+      <p>$ mkdir -p $HOME/java/MethodHandles</p>
+      <p>$ cd $HOME/java/MethodHandles</p>
+      <p>$ mkdir -p src/main/java src/main/resources target</p>
+      <p>$ mkdir -p src/test/java src/test/resources</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/methodhandles</p>
+      <p>$ mkdir -p src/test/java/com/polarsparc/methodhandles/test</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;groupId&gt;com.polarsparc.scripting&lt;/groupId&gt;
+    &lt;artifactId&gt;Scripting&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+
+    &lt;properties&gt;
+        &lt;java.version&gt;23&lt;/java.version&gt;
+        &lt;slf4j.version&gt;2.0.16&lt;/slf4j.version&gt;
+        &lt;junit5.version&gt;5.12.0&lt;/junit5.version&gt;
+        &lt;maven.compiler.version&gt;3.13.0&lt;/maven.compiler.version&gt;
+        &lt;maven.surefire.version&gt;3.5.2&lt;/maven.surefire.version&gt;
+    &lt;/properties&gt;
+
+    &lt;build&gt;
+        &lt;pluginManagement&gt;
+            &lt;plugins&gt;
+                &lt;plugin&gt;
+                    &lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
+                    &lt;artifactId&gt;maven-compiler-plugin&lt;/artifactId&gt;
+                    &lt;version&gt;${maven.compiler.version}&lt;/version&gt;
+                    &lt;configuration&gt;
+                        &lt;fork&gt;true&lt;/fork&gt;
+                        &lt;meminitial&gt;128m&lt;/meminitial&gt;
+                        &lt;maxmem&gt;512m&lt;/maxmem&gt;
+                        &lt;source&gt;${java.version}&lt;/source&gt;
+                        &lt;target&gt;${java.version}&lt;/target&gt;
+                    &lt;/configuration&gt;
+                &lt;/plugin&gt;
+                &lt;plugin&gt;
+                    &lt;artifactId&gt;maven-surefire-plugin&lt;/artifactId&gt;
+                    &lt;version&gt;${maven.surefire.version}&lt;/version&gt;
+                &lt;/plugin&gt;
+            &lt;/plugins&gt;
+        &lt;/pluginManagement&gt;
+    &lt;/build&gt;
+
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;slf4j-api&lt;/artifactId&gt;
+            &lt;version&gt;${slf4j.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;slf4j-simple&lt;/artifactId&gt;
+            &lt;version&gt;${slf4j.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.junit.jupiter&lt;/groupId&gt;
+            &lt;artifactId&gt;junit-jupiter-engine&lt;/artifactId&gt;
+            &lt;version&gt;${junit5.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="hi-yellow">slf4j-simple</span> logger properties file
+        <span class="hi-green">simplelogger.properties</span> located in the directory <span class="bold">src/main/resources</span>
+        and the directory <span class="bold">src/test/resources</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">simplelogger.properties</div>
+      <div class="src-body-1">
+<pre>#
+### SLF4J Simple Logger properties
+#
+
+org.slf4j.simpleLogger.defaultLogLevel=info
+org.slf4j.simpleLogger.showDateTime=true
+org.slf4j.simpleLogger.dateTimeFormat=yyyy-MM-dd HH:mm:ss:SSS
+org.slf4j.simpleLogger.showThreadName=true</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Without much further delay, let us jump right into a simple example to illustrate this powerful capability of method handles
+        support in Java.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on Java Method Handles</p>
+    </div>
+    <div id="para-div">
+      <p>The following is a simple "Hello World" style Java class that will be used for testing Java method handles at run-time:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.1</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   HelloWorld
+ * Author: Bhaskar S
+ * Date:   03/01/2025
+ * Blog:   https://www.polarsparc.com
+ */
+ 
+package com.polarsparc.methodhandles;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class HelloWorld {
+  private static final Logger LOGGER = LoggerFactory.getLogger(HelloWorld.class);
+
+  private static String PREFIX = "Hello ";
+
+  private String greet;
+
+  public HelloWorld(String greet) {
+    this.greet = PREFIX + greet;
+  }
+
+  private void logGetHello() {
+    LOGGER.info("invoked: HelloWorld.logGetHello() ...");
+  }
+
+  public String getGreet() {
+    logGetHello();
+    return greet;
+  }
+
+  public static String holaGreetings() {
+    return "Hola World";
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>It is a simple Java class with a private static variable, a private member variable, a private method, a static method, and
+        a public method.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is our first simplest Java class that leverages the most important method handle API:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.2</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   HwLookupTest
+ * Author: Bhaskar S
+ * Date:   03/01/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.methodhandles.test;
+
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.invoke.MethodHandles;
+
+public class HwLookupTest {
+  private static final Logger LOGGER = LoggerFactory.getLogger(HwLookupTest.class);
+
+  @Test
+  public void testHwLookup() {
+    MethodHandles.Lookup lookup = MethodHandles.lookup();
+
+    LOGGER.info("This class is: {}", lookup.lookupClass());
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The core APIs for the Java method handle are defined in the package <span class="hi-yellow">java.lang.invoke</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To get a handle for any field or any method from a Java class, we need a lookup context. The idea of a lookup context is to
+        encapsulate the knowledge of which fields or methods can be invoked at the point where the lookup object is created. To get
+        the lookup context, invoke the static helper method <span class="hi-blue">MethodHandles.lookup()</span>.</p>
+      <p>The lookup object will only return fields and methods that are accessible to the context where the lookup was created. They
+        are access-checked at the point where the lookup context is created. The lookup object will not return handles to any fields
+        or methods to which it does not have proper access.</p>
+      <p>The method <span class="hi-blue">lookupClass()</span> on the lookup object returns the class where the lookup is invoked.</p>
+    </div>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.2</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/MethodHandles</p>
+      <p>$ mvn test -Dtest="com.polarsparc.methodhandles.test.HwLookupTest"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.polarsparc.methodhandles.test.HwLookupTest
+2025-03-07 20:18:08:365 [main] INFO com.polarsparc.methodhandles.test.HwLookupTest - This class is: class com.polarsparc.methodhandles.test.HwLookupTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.047 s -- in com.polarsparc.methodhandles.test.HwLookupTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.541 s
+[INFO] Finished at: 2025-03-07T20:18:08-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Shifting gears into how one can access the Java class field(s).</p>
+      <p>The following is the Java class that leverages the commonly used Java method handle APIs to introspect and manipulate the
+        field(s) from the Java class from Listing.1 above:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.3</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   HwVarHandleTest
+ * Author: Bhaskar S
+ * Date:   03/01/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.methodhandles.test;
+
+import com.polarsparc.methodhandles.HelloWorld;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
+public class HwVarHandleTest {
+  private static final Logger LOGGER = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
+  @Test
+  public void testHwVarHandle() {
+    HelloWorld helloWorld = new HelloWorld("World");
+
+    MethodHandles.Lookup lookup = MethodHandles.lookup();
+
+    try {
+      // This will generate a java.lang.IllegalAccessException: member is private
+      VarHandle vh = lookup.findVarHandle(HelloWorld.class, "greet", String.class);
+    } catch (NoSuchFieldException | IllegalAccessException ex) {
+      LOGGER.error(ex.getMessage());
+    }
+
+    try {
+      MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(HelloWorld.class, lookup);
+
+      VarHandle vh = privateLookup.findVarHandle(HelloWorld.class, "greet", String.class);
+
+      LOGGER.info("Value of variable 'greet': {}", vh.get(helloWorld));
+
+      vh.set(helloWorld, "Super World");
+
+      LOGGER.info("Value of variable 'greet': {}", vh.get(helloWorld));
+    } catch (NoSuchFieldException | IllegalAccessException ex) {
+      LOGGER.error(ex.getMessage());
+    }
+
+    try {
+      MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(HelloWorld.class, lookup);
+
+      VarHandle vh = privateLookup.findStaticVarHandle(HelloWorld.class, "PREFIX", String.class);
+
+      LOGGER.info("Value of static variable 'PREFIX': {}", vh.get());
+
+      vh.set("Namaste ");
+
+      LOGGER.info("Value of static variable 'PREFIX': {}", vh.get());
+    } catch (NoSuchFieldException | IllegalAccessException ex) {
+      LOGGER.error(ex.getMessage());
+    }
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>A <span class="hi-orange">VarHandle</span> is a dynamic strongly typed reference to a field variable, including static fields,
+        non-static fields, array elements, or components of an off-heap data structure.</p>
+      <p>The default lookup method <span class="bold">MethodHandles.lookup()</span> only provides access to public class members and
+        methods. In order to access the private class fields or methods, one needs to invoke the static helper method <span class=
+        "hi-blue">MethodHandles.privateLookupIn()</span>.</p>
+      <p>To get a reference to a member field of a Java class, invoke the <span class="hi-blue">findVarHandle()</span> method on the
+        lookup object by providing the class that holds the field, the name of the field, and the class type of the field.</p>
+      <p>Also, to get a reference to a static field of a Java class, invoke the <span class="hi-blue">findStaticVarHandle()</span>
+        method on the lookup object by providing the class that holds the field, the name of the field, and the class type of the
+        field.</p>
+      <p>The <span class="hi-blue">get()</span> method on an instance of VarHandle returns the value of the referenced field variable.
+        On the other hand, the <span class="hi-blue">set(Object... args)</span> method modifies the current value of the referenced
+        field variable with the provided new value.</p>
+    </div>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.3</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/MethodHandles</p>
+      <p>$ mvn test -Dtest="com.polarsparc.methodhandles.test.HwVarHandleTest"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.polarsparc.methodhandles.test.HwVarHandleTest
+2025-03-07 20:18:58:582 [main] ERROR com.polarsparc.methodhandles.test.HwVarHandleTest - member is private: com.polarsparc.methodhandles.HelloWorld.greet/java.lang.String/getField, from class com.polarsparc.methodhandles.test.HwVarHandleTest (unnamed module @27f723)
+2025-03-07 20:18:58:582 [main] INFO com.polarsparc.methodhandles.test.HwVarHandleTest - Value of variable 'greet': Hello World
+2025-03-07 20:18:58:583 [main] INFO com.polarsparc.methodhandles.test.HwVarHandleTest - Value of variable 'greet': Super World
+2025-03-07 20:18:58:583 [main] INFO com.polarsparc.methodhandles.test.HwVarHandleTest - Value of static variable 'PREFIX': Hello 
+2025-03-07 20:18:58:583 [main] INFO com.polarsparc.methodhandles.test.HwVarHandleTest - Value of static variable 'PREFIX': Namaste 
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.049 s -- in com.polarsparc.methodhandles.test.HwVarHandleTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.715 s
+[INFO] Finished at: 2025-03-07T20:18:58-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Moving along on how one can access the Java class method(s).</p>
+      <p>The following is the Java class that leverages the commonly used Java method handle APIs to introspect and manipulate the
+        method(s) from the Java class from Listing.1 above:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.4</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   HwMethodHandleTest
+ * Author: Bhaskar S
+ * Date:   03/01/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.methodhandles.test;
+
+import com.polarsparc.methodhandles.HelloWorld;
+
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.Method;
+
+public class HwMethodHandleTest {
+  private static final Logger LOGGER = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
+  @Test
+  public void testHwMethodHandle() {
+    HelloWorld helloWorld = new HelloWorld("World");
+
+    MethodHandles.Lookup lookup = MethodHandles.lookup();
+
+    try {
+      MethodType stringNoArg = MethodType.methodType(String.class);
+
+      LOGGER.info("stringNoArg return type: {}", stringNoArg);
+
+      MethodHandle mh = lookup.findVirtual(HelloWorld.class, "getGreet", stringNoArg);
+
+      LOGGER.info("Invoke 'getHello': {}", mh.invoke(helloWorld));
+    } catch (Throwable ex) {
+      LOGGER.error(ex.getMessage());
+    }
+
+    try {
+      MethodType voidNoArg = MethodType.methodType(void.class);
+
+      // This will generate java.lang.IllegalAccessError: tried to access private method
+      MethodHandle mh = lookup.findVirtual(HelloWorld.class, "logGetHello", voidNoArg);
+      mh.invoke(helloWorld);
+    } catch (Throwable ex) {
+      LOGGER.error(ex.getMessage());
+    }
+
+    try {
+      Class&lt;?&gt;[] noArg = {};
+
+      Method method = HelloWorld.class.getDeclaredMethod("logGetHello", noArg);
+      method.setAccessible(true); // To gain access to private method
+
+      MethodHandle mh = lookup.unreflect(method);
+      mh.invoke(helloWorld);
+    } catch (Throwable ex) {
+      LOGGER.error(ex.getMessage());
+    }
+
+    try {
+      MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(HelloWorld.class, lookup);
+
+      MethodType voidNoArg = MethodType.methodType(void.class);
+
+      MethodHandle mh = privateLookup.findVirtual(HelloWorld.class, "logGetHello", voidNoArg);
+      mh.invoke(helloWorld);
+    } catch (Throwable ex) {
+      LOGGER.error(ex.getMessage());
+    }
+
+    try {
+      MethodType stringNoArg = MethodType.methodType(String.class);
+
+      MethodHandle smh = lookup.findStatic(HelloWorld.class, "holaGreetings", stringNoArg);
+
+      LOGGER.info("Invoke 'holaGreetings': {}", smh.invoke());
+    } catch (Throwable ex) {
+      LOGGER.error(ex.getMessage());
+    }
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>A <span class="hi-orange">MethodType</span> is an immutable, typesafe way to represent the type signature of a method. The
+        first argument is the return type of the method, followed by the types of the method arguments in positional order.</p>
+    </div>
+    <div id="para-div">
+      <p>To get a <span class="hi-orange">MethodHandle</span> reference to a method from a Java class, one needs to invoke the <span
+        class="hi-blue">findVirtual()</span> method for a class method or the <span class="hi-blue">findStatic()</span> method for
+        the static method, by providing the class that holds the method, the name of the method, and a MethodType representing the
+        appropriate signature.</p>
+      <p>The method <span class="hi-blue">unreflect()</span> on the method inferred via Java reflection creates a direct method
+        handle using the lookup context.</p>
+    </div>
+    <div id="para-div">
+      <p>To method <span class="hi-blue">invoke(Object... args)</span> on a method handle instance will call the referenced method
+        after transforming call arguments if needed, such as, performing an asType() conversions if necessary (i.e., boxing or
+        unboxing of arguments as required).</p>
+      <p>Note that the access checking for method handle invocations is only done once when the method handle is created. In other
+        words, access control for a method handle is checked when the method is found, not when the handle is executed.</p>
+    </div>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.4</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/MethodHandles</p>
+      <p>$ mvn test -Dtest="com.polarsparc.methodhandles.test.HwMethodHandleTest"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.polarsparc.methodhandles.test.HwMethodHandleTest
+2025-03-07 20:22:02:940 [main] INFO com.polarsparc.methodhandles.test.HwMethodHandleTest - stringNoArg return type: ()String
+2025-03-07 20:22:02:941 [main] INFO com.polarsparc.methodhandles.HelloWorld - invoked: HelloWorld.logGetHello() ...
+2025-03-07 20:22:02:941 [main] INFO com.polarsparc.methodhandles.test.HwMethodHandleTest - Invoke 'getHello': Hello World
+2025-03-07 20:22:02:941 [main] ERROR com.polarsparc.methodhandles.test.HwMethodHandleTest - no such method: com.polarsparc.methodhandles.HelloWorld.logGetHello()void/invokeVirtual
+2025-03-07 20:22:02:941 [main] INFO com.polarsparc.methodhandles.HelloWorld - invoked: HelloWorld.logGetHello() ...
+2025-03-07 20:22:02:941 [main] INFO com.polarsparc.methodhandles.HelloWorld - invoked: HelloWorld.logGetHello() ...
+2025-03-07 20:22:02:941 [main] INFO com.polarsparc.methodhandles.test.HwMethodHandleTest - Invoke 'holaGreetings': Hola World
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.047 s -- in com.polarsparc.methodhandles.test.HwMethodHandleTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.512 s
+[INFO] Finished at: 2025-03-07T20:22:02-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the final example, we will make use of the following Java interface:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.5</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Transformer
+ * Author: Bhaskar S
+ * Date:   03/01/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.methodhandles;
+
+import com.polarsparc.methodhandles.Transformer;
+
+public interface Transformer {
+  String transform(String in);
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following example demonstrates how one can bind a method from a Java class that implements an interface from the Listing.5
+        above to a method handle and invoke it:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.6</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   TransformerTest
+ * Author: Bhaskar S
+ * Date:   03/01/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.methodhandles.test;
+
+import com.polarsparc.methodhandles.Transformer;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+
+public class TransformerTest {
+  private static final Logger LOGGER = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
+  @Test
+  public void testTransformer() {
+    MethodHandles.Lookup lookup = MethodHandles.lookup();
+
+    try {
+      Transformer xformObj = new Transformer() {
+        public String transform(String in) {
+          if (in != null && in.trim().length() >= 8) {
+            return in.trim().substring(0, 4) + "XxXxX";
+          }
+          return "NilXxXxX";
+        }
+      };
+
+      MethodType stringStringArg = MethodType.methodType(String.class, String.class);
+
+      MethodHandle mh = lookup.findVirtual(Transformer.class, "transform", stringStringArg);
+      mh = mh.bindTo(xformObj);
+
+      LOGGER.info("Transformed: {}", mh.invoke("123987046"));
+    } catch (Throwable ex) {
+      LOGGER.error(ex.getMessage());
+    }
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The <span class="hi-blue">bindTo()</span> method on a method handle instance binds the method handle to a specific object
+        instance. The method handle will be invoked on the provided object instance when the method handle is invoked.</p>
+    </div>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.6</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/MethodHandles</p>
+      <p>$ mvn test -Dtest="com.polarsparc.methodhandles.test.TransformerTest"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.polarsparc.methodhandles.test.TransformerTest
+2025-03-07 20:59:13:907 [main] INFO com.polarsparc.methodhandles.test.TransformerTest - Transformed: 1239XxXxX
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.046 s -- in com.polarsparc.methodhandles.test.TransformerTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.726 s
+[INFO] Finished at: 2025-03-07T20:59:13-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>With this, we conclude our hands-on demonstrations on the topic of Java Method Handles !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/lang/invoke/package-summary.html"><span class="bold">Java MethodHandle API Docs</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

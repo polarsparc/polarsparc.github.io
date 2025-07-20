@@ -1,0 +1,1386 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Dynamic Code Generation using Java Compiler API">
+    <meta name="subject" content="Dynamic Code Generation using Java Compiler API">
+    <meta name="keywords" content="java, compiler_api">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Dynamic Code Generation using Java Compiler API</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Dynamic Code Generation using Java Compiler API</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td"><span class="hi-yellow">*UPDATED*</span>01/24/2025</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In one of the previous articles, we were introduced to <a href="http://polarsparc.github.io/Java/Scripting.html">Scripting
+        in Java</a>. It was one way of dynamically extending the capabilities of an application. Also, there is another efficient
+        way of extending an application dynamically - by compiling and loading Java classes at runtime.</p>
+    </div>
+    <div id="para-div">
+    <p>In Java, the <span class="hi-yellow">javax.tools</span> package exposes the Java compiler as an API. By default, the Java
+      compiler works with source from input file(s) and generates the corresponding class output file(s). By implementing interfaces
+      from the <span class="bold">javax.tools</span> package, we will be able to work with source from strings in memory and generate
+      class to byte array in memory.</p>
+    </div>
+    <div id="para-div">
+      <p>But, why would we need to do this ? Imagine we have an asynchronous channel from where clients can consume messages. Each
+        client may have a different need and process only a subset of the messages. The clients effectively need to filter on the
+        content of the messages before processing. If the filter criteria for all the clients is known and is a small predefined
+        set, then we may be able to write the filter classes for the predefined set. But, if the filter criteria various for each
+        client and is subject to change, it is better to implement the filter criteria as a dynamic extension. If the message rate
+        is small and the filter criteria is not that complex, then we may be able to leverage the scripting support in Java. But,
+        if the message rates are high and the filter criteria complex, then scripting may not be a viable option for efficiency and
+        performance reasons. It would be more efficient to dynamically compile and execute the filter criteria.</p>
+    </div>
+    <div id="section-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The setup will be on a <span class="bold">Ubuntu 24.04 LTS</span> based Linux desktop. Ensure at least <span class="bold">
+        Java 17</span> or above is installed and setup. Also, ensure <a href="http://maven.apache.org/" target="_blank">
+        <span class="hi-yellow">Apache Maven</span></a> is installed and setup.</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the demonstrations in this article, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME</p>
+      <p>$ mkdir -p $HOME/java/JavaCompiler</p>
+      <p>$ cd $HOME/java/JavaCompiler</p>
+      <p>$ mkdir -p src/main/java src/main/resources target</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/jdk/compiler</p>
+      <p>$ mkdir -p src/main/resources/scripts</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;groupId&gt;com.polarsparc.javacompiler&lt;/groupId&gt;
+    &lt;artifactId&gt;JavaCompiler&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+
+    &lt;properties&gt;
+        &lt;java.version&gt;23&lt;/java.version&gt;
+        &lt;slf4j.version&gt;2.0.16&lt;/slf4j.version&gt;
+        &lt;nashorn.version&gt;15.6&lt;/nashorn.version&gt;
+        &lt;maven.compiler.version&gt;3.13.0&lt;/maven.compiler.version&gt;
+    &lt;/properties&gt;
+
+    &lt;build&gt;
+        &lt;pluginManagement&gt;
+            &lt;plugins&gt;
+                &lt;plugin&gt;
+                    &lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
+                    &lt;artifactId&gt;maven-compiler-plugin&lt;/artifactId&gt;
+                    &lt;version&gt;${maven.compiler.version}&lt;/version&gt;
+                    &lt;configuration&gt;
+                        &lt;fork&gt;true&lt;/fork&gt;
+                        &lt;meminitial&gt;128m&lt;/meminitial&gt;
+                        &lt;maxmem&gt;512m&lt;/maxmem&gt;
+                        &lt;source&gt;${java.version}&lt;/source&gt;
+                        &lt;target&gt;${java.version}&lt;/target&gt;
+                    &lt;/configuration&gt;
+                &lt;/plugin&gt;
+            &lt;/plugins&gt;
+        &lt;/pluginManagement&gt;
+    &lt;/build&gt;
+
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.openjdk.nashorn&lt;/groupId&gt;
+            &lt;artifactId&gt;nashorn-core&lt;/artifactId&gt;
+            &lt;version&gt;${nashorn.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;slf4j-api&lt;/artifactId&gt;
+            &lt;version&gt;${slf4j.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;slf4j-simple&lt;/artifactId&gt;
+            &lt;version&gt;${slf4j.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="hi-yellow">slf4j-simple</span> logger properties file
+        <span class="hi-green">simplelogger.properties</span> located in the directory <span class="bold">src/main/resources</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">simplelogger.properties</div>
+      <div class="src-body-1">
+<pre>#
+### SLF4J Simple Logger properties
+#
+
+org.slf4j.simpleLogger.defaultLogLevel=info
+org.slf4j.simpleLogger.showDateTime=true
+org.slf4j.simpleLogger.dateTimeFormat=yyyy-MM-dd HH:mm:ss:SSS
+org.slf4j.simpleLogger.showThreadName=true</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Without much further ado, let us jump right into hands-on coding and demonstrations.</p>
+    </div>
+    <div id="para-div">
+      <p>Before we proceed further, we want to state that in our examples we will be using an array of integers to represent messages
+        and define an interface for the filter criteria.</p>
+    </div>
+    <div id="para-div">
+      <p>The following code listing defines the interface for the filter criteria:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.1</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Filter
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.jdk.compiler;
+
+public interface Filter {
+  public boolean filter(int num);
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following code listing illustrates an implementation of the filter criteria where the input integer is an even integer
+        and is greater than 500:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.2</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Filter
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.jdk.compiler;
+
+public class FilterEvenGt500 implements Filter {
+  @Override
+  public boolean filter(int num) {
+        return num > 500 && (num % 2) == 0;
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following code listing for <span class="hi-yellow">ScriptVsCompiled</span> illustrates an example that compares the
+        efficiency of using scripting versus compiled code:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.3</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   ScriptVsCompiled
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.jdk.compiler;
+
+import java.util.*;
+import javax.script.*;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class ScriptVsCompiled {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ScriptVsCompiled.class);
+
+  private static int[] nums;
+  
+  public static void main(String[] args) {
+    init();
+    ScriptClient sc = new ScriptClient();
+    sc.init();
+    sc.execute();
+    CompiledClient cc = new CompiledClient();
+    cc.init();
+    cc.execute();
+  }
+  
+  public static void init() {
+    try {
+      nums = new int[100];
+      Random rand = new Random();
+      for (int i = 0; i &lt; 100; ++i) {
+        nums[i] = rand.nextInt(1000);
+      }
+    }
+    catch (Throwable ex) {
+      ex.printStackTrace(System.err);
+      System.exit(1);
+    }
+  }
+  
+  private static class ScriptClient {
+    private ScriptEngine seng;
+    
+    void init() {
+      ScriptEngineManager smgr = new ScriptEngineManager();
+      seng = smgr.getEngineByExtension("js");
+      if (seng == null) {
+        LOGGER.error("*** Could not find engine - Rhino !!!");
+        System.exit(1);
+      }
+    }
+    
+    void execute() {
+      try {
+        Bindings bnds = seng.getBindings(ScriptContext.ENGINE_SCOPE);
+        long stm = System.currentTimeMillis();
+        for (int n : nums) {
+          bnds.put("num", n);
+          if ((Boolean)seng.eval("if (num &gt; 500 && (num % 2) == 0) { true; } else { false; }")) {
+            LOGGER.info("ScriptClient: {}", n);
+          }
+        }
+        long etm = System.currentTimeMillis();
+
+        LOGGER.info("ScriptClient execute time: {} ms", (etm - stm));
+      }
+      catch (Throwable ex) {
+        LOGGER.error(ex.getMessage(), ex);
+        System.exit(1);
+      }
+    }
+  }
+  
+  private static class CompiledClient {
+    private Filter func;
+    
+    void init() {
+      try {
+        Class&lt;?&gt; clazz = Class.forName("com.polarsparc.jdk.compiler.FilterEvenGt500");
+        func = (Filter) clazz.getDeclaredConstructor().newInstance();
+      }
+      catch (Throwable ex) {
+        LOGGER.error(ex.getMessage(), ex);
+        System.exit(1);
+      }
+    }
+    
+    void execute() {
+      try {
+        long stm = System.currentTimeMillis();
+        for (int n : nums) {
+          if (func.filter(n)) {
+            LOGGER.info("CompiledClient: {}", n);
+          }
+        }
+        long etm = System.currentTimeMillis();
+
+        LOGGER.info("CompiledClient execute time: {} ms", (etm-stm));
+      }
+      catch (Throwable ex) {
+        LOGGER.error(ex.getMessage(), ex);
+        System.exit(1);
+      }
+    }
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.3</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/JavaCompiler</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.jdk.compiler.ScriptVsCompiled"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------&lt; com.polarsparc.javacompiler:JavaCompiler &gt;--------------
+[INFO] Building JavaCompiler 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.5.0:java (default-cli) @ JavaCompiler ---
+2025-01-18 21:06:09:089 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 642
+2025-01-18 21:06:09:090 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 736
+2025-01-18 21:06:09:091 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 746
+2025-01-18 21:06:09:091 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 834
+2025-01-18 21:06:09:092 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 760
+2025-01-18 21:06:09:092 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 564
+2025-01-18 21:06:09:092 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 956
+2025-01-18 21:06:09:093 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 594
+2025-01-18 21:06:09:093 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 968
+2025-01-18 21:06:09:093 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 692
+2025-01-18 21:06:09:094 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 934
+2025-01-18 21:06:09:094 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 594
+2025-01-18 21:06:09:094 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 532
+2025-01-18 21:06:09:094 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 630
+2025-01-18 21:06:09:094 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 828
+2025-01-18 21:06:09:095 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 628
+2025-01-18 21:06:09:096 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 552
+2025-01-18 21:06:09:096 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 692
+2025-01-18 21:06:09:097 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 956
+2025-01-18 21:06:09:097 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 728
+2025-01-18 21:06:09:097 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 950
+2025-01-18 21:06:09:097 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 714
+2025-01-18 21:06:09:097 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 878
+2025-01-18 21:06:09:098 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 950
+2025-01-18 21:06:09:098 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient: 578
+2025-01-18 21:06:09:099 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - ScriptClient execute time: 61 ms
+2025-01-18 21:06:09:099 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 642
+2025-01-18 21:06:09:099 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 736
+2025-01-18 21:06:09:099 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 746
+2025-01-18 21:06:09:099 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 834
+2025-01-18 21:06:09:099 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 760
+2025-01-18 21:06:09:099 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 564
+2025-01-18 21:06:09:099 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 956
+2025-01-18 21:06:09:099 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 594
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 968
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 692
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 934
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 594
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 532
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 630
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 828
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 628
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 552
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 692
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 956
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 728
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 950
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 714
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 878
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 950
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient: 578
+2025-01-18 21:06:09:100 [com.polarsparc.jdk.compiler.ScriptVsCompiled.main()] INFO com.polarsparc.jdk.compiler.ScriptVsCompiled - CompiledClient execute time: 1 ms
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.472 s
+[INFO] Finished at: 2025-01-18T21:06:09-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>As is evident from Output.1 above, using scripting capability of Java for filtering is orders of magnitude slower than using
+        compiled code for filtering !!!</p>
+    </div>
+    <div id="para-div">
+      <p>The client using the scripting capability (named <span class="bold">ScriptClient</span>) took about 61 ms to complete, while
+        the client (name <span class="bold">CompiledClient</span>) using the compiled filter class FilterEvenGt500 took 1 ms.</p>
+    </div>
+    <div id="para-div">
+      <p>It is clear from the above execution that it will be more efficient to dynamically compile and execute the filter criteria.</p>
+    </div>
+    <div id="para-div">
+      <p>Ready for some exciting bytecode stuff !!! In the following sections we will explore the Java compiler API exposed through
+        the <span class="bold">javax.tools</span> package in Java.</p>
+    </div>
+    <div id="para-div">
+      <p>The following code listing is a simple Java class called <span class="hi-yellow">CompileMe</span> that we will compile using
+        the Java compiler API:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.4</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CompileMe
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.jdk.compiler;
+
+public class CompileMe {
+  public static void main(String[] args) {
+    System.out.println("Compiled with JavaCompiler API");
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following code listing for <span class="hi-yellow">BasicCompile</span> illustrates the use of the Java compiler API to
+        compile the simple Java class called <span class="bold">CompileMe</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.5</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   BasicCompile
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.jdk.compiler;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.*;
+import javax.tools.*;
+import javax.tools.JavaCompiler.CompilationTask;
+
+public class BasicCompile {
+  private static final Logger LOGGER = LoggerFactory.getLogger(BasicCompile.class);
+
+  public static void main(String[] args) {
+    try {
+      /* 1 */
+      JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+
+      /* 2 */
+      StandardJavaFileManager manager = compiler.getStandardFileManager(null, null, null);
+      
+      /* 3 */
+      Iterable&lt;? extends JavaFileObject&gt; units = manager.getJavaFileObjects("src/main/java/com/polarsparc/jdk/compiler/CompileMe.java");
+      
+      /* 4 */
+      String[] opts = new String[] { "-d", "target/classes" };
+      
+      /* 5 */
+      CompilationTask task = compiler.getTask(null, manager, null, Arrays.asList(opts), null, units);
+
+      /* 6 */
+      boolean status = task.call();
+
+      if (status) {
+        LOGGER.info("Compilation successful!!!");
+      }
+    }
+    catch (Exception ex) {
+      LOGGER.error(ex.getMessage(), ex);
+      System.exit(1);
+    }
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 1 */</span>, we get the reference to the implementation of the Java platform compiler
+        called <span class="hi-yellow">JavaCompiler</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 2 */</span>, we get the reference to <span class="hi-yellow">StandardJavaFileManager</span>,
+      which provides an abstraction layer for performing file operations such as reading an input source and writing compiled class
+      output. Just as with the javac command, the <span class="bold">JavaCompiler</span> also operates on file(s) using <span class=
+      "bold">StandardJavaFileManager</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 3 */</span>, we wrap the simple Java source file called <span class="bold">CompileMe.java
+      </span> in a <span class="hi-yellow">JavaFileObject</span>. The <span class="bold">StandardJavaFileManager</span> works on the
+      input and the output files and provides them as objects of type <span class="bold">JavaFileObject</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 4 */</span>, we are specifying the compiler options to use. In this case, we are specifying
+        the target directory of compile to be the dircetory <span class="bold">"target/classes"</span>. By default, the target directory
+        is the current directory.</p>
+    </div>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 5 */</span>, we get the reference to <span class="hi-yellow">CompilationTask</span>,
+        which allows us to invoke the process of Java source compilation. We get an handle to <span class="bold">CompilationTask</span>
+        by invoking the <span class="hi-blue">getTask()</span> method on the reference to <span class="bold">JavaCompiler</span> from
+        line <span class="hi-orange">/* 1 */</span>. In this step, we associate the <span class="bold">StandardJavaFileManager</span>,
+        the compiler options, and the input source file wrapped in <span class="bold">JavaFileObject</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 6 */</span>, we finally invoke the compilation task. If the compilation succeeds, the
+        compiled class file will be under the directory named <span class="bold">"target/classes"</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.5</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/JavaCompiler</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.jdk.compiler.BasicCompile"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------&lt; com.polarsparc.javacompiler:JavaCompiler &gt;--------------
+[INFO] Building JavaCompiler 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.5.0:java (default-cli) @ JavaCompiler ---
+2025-01-18 21:30:51:996 [com.polarsparc.jdk.compiler.BasicCompile.main()] INFO com.polarsparc.jdk.compiler.BasicCompile - Compilation successful!!!
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.501 s
+[INFO] Finished at: 2025-01-18T21:30:51-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>With this, we have successfully demonstrated the use of the Java compiler API to generate java class file from a java source
+        file.</p>
+    </div>
+    <div id="para-div">
+      <p>In the above example, the java code was sourced from a file. How do we handle the case where the java code is generated
+        dynamically at runtime as a String. One way would be to save the generated code to a file and then use the above example
+        to compile. The more interesting case would be to compile the code directly from the String.</p>
+    </div>
+    <div id="para-div">
+      <p>In the above example, we used <span class="bold">StandardJavaFileManager</span> to wrap the java source file as an object
+        of type <span class="bold">JavaFileObject</span>. Similarly, we need a class to wrap the generated code from a String into
+        an object of type <span class="bold">JavaFileObject</span>. We can achieve that by extending the concrete class <span class
+        ="hi-yellow">SimpleJavaFileObject</span> from the <span class="bold">javax.tools</span> package.</p>
+    </div>
+    <div id="para-div">
+      <p>The following code listing for <span class="bold">StringJavaFileObject</span> illustrates our custom <span class="bold">
+        JavaFileObject</span> that allows us to present java code from a String to the <span class="bold">JavaCompiler</span> for
+        compilation:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.6</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   StringJavaFileObject
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.jdk.compiler;
+
+import java.net.*;
+import javax.tools.*;
+
+/* 1 */
+public class StringJavaFileObject extends SimpleJavaFileObject {
+  private final String source;
+
+  /* 2 */
+  public StringJavaFileObject(String name, String source) {
+    /* 3 */
+    super(URI.create("string:///" + name.replace('.','/') + Kind.SOURCE.extension), Kind.SOURCE);
+    this.source = source;
+  }
+  
+  /* 4 */
+  @Override
+  public CharSequence getCharContent(boolean ignoreEncodingErrors) {
+    return this.source;
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 1 */</span>, we extend from the class <span class="bold">SimpleJavaFileObject</span>,
+      which is provided by the Java Compiler API as a simple implementation of <span class="bold">JavaFileObject</span>. The
+      constructor for <span class="bold">SimpleJavaFileObject</span> is defined as protected and takes two arguments: an URI to the
+      file it represents and the type of the file (java source or compiled class) specified as a constant of type <span class="bold">
+      Kind</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 2 */</span>, we define the constructor for our custom <span class="bold">JavaFileObject
+        </span> implementation called <span class="bold">StringJavaFileObject</span>. It takes two arguments: the full class name
+        (including package name) for our generated java source and the java code as a String.</p>
+    </div>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 3 */</span>, we invoke the constructor for the super class which is <span class="bold">
+        SimpleJavaFileObject</span> in this case. The line <span class="bold">URI.create("string:///" + name.replace('.','/') +
+        Kind.SOURCE.extension)</span> creates a standard URL path. For example, given the full class name "com.abc.Foo", this line
+        will create a standard URL path "com/abc/Foo.java". The enum Kind (defined in <span class="bold">JavaFileObject</span>)
+        identifies the type of the URI. In our case, the type is java source and hence we use <span class="bold">Kind.SOURCE</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 4 */</span>, we override the method <span class="hi-blue">getCharContent</span> to return
+        the java source from the String.</p>
+    </div>
+    <div id="para-div">
+      <p>The following code listing for <span class="hi-yellow">StringCompile</span> illustrates the use of our custom <span class=
+        "bold">StringJavaFileObject</span> to compile and execute a <span class="bold">Filter</span> class implementation that is
+        generated as a String:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.7</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   StringCompile
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.jdk.compiler;
+
+import java.util.*;
+import java.io.*;
+import java.net.*;
+
+import javax.tools.*;
+import javax.tools.JavaCompiler.CompilationTask;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class StringCompile {
+  private static final Logger LOGGER = LoggerFactory.getLogger(StringCompile.class);
+
+  public static void main(String[] args) {
+    try {
+      JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+      
+      StandardJavaFileManager manager = compiler.getStandardFileManager(null, null, null);
+      
+      /* 1 */
+      JavaFileObject strFile = new StringJavaFileObject("com.polarsparc.jdk.compiler.FilterEven", generateJavaCode());
+      
+      Iterable&lt;? extends JavaFileObject&gt; units = List.of(strFile);
+      
+      String[] opts = new String[] { "-d", "target/classes", "-classpath", "target/classes" };
+      
+      CompilationTask task = compiler.getTask(null, manager, null, Arrays.asList(opts), null, units);
+      boolean status = task.call();
+      if (status) {
+        LOGGER.info("Compilation successful!!!");
+        
+        File classesDir = new File("classes");
+        URL[] classpath = new URL[] { classesDir.toURI().toURL() };
+        URLClassLoader urlClassloader = null;
+        try {
+          /* 2 */
+          urlClassloader = new URLClassLoader(classpath, StringCompile.class.getClassLoader());
+
+          /* 3 */
+          final Class&lt;?&gt; clazz = urlClassloader.loadClass("com.polarsparc.jdk.compiler.FilterEven");
+
+          /* 4 */
+          final Filter filter = (Filter) clazz.getDeclaredConstructor().newInstance();
+
+          /* 5 */
+          if (filter.filter(10)) {
+            LOGGER.info("10 is an even number");
+          }
+
+          /* 6 */
+          if (!filter.filter(15)) {
+            LOGGER.info("15 is an odd number");
+          }
+        }
+        finally {
+          if (urlClassloader != null) {
+            urlClassloader.close();
+          }
+        }
+      }
+      else {
+        LOGGER.error("***** Compilation failed!!!");
+      }
+    }
+    catch (Exception ex) {
+      LOGGER.error(ex.getMessage(), ex);
+      System.exit(1);
+    }
+  }
+  
+  private static String generateJavaCode() {
+    return 
+      """
+      package com.polarsparc.jdk.compiler;
+      import com.polarsparc.jdk.compiler.Filter;
+      public class FilterEven implements Filter {
+        @Override
+        public boolean filter(int num) {
+            if (num % 2 == 0) {
+              return true;
+            }
+            return false;
+        }
+      }
+      """;
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 1 */</span>, we create an instance of <span class="bold">StringJavaFileObject</span> by
+        specifying the full class name as <span class="bold">com.polarsparc.jdk.compiler.FilterEven</span> and generating the java
+        source for FilterEven by calling the method <span class="hi-blue">generateJavaCode</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The steps to the compile the generated code is the same as was illustrated in <span class="bold">BasicCompile</span>. Once
+        the compilation proceeds successfully, a class file for <span class="bold">FilterEven</span> is generated under the <span
+        class="bold">target/classes</span> directory.</p>
+    </div>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 2 */</span>, we create an instance of <span class="bold">URLClassLoader</span> for the
+        <span class="bold">target/classes</span> directory so that we can load the dynamically generated compiled class for <span
+        class="bold">FilterEven</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 3 */</span>, we load the class for <span class="bold">FilterEven</span> using the <span
+        class="bold">URLClassLoader</span> created in <span class="hi-orange">/* 2 */</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 4 */</span>, we create an instance of <span class="bold">FilterEven</span>, which
+        implements the interface for <span class="bold">Filter</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 5 */</span> and <span class="hi-orange">/* 6 */</span>, we invoke the method <span class
+        ="hi-blue">filter</span> on the <span class="bold">FilterEven</span> instance created in <span class="hi-orange">/* 4 */</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.7</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/JavaCompiler</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.jdk.compiler.StringCompile"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------&lt; com.polarsparc.javacompiler:JavaCompiler &gt;--------------
+[INFO] Building JavaCompiler 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.5.0:java (default-cli) @ JavaCompiler ---
+2025-01-19 14:07:33:914 [com.polarsparc.jdk.compiler.StringCompile.main()] INFO com.polarsparc.jdk.compiler.StringCompile - Compilation successful!!!
+2025-01-19 14:07:33:915 [com.polarsparc.jdk.compiler.StringCompile.main()] INFO com.polarsparc.jdk.compiler.StringCompile - 10 is an even number
+2025-01-19 14:07:33:915 [com.polarsparc.jdk.compiler.StringCompile.main()] INFO com.polarsparc.jdk.compiler.StringCompile - 15 is an odd number
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.466 s
+[INFO] Finished at: 2025-01-19T14:07:33-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>With this, we have successfully demonstrated the use of the Java compiler API to generate java class file from dynamically
+        generated java source from a String.</p>
+    </div>
+    <div id="para-div">
+      <p>The next natural question to ask is: what if we make a mistake in the java source generation. Let us change the method <span
+        class="hi-blue">generateJavaCode</span> in <span class="bold">StringCompile</span> as follows:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.8</div>
+      <div class="src-body-1">
+<pre>private static String generateJavaCode() {
+  return
+  """
+  package com.polarsparc.jdk.compiler;
+  import com.polarsparc.jdk.compiler.Filter;
+  public class FilterEven implements Filter {
+    @Override
+    public boolean filter(int num) {
+      if (num % 2 == 0) {
+      return 2;
+      }
+      return false;
+    }
+  }
+  """;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the code from <span class="bold">Listing.7</span> with the change from <span class="bold">Listing.8</span> will
+        result in the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------&lt; com.polarsparc.javacompiler:JavaCompiler &gt;--------------
+[INFO] Building JavaCompiler 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.5.0:java (default-cli) @ JavaCompiler ---
+/com/polarsparc/jdk/compiler/FilterEven.java:7: error: incompatible types: int cannot be converted to boolean
+                  return 2;
+                        ^
+1 error
+2025-01-19 14:12:41:236 [com.polarsparc.jdk.compiler.StringCompile.main()] ERROR com.polarsparc.jdk.compiler.StringCompile - ***** Compilation failed!!!
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.474 s
+[INFO] Finished at: 2025-01-19T14:12:41-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The <span class="bold">JavaCompiler</span> API fails to compile the generated java source and provides enough information
+        on the failure.</p>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">StringCompile</span> example, the compiled class file for the dynamically generated java source
+        is saved under the <span class="bold">target/classes</span> directory. It would be most interesting if the compiled class is
+        also generated and loaded from memory via a byte array.</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="bold">JavaCompiler</span> uses <span class="bold">StandardJavaFileManager</span> to perform both read and
+        write on files using objects of type <span class="bold">JavaFileObject</span>. The <span class="bold">JavaCompiler</span>
+        reads the input source file and on successful compile writes the output compiled class file. Just as we used the class <span
+        class="bold">StringJavaFileObject</span> to wrap the generated java source in a String, we will use a custom class that will
+        extend <span class="bold">SimpleJavaFileObject</span> to wrap the compiled class bytes.</p>
+    </div>
+    <div id="para-div">
+      <p>The following code listing for <span class="hi-yellow">ByteArrayJavaFileObject</span> illustrates our custom <span class=
+        "bold">JavaFileObject</span> that allows the <span class="bold">JavaCompiler</span> to write compiled class bytes to a byte
+        array:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.9</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   ByteArrayJavaFileObject
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.jdk.compiler;
+
+import java.io.*;
+import java.net.*;
+
+import javax.tools.*;
+
+public class ByteArrayJavaFileObject extends SimpleJavaFileObject {
+  private final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+  
+  public ByteArrayJavaFileObject(String name, Kind kind) {
+    super(URI.create("string:///" + name.replace('.', '/') + kind.extension), kind);
+  }
+  
+  public byte[] getClassBytes() {
+    return bos.toByteArray();
+  }
+  
+  @Override
+  public OutputStream openOutputStream()
+    throws IOException {
+    return bos;
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The above code listing is similar to that of <span class="bold">StringJavaFileObject</span>, except that we are overriding
+        the method <span class="hi-blue">openOutputStream</span> so that the <span class="bold">JavaCompiler</span> can use it to
+        output compiled class bytes.</p>
+    </div>
+    <div id="para-div">
+      <p>As indicated earlier, the <span class="bold">StandardJavaFileManager</span> is a default file manager that creates <span
+        class="bold">JavaFileObject</span> instances representing regular files from the file system and used by the <span class=
+        "bold">JavaCompiler</span>. In order to use our <span class="bold">StringJavaFileObject</span> for input and <span class=
+        "hi-yellow">ByteArrayJavaFileObject</span> for output, we need to have a custom <span class="bold">JavaFileManager</span>.
+        We cannot extend the <span class="bold">StandardJavaFileManager</span> as it does not expose any public constructor and is
+        created internally by the <span class="bold">JavaCompiler</span>. Instead, we extend the delegating file manager from the
+        <span class="bold">javax.tools</span> package called <span class="hi-yellow">ForwardingJavaFileManager</span> that allows
+        for customization while delegating to the underlying default file manager the <span class="bold">StandardJavaFileManager</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Once the <span class="bold">JavaCompiler</span> write the compiled class to a byte array, we will need a way to load the
+        bytes into the class loader. In order to do this we will need a custom class loader to load a class from class bytes.</p>
+    </div>
+    <div id="para-div">
+      <p>The following code listing for <span class="hi-yellow">ByteArrayClassLoader</span> illustrates our custom class loader which
+        extends the default java class loader to load the class bytes from the <span class="bold">ByteArrayJavaFileObject</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.10</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   ByteArrayClassLoader
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.jdk.compiler;
+
+import java.util.*;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class ByteArrayClassLoader extends ClassLoader {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ByteArrayClassLoader.class);
+
+  private final Map&lt;String, ByteArrayJavaFileObject&gt; cache = new HashMap&lt;String, ByteArrayJavaFileObject&gt;();
+  
+  public ByteArrayClassLoader()
+    throws Exception {
+    super(ByteArrayClassLoader.class.getClassLoader());
+  }
+  
+    public void put(String name, ByteArrayJavaFileObject obj) {
+        cache.putIfAbsent(name, obj);
+    }
+
+    @Override
+    protected Class&lt;?&gt; findClass(String name)
+        throws ClassNotFoundException {
+        Class&lt;?&gt; cls = null;
+
+        try {
+          ByteArrayJavaFileObject co = cache.get(name);
+          if (co != null) {
+            byte[] ba = co.getClassBytes();
+            cls = defineClass(name, ba, 0, ba.length);
+          }
+        }
+        catch (Exception ex) {
+            throw new ClassNotFoundException("Class name: " + name, ex);
+        }
+        
+        LOGGER.info("Method findClass() called for class {}", name);
+
+        return cls;
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the above custom class loader, we maintain an internal cache of <span class="bold">ByteArrayJavaFileObject</span> for
+        each of the dynamically generated java source. The cache is update by our custom <span class="bold">JavaFileManager</span>
+        for each generated java source.</p>
+    </div>
+    <div id="para-div">
+      <p>The following code listing for <span class="hi-yellow">DynamicClassFileManager</span> illustrates our custom <span class=
+        "bold">JavaFileManager</span> that will be used by the <span class="bold">JavaCompiler</span> to read java source from a
+        String and to write the compiled class to a byte array:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.11</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   DynamicClassFileManager
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.jdk.compiler;
+
+import java.io.*;
+
+import javax.tools.*;
+import javax.tools.JavaFileObject.Kind;
+
+/* 1 */
+public class DynamicClassFileManager &lt;FileManager&gt; extends ForwardingJavaFileManager&lt;JavaFileManager&gt; {
+  private ByteArrayClassLoader loader = null;
+  
+  DynamicClassFileManager(StandardJavaFileManager mgr) {
+    super(mgr);
+    try {
+      /* 2 */
+      loader = new ByteArrayClassLoader();
+    }
+    catch (Exception ex) {
+      ex.printStackTrace(System.out);
+    }
+  }
+  
+  /* 3 */
+  @Override
+  public JavaFileObject getJavaFileForOutput(Location location, String name, Kind kind, FileObject sibling)
+    throws IOException {
+    ByteArrayJavaFileObject co = new ByteArrayJavaFileObject(name, kind);
+    loader.put(name, co);
+    return co;
+  }
+  
+  /* 4 */
+  @Override
+  public ClassLoader getClassLoader(Location location) {
+    return loader;
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 1 */</span>, we extend from the class <span class="bold">ForwardingJavaFileManager</span>
+      which is provided by the Java compiler API as a simple implementation for delegating <span class="bold">JavaFileManager</span>.
+      As indicated earlier, we cannot extend <span class="bold">SimpleJavaFileManager</span> as it does not expose any public
+      constructor. Instead, we use the delegator <span class="bold">ForwardingJavaFileManager</span>, which delegates to the
+      underlying <span class="bold">SimpleJavaFileManager</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 2 */</span>, we create an instance of our custom class loader <span class="bold">
+        ByteArrayClassLoader</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 3 */</span>, we override the method <span class="hi-blue">getJavaFileForOutput</span>.
+        This method is invoked by the <span class="bold">JavaCompiler</span> when it is ready to write the compiled class bytes for
+        the given java source input. In this method, we create any instance of the custom <span class="bold">ByteArrayJavaFileObject
+        </span> and save it in our custom class loader <span class="bold">ByteArrayClassLoader</span> for the given class name
+        indicated by the <span class="bold">name</span> argument.</p>
+    </div>
+    <div id="para-div">
+      <p>In line <span class="hi-orange">/* 4 */</span>, we override the method <span class="hi-blue">getClassLoader</span> to return
+        our custom class loader <span class="bold">ByteArrayClassLoader</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>We now have all the necessary ingredients to create any java source and its corresponding class on the fly at runtime. The
+        following code listing for <span class="hi-yellow">DynamicCompiler</span> puts all these ingredients together:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.12</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   DynamicCompiler
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.jdk.compiler;
+
+import java.util.*;
+import javax.tools.*;
+import javax.tools.JavaCompiler.CompilationTask;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class DynamicCompiler {
+  private static final Logger LOGGER = LoggerFactory.getLogger(DynamicCompiler.class);
+
+  private JavaCompiler compiler;
+  private DiagnosticCollector&lt;JavaFileObject&gt; collector;
+  private JavaFileManager manager;
+    
+  public void init()
+    throws Exception {
+    compiler = ToolProvider.getSystemJavaCompiler();
+    collector = new DiagnosticCollector&lt;JavaFileObject&gt;();
+    manager = new DynamicClassFileManager&lt;JavaFileManager&gt;(compiler.getStandardFileManager(null, null, null));
+  }
+  
+  public Class&lt;?&gt; compileToClass(String fullName, String javaCode)
+    throws Exception {
+    Class&lt;?&gt; clazz = null;
+    
+    StringJavaFileObject strFile = new StringJavaFileObject(fullName, javaCode);
+    Iterable&lt;? extends JavaFileObject&gt; units = List.of(strFile);
+    String[] opts = new String[] { "-classpath", "target/classes" };
+    CompilationTask task = compiler.getTask(null, manager, collector, Arrays.asList(opts), null, units);
+    boolean status = task.call();
+    if (status) {
+      LOGGER.info("Compilation successful!!!");
+
+      clazz = manager.getClassLoader(null).loadClass(fullName);
+    }
+    else {
+      LOGGER.info("Message:");
+      for (Diagnostic&lt;?&gt; d : collector.getDiagnostics()) {
+        LOGGER.info("{}", d.getMessage(null));
+      }
+      LOGGER.info("***** Compilation failed!!!");
+    }
+    
+    return clazz;
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The above code provides a convenience method <span class="hi-blue">compileToClass</span> that takes a full class name and
+        its corresponding java code and returns the corresponding Class object for that class name. Pay close attention to the code
+        and you will see the <span class="hi-yellow">DiagnosticCollector</span>. Earlier, we saw the result of wrong code generation.
+        The error was reported by the <span class="bold">JavaCompiler</span> in a standard format. If we want customize error reporting,
+        then we can collect the error information by using the <span class="bold">DiagnosticCollector</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Finally, we present a demonstration that shows how to use the <span class="bold">DynamicCompiler</span> for dynamic code
+        generation. The following code listing for <span class="hi-yellow">CompiledFilter</span> generates two types of <span class="bold">
+        Filter</span> implementation based on the user preference:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.13</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CompiledFilter
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.jdk.compiler;
+
+import java.util.*;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class CompiledFilter {
+  private static final Logger LOGGER = LoggerFactory.getLogger(CompiledFilter.class);
+
+  private static int[] nums;
+  private static Filter func;
+  
+  public static void main(String[] args) {
+    if (args.length != 1) {
+      LOGGER.warn("Usage: java {} &lt;DynFilterEvenGt500 | DynFilterOddLt500&gt;", CompiledFilter.class.getName());
+      System.exit(1);
+    }
+    init(args[0]);
+    execute();
+  }
+  
+  public static void init(String name) {
+    try {
+      nums = new int[100];
+      Random rand = new Random();
+      for (int i = 0; i &lt; 100; ++i) {
+        nums[i] = rand.nextInt(1000);
+      }
+      
+      DynamicCompiler compiler = new DynamicCompiler();
+      compiler.init();
+      
+      Class&lt;?&gt; clazz = null;
+      if (name.equals("DynFilterEvenGt500")) {
+        clazz = compiler.compileToClass("com.polarsparc.jdk.compiler." + name, DynFilterEvenGt500());
+      }
+      else {
+        clazz = compiler.compileToClass("com.polarsparc.jdk.compiler." + name, DynFilterOddLt500());
+      }
+
+      func = (Filter) clazz.getDeclaredConstructor().newInstance();
+    }
+    catch (Throwable ex) {
+      LOGGER.error(ex.getMessage(), ex);
+      System.exit(1);
+    }
+  }
+  
+  public static void execute() {
+    try {
+      long stm = System.currentTimeMillis();
+      for (int n : nums) {
+        if (func.filter(n)) {
+          LOGGER.info("CompiledFilter: {}", n);
+        }
+      }
+      long etm = System.currentTimeMillis();
+
+      LOGGER.info("CompiledFilter execute time: {} ms", (etm-stm));
+    }
+    catch (Throwable ex) {
+      LOGGER.error(ex.getMessage(), ex);
+      System.exit(1);
+    }
+  }
+  
+  private static String DynFilterEvenGt500() {
+    return 
+    """
+    package com.polarsparc.jdk.compiler;
+    import com.polarsparc.jdk.compiler.Filter;
+    public class DynFilterEvenGt500 implements Filter {
+      @Override
+      public boolean filter(int num) {
+          if (num &gt; 500 && (num % 2) == 0) {
+            return true;
+          }
+          return false;
+      }
+    }
+    """;
+  }
+
+  private static String DynFilterOddLt500() {
+    return
+    """
+    package com.polarsparc.jdk.compiler;
+    import com.polarsparc.jdk.compiler.Filter;
+    public class DynFilterOddLt500 implements Filter {
+      @Override
+      public boolean filter(int num) {
+          if (num &lt; 500 && (num % 2) != 0) {
+            return true;
+          }
+          return false;
+      }
+    }
+    """;
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>If the user chooses <span class="bold">DynFilterEvenGt500</span>, an even <span class="bold">Filter</span> implementation
+        is generated and executed. On the other hand, if the user chooses <span class="bold">DynFilterOddLt500</span>, an odd Filter
+        implementation is generated.</p>
+    </div>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.13</span> for the option <span class="bold">DynFilterEvenGt500</span>,
+        open a terminal window and run the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/JavaCompiler</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.jdk.compiler.CompiledFilter" -Dexec.args="DynFilterEvenGt500"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] --------------&lt; com.polarsparc.javacompiler:JavaCompiler &gt;--------------
+[INFO] Building JavaCompiler 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.5.0:java (default-cli) @ JavaCompiler ---
+2025-01-19 15:12:48:885 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.DynamicCompiler - Compilation successful!!!
+2025-01-19 15:12:48:886 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.ByteArrayClassLoader - Method findClass() called for class com.polarsparc.jdk.compiler.DynFilterEvenGt500
+2025-01-19 15:12:48:886 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 846
+2025-01-19 15:12:48:886 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 808
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 512
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 690
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 626
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 640
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 792
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 890
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 906
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 634
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 940
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 562
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 828
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 622
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 878
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 898
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 514
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 898
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 890
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 892
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter: 998
+2025-01-19 15:12:48:887 [com.polarsparc.jdk.compiler.CompiledFilter.main()] INFO com.polarsparc.jdk.compiler.CompiledFilter - CompiledFilter execute time: 1 ms
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.474 s
+[INFO] Finished at: 2025-01-19T15:12:48-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>With this, we conclude the hands-on coding and demonstrations for this article - let the <span class="bold">Force be with
+        you Luke</span> !!!</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://docs.oracle.com/en/java/javase/23/docs/api/java.compiler/javax/tools/package-summary.html"><span class="bold">Java Compiler API Documentation</span></a></p>
+      <p><a target="_blank" href="https://github.com/bhaskars-repo/JavaCompiler"><span class="bold">GitHub - Source Code</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

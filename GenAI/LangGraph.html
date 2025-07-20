@@ -1,0 +1,836 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Quick Primer on LangGraph">
+    <meta name="subject" content="Quick Primer on LangGraph">
+    <meta name="keywords" content="ollama, langchain, langgraph, llm, agentic">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Quick Primer on LangGraph</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Quick Primer on LangGraph</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td"><span class="hi-yellow">*UPDATED*</span>05/03/2025</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>The <a href="https://polarsparc.github.io/GenAI/LangChain.html" target="_blank"><span class="bold">LangChain</span></a>
+        framework enabled us to build applications that connected various tasks before and/or after the calls to an LLM model in
+        the form of a chain. Since LLM models have become more intelligent and powerful, why not allow the LLM models to decide the
+        flow of control of the various connected tasks ???</p>
+      <p>Enter <a href="https://www.langchain.com/langgraph" target="_blank"><span class="hi-yellow">LangGraph</span></a> - a stateful,
+        orchestration framework that allows one to build intelligent <span class="bold">Agentic</span> workflow applications.</p>
+      <p><span class="bold">LangGraph</span> is built on top of <span class="bold">LangChain</span> and allows one to build LLM based
+        multi-agent workflows that dynamically orchestrate across various computational steps and maintain state across those
+        computations in a cyclical fashion.</p>
+      <p><span class="bold">LangGraph</span> models agent workflows as graphs with nodes representing the different tasks (or steps)
+        in the workflow and the edges connecting the nodes facilitating the flow of inflormation between the nodes of the workflow.</p>
+      <p>The following are the three core components of <span class="bold">LangGraph</span>:</p>
+      <ul id="blue-disc-ul">
+        <li><p><span class="hi-vanila">State</span> :: a shared data structure (typically a TypedDict or a Pydantic BaseModel)
+          that holds the current snapshot of information</p></li>
+        <li><p><span class="hi-vanila">Node</span> :: a function or Runnable that accepts as input the current State, performs
+          some task (a step) in the agentic workflow, and returns the updated State. In short, it performs some operation(s)
+          that change the State</p></li>
+        <li><p><span class="hi-vanila">Edge</span> :: a function or Runnable that performs the necessary logic to determine the
+          next Node to execute based on the current State; they can either be conditional branches or fixed transitions. In
+          short, it defines the connection and the flow of information between Nodes</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Note that a Runnable is a unit of work that can be invoked, batched, streamed, transformed, and composed.</p>
+      <p>Also, note that the Nodes and Edges are nothing more than Python functions (which internally can choose to invoke an
+        LLM model).</p>
+    </div>
+    <div id="para-div">
+      <p>The Nodes and Edges can be composed together to form a complex graph that defines the workflow. The current State is
+        passed as a message (through an Edge) to trigger the start of the workflow and the next step(s) of the workflow are
+        determined based on the updated State from a Node.</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="hi-purple">START</span> node is a special node that defines the entry point into the workflow graph.</p>
+      <p>The <span class="hi-purple">END</span> node is another special node that represents a terminal node of the workflow graph.
+        In other words, this Node indicates the end of the workflow graph.</p>
+    </div>
+    <div id="para-div">
+      <p>The intent of this article is <span class="underbold">NOT</span> to be exhaustive, but a primer to get started quickly.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Installation and Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The installation and setup will be on a <span class="bold">Ubuntu 24.04 LTS</span> based Linux desktop. Ensure that <span
+        class="bold">Ollama</span> is installed and setup on the desktop (see <a href="http://polarsparc.github.io/GenAI/Ollama.html"
+        target="_blank"><span class="bold">instructions</span></a>).</p>
+      <p>In addition, ensure that the <span class="bold">Python 3.1x</span> programming language as well as the <span class="bold">
+        Jupyter Notebook</span> package is installed and setup on the desktop.</p>
+    </div>
+    <div id="para-div">
+      <p>Assuming that the ip address on the Linux desktop is <span class="hi-grey">192.168.1.25</span>, start the <span class="bold">
+        Ollama</span> platform by executing the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name ollama --network=host -p 192.168.1.25:11434:11434 -v $HOME/.ollama:/root/.ollama ollama/ollama:0.6.7</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>If the linux desktop has <span class="hi-green">Nvidia GPU</span> with decent amount of VRAM (at least 16 GB) and has been
+        enabled for use with <span class="bold">docker</span> (see <a href="https://polarsparc.github.io/Docker/DockerNVidia.html"
+        target="_blank"><span class="bold">instructions</span></a>), then execute the following command instead to start <span class
+        ="bold">Ollama</span>:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name ollama --gpus=all --network=host -p 192.168.1.25:11434:11434 -v $HOME/.ollama:/root/.ollama ollama/ollama:0.6.7</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the LLM model, we will be using the recently released <span class="hi-purple">IBM Granite 3.3 2B</span> model.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a new terminal window and execute the following <span class="bold">docker</span> command to download the LLM model:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker exec -it ollama ollama run granite3.3:2b</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To install the necessary <span class="bold">Python</span> modules for this primer, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ pip install dotenv langchain lanchain-core langchain-ollama langgraph pydantic</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This completes all the installation and setup for the <span class="bold">LangGraph</span> hands-on demonstrations.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on with LangGraph</p>
+    </div>
+    <div id="para-div">
+      <p>Create a file called <span class="hi-yellow">.env</span> with the following environment variables defined:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>LLM_TEMPERATURE=0.0
+OLLAMA_MODEL='granite3.3:2b'
+OLLAMA_BASE_URL='http://192.168.1.25:11434'</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To load the environment variables and assign them to <span class="bold">Python</span> variable, execute the following code
+        snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from dotenv import load_dotenv, find_dotenv
+
+import os
+
+load_dotenv(find_dotenv())
+
+llm_temperature = os.getenv('LLM_TEMPERATURE')
+ollama_model = os.getenv('OLLAMA_MODEL')
+ollama_base_url = os.getenv('OLLAMA_BASE_URL')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To initialize an instance of <span class="bold">Ollama</span> running the desired LLM model <span class="hi-purple">IBM
+        Granite 3.3 2B</span>, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langchain_ollama import ChatOllama
+
+ollama_chat_llm = ChatOllama(base_url=ollama_base_url, model=ollama_model, temperature=llm_temperature)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To define a Python function for visualizing how the nodes and edges in the graph are connected, execute the following code
+        snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from IPython.display import Image, display
+
+def display_graph(graph):
+  try:
+    display(Image(graph.get_graph().draw_mermaid_png()))
+  except Exception as e:
+    print(e)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>Our first agentic workflow will be a simple workflow graph that will execute four tasks without using any LLM model.</p>
+    </div>
+    <div id="para-div">
+      <p>For this simple graph demonstration, we will leverage a list of the <span class="bold">HumanMessage</span> (encapsulates
+        a message from a human) as the shared State for the graph.</p>
+    </div>
+    <div id="para-div">
+      <p>To define each of the workflow tasks as Python functions, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>def workflow_step_one(input_data: list[HumanMessage]) -> list[HumanMessage]:
+  print('Executing workflow step one ...')
+  input_data[-1].content = input_data[-1].content + ', Step One'
+  return input_data
+
+def workflow_step_two_a(input_data: list[HumanMessage]) -> list[HumanMessage]:
+  print('Executing workflow step two A ...')
+  input_data[-1].content = input_data[-1].content + ', Step Two A'
+  return input_data
+
+def workflow_step_two_b(input_data: list[HumanMessage]) -> list[HumanMessage]:
+  print('Executing workflow step two B ...')
+  input_data[-1].content = input_data[-1].content + ', Step Two B'
+  return input_data
+
+def workflow_step_join(input_data: list[HumanMessage]) -> list[HumanMessage]:
+  print('Executing workflow step join ...')
+  input_data[-1].content = input_data[-1].content + ', Step Join'
+  return input_data</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>Notice that each of the workflow tasks accept a list of messages as the input State and returns an updated version of that
+        State.</p>
+    </div>
+    <div id="para-div">
+      <p>A <span class="bold">MessageGraph</span> class is a special type of graph in which the State is just a list of messages.</p>
+      <p>To add a node to a graph, we use the function <span class="hi-blue">graph.add_node(name, func)</span>, where <span class=
+        "hi-vanila">name</span> is the identifier for the node and <span class="hi-vanila">func</span> is the reference to the <span
+        class="bold">Python</span> function associated with the node.</p>
+      <p>To add an edge to a graph, use the function <span class="hi-blue">graph.add_edge(from, to)</span>, where <span class=
+        "hi-vanila">from</span> is the identifier of the node to start from and <span class="hi-vanila">to</span> is the identifier
+        of the node to connect to.</p>
+      <p>The function <span class="hi-blue">graph.set_entry_point(name)</span> connects the START node of the graph to the first
+        node as the entry point.</p>
+    </div>
+    <div id="para-div">
+      <p>To create our first workflow graph with nodes and edges such that the first node is step_one, followed by the two nodes
+        step_two_a and step_two_b in parallel, and finally joining the node step_join, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langgraph.graph import MessageGraph, END
+
+msg_graph = MessageGraph()
+
+msg_graph.add_node('step_one', workflow_step_one)
+
+msg_graph.add_edge('step_one', 'step_two_a')
+msg_graph.add_edge('step_one', 'step_two_b')
+
+msg_graph.add_node('step_two_a', workflow_step_two_a)
+msg_graph.add_node('step_two_b', workflow_step_two_b)
+
+msg_graph.add_edge('step_two_a', 'step_join')
+msg_graph.add_edge('step_two_b', 'step_join')
+
+msg_graph.add_node('step_join', workflow_step_join)
+msg_graph.add_edge('step_join', END)
+
+msg_graph.set_entry_point('step_one')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To ensure the graph we just created is valid and to generate a runnable instance, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>runnable_msg_graph = msg_graph.compile()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To visualize our first simple graph, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>display_graph(runnable_msg_graph)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration depicts the nodes and edges of our first simple graph:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/langgraph-1.png" alt="Simple Graph" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To invoke our first simple graph, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>print(runnable_msg_graph.invoke('Test'))</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Executing workflow step one ...
+Executing workflow step two A ...
+Executing workflow step two B ...
+Executing workflow step join ...
+[HumanMessage(content='Test, Step One, Step Two A, Step Two B, Step Join', additional_kwargs={}, response_metadata={}, id='fc1e60e6-9c43-4df2-98ee-a35c218f66ab')]</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For our second agentic workflow, we will demonstrate the case of a simple conditional workflow graph that will execute one
+        of the two tasks based on a condition. This graph will also not use any LLM model.</p>
+    </div>
+    <div id="para-div">
+      <p>For this simple conditional graph demonstration, we will define a custom <span class="bold">Pydantic</span> data class to
+        encapsulate a string content and an instance of this class will be used as the shared State for the graph.</p>
+    </div>
+    <div id="para-div">
+      <p>To define the custom State class, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from pydantic import BaseModel
+
+class ConditionState(BaseModel):
+  content: str</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To define each of the workflow tasks as Python functions, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>def workflow_task_one(state: ConditionState) -> ConditionState:
+  print('Executing workflow task one ...')
+  state.content = state.content + ', Task One'
+  return state
+
+def workflow_task_two_a(state: ConditionState) -> ConditionState:
+  print('Executing workflow task two A ...')
+  state.content = state.content + ', Task Two A'
+  return state
+
+def workflow_task_two_b(state: ConditionState) -> ConditionState:
+  print('Executing workflow task two B ...')
+  state.content = state.content + ', Task Two B'
+  return state</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>Notice that each of the workflow tasks accept an instance of <span class="bold">ConditionState</span> as the input State
+        and returns an updated version of that State.</p>
+    </div>
+    <div id="para-div">
+      <p>To determine which node to transition to based on a condition, we need to define a Python function. To do that, execute the
+        following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from typing import Literal
+
+import random
+
+def workflow_task_condition(state: ConditionState) -> Literal['task_two_a', 'task_two_b']:
+  print('Executing workflow condition ...')
+  state.content = state.content + ', Condition'
+  return 'task_two_a' if random.random() &lt;= 0.5 else 'task_two_b'</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>Notice that the condition function accept an instance of <span class="bold">ConditionState</span> as the input State and
+        returns a node identifier to transition to.</p>
+    </div>
+    <div id="para-div">
+      <p>A <span class="bold">StateGraph</span> class represents a type of graph in which the State is initialized using a custom
+        state definition class. In this case the state definition class is <span class="bold">ConditionState</span>.</p>
+      <p>To add a conditional edge to a graph, we use the function <span class="hi-blue">graph.add_conditional_edges(name, func)
+        </span>, where <span class="hi-vanila">name</span> is the identifier of the node to start from and <span class="hi-vanila">
+        func</span> is the reference to the <span class="bold">Python</span> function that evaluates the condition to determine
+        which node to transition to.</p>
+    </div>
+    <div id="para-div">
+      <p>To create our conditional workflow graph with nodes and edges such that the first node is task_one, followed by one of the
+        two nodes task_two_a OR task_two_b based on a condition, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langgraph.graph import StateGraph, START, END
+
+graph_builder = StateGraph(ConditionState)
+
+graph_builder.add_node('task_one', workflow_task_one)
+
+graph_builder.add_edge(START, 'task_one')
+
+graph_builder.add_node('task_two_a', workflow_task_two_a)
+graph_builder.add_node('task_two_b', workflow_task_two_b)
+
+graph_builder.add_conditional_edges('task_one', workflow_task_condition)
+
+graph_builder.add_edge('task_two_a', END)
+graph_builder.add_edge('task_two_b', END)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To ensure the graph we just created is valid and to generate a runnable instance, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>runnable_graph_1 = graph_builder.compile()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To visualize our first simple graph, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>display_graph(runnable_graph_1)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration depicts the nodes and edges of our simple conditional graph:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/langgraph-2.png" alt="Conditional Graph" />
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To test our simple conditional graph, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>for i in range(5):
+  print(f'Interation - {i}')
+  state_2 = {'content': ''}
+  result = runnable_graph_1.invoke(state_2)
+  print(result)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Interation - 0
+Executing workflow task one ...
+Executing workflow condition ...
+Executing workflow task two B ...
+{'content': ', Task One, Task Two B'}
+Interation - 1
+Executing workflow task one ...
+Executing workflow condition ...
+Executing workflow task two B ...
+{'content': ', Task One, Task Two B'}
+Interation - 2
+Executing workflow task one ...
+Executing workflow condition ...
+Executing workflow task two A ...
+{'content': ', Task One, Task Two A'}
+Interation - 3
+Executing workflow task one ...
+Executing workflow condition ...
+Executing workflow task two B ...
+{'content': ', Task One, Task Two B'}
+Interation - 4
+Executing workflow task one ...
+Executing workflow condition ...
+Executing workflow task two B ...
+{'content': ', Task One, Task Two B'}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For our third agentic workflow, we will demonstrate the case of a simple chatbot graph, which will invoke the underlying LLM
+        model, passing the user message as the input and displaying the response from the LLM model.</p>
+    </div>
+    <div id="para-div">
+      <p>For this simple chatbot graph demonstration, we will define a custom State class which inherits from <span class="bold">
+        TypedDict</span> to encapsulate a list of messages, with a hint that the state can be modified using the pre-built <span
+        class="hi-vanila">add_messages</span> function.</p>
+      <p>Note <span class="bold">TypedDict</span> declares a dictionary type which expects all of its instances to have a certain
+        set of keys, where each key is associated with a value of a consistent type.</p>
+      <p>Also, our custom State class uses <span class="bold">Annotated</span> to add metadata information to indicate that the
+        only supported method to modify the encapsulated state is via the pre-built function (<span class="bold">add_messages</span>
+        in this case).</p>
+    </div>
+    <div id="para-div">
+      <p>To define the custom State class, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from typing import Annotated
+from typing_extensions import TypedDict
+
+class State(TypedDict):
+  messages: Annotated[list, add_messages]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To define the chatbot task as Python function, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>def ollama_chatbot(state: State):
+  return {'messages': [ollama_chat_llm.invoke(state['messages'])]}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>Notice that the chatbot function accepts a dictionary of list of messages as the input State and returns an updated version
+        of that State.</p>
+    </div>
+    <div id="para-div">
+      <p>To create our chatbot workflow graph with nodes and edges, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langgraph.graph import StateGraph, START, END
+
+graph_builder_2 = StateGraph(State)
+
+graph_builder_2.add_node('ollama_chatbot', ollama_chatbot)
+
+graph_builder_2.add_edge(START, 'ollama_chatbot')
+
+graph_builder_2.add_edge('ollama_chatbot', END)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To ensure the graph we just created is valid and to generate a runnable instance, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>runnable_graph_2 = graph_builder_2.compile()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To visualize our simple chatbot graph, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>display_graph(runnable_graph_2)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration depicts the nodes and edges of our simple chatbot graph:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/langgraph-3.png" alt="Chatbot Graph" />
+      <div class="img-cap">Figure.3</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To invoke our simple chatbot graph, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>def stream_graph_output(question: str):
+  for event in runnable_graph_2.stream({'messages': [{'role': 'user', 'content': question}]}):
+    for value in event.values():
+      print(value)
+    
+stream_graph_output('Explain NFC Payments in less than 50 words')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>{'messages': [AIMessage(content='NFC (Near Field Communication) payments allow contactless transactions between devices (like smartphones) by tapping them together or near a payment terminal, using stored payment info securely.', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-05-04T13:55:22.125836713Z', 'done': True, 'done_reason': 'stop', 'total_duration': 4548377902, 'load_duration': 3994557553, 'prompt_eval_count': 55, 'prompt_eval_duration': 189391887, 'eval_count': 41, 'eval_duration': 363619636, 'model_name': 'granite3.3:2b'}, id='run-51ebb797-8b23-43f1-8c7a-79fb46cb4487-0', usage_metadata={'input_tokens': 55, 'output_tokens': 41, 'total_tokens': 96})]}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For our final agentic workflow, we will demonstrate the case of a LLM based tool invocation graph, which will enable the
+        bot to invoke the specified tool(s) by underlying LLM model.</p>
+    </div>
+    <div id="para-div">
+      <p>For this simple tool invocation graph demonstration, we will define a Python function for invoking a shell command. To do
+        that, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>import subprocess
+
+def execute_shell_command(command: str) -> str:
+  """
+  Execute the specified shell command
+
+  Args:
+    command: Shell command to execute
+
+  Returns:
+    The output of the shell command
+  """
+
+  print(f'Executing shell command: {command}')
+
+  try:
+    result = subprocess.run(command, shell=True, check=True, text=True, capture_output=True)
+    if result.returncode != 0:
+      return f'Error executing shell command - {command}'
+    return result.stdout
+  except subprocess.CalledProcessError as pe:
+    print(pe)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>In order for the LLM model to be able to access the user defined tool(s), execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>tools = [execute_shell_command]
+
+ollama_chat_llm_with_tools = ollama_chat_llm.bind_tools(tools)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To define the tool invocation task as Python function, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langgraph.graph import MessagesState, SystemMessage
+
+def shell_executor_bot(msg_state: MessagesState):
+  msg_content = 'You are a helpful shell executor assistant that will execute a command'
+  chatbot_message = [SystemMessage(content=msg_content)] + msg_state['messages']
+  return {'messages': ollama_chat_llm_with_tools.invoke(chatbot_message)}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that the pre-defined <span class="hi-vanila">MessagesState</span> class encapsulates a list of messages, with a hint
+        that the state can be modified using the pre-built <span class="bold">add_messages</span> function.</p>
+    </div>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To create our tool invocation workflow graph with nodes and edges, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langgraph.graph import MessagesState, StateGraph, START
+from langgraph.prebuilt import tools_condition, ToolNode
+
+graph_builder_3 = StateGraph(MessagesState)
+
+graph_builder_3.add_node('shell_executor_bot', shell_executor_bot)
+graph_builder_3.add_node('tools', ToolNode(tools))
+
+graph_builder_3.add_edge(START, 'shell_executor_bot')
+graph_builder_3.add_edge('tools', 'shell_executor_bot')
+graph_builder_3.add_conditional_edges('shell_executor_bot', tools_condition)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that the pre-defined <span class="hi-vanila">ToolNode</span> node class allows for the invocation of the user defined
+        tool(s) in the graph.</p>
+      <p>There needs to be a conditional function to determine if the user defined tool(s) need to be invoked or the flow needs to
+        end. Once the user defined tool(s) are invoked, the control needs to come back to the previous node that triggered it. This
+        is achieved by the pre-built <span class="hi-vanila">tools_condition</span> function.</p>
+    </div>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To ensure the graph we just created is valid and to generate a runnable instance, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>runnable_graph_3 = graph_builder_3.compile()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To visualize our simple tool invocation graph, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>display_graph(runnable_graph_3)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration depicts the nodes and edges of our simple tool invocation graph:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/langgraph-4.png" alt="Tools Graph" />
+      <div class="img-cap">Figure.4</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To invoke our simple tool invocation graph, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>state_3 = {'messages': [HumanMessage('Execute the command to find the available memory in the system?')]}
+    
+bot_result = runnable_graph_3.invoke(state_3)
+
+print(bot_result)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>{'messages': [HumanMessage(content='Execute the command to find the available memory in the system?', additional_kwargs={}, response_metadata={}, id='2aacd562-9a40-46bb-8190-30d963869dab'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-05-04T13:57:54.515488894Z', 'done': True, 'done_reason': 'stop', 'total_duration': 240545917, 'load_duration': 6532699, 'prompt_eval_count': 105, 'prompt_eval_duration': 20392582, 'eval_count': 23, 'eval_duration': 212500682, 'model_name': 'granite3.3:2b'}, id='run-c8e2773e-ff71-4238-b286-b3e8efb4e15f-0', tool_calls=[{'name': 'execute_shell_command', 'args': {'command': 'free -h'}, 'id': '206798e8-0316-4a01-9360-eb2f13660928', 'type': 'tool_call'}], usage_metadata={'input_tokens': 105, 'output_tokens': 23, 'total_tokens': 128}), ToolMessage(content='               total        used        free      shared  buff/cache   available\nMem:            62Gi       6.9Gi        48Gi       144Mi       7.8Gi        55Gi\nSwap:           14Gi          0B        14Gi\n', name='execute_shell_command', id='2644598e-141a-4b98-bdbe-e5ee6d2beec9', tool_call_id='206798e8-0316-4a01-9360-eb2f13660928'), AIMessage(content='The available memory in your system is approximately 55Gi.', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-05-04T13:57:54.678067288Z', 'done': True, 'done_reason': 'stop', 'total_duration': 156911210, 'load_duration': 6727888, 'prompt_eval_count': 197, 'prompt_eval_duration': 12687121, 'eval_count': 14, 'eval_duration': 134377170, 'model_name': 'granite3.3:2b'}, id='run-82306329-49c7-4d25-9f75-f089da18dd49-0', usage_metadata={'input_tokens': 197, 'output_tokens': 14, 'total_tokens': 211})]}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This concludes the hands-on demonstration for using <span class="bold">LangGraph</span> for various workflow use-cases !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://langchain-ai.github.io/langgraph/concepts/" target="_blank"><span class="bold">LangGraph Documentation</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,1147 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Introduction to Scripting in Java">
+    <meta name="subject" content="Introduction to Scripting in Java">
+    <meta name="keywords" content="java, nashorn">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Introduction to Scripting in Java</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Introduction to Scripting in Java</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td"><span class="hi-yellow">*UPDATED*</span>01/18/2025</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>A Business application comprises of core application logic plus some business rules. The core logic does not change that
+        often and remains static over time, while the business rules tend to change quite frequently. Let me give you an example of
+        a hypothetical Bank to illustrate this scenario. Consider a simple Banking application, which allows one to open a Certificate
+        of Deposit (CD). In this simple Banking application, a CD of $1000 for a year yields an interest of 2.25%, a CD of $5000 for
+        a year yields an interest of 2.5%, and a CD of $10000 and above for a year yields an interest of 2.75%. These are the business
+        rules of the Banking application. All the other procedures of creating an account for the CD etc., are the core logic of the
+        Banking application.</p>
+    </div>
+    <div id="para-div">
+      <p>As the Bank offers new promotions, the business rules will have to change to accommodate those new promotions. If the business
+        rules are coded as Java class(es), then they will have to change every time the business rules change. This results in a tight
+        coupling between the business rules and the core application logic. To make the Banking application more flexible, we need to
+        externalize the business rules from the core application logic so they can be changed independent of the core application logic.
+        So, what do we do here ? One could suggest using an open source Rules Engine like JBoss Drools or a commercial Rules Engine such
+        as IBM JRules. But, the business rules in our simple Banking application are quite simple. It would be an over-kill to use a
+        full-fledged Rules Engine for this purpose. This is where the Scripting API in Java comes to the rescue.</p>
+    </div>
+    <div id="para-div">
+      <p>Many of us have worked with some type of scripting language, such as Javascript, Perl, Python, etc., in our development
+        project(s). Scripting languages are interpreted in nature. We write logic in a script file and it is executed line by line
+        by the corresponding language interpreter. Also, Scripting languages use Dynamic Type system. In that, one does not have to
+        define a variable of a specific type upfront before using it. The type is automatically determined based on the context when
+        they are used. As a result, Scripting languages make it easier and faster to write and test code.</p>
+    </div>
+    <div id="para-div">
+      <p>For our simple Banking application, we could write the business rules as a script using a Scripting Language of our choice
+        and execute the script dynamically at run-time from within our core application written in Java. This results in extensibility
+        and flexibility of our business application. Does this sound exciting !!!</p>
+    </div>
+    <div id="section-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The setup will be on a <span class="bold">Ubuntu 24.04 LTS</span> based Linux desktop. Ensure at least <span class="bold">
+        Java 17</span> or above is installed and setup. Also, ensure <a href="http://maven.apache.org/" target="_blank">
+        <span class="hi-yellow">Apache Maven</span></a> is installed and setup.</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the demonstrations in this article, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME</p>
+      <p>$ mkdir -p $HOME/java/Scripting</p>
+      <p>$ cd $HOME/java/Scripting</p>
+      <p>$ mkdir -p src/main/java src/main/resources target</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/scripting</p>
+      <p>$ mkdir -p src/main/resources/scripts</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;groupId&gt;com.polarsparc.scripting&lt;/groupId&gt;
+    &lt;artifactId&gt;Scripting&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+
+    &lt;properties&gt;
+        &lt;java.version&gt;23&lt;/java.version&gt;
+        &lt;slf4j.version&gt;2.0.16&lt;/slf4j.version&gt;
+        &lt;nashorn.version&gt;15.6&lt;/nashorn.version&gt;
+        &lt;maven.compiler.version&gt;3.13.0&lt;/maven.compiler.version&gt;
+    &lt;/properties&gt;
+
+    &lt;build&gt;
+        &lt;pluginManagement&gt;
+            &lt;plugins&gt;
+                &lt;plugin&gt;
+                    &lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
+                    &lt;artifactId&gt;maven-compiler-plugin&lt;/artifactId&gt;
+                    &lt;version&gt;${maven.compiler.version}&lt;/version&gt;
+                    &lt;configuration&gt;
+                        &lt;fork&gt;true&lt;/fork&gt;
+                        &lt;meminitial&gt;128m&lt;/meminitial&gt;
+                        &lt;maxmem&gt;512m&lt;/maxmem&gt;
+                        &lt;source&gt;${java.version}&lt;/source&gt;
+                        &lt;target&gt;${java.version}&lt;/target&gt;
+                    &lt;/configuration&gt;
+                &lt;/plugin&gt;
+            &lt;/plugins&gt;
+        &lt;/pluginManagement&gt;
+    &lt;/build&gt;
+
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.openjdk.nashorn&lt;/groupId&gt;
+            &lt;artifactId&gt;nashorn-core&lt;/artifactId&gt;
+            &lt;version&gt;${nashorn.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;slf4j-api&lt;/artifactId&gt;
+            &lt;version&gt;${slf4j.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;slf4j-simple&lt;/artifactId&gt;
+            &lt;version&gt;${slf4j.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>Since Java 11, the built-in JavaScript scripting engine <span class="bold">Nashorn</span> has been removed !!! However, it is available as a package in OpenJDK</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="hi-yellow">slf4j-simple</span> logger properties file
+        <span class="hi-green">simplelogger.properties</span> located in the directory <span class="bold">src/main/resources</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">simplelogger.properties</div>
+      <div class="src-body-1">
+<pre>#
+### SLF4J Simple Logger properties
+#
+
+org.slf4j.simpleLogger.defaultLogLevel=info
+org.slf4j.simpleLogger.showDateTime=true
+org.slf4j.simpleLogger.dateTimeFormat=yyyy-MM-dd HH:mm:ss:SSS
+org.slf4j.simpleLogger.showThreadName=true</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Without much further ado, let us jump into a simple example to illustrate this powerful capability of Scripting support in
+        Java.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on Scripting in Java</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the code in Javascript <span class="hi-yellow">src/main/resources/First.js</span> to print a given name
+        certain number of times:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.1</div>
+      <div class="src-body-1">
+<pre>print('Print Hello ' + name + ' ' + num + ' times');
+for (var i = 0; i &lt; num; i++) {
+  print(' Hello ' + name + ' ('+ (i+1) +')');
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java code that will execute the above shown Javascript code dynamically at run-time:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.2</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   First
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+ 
+package com.polarsparc.scripting;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.*;
+import java.io.*;
+import javax.script.*;
+
+public class First {
+  private static final Logger LOGGER = LoggerFactory.getLogger(First.class);
+
+  public static void main(String[] args) {
+    if (args.length != 3) {
+      System.out.println("Usage: java com.polarsparc.scripting.First &lt;script&gt; &lt;name&gt; &lt;number&gt;");
+      System.exit(1);
+    }
+    
+    String name = args[1];
+    
+    int num = 0;
+    
+    try {
+      num = Integer.parseInt(args[2]);
+    }
+    catch (Exception ex) {
+      LOGGER.error("Exception", ex);
+    }
+    
+    if (num &lt;= 0) {
+      num = 5;
+    }
+    
+    ScriptEngineManager manager = new ScriptEngineManager();
+
+    List&lt;ScriptEngineFactory&gt; factories = manager.getEngineFactories();
+    factories.forEach(factory -&gt; {
+      LOGGER.info("Engine name: {}, Version: {}, Language: {}, Language version: {}",
+          factory.getEngineName(),
+          factory.getEngineVersion(),
+          factory.getLanguageName(),
+          factory.getLanguageVersion());
+
+      factory.getNames().forEach(alias -&gt; LOGGER.info("Engine alias: {}", alias));
+    });
+
+    ScriptEngine engine = manager.getEngineByExtension("js");
+    if (engine == null) {
+      LOGGER.error("Could not find engine - Nashorn");
+    }
+    else {
+      Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+      bindings.put("name", name);
+      bindings.put("num", num);
+
+      try {
+        File script = new File(Objects.requireNonNull(First.class.getClassLoader()
+            .getResource(args[0])).getFile());
+        engine.eval(new FileReader(script));
+      } catch (Throwable ex) {
+        LOGGER.error("Exception", ex);
+      }
+    }
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Java introduced a standardized way to integrate with the various scripting languages as defined in JSR-223 through the
+        Scripting API defined in the package <span class="hi-yellow">javax.script</span>.</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">ScriptEngineManager</span> is a concrete class and uses service provider discovery mechanism to
+        find all the classes in the current ClassLoader that implement the interface ScriptEngineFactory.</p>
+    </div>
+    <div id="para-div">
+      <p>An implementation of <span class="hi-yellow">ScriptEngineFactory</span> exposes various meta information such as, name,
+        version, language, etc., of the corresponding ScriptEngine.</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">ScriptEngine</span> is the main interface that works with the underlying scripting language
+        interpreter to execute the specified script code.</p>
+    </div>
+    <div id="para-div">
+      <p>An instance of <span class="hi-yellow">Bindings</span> is an implementation of java.util.Map, which allows a Java program
+        to bind object values to script variables so they can be used by the underlying scripting engine while executing the script.
+        There are two scopes of binding script variables:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="bold">ENGINE_SCOPE</span> :: bindings are only visible to the respective ScriptEngine</p></li>
+        <li><p><span class="bold">GLOBAL_SCOPE</span> :: bindings are visible to all instances of ScriptEngine</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.2</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Scripting</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.scripting.First" -Dexec.args="scripts/First.js Alice 10"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------&lt; com.polarsparc.scripting:Scripting &gt;-----------------
+[INFO] Building Scripting 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.5.0:java (default-cli) @ Scripting ---
+2025-01-18 11:37:35:323 [com.polarsparc.scripting.First.main()] INFO com.polarsparc.scripting.First - Engine name: OpenJDK Nashorn, Version: 15.6, Language: ECMAScript, Language version: ECMA - 262 Edition 5.1
+2025-01-18 11:37:35:323 [com.polarsparc.scripting.First.main()] INFO com.polarsparc.scripting.First - Engine alias: nashorn
+2025-01-18 11:37:35:323 [com.polarsparc.scripting.First.main()] INFO com.polarsparc.scripting.First - Engine alias: Nashorn
+2025-01-18 11:37:35:323 [com.polarsparc.scripting.First.main()] INFO com.polarsparc.scripting.First - Engine alias: js
+2025-01-18 11:37:35:323 [com.polarsparc.scripting.First.main()] INFO com.polarsparc.scripting.First - Engine alias: JS
+2025-01-18 11:37:35:323 [com.polarsparc.scripting.First.main()] INFO com.polarsparc.scripting.First - Engine alias: JavaScript
+2025-01-18 11:37:35:323 [com.polarsparc.scripting.First.main()] INFO com.polarsparc.scripting.First - Engine alias: javascript
+2025-01-18 11:37:35:323 [com.polarsparc.scripting.First.main()] INFO com.polarsparc.scripting.First - Engine alias: ECMAScript
+2025-01-18 11:37:35:323 [com.polarsparc.scripting.First.main()] INFO com.polarsparc.scripting.First - Engine alias: ecmascript
+Print Hello Alice 10 times
+  Hello Alice (1)
+  Hello Alice (2)
+  Hello Alice (3)
+  Hello Alice (4)
+  Hello Alice (5)
+  Hello Alice (6)
+  Hello Alice (7)
+  Hello Alice (8)
+  Hello Alice (9)
+  Hello Alice (10)
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.466 s
+[INFO] Finished at: 2025-01-18T11:37:35-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following Java code illustrates the behavior of <span class="bold">ENGINE_SCOPE</span> and <span class="bold">GLOBAL_SCOPE
+        </span> scopes for script variable binding:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.3</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Second
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.scripting;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.*;
+import javax.script.*;
+
+public class Second {
+  private static final Logger LOGGER = LoggerFactory.getLogger(Second.class);
+
+  public static void main(String[] args) {
+    Random random = new Random();
+    
+    ScriptEngineManager manager = new ScriptEngineManager();
+    
+    ScriptEngine engineOne = manager.getEngineByExtension("js");
+    ScriptEngine engineTwo = manager.getEngineByExtension("js");
+    if (engineOne == null || engineTwo == null) {
+      LOGGER.error("Could not find engine - Nashorn");
+    }
+    else {
+      Bindings bindings = engineOne.getBindings(ScriptContext.ENGINE_SCOPE);
+      bindings.put("num", random.nextInt(1000));
+
+      LOGGER.info("Executing using engine-1 (1) ... ");
+
+      try {
+        engineOne.eval("print('num = ' + num);");
+      }
+      catch (Throwable ex) {
+        LOGGER.error("Exception", ex);
+      }
+
+      LOGGER.info("Executing using engine-2 (1) ... ");
+
+      try {
+        engineTwo.eval("print('num = ' + num);"); // Will throw exception
+      }
+      catch (Throwable ex) {
+        LOGGER.error("Exception", ex);
+      }
+
+      bindings = engineTwo.getBindings(ScriptContext.GLOBAL_SCOPE);
+      bindings.put("val", random.nextInt(1000));
+
+      LOGGER.info("Executing using engine-1 (2) ... ");
+
+      try {
+        engineOne.eval("print('val = ' + val);");
+      }
+      catch (Throwable ex) {
+        LOGGER.error("Exception", ex);
+      }
+
+      LOGGER.info("Executing using engine-2 (2) ... ");
+
+      try {
+        engineTwo.eval("print('val = ' + val);");
+      }
+      catch (Throwable ex) {
+        LOGGER.error("Exception", ex);
+      }
+    }
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.3</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Scripting</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.scripting.Second"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------&lt; com.polarsparc.scripting:Scripting &gt;-----------------
+[INFO] Building Scripting 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.5.0:java (default-cli) @ Scripting ---
+2025-01-18 11:41:02:017 [com.polarsparc.scripting.Second.main()] INFO com.polarsparc.scripting.Second - Executing using engine-1 (1) ... 
+num = 165
+2025-01-18 11:41:02:067 [com.polarsparc.scripting.Second.main()] INFO com.polarsparc.scripting.Second - Executing using engine-2 (1) ... 
+2025-01-18 11:41:02:072 [com.polarsparc.scripting.Second.main()] ERROR com.polarsparc.scripting.Second - Exception
+javax.script.ScriptException: ReferenceError: "num" is not defined in <eval> at line number 1
+        at org.openjdk.nashorn.api.scripting.NashornScriptEngine.throwAsScriptException(NashornScriptEngine.java:463)
+        at org.openjdk.nashorn.api.scripting.NashornScriptEngine.evalImpl(NashornScriptEngine.java:447)
+        at org.openjdk.nashorn.api.scripting.NashornScriptEngine.evalImpl(NashornScriptEngine.java:399)
+        at org.openjdk.nashorn.api.scripting.NashornScriptEngine.evalImpl(NashornScriptEngine.java:395)
+        at org.openjdk.nashorn.api.scripting.NashornScriptEngine.eval(NashornScriptEngine.java:151)
+        at java.scripting/javax.script.AbstractScriptEngine.eval(AbstractScriptEngine.java:262)
+        at com.polarsparc.scripting.Second.main(Second.java:45)
+        at org.codehaus.mojo.exec.ExecJavaMojo.doMain(ExecJavaMojo.java:375)
+        at org.codehaus.mojo.exec.ExecJavaMojo.doExec(ExecJavaMojo.java:364)
+        at org.codehaus.mojo.exec.ExecJavaMojo.lambda$execute$0(ExecJavaMojo.java:286)
+        at java.base/java.lang.Thread.run(Thread.java:1575)
+Caused by: <eval>:1 ReferenceError: "num" is not defined
+        at org.openjdk.nashorn.internal.runtime.ECMAErrors.error(ECMAErrors.java:57)
+        at org.openjdk.nashorn.internal.runtime.ECMAErrors.referenceError(ECMAErrors.java:318)
+        at org.openjdk.nashorn.internal.runtime.ECMAErrors.referenceError(ECMAErrors.java:290)
+        at org.openjdk.nashorn.internal.objects.Global.__noSuchProperty__(Global.java:1614)
+        at org.openjdk.nashorn.internal.scripts.Script$1$\^eval\_.:program(<eval>:1)
+        at org.openjdk.nashorn.internal.runtime.ScriptFunctionData.invoke(ScriptFunctionData.java:646)
+        at org.openjdk.nashorn.internal.runtime.ScriptFunction.invoke(ScriptFunction.java:513)
+        at org.openjdk.nashorn.internal.runtime.ScriptRuntime.apply(ScriptRuntime.java:520)
+        at org.openjdk.nashorn.api.scripting.NashornScriptEngine.evalImpl(NashornScriptEngine.java:442)
+        ... 9 more
+2025-01-18 11:41:02:073 [com.polarsparc.scripting.Second.main()] INFO com.polarsparc.scripting.Second - Executing using engine-1 (2) ... 
+val = 429
+2025-01-18 11:41:02:075 [com.polarsparc.scripting.Second.main()] INFO com.polarsparc.scripting.Second - Executing using engine-2 (2) ... 
+val = 429
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.461 s
+[INFO] Finished at: 2025-01-18T11:41:02-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The result clearly indicates that the script variable 'num' does not exist in ScriptEngine <span class="bold">engineTwo</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, that we are familiar with the Scripting API in Java, let us look at the example of our simple Banking application. The
+      following Java code determines the interest rate given the CD amount:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.4</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Third
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.scripting;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.*;
+import java.util.Objects;
+import javax.script.*;
+
+public class Third {
+  private static final Logger LOGGER = LoggerFactory.getLogger(Third.class);
+
+  public static void main(String[] args) {
+    if (args.length != 1) {
+      System.out.println("Usage: java com.polarsparc.scripting.Third &lt;script&gt;");
+      System.exit(1);
+    }
+    
+    try {
+      File script = new File(Objects.requireNonNull(Third.class.getClassLoader()
+          .getResource(args[0])).getFile());
+
+      BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
+      
+      boolean exit = false;
+      while (! exit) {
+        System.out.println("1. Open New CD");
+        System.out.println("2. Quit");
+        
+        String choice = input.readLine();
+        if (choice.equals("1")) {
+          System.out.print("CD Amount: ");
+          String amtStr = input.readLine();
+          
+          double amount = Double.parseDouble(amtStr);
+          
+          double rate = executeBusinessRules(script, amount);
+          
+          LOGGER.info("Interest rate: {}", rate);
+        } else if (choice.equals("2")) {
+          exit = true;
+        }
+      }
+    }
+    catch (Exception ex) {
+      LOGGER.error("Exception", ex);
+    }
+  }
+  
+  public static double executeBusinessRules(File script, double amount) throws Exception {
+    double rate = 0.0;
+    
+    ScriptEngineManager manager = new ScriptEngineManager();
+    ScriptEngine engine = manager.getEngineByExtension("js");
+    if (engine == null) {
+      LOGGER.error("Could not find engine - Nashorn");
+    }
+    else {
+      Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+      bindings.put("amount", amount);
+      
+      engine.eval(new FileReader(script));
+      
+      rate = (Double) bindings.get("rate");
+    }
+    
+    return rate;
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Javascript code <span class="hi-yellow">src/main/resources/Third.js</span> that implements the business
+        rules for our simple Banking application:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.5</div>
+      <div class="src-body-1">
+<pre>rate = 0.0;
+if (amount &gt;= 1000.0 && amount &lt; 5000.0) {
+    rate = 2.25;
+}
+else if (amount &gt;= 5000.0 && amount &lt; 10000.0) {
+    rate = 2.5;
+}
+else if (amount &gt;= 10000.0) {
+    rate = 2.75;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.4</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Scripting</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.scripting.Third" -Dexec.args="scripts/Third.js"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the interaction and the corresponding output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------&lt; com.polarsparc.scripting:Scripting &gt;-----------------
+[INFO] Building Scripting 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.5.0:java (default-cli) @ Scripting ---
+1. Open New CD
+2. Quit
+1
+CD Amount: 1000
+2025-01-18 11:45:43:120 [com.polarsparc.scripting.Third.main()] INFO com.polarsparc.scripting.Third - Interest rate: 2.25
+1. Open New CD
+2. Quit
+1
+CD Amount: 6000
+2025-01-18 11:45:47:558 [com.polarsparc.scripting.Third.main()] INFO com.polarsparc.scripting.Third - Interest rate: 2.5
+1. Open New CD
+2. Quit
+1
+CD Amount: 12000
+2025-01-18 11:45:54:692 [com.polarsparc.scripting.Third.main()] INFO com.polarsparc.scripting.Third - Interest rate: 2.75
+1. Open New CD
+2. Quit</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>As the application Third is waiting on further input from the user, let us make the change to the business rules to handle
+        the new promotion offer of increasing the interest rate by 0.25% across the board. The following shows the new business rules
+        for our simple Banking application:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.6</div>
+      <div class="src-body-1">
+<pre>rate = 0.0;
+if (amount &gt;= 1000.0 && amount &lt; 5000.0) {
+    rate = 2.5;
+}
+else if (amount &gt;= 5000.0 && amount &lt; 10000.0) {
+    rate = 2.75;
+}
+else if (amount &gt;= 10000.0) {
+    rate = 3.0;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the interaction and the corresponding output after the new changes in effect without the application
+        restart:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>1
+CD Amount: 1000
+2021-05-28 20:26:04:131 [com.polarsparc.scripting.Third.main()] INFO com.polarsparc.scripting.Third - Interest rate: 2.5
+1. Open New CD
+2. Quit
+1
+CD Amount: 6000
+2021-05-28 20:26:11:767 [com.polarsparc.scripting.Third.main()] INFO com.polarsparc.scripting.Third - Interest rate: 2.75
+1. Open New CD
+2. Quit
+1
+CD Amount: 12000
+2021-05-28 20:26:18:714 [com.polarsparc.scripting.Third.main()] INFO com.polarsparc.scripting.Third - Interest rate: 3.0
+1. Open New CD
+2. Quit
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  27.038 s
+[INFO] Finished at: 2025-01-18T11:51:24-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now, let us refactor the Javascript code and move the logic to compute the interest rate into a function. The following is
+        the Javascript code <span class="hi-yellow">src/main/resources/Fourth.js</span> that implements the business rules for our
+        simple Banking application as a function:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.7</div>
+      <div class="src-body-1">
+<pre>function computeRate(amount) {
+  rate = 2.5;
+  if (amount &gt;= 5000.0 && amount &lt; 10000.0) {
+      rate = 2.5;
+  }
+  else if (amount &gt;= 10000.0) {
+      rate = 2.75;
+  }
+  return rate;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following Java code determines the interest rate for a given the CD amount by invoking the Javascript function:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.8</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Fourth
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.scripting;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.script.Invocable;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import java.io.File;
+import java.io.FileReader;
+import java.util.Objects;
+
+public class Fourth {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Fourth.class);
+
+    public static void main(String[] args) {
+        if (args.length != 2) {
+            System.out.println("Usage: java com.polarsparc.scripting.Fourth &lt;script&gt; &lt;amount&gt;");
+            System.exit(1);
+        }
+
+        try {
+            File script = new File(Objects.requireNonNull(Fourth.class.getClassLoader()
+                    .getResource(args[0])).getFile());
+
+            double amount = Double.parseDouble(args[1]);
+
+            ScriptEngineManager manager = new ScriptEngineManager();
+            ScriptEngine engine = manager.getEngineByExtension("js");
+            if (engine == null) {
+                LOGGER.error("Could not find engine - Nashorn");
+            }
+            else {
+                engine.eval(new FileReader(script));
+
+                Invocable invocable = (Invocable) engine;
+
+                Object rate = invocable.invokeFunction("computeRate", amount);
+
+                LOGGER.info("Amount: {}, Rate [{}]: {}", amount, rate.getClass().getName(), rate);
+            }
+        }
+        catch (Exception ex) {
+            LOGGER.error("Exception", ex);
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="hi-yellow">Invocable</span> is a optional interface implemented by ScriptEngines whose methods allow the
+        invocation of functions in the scripts. The method <span class="hi-blue">invokeFunction​(String name, Object... args)</span>
+        allows one to call the function defined in the scripts.</p>
+    </div>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.8</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Scripting</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.scripting.Fourth" -Dexec.args="scripts/Fourth.js 6000"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------&lt; com.polarsparc.scripting:Scripting &gt;-----------------
+[INFO] Building Scripting 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.5.0:java (default-cli) @ Scripting ---
+2025-01-18 12:07:46:238 [com.polarsparc.scripting.Fourth.main()] INFO com.polarsparc.scripting.Fourth - Amount: 6000.0, Rate [java.lang.Double]: 2.5
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.457 s
+[INFO] Finished at: 2025-01-18T12:07:46-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will now further refactor the Javascript code to have the function compute the interest rate as well as the processing
+        fees for the given amount. The return value will be a java.util.HashMap that holds the interest rate and the processing fees.
+        The following is the Javascript code <span class="hi-yellow">src/main/resources/Fifth.js</span> that implements the desired
+        business rules for our simple Banking application and returns a java.util.HashMap:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.9</div>
+      <div class="src-body-1">
+<pre>function computeRateAndFees(amount) {
+  var HashMap = Java.type("java.util.HashMap");
+  var map = new HashMap;
+
+  rate = 2.5;
+  fees = 1000.0;
+  if (amount &gt;= 5000.0 && amount &lt; 10000.0) {
+      rate = 2.5;
+      fees = 750;
+  }
+  else if (amount &gt;= 10000.0) {
+      rate = 2.75;
+      fees = 500;
+  }
+
+  map.put("rate", rate);
+  map.put("fees", fees);
+
+  return map;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>JavaScript call <span class="hi-yellow">Java.type(type)</span> allows a script to reference and use Java types.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Java code determines the interest rate and procesing fees for a given the CD amount by invoking the Javascript
+        function, which returns the desired result as a java.util.HashMap:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.10</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Fifth
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.scripting;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.script.Invocable;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import java.io.File;
+import java.io.FileReader;
+import java.util.Objects;
+
+public class Fifth {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Fifth.class);
+
+    public static void main(String[] args) {
+        if (args.length != 2) {
+            System.out.println("Usage: java com.polarsparc.scripting.Fifth &lt;script&gt; &lt;amount&gt;");
+            System.exit(1);
+        }
+
+        try {
+            File script = new File(Objects.requireNonNull(Fifth.class.getClassLoader()
+                    .getResource(args[0])).getFile());
+
+            double amount = Double.parseDouble(args[1]);
+
+            ScriptEngineManager manager = new ScriptEngineManager();
+            ScriptEngine engine = manager.getEngineByExtension("js");
+            if (engine == null) {
+                LOGGER.error("Could not find engine - Nashorn");
+            }
+            else {
+                engine.eval(new FileReader(script));
+
+                Invocable invocable = (Invocable) engine;
+
+                Object rateFees = invocable.invokeFunction("computeRateAndFees", amount);
+
+                LOGGER.info("Amount: {}, Rate & Fees [{}]: {}",
+                        amount, rateFees.getClass().getName(), rateFees.toString());
+            }
+        }
+        catch (Exception ex) {
+            LOGGER.error("Exception", ex);
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.10</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Scripting</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.scripting.Fifth" -Dexec.args="scripts/Fifth.js 15000"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------&lt; com.polarsparc.scripting:Scripting &gt;-----------------
+[INFO] Building Scripting 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.5.0:java (default-cli) @ Scripting ---
+2025-01-18 12:10:09:526 [com.polarsparc.scripting.Fifth.main()] INFO com.polarsparc.scripting.Fifth - Amount: 15000.0, Rate & Fees [java.util.HashMap]: {fees=500, rate=2.75}
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.472 s
+[INFO] Finished at: 2025-01-18T12:10:09-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We desire to create a Java POJO in the Java application and have the JavaScript code update certain fields in the POJO.</p>
+      <p>The following is the Java POJO that holds the amount, the interest rate, and the processing fees:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.11</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   SixthHolder
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.scripting;
+
+public class SixthHolder {
+    private double amount = 0.0;
+    private double rate = 0.0;
+    private double fees = 0.0;
+
+    public double getAmount() {
+        return amount;
+    }
+
+    public void setAmount(double amount) {
+        this.amount = amount;
+    }
+
+    public double getRate() {
+        return rate;
+    }
+
+    public void setRate(double rate) {
+        this.rate = rate;
+    }
+
+    public double getFees() {
+        return fees;
+    }
+
+    public void setFees(double fees) {
+        this.fees = fees;
+    }
+
+    @Override
+    public String toString() {
+        return "SixthHolder{" +
+                "amount=" + amount +
+                ", rate=" + rate +
+                ", fees=" + fees +
+                '}';
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following Javascript code defines the function to compute the interest rate as well as the processing fees for the given
+        amount. The input to and output from the function is the Java POJO <span class="bold">SixthHolder</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.12</div>
+      <div class="src-body-1">
+<pre>function computeRateAndFees(holder) {
+  holder.rate = 2.5;
+  holder.fees = 1000.0;
+
+  if (holder.amount &gt;= 5000.0 && holder.amount &lt; 10000.0) {
+      holder.rate = 2.5;
+      holder.fees = 750;
+  }
+  else if (holder.amount &gt;= 10000.0) {
+      holder.rate = 2.75;
+      holder.fees = 500;
+  }
+
+  return holder;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following Java code determines the interest rate and procesing fees for a given the CD amount by invoking the Javascript
+        function, which passes in and receives the Java POJO SixthHolder:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.13</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Sixth
+ * Author: Bhaskar S
+ * Date:   01/18/2025
+ * Blog:   https://www.polarsparc.com
+ */
+
+package com.polarsparc.scripting;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.script.Invocable;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import java.io.File;
+import java.io.FileReader;
+import java.util.Objects;
+
+public class Sixth {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Sixth.class);
+
+    public static void main(String[] args) {
+        if (args.length != 2) {
+            System.out.println("Usage: java com.polarsparc.scripting.Sixth &lt;script&gt; &lt;amount&gt;");
+            System.exit(1);
+        }
+
+        try {
+            File script = new File(Objects.requireNonNull(Sixth.class.getClassLoader()
+                    .getResource(args[0])).getFile());
+
+            SixthHolder holder = new SixthHolder();
+            holder.setAmount(Double.parseDouble(args[1]));
+
+            ScriptEngineManager manager = new ScriptEngineManager();
+            ScriptEngine engine = manager.getEngineByExtension("js");
+            if (engine == null) {
+                LOGGER.error("Could not find engine - Nashorn");
+            }
+            else {
+                engine.eval(new FileReader(script));
+
+                Invocable invocable = (Invocable) engine;
+
+                Object rateFees = invocable.invokeFunction("computeRateAndFees", holder);
+
+                LOGGER.info("Amount: {}, Rate & Fees [{}]: {}",
+                        holder.getAmount(), rateFees.getClass().getName(), rateFees.toString());
+            }
+        }
+        catch (Exception ex) {
+            LOGGER.error("Exception", ex);
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.13</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Scripting</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.scripting.Sixth" -Dexec.args="scripts/Sixth.js 7500"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------&lt; com.polarsparc.scripting:Scripting &gt;-----------------
+[INFO] Building Scripting 1.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec:3.5.0:java (default-cli) @ Scripting ---
+2025-01-18 12:12:39:027 [com.polarsparc.scripting.Sixth.main()] INFO com.polarsparc.scripting.Sixth - Amount: 7500.0, Rate & Fees [com.polarsparc.scripting.SixthHolder]: SixthHolder{amount=7500.0, rate=2.5, fees=750.0}
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.470 s
+[INFO] Finished at: 2025-01-18T12:12:39-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">Excited ???</span> Well, thats it folks !!!</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://docs.oracle.com/en/java/javase/14/nashorn/"><span class="bold">Nashorn User's Guide</span></a></p>
+      <p><a target="_blank" href="https://github.com/bhaskars-repo/Scripting"><span class="bold">GitHub - Source Code</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
