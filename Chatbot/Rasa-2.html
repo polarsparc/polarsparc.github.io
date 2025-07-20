@@ -1,0 +1,473 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Hands-on Primer on Rasa - Part 2">
+    <meta name="subject" content="Hands-on Primer on Rasa - Part 2">
+    <meta name="keywords" content="chatbot, rasa">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Hands-on Primer on Rasa - Part 2</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Hands-on Primer on Rasa - Part 2</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">11/10/2024</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>Previously in <a href="http://polarsparc.github.io/Chatbot/Rasa-1.html" target="_blank"><span class="bold">Part-1</span></a>
+        of this series, we covered the setup, testing of the deployed chatbot instance, the core concepts, and the important files
+        of the <span class="bold">Rasa</span> chatbot framework.</p>
+      <p>In second part of this primer, we will proceed to deploy a simple custom <span class="bold">Linux</span> commands' helper
+        chatbot which will allow users to get help on which linux command to execute for a specific task.</p>
+      <p>Note that this simple linux commands' helper chatbot will only be able to help with only <span class="underbold">3</span>
+        commands for simplicity.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on with Rasa</p>
+    </div>
+    <div id="para-div">
+      <p>First, the file <span class="hi-yellow">config.yml</span> is used to define the behavior of <span class="bold">Rasa NLU</span>
+        and <span class="bold">Rasa Core</span> sub-systems.</p>
+      <p>For <span class="bold">Rasa NLU</span>, the file defines the NLU pipeline, which is a sequence of NLP stages that all user
+        input text have to traverse through, such as, tokenization, featurization, classifiers, entity extraction, etc</p>
+      <p>For <span class="bold">Rasa Core</span>, the file defines the policies for the chatbot to decide what to do next once the
+        user intent has been determined.</p>
+    </div>
+    <div id="para-div">
+      <p>We will change the contents of the file as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">config.yml</div>
+      <div class="src-body-1">
+<pre># Configuration for Rasa NLU.
+# https://rasa.com/docs/rasa-pro/nlu-based-assistants/components/
+language: en
+
+pipeline:
+# # See https://rasa.com/docs/rasa-pro/nlu-based-assistants/model-configuration for more information.
+    - name: WhitespaceTokenizer
+    - name: RegexFeaturizer
+    - name: LexicalSyntacticFeaturizer
+    - name: CountVectorsFeaturizer
+    - name: CountVectorsFeaturizer
+      analyzer: char_wb
+      min_ngram: 1
+      max_ngram: 4
+    - name: DIETClassifier
+      epochs: 100
+      constrain_similarities: true
+    - name: EntitySynonymMapper
+    - name: ResponseSelector
+      epochs: 100
+      constrain_similarities: true
+    - name: FallbackClassifier
+      threshold: 0.3
+      ambiguity_threshold: 0.1
+
+# Configuration for Rasa Core.
+# https://rasa.com/docs/rasa-pro/concepts/policies/policy-overview/
+
+policies:
+# # See https://rasa.com/docs/rasa-pro/concepts/policies/policy-overview for more information.
+    - name: MemoizationPolicy
+    - name: RulePolicy
+    - name: UnexpecTEDIntentPolicy
+      max_history: 5
+      epochs: 100
+    - name: TEDPolicy
+      max_history: 5
+      epochs: 100
+      constrain_similarities: true</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Next, the file <span class="hi-yellow">domain.yml</span> is used to define the universe of the <span class="bold">Rasa</span>
+        chatbot, such as, all the intents identified by the <span class="bold">Rasa NLU</span> sub-system and all the response the
+        chatbot sends to the user based on the intent.</p>
+    </div>
+    <div id="para-div">
+      <p>We will change the contents of the file as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">domain.yml</div>
+      <div class="src-body-1">
+<pre>version: "3.1"
+
+intents:
+  - greet
+  - goodbye
+  - linux_du_command
+  - linux_ping_command
+  - linux_uname_command
+
+responses:
+  utter_greet:
+  - text: "Howdy!"
+
+  utter_ready_to_help:
+  - text: "What linux command would you need help with?"
+
+  utter_du_command:
+  - text: "Use the command 'du -s -m &lt;directory&gt;' to find the size of the directory and its contents"
+
+  utter_ping_command:
+  - text: "Use the command 'ping -c 3 &lt;host&gt;' to check if the host is reachable"
+
+  utter_uname_command:
+  - text: "Use the command 'uname -a' to get information about the system"
+
+  utter_goodbye:
+  - text: "Bye"
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Moving along, the file <span class="hi-yellow">data/nlu.yml</span> is used to define the training samples of all the user
+        intents, along with examples of the utterances corresponding to the intents, for the <span class="bold">Rasa</span> chatbot
+        to be trained on.</p>
+    </div>
+    <div id="para-div">
+      <p>We will change the contents of the file as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">data/nlu.yml</div>
+      <div class="src-body-1">
+<pre>version: "3.1"
+
+nlu:
+- intent: greet
+  examples: |
+    - hey
+    - hello
+    - hi
+    - hello there
+    - hey there
+
+- intent: goodbye
+  examples: |
+    - good bye
+    - bye
+    - goodbye
+    - bye bye
+    - see you later
+
+- intent: linux_du_command
+  examples: |
+    - command to find the size of a directory and its contents
+    - size of a directory and its contents
+    - size of a directory 
+
+- intent: linux_ping_command
+  examples: |
+    - command to check if host is reachable
+    - check if host is reachable
+    - check host is reachable
+
+- intent: linux_uname_command
+  examples: |
+    - command to get information about a system
+    - get information about a system
+    - information about a host</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Next stop, the file <span class="hi-yellow">data/rules.yml</span> is used to define the training data for all conversations
+        that always follow a pre-defined set of steps, which the <span class="bold">Rasa</span> chatbot can be trained on.</p>
+    </div>
+    <div id="para-div">
+      <p>We will change the contents of the file as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">data/rules.yml</div>
+      <div class="src-body-1">
+<pre>version: "3.1"
+
+rules:
+
+- rule: Say goodbye anytime the user says goodbye
+  steps:
+  - intent: goodbye
+  - action: utter_goodbye</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Finally, the file <span class="hi-yellow">data/stories.yml</span> is used to define the training data for all the dialog
+        scenarios, which represent the users intent to the appropriate <span class="bold">Rasa</span> chatbot response.</p>
+    </div>
+    <div id="para-div">
+      <p>We will change the contents of the file as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">data/stories.yml</div>
+      <div class="src-body-1">
+<pre>version: "3.1"
+
+stories:
+
+- story: greet path
+  steps:
+  - intent: greet
+  - action: utter_greet
+  - action: utter_ready_to_help
+
+- story: du command path
+  steps:
+  - intent: linux_du_command
+  - action: utter_du_command
+  - action: utter_goodbye
+
+- story: ping command path
+  steps:
+  - intent: linux_ping_command
+  - action: utter_ping_command
+  - action: utter_goodbye
+
+- story: uname command path
+  steps:
+  - intent: linux_uname_command
+  - action: utter_uname_command
+  - action: utter_goodbye</pre>
+      </div>
+    </div>
+    <br/>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>Make sure *NOT* to include the same steps in both the rules and stories - it will lead to a conflict error during training !!!</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now, it is time to train our custom linux commands' helper chatbot model.</p>
+    </div>
+    <div id="para-div">
+      <p>Before we kick the training process, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ ls -l $HOME/.rasa/models</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>total 24416
+drwxr-xr-x  2 polarsparc polarsparc     4096 Nov  2 14:17 .
+drwxrwxr-x 10 polarsparc polarsparc     4096 Nov  9 19:01 ..
+-rw-r--r--  1 polarsparc polarsparc 24992178 Nov  2 14:17 20241102-181642-avocado-bright.tar.gz</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To start the custom linux commands' helper chatbot training, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name rasa-pro -u $(id -u $USER):$(id -g $USER) -v $HOME/.rasa/:/app -e RASA_PRO_LICENSE=${RASA_PRO_LICENSE} rasa/rasa-pro:3.10.8 train --verbose</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical trimmed output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>[ ... SNIP ... ]
+2024-11-10 00:12:57 INFO     rasa.cli.train  - {"event_info": "Started validating domain and training data...", "event": "cli.train.run_training", "level": "info"}
+[ ... SNIP ... ]
+2024-11-10 00:13:02 INFO     rasa.validator  - {"event_info": "Validating intents...", "event": "validator.verify_intents_in_stories.start", "level": "info"}
+2024-11-10 00:13:02 INFO     rasa.validator  - {"event_info": "Validating uniqueness of intents and stories...", "event": "validator.verify_example_repetition_in_intents.start", "level": "info"}
+2024-11-10 00:13:02 INFO     rasa.validator  - {"event_info": "Story structure validation...", "event": "validator.verify_story_structure.start", "level": "info"}
+Processed story blocks: 100%|||||||||||| 4/4 [00:00&lt;00:00, 3710.95it/s, # trackers=1]
+2024-11-10 00:13:02 INFO     rasa.core.training.story_conflict  - Considering all preceding turns for conflict analysis.
+2024-11-10 00:13:02 INFO     rasa.validator  - {"event_info": "No story structure conflicts found.", "event": "validator.verify_story_structure.no_conflicts", "level": "info"}
+2024-11-10 00:13:02 INFO     rasa.validator  - {"event": "validation.flows.started", "level": "info"}
+2024-11-10 00:13:02 WARNING  rasa.validator  - {"event_info": "No flows were found in the data files. Will not proceed with flow validation.", "event": "validator.verify_flows", "level": "warning"}
+Processed story blocks: 100%|||||||||||| 4/4 [00:00&lt;00:00, 4650.00it/s, # trackers=1]
+[ ... SNIP ... ]
+Processed story blocks: 100%|||||||||||| 4/4 [00:00&lt;00:00, 112.36it/s, # trackers=50]
+Processed rules: 100%|||||||||||| 1/1 [00:00&lt;00:00, 4573.94it/s, # trackers=1]
+2024-11-10 00:13:17 INFO     rasa.engine.training.hooks  - Starting to train component 'MemoizationPolicy'.
+Processed trackers: 100%|||||||||||| 4/4 [00:00&lt;00:00, 5064.06it/s, # action=13]
+Processed actions: 13it [00:00, 20269.87it/s, # examples=13]
+2024-11-10 00:13:18 INFO     rasa.engine.training.hooks  - Finished training component 'MemoizationPolicy'.
+2024-11-10 00:13:18 INFO     rasa.engine.training.hooks  - Starting to train component 'RulePolicy'.
+Processed trackers: 100%|||||||||||| 1/1 [00:00&lt;00:00, 2157.56it/s, # action=3]
+Processed actions: 3it [00:00, 29127.11it/s, # examples=2]
+[ ... SNIP ... ]
+Processed trackers: 100%|||||||||||| 5/5 [00:00&lt;00:00, 3371.09it/s]
+2024-11-10 00:13:18 INFO     rasa.engine.training.hooks  - Finished training component 'RulePolicy'.
+2024-11-10 00:13:18 INFO     rasa.engine.training.hooks  - Starting to train component 'TEDPolicy'.
+Processed trackers: 100%|||||||||||| 244/244 [00:00&lt;00:00, 5045.48it/s, # action=125]
+Epochs: 100%|||||||||||| 100/100 [00:12&lt;00:00,  7.86it/s, t_loss=0.338, loss=0.16, acc=1]  
+2024-11-10 00:13:31 INFO     rasa.engine.training.hooks  - Finished training component 'TEDPolicy'.
+2024-11-10 00:13:31 INFO     rasa.engine.training.hooks  - Starting to train component 'UnexpecTEDIntentPolicy'.
+[ ... SNIP ... ]
+Processed trackers: 100%|||||||||||| 244/244 [00:00&lt;00:00, 9155.98it/s, # intent=21]
+Epochs: 100%|||||||||||| 100/100 [00:07&lt;00:00, 13.19it/s, t_loss=0.106, loss=0.00145, acc=1]  
+2024-11-10 00:13:40 INFO     rasa.engine.training.hooks  - Finished training component 'UnexpecTEDIntentPolicy'.
+2024-11-10 00:13:41 INFO     rasa.engine.training.hooks  - Restored component 'CountVectorsFeaturizer' from cache.
+2024-11-10 00:13:41 INFO     rasa.engine.training.hooks  - Restored component 'CountVectorsFeaturizer' from cache.
+2024-11-10 00:13:41 INFO     rasa.engine.training.hooks  - Restored component 'DIETClassifier' from cache.
+2024-11-10 00:13:41 INFO     rasa.engine.training.hooks  - Restored component 'EntitySynonymMapper' from cache.
+2024-11-10 00:13:41 INFO     rasa.engine.training.hooks  - Restored component 'LexicalSyntacticFeaturizer' from cache.
+2024-11-10 00:13:41 INFO     rasa.engine.training.hooks  - Restored component 'RegexFeaturizer' from cache.
+2024-11-10 00:13:41 INFO     rasa.engine.training.hooks  - Restored component 'ResponseSelector' from cache.
+2024-11-10 00:13:44 INFO     rasa.model_training  - {"event_info": "Your Rasa model is trained and saved at 'models/20241110-001312-approximate-beech.tar.gz'.", "event": "model_training.train.finished_training", "level": "info"}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The training process has completed and one more time execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ ls -l $HOME/.rasa/models</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>total 47680
+drwxr-xr-x  2 polarsparc polarsparc     4096 Nov  9 19:13 .
+drwxrwxr-x 10 polarsparc polarsparc     4096 Nov  9 19:08 ..
+-rw-r--r--  1 polarsparc polarsparc 24992178 Nov  2 14:17 20241102-181642-avocado-bright.tar.gz
+-rw-r--r--  1 polarsparc polarsparc 23820630 Nov  9 19:13 20241110-001312-approximate-beech.tar.gz</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice that a new chatbot model <span class="hi-green">20241110-001312-approximate-beech.tar.gz</span> has been created.</p>
+    </div>
+    <div id="para-div">
+      <p>To test the custom linux commands' helper chatbot, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run -it --rm --name rasa-pro -u $(id -u $USER):$(id -g $USER) -v $HOME/.rasa/:/app -e RASA_PRO_LICENSE=${RASA_PRO_LICENSE} rasa/rasa-pro:3.10.8 shell</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical trimmed output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>[ ... SNIP ... ]
+2024-11-10 00:19:15 INFO     root  - Connecting to channel 'cmdline' which was specified by the '--connector' argument. Any other channels will be ignored. To connect to all given channels, omit the '--connector' argument.
+2024-11-10 00:19:15 INFO     root  - Starting Rasa server on http://0.0.0.0:5005
+2024-11-10 00:19:21 INFO     rasa.core.processor  - Loading model models/20241110-001312-approximate-beech.tar.gz...
+[ ... SNIP ... ]
+2024-11-10 00:19:41 INFO     root  - Rasa server is up and running.
+Bot loaded. Type a message and press enter (use '/stop' to exit): 
+Your input -></pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice that the custom linux commands' helper chatbot is waiting for user input on the prompt <span class="hi-grey">Your input
+        -></span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Type <span class="bold">howdy</span> at the chatbot prompt.</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>Howdy!
+What linux command would you need help with?</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Next, type <span class="bold">check host reachable</span> at the chatbot prompt.</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>Use the command 'ping -c 3 &lt;host&gt;' to check if the host is reachable
+Bye</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Next, type <span class="bold">info about system</span> at the chatbot prompt.</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>Use the command 'uname -a' to get information about the system
+Bye</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Finally, type <span class="bold">/stop</span> at the chatbot prompt and the chatbot will exit.</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">BINGO</span> - we have successfully tested our custom linux commands' helper chatbot !!!</p>
+    </div>
+    <div id="para-div">
+      <p>Given that we have covered the creation and demonstration of a custom linux commands' helper chatbot, we conclude <span class
+        ="bold">Part-2</span> of this series !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="http://polarsparc.github.io/Chatbot/Rasa-1.html" target="_blank"><span class="bold">Hands-on Primer on Rasa -
+        Part-1</span></a></p>
+      <p><a href="https://rasa.com/docs/rasa-pro/" target="_blank"><span class="bold">Rasa Pro Documentation</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

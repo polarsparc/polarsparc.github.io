@@ -1,0 +1,169 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Quick Tip :: Running Text-to-Image Diffusion Model on a Local Machine">
+    <meta name="subject" content="Quick Tip :: Running Text-to-Image Diffusion Model on a Local Machine">
+    <meta name="keywords" content="diffusion, flux-1">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Quick Tip :: Running Text-to-Image Diffusion Model on a Local Machine</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Quick Tip :: Running Text-to-Image Diffusion Model on a Local Machine</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">12/31/2024</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="para-div">
+      <p>This quick tip demonstrates how one can run the <span class="hi-purple">Flux.1-Schnell</span> text-to-image <span class=
+        "hi-yellow">Diffusion</span> model on a decent <span class="bold">8-core</span> desktop with <span class="bold">32gb</span>
+        RAM and <span class="bold">16gb</span> VRAM <span class="bold">NVidia</span> GPU.</p>
+      <p>The image diffusion model can also be run on the <span class="bold">MacOS</span> with the <span class="bold">Apple Silicon</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Ensure that <span class="bold">Python 3.x</span> programming language is installed and setup on the desktop.</p>
+    </div>
+    <div id="para-div">
+      <p>In addition, install the following necessary <span class="bold">Python</span> modules by executing the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ pip install accelerate diffusers huggingface_hub matplotlib pillow sentencepiece torch</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For MacOS (with Apple Silicon) users, see the alert below:</p>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>For MacOS (with Apple Silicon): pip install torch torchaudio torchtext torchvision --extra-index-url https://download.pytorch.org/whl/cu118</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The first step is to download the <span class="bold">Flux.1-Schnell</span> model from the <span class="bold">HuggingFace</span>
+        repository to a directory on the desktop.</p>
+      <p>Create a directory called <span class="bold">./flux-1</span> and then execute the following <span class="bold">Python</span>
+        code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from huggingface_hub import snapshot_download
+
+snapshot_download(repo_id='black-forest-labs/FLUX.1-schnell', local_dir='./flux-1')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The above code execution will take a few minutes to complete as the model needs to be downloaded to the desktop over the
+        Internet.</p>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>With a 1 Gbps internet speed, the 'snapshot_download' command will take between <span class="underbold">15 to 20</span> minutes to download the model !!!</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Create a directory called <span class="bold">./images</span> where the model generated image would be stored.</p>
+    </div>
+    <div id="para-div">
+      <p>Execute the following <span class="bold">Python</span> code snippet to run the text-to-image diffusion model:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from diffusers import FluxPipeline
+import matplotlib.pyplot as plt
+import os
+import torch
+import sentencepiece
+
+# For MacOS (with Apple Silicon) users, uncomment the following line - very *IMPORTANT*
+# os.environ['PYTORCH_MPS_HIGH_WATERMARK_RATIO'] = '0.0'
+
+# For MacOS (with Apple Silicon) users, comment out the following line
+pipe = FluxPipeline.from_pretrained('./flux-1', torch_dtype=torch.bfloat16, add_prefix_space=True)
+
+# For MacOS (with Apple Silicon) users, uncomment the following line
+# pipe = FluxPipeline.from_pretrained('./flux-1', torch_dtype=torch.bfloat16, add_prefix_space=True).to('mps')
+
+# For MacOS (with Apple Silicon) users, comment out the following line
+pipe.enable_sequential_cpu_offload()
+
+prompt = '''
+In van gogh style oil painting, Happy New Year 2025 neon sign in a winter land,
+with two humanoids standing on both sides of the sign with thumbs up
+'''
+
+image = pipe(
+    prompt,
+    output_type='pil',
+    num_inference_steps=4,
+    height=512,
+    width=1280,
+    generator=torch.Generator('cpu').manual_seed(9) # For MacOS (with Apple Silicon) users, comment out this line
+).images[0]
+
+plt.imshow(image)
+plt.show()
+
+image.save('./images/new-year.png')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>On the desktop with the specified specs, the model will efficiently leverage the CPU/GPU memory and typically run for
+        90 secs before generating the desired image !!!</p>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>For MacOS (with Apple M1 Max Silicon): will take at least <span class="underbold">3 to 6</span> minutes to generate the image !!!</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the image generated by the <span class="bold">Flux.1-Schnell</span> model for the specific prompt:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/new-year.png" alt="New Year 2025" />
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Pretty impressive - isn't it !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://huggingface.co/black-forest-labs/FLUX.1-schnell" target="_blank"><span class="bold">HuggingFace FLUX.1-Schnell</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
