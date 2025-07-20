@@ -1,0 +1,397 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Tunneling with Chisel">
+    <meta name="subject" content="Tunneling with Chisel">
+    <meta name="keywords" content="linux, networking, security">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Tunneling with Chisel</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Tunneling with Chisel</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">06/08/2024</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">Tunneling</span> is the process of using a network protocol to encapsulate and securely transmit
+        data from one network device to another, circumventing the restrictions imposed by the network firewall.</p>
+      <p></p>
+    </div>
+    <div id="para-div">
+      <p>The following are some of the legimate reasons for using <span class="bold">tunneling</span>:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>To allow access to legacy applications or unsecure services such as IMAP, POP3, etc</p>
+        </li>
+        <li>
+          <p>To implement a Virtual Private Network (<span class="bold">VPN</span>)</p>
+        </li>
+        <li>
+          <p>To allow access to services behind a firewall</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>On the other hand, the following are some of the unethical uses of <span class="bold">tunneling</span>:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>To exfilterate sensitive data via compromised system(s) without being detected</p>
+        </li>
+        <li>
+          <p>To bypass firewalls for unauthorized access to network services</p>
+        </li>
+        <li>
+          <p>To hide malicious data from network security tools</p>
+        </li>
+      </ul>
+    </div>
+    <br/>
+    <div id="error-div">
+      <h4>!! WARNING !!</h4>
+      <pre>Proceed with *<span class="underbold">CAUTION</span>* as there are *<span class="underbold">LEGAL</span>* ramafications for using tunneling within organizations without prior permission.</pre>
+    </div>
+    <br/>
+    <br/>
+    <div id="section-div">
+      <p>Installation and Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The setup will be on a Ubuntu 22.04 LTS based Linux desktop (the HOST). As a prerequisite, ensure the <span class="hi-grey">
+        VirtualBox</span> hypervisor is installed.</p>
+    </div>
+    <div id="para-div">
+      <p>Complete the following steps:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>Create a <span class="bold">VM</span> with 1 vCPU, 2GB RAM, 20GB storage, Ubuntu 22.04 OS, and a virtual network interface
+            with <span class="bold">NAT</span> networking. The VM assigned a IP address of <span class="hi-vanila">10.0.2.15</span></p>
+        </li>
+        <li>
+          <p>Install <span class="hi-vanila">docker</span> on both the HOST and the VM</p>
+        </li>
+        <li>
+          <p>Download the <span class="hi-vanila">chisel</span> executable by executing the following commands:</p>
+          <div id="cmd-div">
+            <p>$ cd $HOME/Downloads</p>
+            <p>$ curl https://i.jpillora.com/chisel | bash</p>
+            <p>$ chmod +x chisel</p>
+          </div>
+        </li>
+        <li>
+          <p>Pull the <span class="hi-vanila">caddy</span> web server docker image on both the HOST and VM by executing the following
+            command:</p>
+          <div id="cmd-div">
+            <p>$ docker pull caddy:2.8.1</p>
+          </div>
+        </li>
+        <li>
+          <p>On both the HOST and VM, create the web server root directory by executing the following commands:</p>
+          <div id="cmd-div">
+            <p>$ cd $HOME/Downloads</p>
+            <p>$ mkdir -p caddy/data</p>
+          </div>
+        </li>
+        <li>
+          <p>On both the HOST and VM, save the following <span class="bold">index.html</span> file in the directory <span class="bold">
+            $HOME/Downloads/caddy</span>:</p>
+            <br/>
+            <div id="src-outer-div-1">
+              <div class="src-cap-1">index.html</div>
+              <div class="src-body-1">
+<pre>&lt;html&gt;
+  &lt;body&gt;
+      &lt;h3&gt;Simple Hello !!!&lt;/h3&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</pre>
+              </div>
+            </div>
+            <br/>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>In the unethical use-cases, one can think of the <span class="bold">HOST</span> as the <span class="bold">ATTACKER</span>
+        system and the <span class="bold">VM</span> as the <span class="bold">COMPROMISED</span> system.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on Chisel</p>
+    </div>
+    <div id="para-div">
+      <p>In the following sections, we will look at the different use-cases in which <span class="hi-vanila">chisel</span> can be
+        used for tunneling.</p>
+    </div>
+    <div id="step-div">
+      <p>Local Port Forwarding</p>
+    </div>
+    <div id="para-div">
+      <p>Assume the HOST is running a useful web application on <span class="bold">127.0.0.1</span> and is <span class="underbold">
+        ONLY</span> accessible to the HOST.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration decpicts this scenario:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/chisel-1.png" class="img-cls" alt="Web Server on HOST" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now for the question - Is there a way for the VM to access the web application ???</p>
+    </div>
+    <div id="para-div">
+      <p>In this situation, one could forward requests made to a local port on the VM to access the web application running on HOST
+        using <span class="hi-vanila">chisel</span> as the tunnel.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration decpicts the local port forwarding scenario:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/chisel-2.png" class="img-cls" alt="Local Port Forwarding" />
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To start the local web server on the HOST on port <span class="bold">9090</span>, execute the following command in a terminal
+        of the HOST:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name local-ws -p 127.0.0.1:9090:80 -v $HOME/Downloads/caddy/index.html:/usr/share/caddy/index.html -v $HOME/Downloads/caddy/data:/data caddy:2.8.1</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>{"level":"info","ts":1717860659.9099061,"msg":"using config from file","file":"/etc/caddy/Caddyfile"}
+{"level":"info","ts":1717860659.9109826,"msg":"adapted config to JSON","adapter":"caddyfile"}
+{"level":"info","ts":1717860659.9116428,"logger":"admin","msg":"admin endpoint started","address":"localhost:2019","enforce_origin":false,"origins":["//[::1]:2019","//127.0.0.1:2019","//localhost:2019"]}
+{"level":"warn","ts":1717860659.911941,"logger":"http.auto_https","msg":"server is listening only on the HTTP port, so no automatic HTTPS will be applied to this server","server_name":"srv0","http_port":80}
+{"level":"info","ts":1717860659.9120245,"logger":"tls.cache.maintenance","msg":"started background certificate maintenance","cache":"0xc0006e4980"}
+{"level":"info","ts":1717860659.9124274,"logger":"http.log","msg":"server running","name":"srv0","protocols":["h1","h2","h3"]}
+{"level":"info","ts":1717860659.9127798,"msg":"autosaved config (load with --resume flag)","file":"/config/caddy/autosave.json"}
+{"level":"info","ts":1717860659.9127853,"msg":"serving initial configuration"}
+{"level":"info","ts":1717860659.9194617,"logger":"tls","msg":"cleaning storage unit","storage":"FileStorage:/data/caddy"}
+{"level":"info","ts":1717860659.9196205,"logger":"tls","msg":"finished cleaning storage units"}</pre>
+    </div>
+    <div id="para-div">
+      <p>To start the <span class="hi-vanila">chisel</span> server on port <span class="bold">9001</span> of the HOST, execute the
+        following commands in the terminal of the HOST:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/Downloads</p>
+      <p>$ ./chisel server -p 9001</p>
+    </div>
+    <div id="para-div">
+      <p>The option <span class="hi-blue">server</span> indicates that <span class="hi-vanila">chisel</span> will run in the server
+        mode listening on the specified network port as indicated by the option <span class="hi-blue">-p</span>.</p>
+      <p>In this example, the <span class="hi-vanila">chisel</span> server is listening on port <span class="hi-grey">9001</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>2024/06/08 11:31:23 server: Fingerprint G6pxssWpo9DPLPUhB3BTxmDrvRACvpo8ksL48P6EnLg=
+2024/06/08 11:31:23 server: Listening on http://0.0.0.0:9001</pre>
+    </div>
+    <div id="para-div">
+      <p>To create a tunnel for local port forwarding on the VM using <span class="hi-vanila">chisel</span>, execute the following
+        commands in the terminal of the VM:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/Downloads</p>
+      <p>$ ./chisel client 192.168.1.25:9001 9090:127.0.0.1:9090</p>
+    </div>
+    <div id="para-div">
+      <p>The option <span class="hi-blue">client</span> indicates that <span class="hi-vanila">chisel</span> will run in the client
+        mode connecting to the specified network endpoint <span class="hi-grey">192.168.1.25:9001</span>.</p>
+      <p>The last option takes the form &lt;local-host&gt;:&lt;local-port&gt;:&lt;remote-host&gt;:&lt;remote-port&gt;.</p>
+      <p>In this example, the &lt;local-host&gt; is <span class="underbold">NOT</span> specified and defaults to <span class="hi-grey">
+        0.0.0.0</span> (all interfaces) on the VM, the &lt;local-port&gt; is <span class="hi-grey">9090</span> on the VM, the
+        &lt;remote-host&gt; is <span class="hi-grey">127.0.0.1</span> on the HOST, and the &lt;remote-port&gt; is <span class="hi-grey">
+        9090</span> on the HOST.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>2024/06/08 12:01:23 client: Connecting to ws://192.168.1.25:9001
+2024/06/08 12:01:23 client: tun: proxy#9090=>9090: Listening
+2024/06/08 12:01:23 client: Connected (Latency 329.657 microsecs)</pre>
+    </div>
+    <div id="para-div">
+      <p>To access the web server on the VM via local port forwarding, execute the following command in the terminal of the VM:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl http://10.0.2.15:9090</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+<pre>&lt;html&gt;
+  &lt;body&gt;
+      &lt;h3&gt;Simple Hello !!!&lt;/h3&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">SUCCESS</span> !!! We have demonstrated the case for local port forwarding using <span class="hi-vanila">
+        chisel</span>.</p>
+      <p>At this point, we can terminate all the commands we started on both the VM as well as the HOST.</p>
+    </div>
+    <div id="step-div">
+      <p>Reverse Port Forwarding</p>
+    </div>
+    <div id="para-div">
+      <p>Assume the VM is running a useful web application on port <span class="bold">8080</span> and is <span class="underbold">
+        NOT</span> accessible from the HOST.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration decpicts this scenario:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/chisel-3.png" class="img-cls" alt="Web Server on VM" />
+      <div class="img-cap">Figure.3</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that the HOST <span class="underbold">CAN</span> ping the VM and get a response. Is there a way for the HOST to access
+        the web application ???</p>
+    </div>
+    <div id="para-div">
+      <p>In this situation, one could forward requests made to a local port on the HOST to access the web application running on VM
+        using <span class="hi-vanila">chisel</span> as the tunnel in the reverse mode.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration decpicts the local port reverse forwarding scenario:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/chisel-4.png" class="img-cls" alt="Local Port Reverse Forwarding" />
+      <div class="img-cap">Figure.4</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To start the local web server on the VM on port <span class="bold">8080</span>, execute the following command in a terminal
+        of the VM:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name local-ws -p 10.0.2.15:8080:80 -v $HOME/Downloads/caddy/index.html:/usr/share/caddy/index.html -v $HOME/Downloads/caddy/data:/data caddy:2.8.1</p>
+    </div>
+    <div id="para-div">
+      <p>The output would be similar to that of Output.1 above.</p>
+    </div>
+    <div id="para-div">
+      <p>To start the <span class="hi-vanila">chisel</span> server on port <span class="bold">9001</span> of the HOST with the option
+        of reverse port forwarding, execute the following commands in the terminal of the HOST:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/Downloads</p>
+      <p>$ ./chisel server -p 9001 --reverse</p>
+    </div>
+    <div id="para-div">
+      <p>The option <span class="hi-blue">--reverse</span> enables <span class="hi-vanila">chisel</span> for reverse port forward to
+        a <span class="hi-vanila">chisel</span> client.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>2024/06/08 14:21:01 server: Reverse tunnelling enabled
+2024/06/08 14:21:01 server: Fingerprint OsXE4Zi7DaR/GCEvBIIY1QlaxeiYfqnLTLbtmmFYDRw=
+2024/06/08 14:21:01 server: Listening on http://0.0.0.0:9001</pre>
+    </div>
+    <div id="para-div">
+      <p>To create a reverse tunnel for reverse port forwarding on the VM using <span class="hi-vanila">chisel</span>, execute the
+        following commands in the terminal of the VM:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/Downloads</p>
+      <p>$ ./chisel client 192.168.1.25:9001 R:127.0.0.1:8080:10.0.2.15:8080</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="hi-grey">R:</span> last option indicates the reversed port forwarding to match the server option.</p>
+      <p>In this example, the &lt;local-host&gt; is <span class="hi-grey">127.0.0.1</span> on the HOST (reverse), the &lt;local-port&gt;
+        is <span class="hi-grey">8080</span> on the HOST (reverse), the &lt;remote-host&gt; is <span class="hi-grey">10.0.2.15</span>
+        on the VM, and the &lt;remote-port&gt; is <span class="hi-grey">8080</span> on the VM.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output on the VM:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>2024/06/08 14:22:35 client: Connecting to ws://192.168.1.25:9001
+2024/06/08 14:22:35 client: Connected (Latency 276.248 microsecs)</pre>
+    </div>
+    <div id="para-div">
+      <p>In addition, the following would be the typical output on the HOST running the <span class="hi-vanila">chisel</span> server:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>2024/06/08 14:24:27 server: session#1: tun: proxy#R:127.0.0.1:8080=>10.0.2.15:8080: Listening</pre>
+    </div>
+    <div id="para-div">
+      <p>To access the web server on the VM via reverse port forwarding, execute the following command in the terminal of the HOST:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl http://127.0.0.1:8080</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+<pre>&lt;html&gt;
+  &lt;body&gt;
+      &lt;h3&gt;Simple Hello !!!&lt;/h3&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">YIPPEE</span> !!! We have demonstrated the case for reverse port forwarding using <span class="hi-vanila">
+        chisel</span>.</p>
+      <p>At this point, we can terminate all the commands we started on both the VM as well as the HOST.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://github.com/jpillora/chisel" target="_blank"><span class="bold">Official Chisel Site</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

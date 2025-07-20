@@ -1,0 +1,421 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Pi-hole using Docker on ODroid-C2">
+    <meta name="subject" content="Pi-hole using Docker on ODroid-C2">
+    <meta name="keywords" content="arm, docker, general, pi-hole, security">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Pi-hole using Docker on ODroid-C2</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://www.polarsparc.com">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Pi-hole using Docker on ODroid-C2</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">12/23/2022</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="para-div">
+      <p>We are all annoyed by the ads that clutter the content we consume from the Web. One has to manually enable some kind of an
+        ad-blocker on the various devices (Computer, Mobile, Smart TV, etc.) to prevent most of those annoying ads.</p>
+      <p>Is there a better and efficient way of dealing with this annoyance ???</p>
+      <p>This is where <a target="_blank" href="https://pi-hole.net/"><span class="hi-yellow">Pi-hole</span></a> comes in handy !!!
+        It is a general purpose network (more specifically DNS) based ads and internet tracking blocker that can easy run on any of
+        the ARM SBC devices (Raspberry Pi and its alternatives).</p>
+      <p>In this article, we will show the steps to deploy Pi-hole using Docker on an Odroid-C2 (ARM based SBC) running the Armbian
+        Linux OS as an effective Ads and Internet Tracking blocker.</p>
+      <p>The following illustration shows the ODroid-C2 ARM based SBC:</p>
+      <br/>
+      <div id="img-outer-div">
+        <img src="./images/pi-hole-1.png" class="img-cls" alt="ODroid-C2" />
+        <div class="img-cap">Fig.1</div>
+      </div>
+      <br/>
+      <p>The following are the different steps to setup Pi-hole using Docker on ODroid-C2 running the Armbian Linux with a static
+        IP address 192.168.1.217:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>Add the docker Linux package repository by executing the following commands:</p>
+          <div id="cmd-div">
+            <p>$ sudo mkdir -p /etc/apt/keyrings</p>
+            <p>$ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg</p>
+            <p>$ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null</p>
+            <p>$ sudo apt-get update</p>
+          </div>
+          <p>The following would be a typical output:</p>
+          <div id="out-div">
+            <h4>Output.1</h4>
+            <pre>Get:1 https://download.docker.com/linux/ubuntu jammy InRelease [48.9 kB]
+Hit:2 http://ports.ubuntu.com jammy InRelease                                                                         
+Get:4 http://ports.ubuntu.com jammy-security InRelease [110 kB]
+Get:5 https://download.docker.com/linux/ubuntu jammy/stable arm64 Packages [11.2 kB]
+Get:6 http://ports.ubuntu.com jammy-updates InRelease [114 kB]                                          
+Get:7 http://ports.ubuntu.com jammy-backports InRelease [99.8 kB]    
+Hit:3 http://mirrors.aliyun.com/armbian jammy InRelease               
+Fetched 384 kB in 2s (159 kB/s)      
+Reading package lists... Done</pre>
+          </div>
+        </li>
+        <li>
+          <p>Install docker and docker-compose by executing the following command:</p>
+          <div id="cmd-div">
+            <p>$ sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-compose -y</p>
+          </div>
+          <p>The following would be a typical output (with some parts ommitted for brevity):</p>
+          <div id="out-div">
+            <h4>Output.2</h4>
+            <pre>Reading package lists... Done
+Building dependency tree... Done
+Reading state information... Done
+The following additional packages will be installed:
+  iptables libip6tc2 libnetfilter-conntrack3 libnfnetlink0 libnftnl11 python3-attr python3-certifi python3-chardet
+  python3-distutils python3-docker python3-dockerpty python3-docopt python3-dotenv python3-idna python3-jsonschema
+  python3-lib2to3 python3-pyrsistent python3-requests python3-setuptools python3-texttable python3-urllib3 python3-websocket
+Suggested packages:
+  cgroupfs-mount | cgroup-lite firewalld nftables python-attr-doc python-jsonschema-doc python3-openssl python3-socks
+  python-requests-doc python-setuptools-doc
+Recommended packages:
+  apparmor docker-ce-rootless-extras docker.io git libltdl7 pigz
+The following NEW packages will be installed:
+  containerd.io docker-ce docker-ce-cli docker-compose-plugin docker-compose iptables libip6tc2 libnetfilter-conntrack3
+  libnfnetlink0 libnftnl11 ython3-attr python3-certifi python3-chardet python3-distutils python3-docker python3-dockerpty
+  python3-docopt python3-dotenv python3-idna python3-jsonschema python3-lib2to3 python3-pyrsistent python3-requests
+  python3-setuptools python3-texttable python3-urllib3 python3-websocket
+0 upgraded, 9 newly installed, 0 to remove and 0 not upgraded.
+2 not fully installed or removed.
+Need to get 80.1 MB of archives.
+After this operation, 351 MB of additional disk space will be used.
+Fetched 78.6 MB in 9s (9,173 kB/s)                                                                                                 
+... [ SNIP ] ...
+done.</pre>
+          </div>
+        </li>
+        <li>
+          <p>Add the currently logged-in user (<span class="bold">pi-hole</span>) to the docker group and reboot ODroid-C2 by executing
+            the following commands:</p>
+          <div id="cmd-div">
+            <p>$ sudo usermod -aG docker $USER</p>
+            <p>$ sudo reboot now</p>
+          </div>
+        </li>
+        <li>
+          <p>Ensure docker is installed properly by executing the following command:</p>
+          <div id="cmd-div">
+            <p>$ docker info</p>
+          </div>
+          <p>The following would be a typical output:</p>
+          <div id="out-div">
+            <h4>Output.3</h4>
+            <pre>Client:
+Context:    default
+Debug Mode: false
+Plugins:
+  app: Docker App (Docker Inc., v0.9.1-beta3)
+  buildx: Docker Buildx (Docker Inc., v0.9.1-docker)
+  compose: Docker Compose (Docker Inc., v2.14.1)
+Server:
+Containers: 0
+  Running: 0
+  Paused: 0
+  Stopped: 0
+Images: 0
+Server Version: 20.10.22
+Storage Driver: overlay2
+  Backing Filesystem: extfs
+  Supports d_type: true
+  Native Overlay Diff: true
+  userxattr: false
+Logging Driver: json-file
+Cgroup Driver: systemd
+Cgroup Version: 2
+Plugins:
+  Volume: local
+  Network: bridge host ipvlan macvlan null overlay
+  Log: awslogs fluentd gcplogs gelf journald json-file local logentries splunk syslog
+Swarm: inactive
+Runtimes: io.containerd.runc.v2 io.containerd.runtime.v1.linux runc
+Default Runtime: runc
+Init Binary: docker-init
+containerd version: 9ba4b250366a5ddde94bb7c9d1def331423aa323
+runc version: v1.1.4-0-g5fd4c4d
+init version: de40ad0
+Security Options:
+  apparmor
+  seccomp
+  Profile: default
+  cgroupns
+Kernel Version: 6.0.13-meson64
+Operating System: Armbian 22.11.1 Jammy
+OSType: linux
+Architecture: aarch64
+CPUs: 4
+Total Memory: 1.887GiB
+Name: odroid-c2-1
+ID: 3333:GGGG:7777:7777:CCCC:7777:2222:TTTT:GGGG:IIII:YYYY:CCCC
+Docker Root Dir: /var/lib/docker
+Debug Mode: false
+Registry: https://index.docker.io/v1/
+Labels:
+Experimental: false
+Insecure Registries:
+  127.0.0.0/8
+Live Restore Enabled: false</pre>
+          </div>
+        </li>
+        <li>
+          <p>From <a href="https://hub.docker.com/" target="_blank"><span class="bold">Docker Hub</span></a> we find the current version
+            of <span class="bold">pi-hole</span> docker image is <span class="hi-yellow">2022.12</span>.</p>
+          <p>Download the docker image <span class="hi-yellow">pihole/pihole:2022.12</span> by executing the following command:</p>
+          <div id="cmd-div">
+            <p>$ docker pull pihole/pihole:2022.12</p>
+          </div>
+          <p>The following could be a typical output:</p>
+          <div id="out-div">
+            <h4>Output.4</h4>
+            <pre>2022.12: Pulling from pihole/pihole
+6064e7e5b6af: Pull complete 
+806333a8bb9c: Pull complete 
+4f4fb700ef54: Pull complete 
+d1da78ed1f16: Pull complete 
+5b31b5f427ff: Pull complete 
+56c511b00b04: Pull complete 
+2fefc20b09d6: Pull complete 
+bc7f7aab18a9: Pull complete 
+42c0796d22c1: Pull complete 
+Digest: sha256:773ed874ca7244b04da6470eb1e596c5c8960afe14fda3162e29ab4d79c3d239
+Status: Downloaded newer image for pihole/pihole:2022.12
+docker.io/pihole/pihole:2022.12</pre>
+          </div>
+        </li>
+        <li>
+          <p>Verify the docker image <span class="hi-yellow">pihole/pihole:2022.12</span> was indeed downloaded by executing the following
+            command:</p>
+          <div id="cmd-div">
+            <p>$ docker images</p>
+          </div>
+          <p>The following could be a typical output:</p>
+          <div id="out-div">
+            <h4>Output.5</h4>
+            <pre>REPOSITORY      TAG       IMAGE ID       CREATED        SIZE
+pihole/pihole   2022.12   4912096ce1b2   2 mins ago     314MB</pre>
+          </div>
+        </li>
+        <li>
+          <p>We need to check the status of the system-wide DNS resolver service by executing the following command:</p>
+          <div id="cmd-div">
+            <p>$ systemctl status systemd-resolved</p>
+          </div>
+          <p>The following could be a typical output:</p>
+          <div id="out-div">
+            <h4>Output.6</h4>
+            <pre>* systemd-resolved.service - Network Name Resolution
+    Loaded: loaded (/lib/systemd/system/systemd-resolved.service; enabled; vendor preset: enabled)
+    Active: active (running) since Thu 2022-12-22 22:20:23 EST; 41min ago
+      Docs: man:systemd-resolved.service(8)
+            man:org.freedesktop.resolve1(5)
+            https://www.freedesktop.org/wiki/Software/systemd/writing-network-configuration-managers
+            https://www.freedesktop.org/wiki/Software/systemd/writing-resolver-clients
+  Main PID: 1034 (systemd-resolve)
+    Status: "Processing requests..."
+      Tasks: 1 (limit: 1980)
+    Memory: 7.2M
+        CPU: 363ms
+    CGroup: /system.slice/systemd-resolved.service
+            |--1034 /lib/systemd/systemd-resolved
+
+Dec 22 22:20:22 odroid-c2-1 systemd[1]: Starting Network Name Resolution...
+Dec 22 22:20:23 odroid-c2-1 systemd-resolved[1034]: Positive Trust Anchors:
+Dec 22 22:20:23 odroid-c2-1 systemd-resolved[1034]: . IN DS 20326 8 2 e06d44b80b8f1d39a95c0b0d7c65d08458e880409bbc683457104237c7f8e>
+Dec 22 22:20:23 odroid-c2-1 systemd-resolved[1034]: Negative trust anchors: home.arpa 10.in-addr.arpa 16.172.in-addr.arpa 17.172.in>
+Dec 22 22:20:23 odroid-c2-1 systemd-resolved[1034]: Using system hostname 'odroid-c2-1'.
+Dec 22 22:20:23 odroid-c2-1 systemd[1]: Started Network Name Resolution.
+Dec 22 22:20:28 odroid-c2-1 systemd-resolved[1034]: eth0: Bus client set default route setting: yes
+Dec 22 22:20:28 odroid-c2-1 systemd-resolved[1034]: eth0: Bus client set DNS server list to: 192.168.1.1
+Dec 22 22:20:48 odroid-c2-1 systemd-resolved[1034]: Clock change detected. Flushing caches.</pre>
+          </div>
+          <p>From the above Output.6, we see the system-wide DNS resolver is active and running</p>
+        </li>
+        <li>
+          <p>We need to make Pi-hole the DNS resolver and hence need to stop and disable the system-wide DNS service. To do just that,
+            execute the following commands:</p>
+          <div id="cmd-div">
+            <p>$ sudo systemctl stop systemd-resolved.service</p>
+            <p>$ sudo systemctl disable systemd-resolved.service</p>
+          </div>
+          <p>The following could be a typical output:</p>
+          <div id="out-div">
+            <h4>Output.7</h4>
+            <pre>Removed /etc/systemd/system/dbus-org.freedesktop.resolve1.service.
+Removed /etc/systemd/system/multi-user.target.wants/systemd-resolved.service.</pre>
+          </div>
+        </li>
+        <li>
+          <p>We need to create two directories for the Pi-hole docker volumes by executing the following commands:</p>
+          <div id="cmd-div">
+            <p>$ mkdir -p ./pi-hole/etc/pihole</p>
+            <p>$ mkdir -p ./pi-hole/etc/dnsmasq.d</p>
+          </div>
+        </li>
+        <li>
+          <p>It is now time to create the docker-compose file <span class="bold">pi-hole.yml</span> for Pi-hole as shown below:</p>
+          <br/>
+          <div id="src-outer-div-1">
+            <div class="src-cap-1">pi-hole.yml</div>
+            <div class="src-body-1">
+      <pre>version: "3"
+
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:2022.12
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "67:67/udp"
+      - "80:80/tcp"
+      - "443:443/tcp"
+    environment:
+      TZ: 'America/New_York'
+    volumes:
+      - './pi-hole/etc/pihole:/etc/pihole'
+      - './pi-hole/etc/dnsmasq.d:/etc/dnsmasq.d'
+    dns:
+      - 127.0.0.1
+      - 1.1.1.1
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped</pre>
+            </div>
+          </div>
+          <br/>
+        </li>
+        <li>
+          <p>Start the Pi-hole docker instance by executing the following command:</p>
+          <div id="cmd-div">
+            <p>$ sudo docker-compose -f pi-hole.yml up -d</p>
+          </div>
+          <p>The following would be a typical output:</p>
+          <div id="out-div">
+            <h4>Output.8</h4>
+            <pre>Creating network "pi-hole_default" with the default driver
+Creating pihole ... done</pre>
+          </div>
+        </li>
+        <li>
+          <p>Verify the Pi-hole docker instance is running by executing the following command:</p>
+          <div id="cmd-div">
+            <p>$ docker ps -a</p>
+          </div>
+          <p>The following would be a typical output:</p>
+          <div id="out-div">
+            <h4>Output.9</h4>
+            <pre>CONTAINER ID   IMAGE                   COMMAND      CREATED         STATUS                            PORTS                                                                                                                                                                               NAMES
+a8556dcb0dc5   pihole/pihole:2022.12   "/s6-init"   7 seconds ago   Up 5 seconds (health: starting)   0.0.0.0:53->53/udp, :::53->53/udp, 0.0.0.0:53->53/tcp, :::53->53/tcp, 0.0.0.0:80->80/tcp, :::80->80/tcp, 0.0.0.0:443->443/tcp, 0.0.0.0:67->67/udp, :::443->443/tcp, :::67->67/udp   piholev</pre>
+          </div>
+        </li>
+        <li>
+          <p>Login to the Pi-hole docker instance by executing the following command:</p>
+          <div id="cmd-div">
+            <p>$ sudo docker exec -it pihole bash</p>
+          </div>
+          <p>The following would be a typical output:</p>
+          <div id="out-div">
+            <h4>Output.10</h4>
+            <pre>root@a8556dcb0dc5:/#</pre>
+          </div>
+          <p>We are now in the shell of the running Pi-hole docker instance</p>
+        </li>
+        <li>
+          <p>We need to change the default password for the user-id <span class="bold">pihole</span> in the docker instance by executing
+            the following command:</p>
+          <div id="cmd-div">
+            <p>root@a8556dcb0dc5:/# pihole -a -p</p>
+          </div>
+          <p>The following would be a typical interaction:</p>
+          <div id="out-div">
+            <h4>Output.11</h4>
+            <pre>Enter New Password (Blank for no password): **********
+Confirm Password: **********
+  [+] New password set</pre>
+          </div>
+        </li>
+        <li>
+          <p>Exit from the Pi-hole docker instance shell by executing the following command:</p>
+          <div id="cmd-div">
+            <p>root@a8556dcb0dc5:/# exit</p>
+          </div>
+          <p>The following would be a typical output:</p>
+          <div id="out-div">
+            <h4>Output.12</h4>
+            <pre>exit</pre>
+          </div>
+        </li>
+        <li>
+          <p>Login to your Cable or Verizon FioS router at <span class="bold">192.168.1.1</span>. In our case it was the Verizon FioS
+            Quantum Gateway. You will need to find the settings for the DNS address(es) and change it to point to the IP address of
+            your host running the Pi-hole docker instance. With the Verizon FioS Quantum Gateway, the settings for DNS address(es) is
+            located by navigating: My Networks (option at the top) -&gt; Network Connections (option on the left) -&gt; Broadband
+            Connection -> Settings (at the bottom). Change the drop-down option from <span class="bold">Obtain IPv4 DNS Addresses
+            Automatically</span> to <span class="bold">Use the following IPv4 DNS Addresses</span>. This will ask one to enter two
+            DNS addresses - the first should be that of the host running the Pi-hole docker instance and the second can be 1.1.1.1.</p>
+          <p>The following is the illustration of the DNS setting from the Verizon FioS Quantum Gateway:</p>
+          <div id="img-outer-div"> <img src="./images/pi-hole-2.png" class="img-cls" alt="Router DNS Setting" />
+            <div class="img-cap">Fig.2</div>
+          </div>
+          <br/>
+        </li>
+        <li>
+          <p>Login to the Pi-hole dashboard at <span class="bold">YOUR_HOST-IP/admin</span>. In our case, the ODroid-C2 has a static
+            IP address, so the link was <span class="bold">192.168.1.217/admin</span>.</p>
+          <p>The following illustration shows the Pi-hole dashboard:</p>
+          <div id="img-outer-div"> <img src="./images/pi-hole-3.png" class="img-cls" alt="Pi-hole Dashboard" />
+            <div class="img-cap">Fig.3</div>
+          </div>
+          <br/>
+        </li>
+        <li>
+          <p>After running the Pi-hole docker instance overnight, the following illustration shows the Pi-hole dashboard:</p>
+          <div id="img-outer-div"> <img src="./images/pi-hole-4.png" class="img-cls" alt="Pi-hole Dashboard Overnight" />
+            <div class="img-cap">Fig.4</div>
+          </div>
+        </li>
+      </ul>
+      <br/>
+      <p>It was just <span class="bold">AMAZING</span> to see ads and tracking being blocked, including that on the Smart TV !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://pi-hole.net/" target="_blank"><span class="bold">Pi-hole - Network-wide Ad Blocking</span></a></p>
+      <p><a href="https://www.hardkernel.com/shop/odroid-c2/" target="_blank"><span class="bold">ODroid-C2 (Discontinued Model)</span></a></p>
+      <p><a href="https://www.armbian.com/" target="_blank"><span class="bold">Armbian - Linux for ARM</span></a></p>
+      <p><a href="http://www.polarsparc.com/xhtml/Docker.html" target="_blank"><span class="bold">Introduction to Docker</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://www.polarsparc.com">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
