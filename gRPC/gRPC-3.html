@@ -1,0 +1,1158 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Introduction to gRPC - Part 3">
+    <meta name="subject" content="Introduction to gRPC - Part 3">
+    <meta name="keywords" content="go, grpc, java, protobuf">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Introduction to gRPC - Part 3</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="ps-header">
+      <img src="./images/grpc-hdr-2.png" />
+    </div>
+    <br/>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">12/12/2020</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+    <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>Thus far in this series:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><a href="https://polarsparc.github.io/gRPC/gRPC-1.html" target="_blank"><span class="hi-yellow">Part 1</span></a> covered
+            the basics of <span class="bold">gRPC</span>, installation and setup, and the demonstration of the <span class="bold">
+            Unary</span> RPC</p>
+        </li>
+        <li>
+          <p><a href="https://polarsparc.github.io/gRPC/gRPC-2.html" target="_blank"><span class="hi-yellow">Part 2</span></a> covered
+            the <span class="bold">Server Streaming</span> RPC</p>
+        </li>
+      </ul>
+      <p>In this part, we will continue the journey to the next RPC communication pattern - <span class="bold">Client Streaming</span>
+        and also show how to deal with error conditions.</p>
+    </div>
+    <div id="step-div">
+      <p>Client Streaming RPC</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the high-level architecture of <span class="bold">Client Streaming</span> communication
+        pattern:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/grpc-08.png" class="img-cls" alt="Client Streaming Architecture" />
+      <div class="img-cap">Figure-8</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the Client Streaming RPC mode, the client sends a sequence (or stream) of requests to the server and the server responds
+        with a response back to the client.</p>
+    </div>
+    <div id="para-div">
+      <p>For the Client Streaming RPC demonstration, we will implement a fictitious Best Insurance Quote service, where the client
+        sends requests for their preferred 'providers' (along with their age) to the server and the server responds with the 'provider'
+        offering the best quote along with the price.</p>
+    </div>
+    <div id="para-div">
+      <p>We will first demonstrate the Best Quote service using the Go programming language.</p>
+      <p>In the <span class="bold">$GOPATH</span> directory, create the project directory hierarchy by executing the following
+        commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc</p>
+      <p>$ mkdir -p clientstream clientstream/quotepb clientstream/server clientstream/client</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="bold">best_quote.proto</span> located in the directory <span class="bold">
+        $GOPATH/src/polarsparc.com/grpc/clientstream/quotepb</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">best_quote.proto</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   12 Dec 2020
+*/
+
+syntax = "proto3";
+
+package clientstream;
+
+option go_package = "polarsparc.com/grpc/clientstream/quotepb";
+
+option java_multiple_files = true;
+option java_package = "com.polarsparc.gcs";
+
+message BestQuoteRequest {
+  string provider = 1;
+  int32 age = 2;
+}
+
+message BestQuoteResponse {
+  string provider = 1;
+  double price = 2;
+}
+
+service BestQuoteService {
+  rpc getBestQuote(stream BestQuoteRequest) returns (BestQuoteResponse);
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The request message is defined as <span class="hi-yellow">BestQuoteRequest</span> and the response message is defined as
+        <span class="hi-yellow">BestQuoteResponse</span>. The service interface is defined as <span class="hi-yellow">BestQuoteService</span>
+        with an RPC method <span class="hi-blue">getBestQuote</span> that takes in a sequence (or <span class="hi-grey">stream</span>)
+        of <span class="bold">BestQuoteRequest</span> objects and returns a <span class="bold">BestQuoteResponse</span> object.</p>
+    </div>
+    <div id="para-div">
+      <p>To compile the <span class="bold">best_quote.proto</span> file, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc/clientstream</p>
+      <p>$ protoc quotepb/best_quote.proto --go_out=plugins=grpc:$GOPATH/src</p>
+    </div>
+    <div id="para-div">
+      <p>On success, this will generate the Go code file called <span class="hi-yellow">best_quote.pb.go</span> located in the directory
+        <span class="bold">$GOPATH/src/polarsparc.com/grpc/clientstream/quotepb</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>From the file <span class="bold">best_quote.pb.go</span>, we see the <span class="hi-blue">BestQuoteServiceServer</span> interface,
+        as shown below, that the server needs to implements:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">best_quote.pb.go</div>
+      <div class="src-body-1">
+      <pre>.
+.
+.
+type BestQuoteServiceServer interface {
+	GetBestQuote(BestQuoteService_GetBestQuoteServer) error
+}
+.
+.
+.</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">quote_provider.go</span> that simulates an in-memory
+        store for initializing and returning quotes from fictitious providers and is located in the directory <span class="bold">
+        $GOPATH/src/polarsparc.com/grpc/clientstream/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">quote_provider.go</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   12 Dec 2020
+*/
+
+package main
+
+import (
+  "errors"
+  "fmt"
+  "log"
+)
+
+type ProviderQuote struct {
+  Provider string
+  AgeLow int32
+  AgeHigh int32
+  Price float64
+}
+
+func (pq ProviderQuote) inRange(age int32) bool {
+  if age >= pq.AgeLow && age &lt;= pq.AgeHigh {
+    return true
+  }
+  return false
+}
+
+type QuotesCache map[string][]ProviderQuote
+
+type server struct {
+  cache QuotesCache
+}
+
+func (s *server) Init() {
+  l1 := []ProviderQuote{{Provider: "Alice", AgeLow: 20, AgeHigh: 30, Price: 1000.0},
+        {Provider: "Alice", AgeLow: 31, AgeHigh: 45, Price: 1500.0},
+    {Provider: "Alice", AgeLow: 46, AgeHigh: 55, Price: 2000.0},
+  }
+  s.cache["Alice"] = l1
+
+  l2 := []ProviderQuote{{Provider: "Bob", AgeLow: 20, AgeHigh: 30, Price: 1100.0},
+    {Provider: "Bob", AgeLow: 31, AgeHigh: 45, Price: 1475.0},
+    {Provider: "Bob", AgeLow: 46, AgeHigh: 55, Price: 1950.0},
+  }
+  s.cache["Bob"] = l2
+
+  l3 := []ProviderQuote{{Provider: "Charlie", AgeLow: 20, AgeHigh: 30, Price: 975.0},
+    {Provider: "Charlie", AgeLow: 31, AgeHigh: 45, Price: 1525.0},
+    {Provider: "Charlie", AgeLow: 46, AgeHigh: 55, Price: 2050.0},
+  }
+  s.cache["Charlie"] = l3
+}
+
+func (s *server) GetProviderQuote(provider string, age int32) (*ProviderQuote, error) {
+  log.Printf("Request for provider: %s, age: %d", provider, age)
+
+  var pq *ProviderQuote
+
+  quotes := s.cache[provider]
+  if quotes == nil {
+    return nil, errors.New(fmt.Sprintf("Specified provider %s invalid", provider))
+  }
+
+  for _, e := range quotes {
+    if e.inRange(age) {
+      pq = &e
+      break
+    }
+  }
+
+  if pq == nil {
+    return nil, errors.New(fmt.Sprintf("No Quote for the specified provider %s and age %d", provider, age))
+  }
+
+  log.Printf("Provider quote for %s and age %d - %.02f\n", provider, age, pq.Price)
+
+  return pq, nil
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">server.go</span> for the Client Streaming RPC server that
+        implements the <span class="bold">BestQuoteServiceServer</span> interface and is located in the directory <span class="bold">
+        $GOPATH/src/polarsparc.com/grpc/clientstream/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">server.go</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   12 Dec 2020
+*/
+
+package main
+
+import (
+  "google.golang.org/grpc"
+  "google.golang.org/grpc/codes"
+  "google.golang.org/grpc/status"
+  "io"
+  "log"
+  "net"
+  "polarsparc.com/grpc/clientstream/quotepb" // [1]
+)
+
+func (s *server) GetBestQuote(stream quotepb.BestQuoteService_GetBestQuoteServer) error { // [2]
+  var provider string
+  var price float64
+
+  for {
+    req, err := stream.Recv() // [3]
+    if err == nil {
+      pq, err := s.GetProviderQuote(req.Provider, req.Age) // [4]
+      if err == nil {
+        if provider == "" || price > pq.Price { // [5]
+          provider = pq.Provider
+          price = pq.Price
+        }
+      } else {
+        log.Printf("Encountered an error on the server: %v", err)
+        return status.Errorf(codes.InvalidArgument, err.Error()) // [7]
+      }
+    } else if err == io.EOF {
+      // Received all client requests
+      log.Printf("===> Best quote Provider: %s, Price: %.03f\n", provider, price)
+
+      return stream.SendAndClose(&quotepb.BestQuoteResponse{ // [6]
+        Provider: provider,
+        Price: price,
+      })
+    } else {
+      log.Printf("Encountered an error for BestQuote at localhost:20003: %v\n", err)
+      return status.Errorf(codes.FailedPrecondition, err.Error()) // [7]
+    }
+  }
+}
+
+func main()  {
+  qs := &server{
+    cache: QuotesCache{},
+  }
+  qs.Init()
+
+  log.Println("Ready to start the BestQuote server...")
+
+  lis, err := net.Listen("tcp", "localhost:20003")
+  if err != nil {
+    log.Fatalf("Failed to create listener on localhost:20003")
+  }
+
+  srv := grpc.NewServer()
+
+  quotepb.RegisterBestQuoteServiceServer(srv, qs)
+
+  if err = srv.Serve(lis); err != nil {
+    log.Fatalf("Failed to start server: %v", err)
+  }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Go type(s)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: import the code from the package <span class="bold">polarsparc.com/grpc/clientstream/quotepb
+            </span> generated by the <span class="bold">protoc</span> compiler</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: when the <span class="bold">gRPC</span> server invokes the RPC method <span class="bold">
+            GetBestQuote</span>, it automatically passes in a reference to the <span class="bold">stream</span> object
+            <span class="hi-yellow">BestQuoteService_GetBestQuoteServer</span></p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: calling the <span class="hi-blue">Recv()</span> method on the <span class="bold">stream</span>
+            object returns the next request object. If there are no more requests, the <span class="bold">stream</span> returns an error
+            in the form of an <span class="hi-yellow">io.EOF</span></p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: for each request from the client, invoke the method <span class="bold">GetProviderQuote</span>
+            to find the quote for the given provider and age</p>
+        </li>
+        <li>
+          <p><span class="bold">[5]</span> :: keep track of the best quote (lowest price) all the providers for the given age</p>
+        </li>
+        <li>
+          <p><span class="bold">[6]</span> :: when the server receives all the requests from the client and finally sees a <span class="bold">
+            io.EOF</span>, send a response back to the client with the best quote with the provider and price</p>
+        </li>
+        <li>
+          <p><span class="bold">[7]</span> :: leverage the <span class="bold">gRPC</span> built-in error model by calling the method
+            <span class="hi-blue">status.Errorf(...)</span> to handle error conditions. The status object is composed of a standard
+            status code and a user-defined message description</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">client.go</span> that implements the Client Streaming RPC
+        client for the <span class="bold">BestQuoteServiceServer</span> located in the directory <span class="bold">
+        $GOPATH/src/polarsparc.com/grpc/clientstream/client</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">client.go</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   12 Dec 2020
+*/
+
+package main
+
+import (
+  "context"
+  "google.golang.org/grpc"
+  "google.golang.org/grpc/status"
+  "log"
+  "polarsparc.com/grpc/clientstream/quotepb"
+)
+
+func main() {
+  log.Println("Ready to start the BestQuote client...")
+
+  conn, err := grpc.Dial("localhost:20003", grpc.WithInsecure())
+  if err != nil {
+    log.Fatalf("Failed to connect to localhost:20003")
+  }
+  defer conn.Close()
+
+  cl := quotepb.NewBestQuoteServiceClient(conn) // [1]
+
+  // Case - 1
+
+  stream, err := cl.GetBestQuote(context.Background()) // [2]
+  if err != nil {
+    log.Fatalf("[1] Failed to create client stub to localhost:20003: %v", err)
+  }
+
+  err = stream.Send(&quotepb.BestQuoteRequest{ // [3]
+    Provider: "Bob",
+    Age: 37,
+  })
+  if err != nil {
+    log.Fatalf("[1] Failed to send request to localhost:20003: %v", err)
+  }
+
+  err = stream.Send(&quotepb.BestQuoteRequest{ // [3]
+    Provider: "Charlie",
+    Age: 37,
+  })
+  if err != nil {
+    log.Fatalf("[1] Failed to send request to localhost:20003: %v", err)
+  }
+
+  res, err := stream.CloseAndRecv()
+  if err != nil {
+    log.Fatalf("[1] Received and error from BestQuote at localhost:20003: %v", err)
+  }
+
+  log.Printf("[1] Best quote from provider %s with price %.02f\n", res.Provider, res.Price)
+
+  // Case - 2 - Error case
+
+  stream, err = cl.GetBestQuote(context.Background()) // [2]
+  if err != nil {
+    log.Fatalf("[2] Failed to create client stub to localhost:20003: %v", err)
+  }
+
+  err = stream.Send(&quotepb.BestQuoteRequest{ // [3]
+    Provider: "Alice",
+    Age: 48,
+  })
+  if err != nil {
+    log.Fatalf("[2-1] Failed to send request to localhost:20003: %v", err)
+  }
+
+  err = stream.Send(&quotepb.BestQuoteRequest{ // [3]
+    Provider: "Dave",
+    Age: 48,
+  })
+  if err != nil {
+    log.Fatalf("[2-2] Failed to send request to localhost:20003: %v", err)
+  }
+
+  res, err = stream.CloseAndRecv() // [4]
+  if err != nil {
+    st, ok := status.FromError(err) // [5]
+    if ok {
+      log.Printf("[2] Error - %s\n", st.Message())
+    } else {
+      log.Fatalf("[2] Unexpected failure from BestQuote at localhost:20003: %v", err)
+    }
+  }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Go type(s)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: create an instance of the <span class="bold">gRPC</span> client stub
+            <span class="hi-yellow">NewBestQuoteServiceClient</span> generated by the <span class="bold">protoc</span> compiler</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: call the method <span class="hi-blue">GetBestQuote</span> to get an instance of the
+            <span class="bold">stream</span> object</p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: invoke the <span class="hi-blue">Send</span> method on the stream object to dispatch
+            a <span class="bold">BestQuoteRequest</span> to the server</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: invoke the <span class="hi-blue">CloseAndRecv</span> method on the stream object to
+            signal the completion of request from the client and wait for the response (or an error) from the server</p>
+        </li>
+        <li>
+          <p><span class="bold">[5]</span> :: call the method <span class="hi-blue">status.FromError</span> passing in the error
+            object to get the <span class="bold">gRPC</span> error status details</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Open two <span class="bold">Terminal</span> windows - one for the server and one for the client.</p>
+    </div>
+    <div id="para-div">
+      <p>In the server Terminal, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc/clientstream/server</p>
+      <p>$ go run server.go quote_provider.go</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>2020/12/12 12:13:59 Ready to start the BestQuote server...</pre>
+    </div>
+    <div id="para-div">
+      <p>In the client Terminal, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc/clientstream/client</p>
+      <p>$ go run client.go</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>2020/12/12 12:14:07 Ready to start the BestQuote client...
+2020/12/12 12:14:07 [1] Best quote from provider Bob with price 1475.00
+2020/12/12 12:14:07 [2] Error - Specified provider Dave invalid</pre>
+    </div>
+    <div id="para-div">
+      <p>The following would be the additional output on the Terminal running the server:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>2020/12/12 12:14:07 Request for provider: Bob, age: 37
+2020/12/12 12:14:07 Provider quote for Bob and age 37 - 1475.00
+2020/12/12 12:14:07 Request for provider: Charlie, age: 37
+2020/12/12 12:14:07 Provider quote for Charlie and age 37 - 1525.00
+2020/12/12 12:14:07 ===> Best quote Provider: Bob, Price: 1475.000
+2020/12/12 12:14:07 Request for provider: Alice, age: 48
+2020/12/12 12:14:07 Provider quote for Alice and age 48 - 2000.00
+2020/12/12 12:14:07 Request for provider: Dave, age: 48
+2020/12/12 12:14:07 Encountered an error on the server: Specified provider Dave invalid</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Excelente</span> !!! We have successfully demonstrated the Client Streaming <span class="bold">gRPC</span>
+        communication style (with error handling) using the Go language.</p>
+    </div>
+    <div id="para-div">
+      <p>Copy the file <span class="bold">best_quote.proto</span> listed above to the directory <span class="bold">
+        $HOME/java/grpc/src/main/proto</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To compile the <span class="bold">best_quote.proto</span> file, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/grpc</p>
+      <p>$ mvn compile</p>
+    </div>
+    <div id="para-div">
+      <p>On success, this will generate some files in the directory
+        <span class="bold">$HOME/java/grpc/target/generated-sources/protobuf/java/com/polarsparc/gcs</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">ProviderQuote.java</span> that represents a holder object
+        for storing the provider, the lower and upper age limits, and the price for the age group and is located in the directory
+        <span class="bold">$HOME/java/grpc/src/main/java/com/polarsparc/gcs/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ProviderQuote.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   12 Dec 2020
+*/
+
+package com.polarsparc.gcs.server;
+
+public class ProviderQuote {
+    private final String provider;
+    private final int ageLow;
+    private final int ageHigh;
+    private final double price;
+
+    public ProviderQuote(String provider, int ageLow, int ageHigh, double price) {
+        this.provider = provider;
+        this.ageLow = ageLow;
+        this.ageHigh = ageHigh;
+        this.price = price;
+    }
+
+    public boolean inRange(int age) {
+        return age >= this.ageLow && age <= this.ageHigh;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
+    @Override
+    public String toString() {
+        return "ProviderQuote{" +
+                "provider='" + provider + '\'' +
+                ", ageLow=" + ageLow +
+                ", ageHigh=" + ageHigh +
+                ", price=" + price +
+                '}';
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">BestQuoteProvider.java</span> that simulates an in-memory
+        store for initializing and returning quotes from fictitious providers and is located in the directory <span class="bold">
+        $HOME/java/grpc/src/main/java/com/polarsparc/gcs/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">BestQuoteProvider.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   12 Dec 2020
+*/
+
+package com.polarsparc.gcs.server;
+
+import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class BestQuoteProvider {
+    private final static Logger LOGGER = Logger.getLogger(BestQuoteProvider.class.getName());
+
+    private final static Map&lt;String, List&lt;ProviderQuote&gt;&gt; quotesTable = new HashMap&lt;&gt;();
+
+    static {
+        LOGGER.setLevel(Level.INFO);
+
+        List&lt;ProviderQuote&gt; p1 = Arrays.asList(new ProviderQuote("Alice", 20, 30, 1000.00),
+                new ProviderQuote("Alice", 31, 45, 1500.00),
+                new ProviderQuote("Alice", 46, 55, 2000.00));
+        quotesTable.put("Alice", p1);
+
+        List&lt;ProviderQuote&gt; p2 = Arrays.asList(new ProviderQuote("Bob", 20, 30, 1100.00),
+                new ProviderQuote("Bob", 31, 45, 1475.00),
+                new ProviderQuote("Bob", 46, 55, 1950.00));
+        quotesTable.put("Bob", p2);
+
+        List&lt;ProviderQuote&gt; p3 = Arrays.asList(new ProviderQuote("Charlie", 20, 30, 975.00),
+                new ProviderQuote("Charlie", 31, 45, 1525.00),
+                new ProviderQuote("Charlie", 46, 55, 2050.00));
+        quotesTable.put("Charlie", p3);
+    }
+
+    private BestQuoteProvider() {
+    }
+
+    public static ProviderQuote getBestQuote(String provider, int age) {
+        LOGGER.info(String.format("Request for provider: %s, age: %d", provider, age));
+
+        if (!quotesTable.containsKey(provider)) {
+            throw new RuntimeException(String.format("Specified provider %s invalid", provider));
+        }
+
+        ProviderQuote quote = null;
+
+        List&lt;ProviderQuote&gt; quotes = quotesTable.get(provider);
+        for (ProviderQuote pq : quotes) {
+            if (pq.inRange(age)) {
+                quote = pq;
+                break;
+            }
+        }
+
+        if (quote == null) {
+            throw new RuntimeException(String.format("No Quote for the specified provider %s and age %d",
+                    provider, age));
+        }
+
+        LOGGER.info(String.format("Quote by provider %s at price %.02f", provider, quote.getPrice()));
+
+        return quote;
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>To receive the sequence of requests from the client, the server needs to return a stub handler object to the client
+        that implements the interface <span class="hi-yellow">StreamObserver</span>. The following are the contents of the
+        Java program called <span class="bold">BestQuoteRequestStreamObserver.java</span> that implements the required
+        interface and located in the directory <span class="bold">$HOME/java/grpc/src/test/java/com/polarsparc/gcs/server
+        </span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">BestQuoteRequestStreamObserver.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   12 Dec 2020
+*/
+
+package com.polarsparc.gcs.server;
+
+import com.polarsparc.gcs.BestQuoteRequest;
+import com.polarsparc.gcs.BestQuoteResponse;
+import io.grpc.Status;
+import io.grpc.stub.StreamObserver;
+
+public class BestQuoteRequestStreamObserver implements StreamObserver&lt;BestQuoteRequest&gt; {
+    private final StreamObserver&lt;BestQuoteResponse&gt; response;
+    private String provider;
+    private double price;
+    private boolean okay = true; // [1]
+
+    public BestQuoteRequestStreamObserver(StreamObserver&lt;BestQuoteResponse&gt; response) {
+        this.response = response;
+        this.provider = null;
+        this.price = 0.0;
+    }
+
+    @Override
+    public void onNext(BestQuoteRequest request) { // [2]
+        String provider = request.getProvider();
+        int age = request.getAge();
+        try {
+            ProviderQuote pq = BestQuoteProvider.getBestQuote(provider, age);
+            if (this.provider == null || this.price > pq.getPrice()) {
+                this.provider = provider;
+                this.price = pq.getPrice();
+            }
+        }
+        catch (RuntimeException ex) {
+            okay = false; // [3]
+            onError(ex); // [3]
+        }
+    }
+
+    @Override
+    public void onError(Throwable ex) { // [4]
+        Status status = Status.INVALID_ARGUMENT.withDescription(ex.getMessage());
+        response.onError(status.asRuntimeException());
+    }
+
+    @Override
+    public void onCompleted() { // [5]
+        if (okay) {
+            BestQuoteResponse quote = BestQuoteResponse.newBuilder()
+                    .setProvider(this.provider)
+                    .setPrice(this.price)
+                    .build();
+            response.onNext(quote);
+            response.onCompleted();
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Java class(es)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: a flag that tracks if an error occurred during the processing of the next request from
+            the client</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: method <span class="hi-blue">onNext()</span> is invoked when the server receives the
+            next request from the client. We keep track of the provider with the best quote (lowest price) after a lookup from the
+            object <span class="bold">BestQuoteProvider</span></p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: if the lookup fails, set the flag to 'false' and invoke the method
+            <span class="hi-blue">onError()</span> passing in the exception</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: method <span class="hi-blue">onError()</span> is invoked when an error is encountered.
+            Leverage the <span class="bold">gRPC</span> built-in error model to indicate the type of error</p>
+        </li>
+        <li>
+          <p><span class="bold">[5]</span> :: method <span class="hi-blue">onCompleted()</span> is invoked when the server is done
+            processing all the requests from the client and is ready to send a response back to the client. Notice that the response
+            is sent only if there was no error (using the flag 'okay')</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java program called <span class="bold">BestQuoteService.java</span> that implements the
+        Client Streaming <span class="bold">gRPC</span> service <span class="bold">BestQuoteService</span> located in the directory
+        <span class="bold">$HOME/java/grpc/src/main/java/com/polarsparc/gcs/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">BestQuoteService.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   12 Dec 2020
+*/
+
+package com.polarsparc.gcs.server;
+
+import com.polarsparc.gcs.BestQuoteRequest;
+import com.polarsparc.gcs.BestQuoteResponse;
+import com.polarsparc.gcs.BestQuoteServiceGrpc;
+import io.grpc.stub.StreamObserver;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class BestQuoteService extends BestQuoteServiceGrpc.BestQuoteServiceImplBase { // [1]
+    private final static Logger LOGGER = Logger.getLogger(BestQuoteService.class.getName());
+
+    static {
+        LOGGER.setLevel(Level.INFO);
+    }
+
+    @Override
+    public StreamObserver&lt;BestQuoteRequest&gt; getBestQuote(StreamObserver&lt;BestQuoteResponse&gt; responseObserver) { // [2]
+        return new BestQuoteRequestStreamObserver(responseObserver);
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Java class(es)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: extend the base class <span class="bold">BestQuoteServiceGrpc.BestQuoteServiceImplBase
+            </span> generated by the maven <span class="bold">protobuf</span> compiler plugin</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: override the service method <span class="bold">getBestQuote</span> which takes a single
+            input argument - a <span class="hi-yellow">StreamObserver</span> object that is used for sending the response back to the
+            client. It returns an instance of the client handler object <span class="bold">BestQuoteRequestStreamObserver</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java program called <span class="bold">BestQuoteServer.java</span> that registers
+        the Client Streaming RPC service <span class="bold">BestQuoteService</span> as a <span class="bold">gRPC</span> server
+        and is located in the directory <span class="bold">$HOME/java/grpc/src/main/java/com/polarsparc/gcs/server</span> as shown
+        below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">BestQuoteServer.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   12 Dec 2020
+*/
+
+package com.polarsparc.gcs.server;
+
+import io.grpc.Server;
+import io.grpc.ServerBuilder;
+
+import java.io.IOException;
+
+public class BestQuoteServer {
+    public static void main(String[] args) {
+        Server server = ServerBuilder.forPort(20003) // [1]
+                .addService(new BestQuoteService()) // [2]
+                .build();
+
+        try {
+            server.start(); // [3]
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        System.out.print("Started the gRPC BestQuoteService on 20003 ...\n");
+
+        try {
+            server.awaitTermination(); // [4]
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Java class(es)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: create an instance of the <span class="bold">gRPC</span> server on the specified port</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: register an instance of the <span class="hi-yellow">BestQuoteService</span> object
+            (that implements the service method <span class="bold">getBestQuote</span>) with the <span class="bold">gRPC</span>
+            server</p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: start the <span class="bold">gRPC</span> server</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: wait till the <span class="bold">gRPC</span> server terminates</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To receive responses from the server in an asynchronous fashion, a client needs to implement the interface
+        <span class="hi-yellow">StreamObserver</span> and register it as a callback handler on the client stub. The following are the
+        contents of the Java program called <span class="bold">BestQuoteStreamObserver.java</span> that implements required interface
+        for the asynchronous callback and located in the directory <span class="bold">$HOME/java/grpc/src/test/java/com/polarsparc/gcs/client
+        </span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">BestQuoteStreamObserver.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   12 Dec 2020
+*/
+
+package com.polarsparc.gcs.client;
+
+import com.polarsparc.gcs.BestQuoteResponse;
+import io.grpc.Status;
+import io.grpc.stub.StreamObserver;
+
+import java.util.concurrent.CountDownLatch;
+
+public class BestQuoteStreamObserver implements StreamObserver&lt;BestQuoteResponse&gt; {
+    private final CountDownLatch latch;
+
+    public BestQuoteStreamObserver(CountDownLatch latch) {
+        this.latch = latch;
+    }
+
+    @Override
+    public void onNext(BestQuoteResponse response) { // [1]
+        System.out.printf("Best quote from provider %s with price %.02f\n",
+                response.getProvider(), response.getPrice());
+    }
+
+    @Override
+    public void onError(Throwable ex) { // [2]
+        Status status = Status.fromThrowable(ex); // [3]
+        System.out.printf("Error status: code - %s, description - %s\n", status.getCode(), status.getDescription());
+        latch.countDown();
+    }
+
+    @Override
+    public void onCompleted() { // [4]
+        System.out.println("Done !!!");
+        latch.countDown();
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Java class(es)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: method <span class="hi-blue">onNext()</span> is invoked when there is valid response
+            from the server</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: method <span class="hi-blue">onError()</span> is invoked when an error is encountered</p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: call the method <span class="hi-blue">Status.fromThrowable()</span> with the thrown
+            exception as an input to get the <span class="bold">gRPC</span> error status details</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: method <span class="hi-blue">onCompleted()</span> is invoked when the server is done
+            sending all the responses</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java program called <span class="bold">BestQuoteClientTest.java</span> that implements
+        the Client Streaming RPC client for <span class="bold">BestQuoteService</span> and is located in the directory
+        <span class="bold">$HOME/java/grpc/src/test/java/com/polarsparc/gcs/client</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">BestQuoteClientTest.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   12 Dec 2020
+*/
+
+package com.polarsparc.gcs.client;
+
+import com.polarsparc.gcs.BestQuoteRequest;
+import com.polarsparc.gcs.BestQuoteServiceGrpc;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.stub.StreamObserver;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+
+import java.util.concurrent.CountDownLatch;
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public class BestQuoteClientTest {
+    private BestQuoteServiceGrpc.BestQuoteServiceStub stub;
+
+    @BeforeAll
+    public void setup() {
+        ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 20003) // [1]
+                .usePlaintext() // [2]
+                .build();
+        stub = BestQuoteServiceGrpc.newStub(channel); // [3]
+    }
+
+    @Test
+    public void bestQuoteAsyncTestOne() {
+        CountDownLatch latch = new CountDownLatch(1);
+        StreamObserver&lt;BestQuoteRequest&gt; requestObserver = stub.getBestQuote(new BestQuoteStreamObserver(latch)); // [4]
+        BestQuoteRequest req1 = BestQuoteRequest.newBuilder().setProvider("Bob").setAge(37).build(); // [5]
+        BestQuoteRequest req2 = BestQuoteRequest.newBuilder().setProvider("Charlie").setAge(37).build(); // [5]
+        requestObserver.onNext(req1); // [6]
+        requestObserver.onNext(req2); // [6]
+        requestObserver.onCompleted(); // [7]
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void bestQuoteAsyncTestTwo() {
+        CountDownLatch latch = new CountDownLatch(1);
+        StreamObserver&lt;BestQuoteRequest&gt; requestObserver = stub.getBestQuote(new BestQuoteStreamObserver(latch)); // [4]
+        BestQuoteRequest req1 = BestQuoteRequest.newBuilder().setProvider("Alice").setAge(48).build(); // [5]
+        BestQuoteRequest req2 = BestQuoteRequest.newBuilder().setProvider("Dave").setAge(48).build(); // [5]
+        requestObserver.onNext(req1); // [6]
+        requestObserver.onNext(req2); // [6]
+        requestObserver.onCompleted(); // [7]
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Java class(es)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: create an instance of the object <span class="hi-yellow">ManagedChannel</span> that
+            represents a virtual <span class="bold">gRPC</span> connection to the service endpoint on the specified ip address
+            and port</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: indicate that we are using an unsecured communication channel</p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: create an instance of the <span class="bold">gRPC</span> asynchronous (non-blocking)
+            client stub <span class="hi-yellow">BestQuoteServiceStub</span> generated by the <span class="bold">protoc</span>
+            compiler</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: invoke the <span class="bold">gRPC</span> method <span class="bold">getBestQuote</span>
+            using the asynchronous client stub passing in an instance of the callback handler <span class="bold">
+            BestQuoteStreamObserver</span>. The service method invocation will return a stream request handler</p>
+        </li>
+        <li>
+          <p><span class="bold">[5]</span> :: create an instance of the request object <span class="bold">BestQuoteRequest</span></p>
+        </li>
+        <li>
+          <p><span class="bold">[6]</span> :: invoke the <span class="bold">gRPC</span> method <span class="bold">onNext</span> to
+            send a request to the server</p>
+        </li>
+        <li>
+          <p><span class="bold">[7]</span> :: invoke the <span class="bold">gRPC</span> method <span class="bold">onCompleted</span>
+            to signal to the server the client has finished sending all the requests</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Open two <span class="bold">Terminal</span> windows - one for the server and one for the client.</p>
+    </div>
+    <div id="para-div">
+      <p>In the server Terminal, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/grpc</p>
+      <p>$ mvn exec:java -Dexec.mainClass=com.polarsparc.gcs.server.BestQuoteServer</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>Started the gRPC BestQuoteService on 20003 ...</pre>
+    </div>
+    <div id="para-div">
+      <p>In the client Terminal, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/grpc</p>
+      <p>$ mvn test -Dtest=com.polarsparc.gcs.client.BestQuoteClientTest</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>Best quote from provider Bob with price 1475.00
+Done !!!
+Error status: code - INVALID_ARGUMENT, description - Specified provider Dave invalid</pre>
+    </div>
+    <div id="para-div">
+      <p>The following would be the additional output on the Terminal running the server:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>Dec 12, 2020 12:31:56 PM com.polarsparc.gcs.server.BestQuoteProvider getBestQuote
+INFO: Request for provider: Bob, age: 37
+Dec 12, 2020 12:31:56 PM com.polarsparc.gcs.server.BestQuoteProvider getBestQuote
+INFO: Quote by provider Bob at price 1475.00
+Dec 12, 2020 12:31:56 PM com.polarsparc.gcs.server.BestQuoteProvider getBestQuote
+INFO: Request for provider: Charlie, age: 37
+Dec 12, 2020 12:31:56 PM com.polarsparc.gcs.server.BestQuoteProvider getBestQuote
+INFO: Quote by provider Charlie at price 1525.00
+Dec 12, 2020 12:31:56 PM com.polarsparc.gcs.server.BestQuoteProvider getBestQuote
+INFO: Request for provider: Alice, age: 48
+Dec 12, 2020 12:31:56 PM com.polarsparc.gcs.server.BestQuoteProvider getBestQuote
+INFO: Quote by provider Alice at price 2000.00
+Dec 12, 2020 12:31:56 PM com.polarsparc.gcs.server.BestQuoteProvider getBestQuote
+INFO: Request for provider: Dave, age: 48</pre>
+    </div>
+    <div id="para-div">
+      <p>One could also test with the Go server running and using the Java client and vice versa.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/gRPC/gRPC-2.html" target="_blank"><span class="bold">Introduction to gRPC - Part 2</span></a></p>
+      <p><a href="https://polarsparc.github.io/gRPC/gRPC-1.html" target="_blank"><span class="bold">Introduction to gRPC - Part 1</span></a></p>
+      <p><a href="https://polarsparc.github.io/gRPC/Protobuf3.html" target="_blank"><span class="bold">Introduction to Google Protocol Buffers</span></a></p>
+      <p><a href="https://grpc.io/docs/languages/go/" target="_blank"><span class="bold">gRPC Go Documentation</span></a></p>
+      <p><a href="https://grpc.io/docs/languages/java/" target="_blank"><span class="bold">gRPC Java Documentation</span></a></p>
+      <p><a href="https://grpc.io/docs/guides/error/" target="_blank"><span class="bold">gRPC Standard Error Model</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

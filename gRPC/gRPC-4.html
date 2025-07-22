@@ -1,0 +1,1654 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Introduction to gRPC - Part 4">
+    <meta name="subject" content="Introduction to gRPC - Part 4">
+    <meta name="keywords" content="go, grpc, java, protobuf">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Introduction to gRPC - Part 4</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="ps-header">
+      <img src="./images/grpc-hdr-3.png" />
+    </div>
+    <br/>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">12/19/2020</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+    <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>Thus far in this series:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><a href="https://polarsparc.github.io/gRPC/gRPC-1.html" target="_blank"><span class="hi-yellow">Part 1</span></a> covered
+            the basics of <span class="bold">gRPC</span>, installation and setup, and the demonstration of the <span class="bold">
+            Unary</span> RPC</p>
+        </li>
+        <li>
+          <p><a href="https://polarsparc.github.io/gRPC/gRPC-2.html" target="_blank"><span class="hi-yellow">Part 2</span></a> covered
+            the <span class="bold">Server Streaming</span> RPC</p>
+        </li>
+        <li>
+          <p><a href="https://polarsparc.github.io/gRPC/gRPC-3.html" target="_blank"><span class="hi-yellow">Part 3</span></a> covered
+            the <span class="bold">Client Streaming</span> RPC</p>
+        </li>
+      </ul>
+      <p>In this <span class="underbold">FINAL</span> part, we will continue the journey to the next RPC communication pattern -
+        <span class="bold">Bidirectional Streaming</span> and also show how to use deadlines (or timeouts). A deadline is the total
+        end-to-end time a client is willing to wait from the time of the request to the time of response from the server (even if
+        the server makes other calls behind the covers)</p>
+    </div>
+    <div id="step-div">
+      <p>Bidirectional Streaming RPC</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the high-level architecture of <span class="bold">Bidirectional Streaming</span>
+        communication pattern:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/grpc-09.png" class="img-cls" alt="Bidirectional Streaming Architecture" />
+      <div class="img-cap">Figure-9</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the Bidirectional Streaming RPC mode, the client sends a sequence (or stream) of requests to the server and the server
+        responds with a sequence (or stream) of responses back to the client. One *<span class="underbold">IMPORTANT</span>* fact -
+        the stream of requests and the stream of responses are independent of eath other.</p>
+    </div>
+    <div id="para-div">
+      <p>For the Bidirectional Streaming RPC demonstration, we will implement a fictitious Book Recommendation service, where the
+        client sends requests on their preferred 'topics' to the server and the server sends responses back to the client with the
+        recommended books (with their 'title' and 'isbn').</p>
+    </div>
+    <div id="para-div">
+      <p>We will first demonstrate the Book Recommendation using the Go programming language.</p>
+      <p>In the <span class="bold">$GOPATH</span> directory, create the project directory hierarchy by executing the following
+        commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc</p>
+      <p>$ mkdir -p bidirstream bidirstream/bookspb bidirstream/server bidirstream/client</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="bold">recommend.proto</span> located in the directory <span class="bold">
+        $GOPATH/src/polarsparc.com/grpc/bidirstream/bookspb</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">recommend.proto</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   19 Dec 2020
+*/
+
+syntax = "proto3";
+
+package recommend;
+
+option go_package = "polarsparc.com/grpc/bidirstream/bookspb";
+
+option java_multiple_files = true;
+option java_package = "com.polarsparc.gbd";
+
+message BookRecommendRequest {
+  string topic = 1;
+}
+
+message BookRecommendResponse {
+  string topic = 1;
+  string title = 2;
+  string isbn = 3;
+}
+
+service BookRecommendService {
+  rpc recommendedBooks(stream BookRecommendRequest) returns (stream BookRecommendResponse);
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The request message is defined as <span class="hi-yellow">BookRecommendRequest</span> and the response message is defined as
+        <span class="hi-yellow">BookRecommendResponse</span>. The service interface is defined as
+        <span class="hi-yellow">BookRecommendService</span> with an RPC method <span class="hi-blue">recommendedBooks</span> that
+        takes in a sequence (or <span class="hi-grey">stream</span>) of <span class="bold">BookRecommendRequest</span> objects and
+        returns a sequence (or <span class="hi-grey">stream</span>) <span class="bold">BookRecommendResponse</span> objects.</p>
+    </div>
+    <div id="para-div">
+      <p>To compile the <span class="bold">recommend.proto</span> file, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc/bidirstream</p>
+      <p>$ protoc bookspb/recommend.proto --go_out=plugins=grpc:$GOPATH/src</p>
+    </div>
+    <div id="para-div">
+      <p>On success, this will generate the Go code file called <span class="hi-yellow">recommend.pb.go</span> located in the directory
+        <span class="bold">$GOPATH/src/polarsparc.com/grpc/bidirstream/bookspb</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>From the file <span class="bold">recommend.pb.go</span>, we see the <span class="hi-blue">BookRecommendService</span> interface,
+        as shown below, that the server needs to implements:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">recommend.pb.go</div>
+      <div class="src-body-1">
+      <pre>.
+.
+.
+type BookRecommendServiceServer interface {
+	RecommendedBooks(BookRecommendService_RecommendedBooksServer) error
+}
+.
+.
+.</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">books_catalog.go</span> that simulates an in-memory
+        store for initializing and returning the recommended books for various topics and is located in the directory
+        <span class="bold">$GOPATH/src/polarsparc.com/grpc/bidirstream/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">books_catalog.go</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   19 Dec 2020
+*/
+
+package main
+
+import (
+  "fmt"
+  "github.com/pkg/errors"
+  "log"
+  "strings"
+)
+
+type Book struct {
+  Title string
+  ISBN string
+}
+
+type BooksCatalog map[string][]Book
+
+type server struct {
+  timeout int
+  catalog BooksCatalog
+}
+
+func (s *server) Init() {
+  l1 := []Book{{":The C++ Programming Language", "11111"},
+    {"C++ Primer", "22222"},
+    {"A Tour of C++", "33333"}}
+  s.catalog["C++"] = l1
+  l2 := []Book{{":The Go Programming Language", "44444"},
+    {"Go in Practice", "55555"},
+    {"Black Hat Go", "66666"}}
+  s.catalog["GO"] = l2
+  l3 := []Book{{":Effective Java", "77777"},
+    {"Modern Java in Action", "88888"},
+    {"Java: The Complete Reference", "99999"}}
+  s.catalog["JAVA"] = l3
+  l4 := []Book{{":Python Crash Course", "12121"},
+    {"Learning Python", "34343"},
+    {"Effective Python", "56565"}}
+  s.catalog["PYTHON"] = l4
+}
+
+func (s *server) SetTimeout(t int) {
+  s.timeout = t
+}
+
+func (s *server) GetBooks(topic string) ([]Book, error) {
+  key := strings.ToUpper(topic)
+
+  log.Printf("Books request for topic: %s\n", key)
+
+  books := s.catalog[key]
+  if books == nil {
+    return nil, errors.New(fmt.Sprintf("No books for topic: %s", topic))
+  }
+
+  log.Printf("Books for key: %s = %v", key, books)
+
+  return books, nil
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">server.go</span> for the Bidirectional Streaming RPC
+        server that implements the <span class="bold">BookRecommendServiceServer</span> interface and is located in the directory
+        <span class="bold">$GOPATH/src/polarsparc.com/grpc/bidirstream/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">server.go</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   19 Dec 2020
+*/
+
+package main
+
+import (
+  "google.golang.org/grpc"
+  "google.golang.org/grpc/codes"
+  "google.golang.org/grpc/status"
+  "io"
+  "log"
+  "net"
+  "os"
+  "polarsparc.com/grpc/bidirstream/bookspb" // [1]
+  "strconv"
+  "time"
+)
+
+func (s *server) RecommendedBooks(stream bookspb.BookRecommendService_RecommendedBooksServer) error { // [2]
+  for {
+    req, err := stream.Recv() // [3]
+    if err == nil {
+      books, err := s.GetBooks(req.Topic) // [4]
+      if err == nil {
+        for _, bk := range books {
+          res := &bookspb.BookRecommendResponse{Topic: req.Topic, Title: bk.Title, Isbn: bk.ISBN}
+          err = stream.Send(res) // [5]
+          if err != nil {
+            code := status.Code(err)
+            if code == codes.Canceled { // [6]
+              log.Println("ERROR - Deadline breached by BookRecommendService at localhost:20004")
+            } else {
+              log.Printf("Failed to send from BookRecommendService at localhost:20004: %v", err)
+            }
+            return err
+          }
+          time.Sleep(time.Duration(s.timeout) * time.Millisecond) // [7]
+        }
+      } else {
+        log.Printf("Encountered an error on the server: %v", err)
+        return status.Errorf(codes.InvalidArgument, err.Error()) // [8]
+      }
+    } else if err == io.EOF {
+      return nil
+    } else {
+      code := status.Code(err)
+      if code == codes.Canceled {
+        log.Println("ERROR - Deadline breached by BookRecommendService at localhost:20004")
+      } else {
+        log.Printf("Encountered an error for BookRecommendService at localhost:20004: %v\n", err)
+      }
+      return err
+    }
+  }
+}
+
+func main()  {
+  tm := 100
+  if len(os.Args) == 2 {
+    tm, _ = strconv.Atoi(os.Args[1])
+  }
+  cs := &server{
+    catalog: BooksCatalog{},
+  }
+  cs.Init()
+  cs.SetTimeout(tm)
+
+  log.Printf("Ready to start the BookRecommendService server with timeout %d...\n", cs.timeout)
+
+  lis, err := net.Listen("tcp", "localhost:20004")
+  if err != nil {
+    log.Fatalf("Failed to create listener on localhost:20004")
+  }
+
+  srv := grpc.NewServer()
+
+  bookspb.RegisterBookRecommendServiceServer(srv, cs)
+
+  if err = srv.Serve(lis); err != nil {
+    log.Fatalf("Failed to start server: %v", err)
+  }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Go type(s)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: import the code from the package <span class="bold">polarsparc.com/grpc/bidirstream/bookspb
+            </span> generated by the <span class="bold">protoc</span> compiler</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: when the <span class="bold">gRPC</span> server invokes the RPC method <span class="bold">
+            RecommendedBooks</span>, it automatically passes in a reference to the <span class="bold">stream</span> object
+            <span class="hi-yellow">BookRecommendService_RecommendedBooksServer</span></p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: calling the <span class="hi-blue">Recv()</span> method on the <span class="bold">stream</span>
+            object returns the next request object. If there are no more requests, the <span class="bold">stream</span> returns an error
+            in the form of an <span class="hi-yellow">io.EOF</span></p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: for each request from the client, invoke the method <span class="bold">GetBooks</span>
+            to find the list of recommended books for the given topic</p>
+        </li>
+        <li>
+          <p><span class="bold">[5]</span> :: invoke the <span class="hi-blue">Send()</span> method on the <span class="bold">stream</span>
+            object to send the next response object</p>
+        </li>
+        <li>
+          <p><span class="bold">[6]</span> :: if the client specified timeout expires, the client will cancel the next request and
+            the server will encounter a cancelled status code (<span class="bold">codes.Canceled</span>)</p>
+        </li>
+        <li>
+          <p><span class="bold">[7]</span> :: simulation of a small delay to trigger the client timeout condition</p>
+        </li>
+        <li>
+          <p><span class="bold">[8]</span> :: leverage the <span class="bold">gRPC</span> built-in error model by calling the method
+            <span class="hi-blue">status.Errorf(...)</span> to handle error conditions</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">client.go</span> that implements the Bidirectional Streaming
+        RPC client for the <span class="bold">BookRecommendService</span> located in the directory <span class="bold">
+        $GOPATH/src/polarsparc.com/grpc/bidirstream/client</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">client.go</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   19 Dec 2020
+*/
+
+package main
+
+import (
+  "context"
+  "google.golang.org/grpc"
+  "google.golang.org/grpc/status"
+  "io"
+  "log"
+  "polarsparc.com/grpc/bidirstream/bookspb"
+  "time"
+)
+
+func main() {
+  log.Println("Ready to start the BookRecommend client...")
+
+  conn, err := grpc.Dial("localhost:20004", grpc.WithInsecure())
+  if err != nil {
+    log.Fatalf("Failed to connect to localhost:20004")
+  }
+  defer conn.Close()
+
+  cl := bookspb.NewBookRecommendServiceClient(conn) // [1]
+
+  wc := make(chan bool) // [2]
+
+  // Test Case-1
+
+  stream, err := cl.RecommendedBooks(context.Background()) // [3]
+  if err != nil {
+    log.Fatalf("[1] Failed to create client stub to localhost:20004: %v", err)
+  }
+
+  go func() { // [4]
+    err = stream.Send(&bookspb.BookRecommendRequest{
+      Topic: "go",
+    })
+    if err != nil {
+      log.Fatalf("[1] Failed to send request to localhost:20004: %v", err)
+    }
+
+    err = stream.Send(&bookspb.BookRecommendRequest{
+      Topic: "Python",
+    })
+    if err != nil {
+      log.Fatalf("[1] Failed to send request to localhost:20004: %v", err)
+    }
+
+    err = stream.CloseSend()
+    if err != nil {
+      log.Fatalf("[1] Failed to close send stream: %v", err)
+    }
+  }()
+
+  go func() { // [5]
+    for {
+      res, err := stream.Recv()
+      if err == nil {
+        log.Printf("[1] Recommended book => topic: %s, title: %s, isbn: %s\n",
+          res.Topic, res.Title, res.Isbn)
+      } else if err == io.EOF {
+        wc &lt;-true
+        break
+      } else {
+        log.Fatalf("[1] Encountered an error on receive from server: %v", err)
+      }
+    }
+  }()
+
+  // Test Case-1 Wait
+  &lt;-wc // [6]
+
+  // Test Case-2 - Error case
+
+  stream, err = cl.RecommendedBooks(context.Background()) // [3]
+  if err != nil {
+    log.Fatalf("[2] Failed to create client stub to localhost:20004: %v", err)
+  }
+
+  go func() { // [4]
+    err = stream.Send(&bookspb.BookRecommendRequest{
+      Topic: "java",
+    })
+    if err != nil {
+      log.Fatalf("[2] Failed to send request to localhost:20004: %v", err)
+    }
+
+    err = stream.Send(&bookspb.BookRecommendRequest{
+      Topic: "rust",
+    })
+    if err != nil {
+      log.Fatalf("[2] Failed to send request to localhost:20004: %v", err)
+    }
+
+    err = stream.CloseSend()
+    if err != nil {
+      log.Fatalf("[2] Failed to close send stream: %v", err)
+    }
+  }()
+
+  go func() { // [5]
+    for {
+      res, err := stream.Recv()
+      if err == nil {
+        log.Printf("[2] Recommended book => topic: %s, title: %s, isbn: %s\n",
+          res.Topic, res.Title, res.Isbn)
+      } else if err == io.EOF {
+        wc &lt;-true
+        break
+      } else {
+        st, ok := status.FromError(err)
+        if ok {
+          log.Printf("[2] Error - %s\n", st.Message())
+        } else {
+          log.Fatalf("[2] Unexpected failure from localhost:20004: %v", err)
+        }
+        wc &lt;-true
+        break
+      }
+    }
+  }()
+
+  // Test Case-2 Wait
+  &lt;-wc // [6]
+
+  // Test Case-3 - Deadline/Timeout case
+
+  duration := time.Now().Add(550 * time.Millisecond)
+  ctx, cancel := context.WithDeadline(context.Background(), duration) // [7]
+  defer cancel()
+
+  stream, err = cl.RecommendedBooks(ctx)
+  if err != nil {
+    log.Fatalf("[3] Failed to create client stub to localhost:20004: %v", err)
+  }
+
+  go func() { // [4]
+    err = stream.Send(&bookspb.BookRecommendRequest{
+      Topic: "java",
+    })
+    if err != nil {
+      log.Fatalf("[3] Failed to send request to localhost:20004: %v", err)
+    }
+
+    err = stream.Send(&bookspb.BookRecommendRequest{
+      Topic: "python",
+    })
+    if err != nil {
+      log.Fatalf("[3] Failed to send request to localhost:20004: %v", err)
+    }
+
+    err = stream.CloseSend()
+    if err != nil {
+      log.Fatalf("[3] Failed to close send stream: %v", err)
+    }
+  }()
+
+  go func() { // [5]
+    for {
+      res, err := stream.Recv()
+      if err == nil {
+        log.Printf("[3] Recommended book => topic: %s, title: %s, isbn: %s\n",
+          res.Topic, res.Title, res.Isbn)
+      } else if err == io.EOF {
+        wc &lt;-true
+        break
+      } else {
+        st, ok := status.FromError(err)
+        if ok {
+          log.Printf("[3] Error - %s\n", st.Message())
+        } else {
+          log.Fatalf("[3] Unexpected failure from localhost:20004: %v", err)
+        }
+        wc &lt;-true
+        break
+      }
+    }
+  }()
+
+  // Test Case-3 Wait
+  &lt;-wc // [6]
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Go type(s)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: create an instance of the <span class="bold">gRPC</span> client stub
+            <span class="hi-yellow">NewBookRecommendServiceClient</span> generated by the <span class="bold">protoc</span> compiler</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: create a go <span class="bold">channel</span> to wait for the two goroutines - one
+            for sending requests to the server and one for receiving responses from the server</p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: call the method <span class="hi-blue">RecommendedBooks</span> to get an instance of the
+            server <span class="bold">stream</span> object</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: start a goroutine to invoke the <span class="hi-blue">Send</span> method on the stream
+            object to dispatch a sequence of <span class="bold">BookRecommendRequest</span> objects to the server</p>
+        </li>
+        <li>
+          <p><span class="bold">[5]</span> :: start a goroutine to invoke the <span class="hi-blue">Recv</span> method on the stream
+            object to receive a sequence of responses (or an error) from the server</p>
+        </li>
+        <li>
+          <p><span class="bold">[6]</span> :: wait for the two goroutines to complete</p>
+        </li>
+        <li>
+          <p><span class="bold">[7]</span> :: create a <span class="hi-blue">Context</span> object with a <span class="bold">Deadline
+            </span> of about <span class="bold">550</span> milliseconds</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>For this demonstration, we will run 2 tests - one within the client specified deadline and the other that violates the client
+        deadline.</p>
+    </div>
+    <div id="para-div">
+      <p>Open two <span class="bold">Terminal</span> windows - one for the server and one for the client.</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Test - 1</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>In the server Terminal, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc/bidirstream/server</p>
+      <p>$ go run server.go books_catalog.go 30</p>
+    </div>
+    <div id="para-div">
+      <p>Notice we have specified a timeout of <span class="bold">30</span> ms. The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>2020/12/19 09:04:01 Ready to start the BookRecommendService server with timeout 30...</pre>
+    </div>
+    <div id="para-div">
+      <p>In the client Terminal, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc/bidirstream/client</p>
+      <p>$ go run client.go</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>2020/12/19 09:04:31 Ready to start the BookRecommend client...
+2020/12/19 09:04:31 [1] Recommended book => topic: go, title: :The Go Programming Language, isbn: 44444
+2020/12/19 09:04:31 [1] Recommended book => topic: go, title: Go in Practice, isbn: 55555
+2020/12/19 09:04:31 [1] Recommended book => topic: go, title: Black Hat Go, isbn: 66666
+2020/12/19 09:04:31 [1] Recommended book => topic: Python, title: :Python Crash Course, isbn: 12121
+2020/12/19 09:04:31 [1] Recommended book => topic: Python, title: Learning Python, isbn: 34343
+2020/12/19 09:04:31 [1] Recommended book => topic: Python, title: Effective Python, isbn: 56565
+2020/12/19 09:04:31 [2] Recommended book => topic: java, title: :Effective Java, isbn: 77777
+2020/12/19 09:04:31 [2] Recommended book => topic: java, title: Modern Java in Action, isbn: 88888
+2020/12/19 09:04:31 [2] Recommended book => topic: java, title: Java: The Complete Reference, isbn: 99999
+2020/12/19 09:04:31 [2] Error - No books for topic: rust
+2020/12/19 09:04:31 [3] Recommended book => topic: java, title: :Effective Java, isbn: 77777
+2020/12/19 09:04:31 [3] Recommended book => topic: java, title: Modern Java in Action, isbn: 88888
+2020/12/19 09:04:31 [3] Recommended book => topic: java, title: Java: The Complete Reference, isbn: 99999
+2020/12/19 09:04:31 [3] Recommended book => topic: python, title: :Python Crash Course, isbn: 12121
+2020/12/19 09:04:31 [3] Recommended book => topic: python, title: Learning Python, isbn: 34343
+2020/12/19 09:04:31 [3] Recommended book => topic: python, title: Effective Python, isbn: 56565</pre>
+    </div>
+    <div id="para-div">
+      <p>The following would be the additional output on the Terminal running the server:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.17</h4>
+      <pre>2020/12/19 09:04:31 Books request for topic: GO
+2020/12/19 09:04:31 Books for key: GO = [{:The Go Programming Language 44444} {Go in Practice 55555} {Black Hat Go 66666}]
+2020/12/19 09:04:31 Books request for topic: PYTHON
+2020/12/19 09:04:31 Books for key: PYTHON = [{:Python Crash Course 12121} {Learning Python 34343} {Effective Python 56565}]
+2020/12/19 09:04:31 Books request for topic: JAVA
+2020/12/19 09:04:31 Books for key: JAVA = [{:Effective Java 77777} {Modern Java in Action 88888} {Java: The Complete Reference 99999}]
+2020/12/19 09:04:31 Books request for topic: RUST
+2020/12/19 09:04:31 Encountered an error on the server: No books for topic: rust
+2020/12/19 09:04:31 Books request for topic: JAVA
+2020/12/19 09:04:31 Books for key: JAVA = [{:Effective Java 77777} {Modern Java in Action 88888} {Java: The Complete Reference 99999}]
+2020/12/19 09:04:31 Books request for topic: PYTHON
+2020/12/19 09:04:31 Books for key: PYTHON = [{:Python Crash Course 12121} {Learning Python 34343} {Effective Python 56565}]</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Test - 2</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>In the server Terminal, terminate the currently running server by pressing <span class="bold">CTRL-C</span> and execute the
+        following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc/bidirstream/server</p>
+      <p>$ go run server.go books_catalog.go 100</p>
+    </div>
+    <div id="para-div">
+      <p>Now we have specified a longer timeout of <span class="bold">100</span> ms. The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.18</h4>
+      <pre>2020/12/19 09:08:25 Ready to start the BookRecommendService server with timeout 100...</pre>
+    </div>
+    <div id="para-div">
+      <p>In the client Terminal, re-execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc/bidirstream/client</p>
+      <p>$ go run client.go</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.19</h4>
+      <pre>2020/12/19 09:09:23 Ready to start the BookRecommend client...
+2020/12/19 09:09:23 [1] Recommended book => topic: go, title: :The Go Programming Language, isbn: 44444
+2020/12/19 09:09:23 [1] Recommended book => topic: go, title: Go in Practice, isbn: 55555
+2020/12/19 09:09:23 [1] Recommended book => topic: go, title: Black Hat Go, isbn: 66666
+2020/12/19 09:09:23 [1] Recommended book => topic: Python, title: :Python Crash Course, isbn: 12121
+2020/12/19 09:09:23 [1] Recommended book => topic: Python, title: Learning Python, isbn: 34343
+2020/12/19 09:09:23 [1] Recommended book => topic: Python, title: Effective Python, isbn: 56565
+2020/12/19 09:09:23 [2] Recommended book => topic: java, title: :Effective Java, isbn: 77777
+2020/12/19 09:09:23 [2] Recommended book => topic: java, title: Modern Java in Action, isbn: 88888
+2020/12/19 09:09:24 [2] Recommended book => topic: java, title: Java: The Complete Reference, isbn: 99999
+2020/12/19 09:09:24 [2] Error - No books for topic: rust
+2020/12/19 09:09:24 [3] Recommended book => topic: java, title: :Effective Java, isbn: 77777
+2020/12/19 09:09:24 [3] Recommended book => topic: java, title: Modern Java in Action, isbn: 88888
+2020/12/19 09:09:24 [3] Recommended book => topic: java, title: Java: The Complete Reference, isbn: 99999
+2020/12/19 09:09:24 [3] Recommended book => topic: python, title: :Python Crash Course, isbn: 12121
+2020/12/19 09:09:24 [3] Recommended book => topic: python, title: Learning Python, isbn: 34343
+2020/12/19 09:09:24 [3] Recommended book => topic: python, title: Effective Python, isbn: 56565
+2020/12/19 09:09:24 [3] Error - context deadline exceeded</pre>
+    </div>
+    <div id="para-div">
+      <p>In this case, the client specified deadline exceeded resulting in a <span class="bold">gRPC</span> error.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the additional output on the Terminal running the server:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.20</h4>
+      <pre>2020/12/19 09:09:23 Books request for topic: GO
+2020/12/19 09:09:23 Books for key: GO = [{:The Go Programming Language 44444} {Go in Practice 55555} {Black Hat Go 66666}]
+2020/12/19 09:09:23 Books request for topic: PYTHON
+2020/12/19 09:09:23 Books for key: PYTHON = [{:Python Crash Course 12121} {Learning Python 34343} {Effective Python 56565}]
+2020/12/19 09:09:23 Books request for topic: JAVA
+2020/12/19 09:09:23 Books for key: JAVA = [{:Effective Java 77777} {Modern Java in Action 88888} {Java: The Complete Reference 99999}]
+2020/12/19 09:09:24 Books request for topic: RUST
+2020/12/19 09:09:24 Encountered an error on the server: No books for topic: rust
+2020/12/19 09:09:24 Books request for topic: JAVA
+2020/12/19 09:09:24 Books for key: JAVA = [{:Effective Java 77777} {Modern Java in Action 88888} {Java: The Complete Reference 99999}]
+2020/12/19 09:09:24 Books request for topic: PYTHON
+2020/12/19 09:09:24 Books for key: PYTHON = [{:Python Crash Course 12121} {Learning Python 34343} {Effective Python 56565}]
+2020/12/19 09:09:24 ERROR - Deadline breached by BookRecommendService at localhost:20004</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">PERFECTO</span> !!! We have successfully demonstrated the Client Streaming <span class="bold">gRPC</span>
+        communication style using the Go language.</p>
+    </div>
+    <div id="para-div">
+      <p>Copy the file <span class="bold">recommend.proto</span> listed above to the directory <span class="bold">
+        $HOME/java/grpc/src/main/proto</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To compile the <span class="bold">recommend.proto</span> file, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/grpc</p>
+      <p>$ mvn compile</p>
+    </div>
+    <div id="para-div">
+      <p>On success, this will generate some files in the directory
+        <span class="bold">$HOME/java/grpc/target/generated-sources/protobuf/java/com/polarsparc/gbd</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">Book.java</span> that represents a holder object for
+        storing the book informartion such as the title and the ISBN. It is located in the directory
+        <span class="bold">$HOME/java/grpc/src/main/java/com/polarsparc/gbd/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Book.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   19 Dec 2020
+*/
+
+package com.polarsparc.gbd.server;
+
+public class Book {
+    private final String title;
+
+    private final String ISBN;
+
+    public Book(String title, String isbn) {
+        this.title = title;
+        this.ISBN = isbn;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getISBN() {
+        return ISBN;
+    }
+
+    @Override
+    public String toString() {
+        return "Book{" +
+                "title='" + title + '\'' +
+                ", ISBN='" + ISBN + '\'' +
+                '}';
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">BooksCatalog.java</span> that simulates an in-memory
+        store for initializing and returning a list of recommended books for a given topic and is located in the directory
+        <span class="bold">$HOME/java/grpc/src/main/java/com/polarsparc/gbd/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">BooksCatalog.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   19 Dec 2020
+*/
+
+package com.polarsparc.gbd.server;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class BooksCatalog {
+    private final static Logger LOGGER = Logger.getLogger(BooksCatalog.class.getName());
+
+    private final static Map&lt;String, List&lt;Book&gt;&gt; catalog = new HashMap&lt;&gt;();
+
+    static {
+        LOGGER.setLevel(Level.INFO);
+
+        catalog.put("C++", Arrays.asList(
+                new Book(":The C++ Programming Language", "11111"),
+                new Book("C++ Primer", "22222"),
+                new Book("A Tour of C++", "33333")
+        ));
+
+        catalog.put("GO", Arrays.asList(
+                new Book(":The Go Programming Language", "44444"),
+                new Book("Go in Practice", "55555"),
+                new Book("Black Hat Go", "66666")
+        ));
+
+        catalog.put("JAVA", Arrays.asList(
+                new Book(":Effective Java", "77777"),
+                new Book("Modern Java in Action", "88888"),
+                new Book("Java: The Complete Reference", "99999")
+        ));
+
+        catalog.put("PYTHON", Arrays.asList(
+                new Book(":Python Crash Course", "12121"),
+                new Book("Learning Python", "34343"),
+                new Book("Effective Python", "56565")
+        ));
+    }
+
+    private BooksCatalog() {
+    }
+
+    public static List&lt;Book&gt; getBooks(String topic) {
+        String key = topic.toUpperCase();
+
+        LOGGER.info(String.format("Books request for topic: %s", key));
+
+        if (!catalog.containsKey(key)) {
+            LOGGER.severe(String.format("No books for topic: %s", key));
+            throw new RuntimeException(String.format("No books for topic: %s", key));
+        }
+
+        List&lt;Book&gt; books = catalog.get(key);
+
+        LOGGER.info(String.format("Books for key: %s = %s", key, books));
+
+        return books;
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>To receive the sequence of requests from the client, the server needs to return a stub handler object to the client
+        that implements the interface <span class="hi-yellow">StreamObserver</span>. The following are the contents of the
+        Java program called <span class="bold">BookRecommendRequestStreamObserver.java</span> that implements the required
+        interface and located in the directory <span class="bold">$HOME/java/grpc/src/test/java/com/polarsparc/gbd/server
+        </span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">BookRecommendRequestStreamObserver.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   19 Dec 2020
+*/
+
+package com.polarsparc.gbd.server;
+
+import com.polarsparc.gbd.BookRecommendRequest;
+import com.polarsparc.gbd.BookRecommendResponse;
+import io.grpc.Status;
+import io.grpc.stub.StreamObserver;
+
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class BookRecommendRequestStreamObserver implements StreamObserver&lt;BookRecommendRequest&gt; {
+    private final static Logger LOGGER = Logger.getLogger(BookRecommendRequestStreamObserver.class.getName());
+
+    private final StreamObserver&lt;BookRecommendResponse&gt; response;
+    private final int timeout;
+    private boolean flag = true; // [1]
+
+    public BookRecommendRequestStreamObserver(int timeout, StreamObserver&lt;BookRecommendResponse&gt; response) {
+        LOGGER.setLevel(Level.INFO);
+
+        this.timeout = timeout;
+        this.response = response;
+
+        LOGGER.info(String.format("Timeout value: %d\n", timeout));
+    }
+
+    @Override
+    public void onNext(BookRecommendRequest request) {
+        try {
+            List&lt;Book&gt; books = BooksCatalog.getBooks(request.getTopic());
+            for (Book bk : books) {
+                BookRecommendResponse res = BookRecommendResponse.newBuilder()
+                        .setTopic(request.getTopic())
+                        .setTitle(bk.getTitle())
+                        .setIsbn(bk.getISBN())
+                        .build();
+                response.onNext(res);
+                try {
+                    Thread.sleep(timeout);
+                }
+                catch (InterruptedException ignored) {
+                }
+            }
+        }
+        catch (RuntimeException ex) {
+            onError(ex); // [3]
+        }
+    }
+
+    @Override
+    public void onError(Throwable ex) { // [4]
+        Status status = Status.fromThrowable(ex);
+        if (status.getCode() == Status.CANCELLED.getCode()) {
+            LOGGER.severe("ERROR - Deadline breached by BookRecommendService at localhost:20004");
+        } else {
+            LOGGER.severe(ex.getMessage());
+        }
+        response.onError(status.asRuntimeException());
+        flag = false;
+    }
+
+    @Override
+    public void onCompleted() { // [5]
+        if (flag) {
+            response.onCompleted();
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Java class(es)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: a flag that tracks if an error occurred during the processing of the next request from
+            the client</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: method <span class="hi-blue">onNext()</span> is invoked when the server receives the
+            next request from the client. We lookup recommended books for the given topic (from the client request) from the object
+            <span class="bold">BooksCatalog</span>. If the lookup succeeds, we send a response back to the client for each of the
+            recommended books</p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: if the lookup fails, invoke the method <span class="hi-blue">onError()</span> passing
+            in the exception</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: method <span class="hi-blue">onError()</span> is invoked when an error is encountered.
+            Notice that we check if the error is due to the client deadline or otherwise</p>
+        </li>
+        <li>
+          <p><span class="bold">[5]</span> :: method <span class="hi-blue">onCompleted()</span> is invoked when the server is done
+            processing all the requests from the client</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java program called <span class="bold">BookRecommendService.java</span> that implements
+        the Bidirectional Streaming <span class="bold">gRPC</span> service <span class="bold">BookRecommendService</span> located in
+        the directory <span class="bold">$HOME/java/grpc/src/main/java/com/polarsparc/gbd/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">BookRecommendService.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   19 Dec 2020
+*/
+
+package com.polarsparc.gbd.server;
+
+import com.polarsparc.gbd.BookRecommendRequest;
+import com.polarsparc.gbd.BookRecommendResponse;
+import com.polarsparc.gbd.BookRecommendServiceGrpc;
+import io.grpc.stub.StreamObserver;
+
+public class BookRecommendService extends BookRecommendServiceGrpc.BookRecommendServiceImplBase { // [1]
+    private final int timeout;
+
+    public BookRecommendService(int timeout) {
+        this.timeout = timeout;
+    }
+
+    @Override
+    public StreamObserver&lt;BookRecommendRequest&gt; recommendedBooks(StreamObserver&lt;BookRecommendResponse&gt; responseObserver) {
+        return new BookRecommendRequestStreamObserver(timeout, responseObserver);
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Java class(es)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: extend the base class <span class="bold">BookRecommendServiceGrpc.BookRecommendServiceImplBase
+            </span> generated by the maven <span class="bold">protobuf</span> compiler plugin</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: override the service method <span class="bold">recommendedBooks</span> which takes a single
+            input argument - a <span class="hi-yellow">StreamObserver</span> object that is used for sending the response back to the
+            client. It returns an instance of the client handler object <span class="bold">BookRecommendRequestStreamObserver</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java program called <span class="bold">BookRecommendServer.java</span> that registers
+        the Bidirectional Streaming RPC service <span class="bold">BookRecommendService</span> as a <span class="bold">gRPC</span>
+        server and is located in the directory <span class="bold">$HOME/java/grpc/src/main/java/com/polarsparc/gbd/server</span> as
+        shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">BookRecommendServer.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   19 Dec 2020
+*/
+
+package com.polarsparc.gbd.server;
+
+import io.grpc.Server;
+import io.grpc.ServerBuilder;
+
+import java.io.IOException;
+
+public class BookRecommendServer {
+    public static void main(String[] args) {
+        int timeout = 100;
+        if (args.length == 1) {
+            timeout = Integer.parseInt(args[0]); // [1]
+        }
+
+        Server server = ServerBuilder.forPort(20004) // [2]
+                .addService(new BookRecommendService(timeout)) // [3]
+                .build();
+
+        try {
+            server.start(); // [4]
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        System.out.printf("Started the gRPC BookRecommendService on 20004 with timeout %d...\n", timeout);
+
+        try {
+            server.awaitTermination(); // [5]
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Java class(es)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: parse the timeout value if one is specified. The default is 100</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: create an instance of the <span class="bold">gRPC</span> server on the specified port</p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: register an instance of the <span class="hi-yellow">BookRecommendService</span> object
+            (that implements the service method <span class="bold">recommendedBooks</span>) with the <span class="bold">gRPC</span>
+            server</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: start the <span class="bold">gRPC</span> server</p>
+        </li>
+        <li>
+          <p><span class="bold">[5]</span> :: wait till the <span class="bold">gRPC</span> server terminates</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To receive responses from the server in an asynchronous fashion, a client needs to implement the interface
+        <span class="hi-yellow">StreamObserver</span> and register it as a callback handler on the client stub. The following are the
+        contents of the Java program called <span class="bold">BookRecommendStreamObserver.java</span> that implements required interface
+        for the asynchronous callback and located in the directory <span class="bold">$HOME/java/grpc/src/test/java/com/polarsparc/gbd/client
+        </span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">BookRecommendStreamObserver.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   19 Dec 2020
+*/
+
+package com.polarsparc.gbd.client;
+
+import com.polarsparc.gbd.BookRecommendResponse;
+import io.grpc.Status;
+import io.grpc.stub.StreamObserver;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class BookRecommendStreamObserver implements StreamObserver&lt;BookRecommendResponse&gt; {
+    private final static Logger LOGGER = Logger.getLogger(BookRecommendStreamObserver.class.getName());
+
+    private final CountDownLatch latch;
+
+    static {
+        LOGGER.setLevel(Level.INFO);
+    }
+
+    public BookRecommendStreamObserver(CountDownLatch latch) {
+        this.latch = latch;
+    }
+
+    @Override
+    public void onNext(BookRecommendResponse response) { // [1]
+        LOGGER.info(String.format("Recommended book => topic: %s, title: %s, isbn: %s\n",
+                response.getTopic(), response.getTitle(), response.getIsbn()));
+    }
+
+    @Override
+    public void onError(Throwable ex) { // [2]
+        Status status = Status.fromThrowable(ex); // [3]
+        LOGGER.severe(String.format("Error status: code - %s, description - %s\n", status.getCode(), status.getDescription()));
+        latch.countDown();
+    }
+
+    @Override
+    public void onCompleted() { // [4]
+        latch.countDown();
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Java class(es)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: method <span class="hi-blue">onNext()</span> is invoked when there is valid response
+            from the server</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: method <span class="hi-blue">onError()</span> is invoked when an error is encountered</p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: call the method <span class="hi-blue">Status.fromThrowable()</span> with the thrown
+            exception as an input to get the <span class="bold">gRPC</span> error status details</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: method <span class="hi-blue">onCompleted()</span> is invoked when the server is done
+            sending all the responses</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java program called <span class="bold">BookRecommendClientTest.java</span> that
+        implements the Client Streaming RPC client for <span class="bold">BookRecommendService</span> and is located in the directory
+        <span class="bold">$HOME/java/grpc/src/test/java/com/polarsparc/gbd/client</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">BookRecommendClientTest.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   19 Dec 2020
+*/
+
+package com.polarsparc.gbd.client;
+
+import com.polarsparc.gbd.BookRecommendRequest;
+import com.polarsparc.gbd.BookRecommendServiceGrpc;
+import io.grpc.Deadline;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.stub.StreamObserver;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public class BookRecommendClientTest {
+    private ManagedChannel channel;
+
+    @BeforeAll
+    public void setup() {
+        channel = ManagedChannelBuilder.forAddress("localhost", 20004) // [1]
+                .usePlaintext() // [2]
+                .build();
+    }
+
+    @Test
+    public void bookRecommendAsyncTestOne() {
+        CountDownLatch latch = new CountDownLatch(1);
+        BookRecommendServiceGrpc.BookRecommendServiceStub stub = BookRecommendServiceGrpc.newStub(channel); // [3]
+        StreamObserver&lt;BookRecommendRequest&gt; requestObserver = stub.recommendedBooks(
+                new BookRecommendStreamObserver(latch)); // [5]
+        BookRecommendRequest req1 = BookRecommendRequest.newBuilder().setTopic("go").build(); // [6]
+        BookRecommendRequest req2 = BookRecommendRequest.newBuilder().setTopic("Python").build(); // [6]
+        requestObserver.onNext(req1); // [7]
+        requestObserver.onNext(req2); // [7]
+        requestObserver.onCompleted(); // [8]
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void bookRecommendAsyncTestTwo() {
+        CountDownLatch latch = new CountDownLatch(1);
+        BookRecommendServiceGrpc.BookRecommendServiceStub stub = BookRecommendServiceGrpc.newStub(channel); // [3]
+        StreamObserver&lt;BookRecommendRequest&gt; requestObserver = stub.recommendedBooks(
+                new BookRecommendStreamObserver(latch)); // [5]
+        BookRecommendRequest req1 = BookRecommendRequest.newBuilder().setTopic("java").build(); // [6]
+        BookRecommendRequest req2 = BookRecommendRequest.newBuilder().setTopic("rust").build(); // [6]
+        requestObserver.onNext(req1); // [7]
+        requestObserver.onNext(req2); // [7]
+        requestObserver.onCompleted(); // [8]
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void bookRecommendAsyncTestThree() {
+        CountDownLatch latch = new CountDownLatch(1);
+        BookRecommendServiceGrpc.BookRecommendServiceStub stub =
+                BookRecommendServiceGrpc.newStub(channel)
+                .withDeadline(Deadline.after(550, TimeUnit.MILLISECONDS)); // [4]
+        StreamObserver&lt;BookRecommendRequest&gt; requestObserver = stub.recommendedBooks(
+                new BookRecommendStreamObserver(latch)); // [5]
+        BookRecommendRequest req1 = BookRecommendRequest.newBuilder().setTopic("java").build(); // [6]
+        BookRecommendRequest req2 = BookRecommendRequest.newBuilder().setTopic("python").build(); // [6]
+        requestObserver.onNext(req1); // [7]
+        requestObserver.onNext(req2); // [7]
+        requestObserver.onCompleted(); // [8]
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Java class(es)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: create an instance of the object <span class="hi-yellow">ManagedChannel</span> that
+            represents a virtual <span class="bold">gRPC</span> connection to the service endpoint on the specified ip address
+            and port</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: indicate that we are using an unsecured communication channel</p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: create an instance of the <span class="bold">gRPC</span> asynchronous (non-blocking)
+            client stub <span class="hi-yellow">BookRecommendServiceStub</span> generated by the <span class="bold">protoc</span>
+            compiler</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: create an instance of the <span class="bold">gRPC</span> asynchronous (non-blocking)
+            client stub <span class="hi-yellow">BookRecommendServiceStub</span> with a <span class="bold">Deadline</span> of about
+            <span class="bold">550</span> milliseconds</p>
+        </li>
+        <li>
+          <p><span class="bold">[5]</span> :: invoke the <span class="bold">gRPC</span> method <span class="bold">recommendedBooks
+            </span> using the asynchronous client stub passing in an instance of the callback handler <span class="bold">
+              BookRecommendStreamObserver</span>. The service method invocation will return a stream request handler</p>
+        </li>
+        <li>
+          <p><span class="bold">[6]</span> :: create an instance of the request object <span class="bold">BookRecommendRequest</span></p>
+        </li>
+        <li>
+          <p><span class="bold">[7]</span> :: invoke the <span class="bold">gRPC</span> method <span class="bold">onNext</span> to
+            send a request to the server</p>
+        </li>
+        <li>
+          <p><span class="bold">[8]</span> :: invoke the <span class="bold">gRPC</span> method <span class="bold">onCompleted</span>
+            to signal to the server the client has finished sending all the requests</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>As was done previously, we will run 2 tests - one within the client specified deadline and the other that violates the client
+        deadline.</p>
+    </div>
+    <div id="para-div">
+      <p>Open two <span class="bold">Terminal</span> windows - one for the server and one for the client.</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Test - 1</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>In the server Terminal, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/grpc</p>
+      <p>$ mvn exec:java -Dexec.mainClass=com.polarsparc.gbd.server.BookRecommendServer -Dexec.args="30"</p>
+    </div>
+    <div id="para-div">
+      <p>Notice we have specified a timeout of <span class="bold">30</span> ms. The following would be the typical output:</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.21</h4>
+      <pre>Started the gRPC BookRecommendService on 20004 with timeout 30...</pre>
+    </div>
+    <div id="para-div">
+      <p>In the client Terminal, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/grpc</p>
+      <p>$ mvn test -Dtest=com.polarsparc.gbd.client.BookRecommendClientTest</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.22</h4>
+      <pre>Running com.polarsparc.gbd.client.BookRecommendClientTest
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: go, title: :The Go Programming Language, isbn: 44444
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: go, title: Go in Practice, isbn: 55555
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: go, title: Black Hat Go, isbn: 66666
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: Python, title: :Python Crash Course, isbn: 12121
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: Python, title: Learning Python, isbn: 34343
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: Python, title: Effective Python, isbn: 56565
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: java, title: :Effective Java, isbn: 77777
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: java, title: Modern Java in Action, isbn: 88888
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: java, title: Java: The Complete Reference, isbn: 99999
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onError
+SEVERE: Error status: code - UNKNOWN, description - null
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: java, title: :Effective Java, isbn: 77777
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: java, title: Modern Java in Action, isbn: 88888
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: java, title: Java: The Complete Reference, isbn: 99999
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: python, title: :Python Crash Course, isbn: 12121
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: python, title: Learning Python, isbn: 34343
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: python, title: Effective Python, isbn: 56565
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.022 s</pre>
+    </div>
+    <div id="para-div">
+      <p>The following would be the additional output on the Terminal running the server:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.23</h4>
+      <pre>Dec 19, 2020 9:21:33 AM com.polarsparc.gbd.server.BookRecommendRequestStreamObserver &lt;init>
+INFO: Timeout value: 30
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books request for topic: GO
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books for key: GO = [Book{title=':The Go Programming Language', ISBN='44444'}, Book{title='Go in Practice', ISBN='55555'}, Book{title='Black Hat Go', ISBN='66666'}]
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books request for topic: PYTHON
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books for key: PYTHON = [Book{title=':Python Crash Course', ISBN='12121'}, Book{title='Learning Python', ISBN='34343'}, Book{title='Effective Python', ISBN='56565'}]
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.server.BookRecommendRequestStreamObserver &lt;init>
+INFO: Timeout value: 30
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books request for topic: JAVA
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books for key: JAVA = [Book{title=':Effective Java', ISBN='77777'}, Book{title='Modern Java in Action', ISBN='88888'}, Book{title='Java: The Complete Reference', ISBN='99999'}]
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books request for topic: RUST
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+SEVERE: No books for topic: RUST
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.server.BookRecommendRequestStreamObserver onError
+SEVERE: No books for topic: RUST
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.server.BookRecommendRequestStreamObserver &lt;init>
+INFO: Timeout value: 30
+
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books request for topic: JAVA
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books for key: JAVA = [Book{title=':Effective Java', ISBN='77777'}, Book{title='Modern Java in Action', ISBN='88888'}, Book{title='Java: The Complete Reference', ISBN='99999'}]
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books request for topic: PYTHON
+Dec 19, 2020 9:21:34 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books for key: PYTHON = [Book{title=':Python Crash Course', ISBN='12121'}, Book{title='Learning Python', ISBN='34343'}, Book{title='Effective Python', ISBN='56565'}]</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Test - 2</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>In the server Terminal, terminate the currently running server by pressing <span class="bold">CTRL-C</span> and execute the
+        following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/grpc</p>
+      <p>$ mvn exec:java -Dexec.mainClass=com.polarsparc.gbd.server.BookRecommendServer -Dexec.args="100"</p>
+    </div>
+    <div id="para-div">
+      <p>Now we have specified a longer timeout of <span class="bold">100</span> ms. The following would be the typical output:</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.24</h4>
+      <pre>Started the gRPC BookRecommendService on 20004 with timeout 100...</pre>
+    </div>
+    <div id="para-div">
+      <p>In the client Terminal, re-execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/grpc</p>
+      <p>$ mvn test -Dtest=com.polarsparc.gbd.client.BookRecommendClientTest</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.25</h4>
+      <pre>Running com.polarsparc.gbd.client.BookRecommendClientTest
+Dec 19, 2020 9:28:38 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: go, title: :The Go Programming Language, isbn: 44444
+
+Dec 19, 2020 9:28:38 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: go, title: Go in Practice, isbn: 55555
+
+Dec 19, 2020 9:28:38 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: go, title: Black Hat Go, isbn: 66666
+
+Dec 19, 2020 9:28:38 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: Python, title: :Python Crash Course, isbn: 12121
+
+Dec 19, 2020 9:28:38 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: Python, title: Learning Python, isbn: 34343
+
+Dec 19, 2020 9:28:38 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: Python, title: Effective Python, isbn: 56565
+
+Dec 19, 2020 9:28:38 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: java, title: :Effective Java, isbn: 77777
+
+Dec 19, 2020 9:28:38 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: java, title: Modern Java in Action, isbn: 88888
+
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: java, title: Java: The Complete Reference, isbn: 99999
+
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onError
+SEVERE: Error status: code - UNKNOWN, description - null
+
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: java, title: :Effective Java, isbn: 77777
+
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: java, title: Modern Java in Action, isbn: 88888
+
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: java, title: Java: The Complete Reference, isbn: 99999
+
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: python, title: :Python Crash Course, isbn: 12121
+
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: python, title: Learning Python, isbn: 34343
+
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onNext
+INFO: Recommended book => topic: python, title: Effective Python, isbn: 56565
+
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.client.BookRecommendStreamObserver onError
+SEVERE: Error status: code - DEADLINE_EXCEEDED, description - deadline exceeded after 0.549538451s. [remote_addr=localhost/127.0.0.1:20004]
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 2.023 s</pre>
+    </div>
+    <div id="para-div">
+      <p>In this case, the client specified deadline exceeded resulting in a <span class="bold">gRPC</span> error.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the additional output on the Terminal running the server:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.26</h4>
+      <pre>Dec 19, 2020 9:28:38 AM com.polarsparc.gbd.server.BookRecommendRequestStreamObserver &lt;init>
+INFO: Timeout value: 100
+
+Dec 19, 2020 9:28:38 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books request for topic: GO
+Dec 19, 2020 9:28:38 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books for key: GO = [Book{title=':The Go Programming Language', ISBN='44444'}, Book{title='Go in Practice', ISBN='55555'}, Book{title='Black Hat Go', ISBN='66666'}]
+Dec 19, 2020 9:28:38 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books request for topic: PYTHON
+Dec 19, 2020 9:28:38 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books for key: PYTHON = [Book{title=':Python Crash Course', ISBN='12121'}, Book{title='Learning Python', ISBN='34343'}, Book{title='Effective Python', ISBN='56565'}]
+Dec 19, 2020 9:28:38 AM com.polarsparc.gbd.server.BookRecommendRequestStreamObserver &lt;init>
+INFO: Timeout value: 100
+
+Dec 19, 2020 9:28:38 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books request for topic: JAVA
+Dec 19, 2020 9:28:38 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books for key: JAVA = [Book{title=':Effective Java', ISBN='77777'}, Book{title='Modern Java in Action', ISBN='88888'}, Book{title='Java: The Complete Reference', ISBN='99999'}]
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books request for topic: RUST
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+SEVERE: No books for topic: RUST
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.server.BookRecommendRequestStreamObserver onError
+SEVERE: No books for topic: RUST
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.server.BookRecommendRequestStreamObserver &lt;init>
+INFO: Timeout value: 100
+
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books request for topic: JAVA
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books for key: JAVA = [Book{title=':Effective Java', ISBN='77777'}, Book{title='Modern Java in Action', ISBN='88888'}, Book{title='Java: The Complete Reference', ISBN='99999'}]
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books request for topic: PYTHON
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.server.BooksCatalog getBooks
+INFO: Books for key: PYTHON = [Book{title=':Python Crash Course', ISBN='12121'}, Book{title='Learning Python', ISBN='34343'}, Book{title='Effective Python', ISBN='56565'}]
+Dec 19, 2020 9:28:39 AM com.polarsparc.gbd.server.BookRecommendRequestStreamObserver onError
+SEVERE: ERROR - Deadline breached by BookRecommendService at localhost:20004</pre>
+    </div>
+    <div id="para-div">
+      <p>One could also test with the Go server running and using the Java client and vice versa.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/gRPC/gRPC-3.html" target="_blank"><span class="bold">Introduction to gRPC - Part 3</span></a></p>
+      <p><a href="https://polarsparc.github.io/gRPC/gRPC-2.html" target="_blank"><span class="bold">Introduction to gRPC - Part 2</span></a></p>
+      <p><a href="https://polarsparc.github.io/gRPC/gRPC-1.html" target="_blank"><span class="bold">Introduction to gRPC - Part 1</span></a></p>
+      <p><a href="https://polarsparc.github.io/gRPC/Protobuf3.html" target="_blank"><span class="bold">Introduction to Google Protocol Buffers</span></a></p>
+      <p><a href="https://grpc.io/docs/languages/go/" target="_blank"><span class="bold">gRPC Go Documentation</span></a></p>
+      <p><a href="https://grpc.io/docs/languages/java/" target="_blank"><span class="bold">gRPC Java Documentation</span></a></p>
+      <p><a href="https://grpc.io/docs/guides/error/" target="_blank"><span class="bold">gRPC Standard Error Model</span></a></p>
+      <p><a href="https://grpc.io/blog/deadlines/" target="_blank"><span class="bold">gRPC and Deadlines</span></a></p>
+      <p><a href="https://github.com/bhaskars-repo/gRPC-Go" target="_blank"><span class="bold">GitHub - gRPC Go</span></a></p>
+      <p><a href="https://github.com/bhaskars-repo/gRPC-Java" target="_blank"><span class="bold">GitHub - gRPC Java</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,945 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Introduction to gRPC - Part 1">
+    <meta name="subject" content="Introduction to gRPC - Part 1">
+    <meta name="keywords" content="go, grpc, java, protobuf">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Introduction to gRPC - Part 1</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="ps-header">
+      <img src="./images/grpc-hdr-0.png" />
+    </div>
+    <br/>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">11/29/2020</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+    <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://grpc.io/" target="_blank"><span class="hi-yellow">gRPC</span></a> is a distributed, heterogeneous, high
+        performance, high throughput, modern, open source, remote procedure call (<span class="bold">RPC</span>) framework from
+        Google with the following features:</p>
+    </div>
+    <div id="para-div">
+      <ul id="blue-ol">
+        <li>
+          <p>Is platform neutral</p>
+        </li>
+        <li>
+          <p>Is language neutral with official support for <span class="bold">C++</span>, <span class="bold">C#</span>,
+            <span class="bold">Go</span>, <span class="bold">Java</span>, <span class="bold">JavaScript</span>, <span class="bold">
+            Python</span>, <span class="bold">Ruby</span>, etc</p>
+        </li>
+        <li>
+          <p>Uses <a href="https://polarsparc.github.io/gRPC/Protobuf3.html" target="_blank"><span class="hi-yellow">ProtoBuf</span></a>
+            for defining message formats and service interfaces</p>
+        </li>
+        <li>
+          <p>Leverages <a href="https://en.wikipedia.org/wiki/HTTP/2" target="_blank"><span class="hi-yellow">HTTP/2</span></a> for
+            efficient network communication</p>
+        </li>
+        <li>
+          <p>Provides support for both synchronous and asynchronous styles of communication</p>
+        </li>
+        <li>
+          <p>Has pluggable support for load balancing, health checking, and authentication</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>In short, with <span class="bold">gRPC</span>, services deployed on distributed systems can communicate with each other in
+        an efficient and secure manner.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the high-level architecture of <span class="bold">gRPC</span> (along with some circled
+        number annotations):</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/grpc-01.png" class="img-cls" alt="gRPC Architecture" />
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The circled number annotations indicate the steps to implement, build, and deploy a <span class="bold">gRPC</span> based
+        service and are as follows:</p>
+    </div>
+    <div id="para-div">
+      <ol id="blue-ol">
+        <li>
+          <p>Create a <span class="hi-yellow">.proto</span> file with the definitions for the request message <span class="hi-blue">
+            Req</span>, the response message <span class="hi-red">Res</span>, and the service interface <span class="hi-green">
+            Service</span></p>
+        </li>
+        <li>
+          <p>Compile the <span class="bold">.proto</span> file to generate the <span class="bold">gRPC</span> code for the server
+            <span class="hi-green">gRPC Server</span> and the <span class="bold">gRPC</span> code for the client <span class="hi-green">
+            gRPC Stub</span> for the chosen language</p>
+        </li>
+        <li>
+          <p>Extend the <span class="hi-green">gRPC Server</span> code to implement and build the server side or the service provider</p>
+        </li>
+        <li>
+          <p>Extend the <span class="hi-green">gRPC Stub</span> code to implement and build the cide side or the service consumer</p>
+        </li>
+      </ol>
+    </div>
+    <div id="para-div">
+      <p>We will demonstrate <span class="bold">gRPC</span> using the <span class="hi-yellow">Go</span> and the <span class="hi-yellow">
+        Java 11</span> programming languages.</p>
+    </div>
+    <div id="section-div">
+      <p>Installation and Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The installation is on a <span class="bold">Ubuntu 20.04 LTS</span> based Linux desktop.</p>
+      <p>We will also assume that the logged in user-id is <span class="hi-yellow">alice</span> with the home directory located at
+        <span class="hi-yellow">/home/alice</span>.</p>
+      <p>We need to install the packages for the <span class="bold">Go</span> programming language called <span class="hi-yellow">
+        golang</span>, the <span class="bold">Java 11</span> programming language called <span class="hi-yellow">openjdk-11-jdk</span>,
+        the <span class="bold">Maven</span> build management tool for Java called <span class="hi-yellow">maven</span>, and the
+        protobuf compiler called <span class="hi-yellow">protobuf-compiler</span> from the Ubuntu repository.</p>
+    </div>
+    <div id="para-div">
+      <p>To install the mentioned packages, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt-get update</p>
+      <p>$ sudo apt-get install golang openjdk-11-jdk maven protobuf-compiler -y</p>
+    </div>
+    <div id="para-div">
+      <p>For the Go language, we will create a directory called <span class="hi-yellow">go</span> under the home directory of the
+        logged in user and set the <span class="hi-blue">GOPATH</span> environment variable by executing the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME</p>
+      <p>$ mkdir go</p>
+      <p>$ export GOPATH=$HOME/go</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the directory structure and Go dependencies for the demonstrations, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH</p>
+      <p>$ mkdir -p src/polarsparc.com/grpc</p>
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc</p>
+      <p>$ go mod init polarsparc.com/grpc</p>
+      <p>$ GO111MODULE=on go get -u google.golang.org/grpc</p>
+      <p>$ GO111MODULE=on go get github.com/golang/protobuf/protoc-gen-go</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the demonstrations, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME</p>
+      <p>$ mkdir -p java/grpc</p>
+      <p>$ cd $HOME/java/grpc</p>
+      <p>$ mkdir -p src/main/java src/main/proto src/test/java target</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc src/test/java/com/polarsparc</p>
+    </div>
+    <div id="para-div">
+      <p>For the Java language, we will leverage Maven to manage the build as well as the package dependencies.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Maven <span class="hi-yellow">pom.xml</span> file located in the directory <span class="bold">
+        $HOME/java/grpc</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;groupId&gt;com.polarsparc.grpc&lt;/groupId&gt;
+    &lt;artifactId&gt;gRPC&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+
+    &lt;properties&gt;
+        &lt;java.version&gt;1.8&lt;/java.version&gt;
+        &lt;project.build.sourceEncoding&gt;UTF-8&lt;/project.build.sourceEncoding&gt;
+    &lt;/properties&gt;
+
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;io.grpc&lt;/groupId&gt;
+            &lt;artifactId&gt;grpc-protobuf&lt;/artifactId&gt;
+            &lt;version&gt;1.33.1&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;io.grpc&lt;/groupId&gt;
+            &lt;artifactId&gt;grpc-netty-shaded&lt;/artifactId&gt;
+            &lt;version&gt;1.33.1&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;io.grpc&lt;/groupId&gt;
+            &lt;artifactId&gt;grpc-stub&lt;/artifactId&gt;
+            &lt;version&gt;1.33.1&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;!-- Needed for Java 9 and above --&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.apache.tomcat&lt;/groupId&gt;
+            &lt;artifactId&gt;annotations-api&lt;/artifactId&gt;
+            &lt;version&gt;6.0.53&lt;/version&gt;
+            &lt;scope&gt;provided&lt;/scope&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.junit.jupiter&lt;/groupId&gt;
+            &lt;artifactId&gt;junit-jupiter-engine&lt;/artifactId&gt;
+            &lt;version&gt;5.6.3&lt;/version&gt;
+            &lt;scope&gt;test&lt;/scope&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+
+    &lt;build&gt;
+        &lt;extensions&gt;
+            &lt;extension&gt;
+                &lt;groupId&gt;kr.motd.maven&lt;/groupId&gt;
+                &lt;artifactId&gt;os-maven-plugin&lt;/artifactId&gt;
+                &lt;version&gt;1.6.2&lt;/version&gt;
+            &lt;/extension&gt;
+        &lt;/extensions&gt;
+        &lt;plugins&gt;
+            &lt;plugin&gt;
+                &lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
+                &lt;artifactId&gt;maven-compiler-plugin&lt;/artifactId&gt;
+                &lt;version&gt;3.8.1&lt;/version&gt;
+                &lt;configuration&gt;
+                    &lt;source&gt;1.8&lt;/source&gt;
+                    &lt;target&gt;1.8&lt;/target&gt;
+                &lt;/configuration&gt;
+            &lt;/plugin&gt;
+            &lt;plugin&gt;
+                &lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
+                &lt;artifactId&gt;maven-surefire-plugin&lt;/artifactId&gt;
+                &lt;version&gt;2.22.2&lt;/version&gt;
+            &lt;/plugin&gt;
+            &lt;plugin&gt;
+                &lt;groupId&gt;org.xolstice.maven.plugins&lt;/groupId&gt;
+                &lt;artifactId&gt;protobuf-maven-plugin&lt;/artifactId&gt;
+                &lt;version&gt;0.6.1&lt;/version&gt;
+                &lt;configuration&gt;
+                    &lt;protocArtifact&gt;com.google.protobuf:protoc:3.14.0:exe:${os.detected.classifier}&lt;/protocArtifact&gt;
+                    &lt;pluginId&gt;grpc-java&lt;/pluginId&gt;
+                    &lt;pluginArtifact&gt;io.grpc:protoc-gen-grpc-java:1.33.1:exe:${os.detected.classifier}&lt;/pluginArtifact&gt;
+                    &lt;protoSourceRoot&gt;${basedir}/src/main/proto&lt;/protoSourceRoot&gt;
+                &lt;/configuration&gt;
+                &lt;executions&gt;
+                    &lt;execution&gt;
+                        &lt;goals&gt;
+                            &lt;goal&gt;compile&lt;/goal&gt;
+                            &lt;goal&gt;compile-custom&lt;/goal&gt;
+                        &lt;/goals&gt;
+                    &lt;/execution&gt;
+                &lt;/executions&gt;
+            &lt;/plugin&gt;
+        &lt;/plugins&gt;
+    &lt;/build&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on with gRPC</p>
+    </div>
+    <div id="para-div">
+      <p>One of the prerequisites for <span class="bold">gRPC</span> is have a fundamental understanding of
+        <a href="https://polarsparc.github.io/xhtml/Protobuf3.html" target="_blank"><span class="bold">Protocol Buffers</span></a>.</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">gRPC</span> supports four types of communication patterns which are as follows:</p>
+    </div>
+    <div id="para-div">
+      <ul id="blue-ol">
+        <li>
+          <p><span class="hi-yellow">Unary</span> :: the client sends a single request to the server and the server responds with a
+            single response</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Server Streaming</span> :: the client sends a single request to the server and the server
+            responds with a sequence of responses</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Client Streaming</span> :: the client sends a sequence of requests to the server and the server
+            responds with a single response</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Bidirectional Streaming</span> :: the client sends a sequence of requests to the server and the
+            server with a sequence of responses (with the requests and responses operating independently)</p>
+        </li>
+      </ul>
+    </div>
+    <div id="step-div">
+      <p>Unary RPC</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the high-level architecture of <span class="bold">Unary</span> communication pattern:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/grpc-02.png" class="img-cls" alt="Unary Architecture" />
+      <div class="img-cap">Figure-2</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the Unary RPC demonstration, we will implement a simple Greet service, where the client sends a name in the request and
+        the server responds back with an appropriate greeting message based on the time of the day.</p>
+    </div>
+    <div id="para-div">
+      <p>We will first demonstrate the Greet service using the Go programming language.</p>
+      <p>In the <span class="bold">$GOPATH</span> directory, create the project directory hierarchy by executing the following
+        commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc</p>
+      <p>$ mkdir -p unary unary/greetpb unary/server unary/client</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="bold">greet.proto</span> located in the directory <span class="bold">
+        $GOPATH/src/polarsparc.com/grpc/unary/greetpb</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">greet.proto</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   28 Nov 2020
+*/
+
+syntax = "proto3";
+
+package unary;
+
+option go_package = "polarsparc.com/grpc/unary/greetpb";
+
+message GreetRequest {
+  string name = 1;
+}
+
+message GreetResponse {
+  string message = 1;
+}
+
+service GreetService {
+  rpc greet(GreetRequest) returns (GreetResponse);
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The request message is defined as <span class="hi-yellow">GreetRequest</span> and the response message is defined as
+        <span class="hi-yellow">GreetResponse</span>. The service interface is defined as <span class="hi-yellow">GreetService</span>
+        with an RPC method <span class="hi-blue">greet</span> that takes in a <span class="bold">GreetRequest</span> as an input
+        and returns a <span class="bold">GreetResponse</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To compile the <span class="bold">greet.proto</span> file, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc/unary</p>
+      <p>$ protoc greetpb/greet.proto --go_out=plugins=grpc:$GOPATH/src</p>
+    </div>
+    <div id="para-div">
+      <p>On success, this will generate the Go code file called <span class="hi-yellow">greet.pb.go</span> located in the directory
+        <span class="bold">$GOPATH/src/polarsparc.com/grpc/unary/greetpb</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>From the file <span class="bold">greet.pb.go</span>, we see the <span class="hi-blue">GreetServiceServer</span> interface,
+        as shown below, that the server needs to implements:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">greet.pb.go</div>
+      <div class="src-body-1">
+      <pre>.
+.
+.
+type GreetServiceServer interface {
+    Greet(context.Context, *GreetRequest) (*GreetResponse, error)
+}
+.
+.
+.</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">server.go</span> for the Unary RPC server that implements
+        the <span class="bold">GreetServiceServer</span> interface and is located in the directory <span class="bold">
+        $GOPATH/src/polarsparc.com/grpc/unary/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">server.go</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   28 Nov 2020
+*/
+
+package main
+
+import (
+  "context"
+  "google.golang.org/grpc"
+  "log"
+  "net"
+  "polarsparc.com/grpc/unary/greetpb" // [1]
+  "time"
+)
+
+type server struct {} // [2]
+
+func (s *server) Greet(_ context.Context, req *greetpb.GreetRequest) (*greetpb.GreetResponse, error) { // [3]
+  log.Printf("Received a Greet request with req: %v\n", req)
+
+  name := req.GetName()
+  message := getMessage(name)
+  res := &greetpb.GreetResponse{
+    Message: message,
+  }
+
+  return res, nil
+}
+
+const (
+  addr = "127.0.0.1:20001"
+)
+
+func main() {
+  log.Printf("Ready to start the Greet server on %s", addr)
+
+  lis, err := net.Listen("tcp", addr)
+  if err != nil {
+    log.Fatalf("Failed to create listener on %s", addr)
+  }
+
+  srv := grpc.NewServer() // [4]
+
+  greetpb.RegisterGreetServiceServer(srv, &server{}) // [5]
+
+  if err = srv.Serve(lis); err != nil {
+    log.Fatalf("Failed to start server: %v", err)
+  }
+}
+
+func getMessage(name string) string {
+  hour := time.Now().Hour()
+
+  msg := "Hello, " + name + ", "
+  if hour &lt; 12 {
+    msg = msg + "Good Morning !!!"
+  } else if hour &lt; 16 {
+    msg = msg + "Good Afternoon !!!"
+  } else if hour &lt; 21 {
+    msg = msg + "Good Evening !!!"
+  } else {
+    msg = msg + "Good Night !!!"
+  }
+
+  return msg
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Go type(s)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: import the code from the package <span class="bold">polarsparc.com/grpc/unary/greetpb
+            </span> generated by the <span class="bold">protoc</span> compiler</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: an abstract type used for associating the service method(s) as receivers</p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: receiver method that implements the service method <span class="bold">Greet</span>.
+            It takes two input arguments - a <span class="hi-yellow">Context</span> object and a <span class="hi-blue">GreetRequest
+            </span> object, and returns a <span class="hi-blue">GreetResponse</span> object. A <span class="bold">Context</span> is
+            used to wrap request specific values such as an authentication token, a timeout value for the RPC call, etc. The objects
+            <span class="bold">GreetRequest</span> and <span class="bold">GreetResponse</span> are the Go types associated with the
+            corresponding message types from the <span class="bold">greet.proto</span> file</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: create an instance of the <span class="bold">gRPC</span> server</p>
+        </li>
+        <li>
+          <p><span class="bold">[5]</span> :: register an instance of the <span class="hi-yellow">server</span> object (that implements
+            the service method <span class="bold">Greet</span>) with the <span class="bold">gRPC</span> server</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">client.go</span> that implements the Unary RPC client for the
+        <span class="bold">GreetService</span> located in the directory <span class="bold">$GOPATH/src/polarsparc.com/grpc/unary/client
+        </span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">client.go</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   28 Nov 2020
+*/
+
+package main
+
+import (
+  "golang.org/x/net/context"
+  "google.golang.org/grpc"
+  "log"
+  "polarsparc.com/grpc/unary/greetpb"
+)
+
+const (
+  addr = "127.0.0.1:20001"
+)
+
+func main()  {
+  log.Println("Ready to start the Greet client...")
+
+  conn, err := grpc.Dial(addr, grpc.WithInsecure())
+  if err != nil {
+    log.Fatalf("Failed to connect to %s", addr)
+  }
+  defer conn.Close()
+
+  cl := greetpb.NewGreetServiceClient(conn) // [1]
+
+  req := &greetpb.GreetRequest{ // [2]
+    Name: "Alice",
+  }
+  res, err := cl.Greet(context.Background(), req) // [3]
+  if err != nil {
+    log.Fatalf("Failed to send Greet request to %s [%v]", addr, err)
+  }
+
+  log.Printf("%s\n", res.Message)
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Go type(s)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: create an instance of the <span class="bold">gRPC</span> client stub
+            <span class="hi-yellow">NewGreetServiceClient</span> generated by the <span class="bold">protoc</span> compiler</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: create an instance of the request object <span class="bold">GreetRequest</span></p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: invoke the <span class="bold">gRPC</span> method <span class="bold">Greet</span> using
+            the client stub. The method <span class="hi-yellow">context.Background()</span> returns an empty <span class="bold">
+            Context</span> object without any values set</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the contents of the directory <span class="bold">$GOPATH/src/polarsparc.com/grpc</span>:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/grpc-03.png" class="img-cls" alt="grpc Directory" />
+      <div class="img-cap">Figure-3</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Open two <span class="bold">Terminal</span> windows - one for the server and one for the client.</p>
+    </div>
+    <div id="para-div">
+      <p>In the server Terminal, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc/unary/server</p>
+      <p>$ go run server.go</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>2020/11/28 20:48:59 Ready to start the Greet server on 127.0.0.1:20001</pre>
+    </div>
+    <div id="para-div">
+      <p>In the client Terminal, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc/unary/client</p>
+      <p>$ go run client.go</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>2020/11/28 20:50:55 Ready to start the Greet client...
+2020/11/28 20:50:55 Hello, Alice, Good Evening !!!</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">AWESOME</span> !!! We have successfully demonstrated the Unary <span class="bold">gRPC</span> communication
+        style using the Go language.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="bold">greet.proto</span> located in the directory <span class="bold">
+        $HOME/java/grpc/src/main/proto</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">greet.proto</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   28 Nov 2020
+*/
+
+syntax = "proto3";
+
+package unary;
+
+option java_multiple_files = true;
+option java_package = "com.polarsparc.gun";
+
+message GreetRequest {
+  string name = 1;
+}
+
+message GreetResponse {
+  string message = 1;
+}
+
+service GreetService {
+  rpc greet(GreetRequest) returns (GreetResponse);
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>To compile the <span class="bold">greet.proto</span> file, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/grpc</p>
+      <p>$ mvn compile</p>
+    </div>
+    <div id="para-div">
+      <p>On success, this will generate some files in the directory
+        <span class="bold">$HOME/java/grpc/target/generated-sources/protobuf/java/com/polarsparc/gun</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the contents of the directory <span class="bold">$HOME/java/grpc/target/generated-sources
+        </span>:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/grpc-04.png" class="img-cls" alt="generated-sources Directory" />
+      <div class="img-cap">Figure-4</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are the contents of the Java program called <span class="bold">GreetService.java</span> that implements the
+        Unary <span class="bold">gRPC</span> service <span class="bold">GreetService</span> located in the directory <span class="bold">
+        $HOME/java/grpc/src/main/java/com/polarsparc/gun/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">GreetService.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   28 Nov 2020
+*/
+
+package com.polarsparc.gun.server;
+
+import com.polarsparc.gun.GreetRequest;
+import com.polarsparc.gun.GreetResponse;
+import com.polarsparc.gun.GreetServiceGrpc;
+import io.grpc.stub.StreamObserver;
+
+import java.time.LocalTime;
+
+public class GreetService extends GreetServiceGrpc.GreetServiceImplBase { // [1]
+    @Override
+    public void greet(GreetRequest request, StreamObserver&lt;GreetResponse&gt; responseObserver) { // [2]
+        String message = getMessage(request.getName());
+
+        GreetResponse response = GreetResponse.newBuilder()
+                .setMessage(message)
+                .build();
+
+        responseObserver.onNext(response); // [3]
+        responseObserver.onCompleted(); // [4]
+    }
+
+    private static String getMessage(String name) {
+        LocalTime lt = LocalTime.now();
+
+        int hour = lt.getHour();
+
+        StringBuilder sb = new StringBuilder("Hello ").append(name).append(", ");
+        if (hour &lt; 12) {
+            sb.append("Good Morning !!!");
+        } else if (hour &lt; 16) {
+            sb.append("Good Afternoon !!!");
+        } else if (hour &lt; 21) {
+            sb.append("Good Evening !!!");
+        } else {
+            sb.append("Good Night !!!");
+        }
+
+        return sb.toString();
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Java class(es)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: extend the base class <span class="bold">GreetServiceGrpc.GreetServiceImplBase</span>
+            generated by the maven <span class="bold">protobuf</span> compiler plugin</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: override the service method <span class="bold">Greet</span> which takes two input
+            arguments - a <span class="hi-blue">GreetRequest</span> object and a <span class="hi-yellow">StreamObserver</span>
+            object. The <span class="bold">StreamObserver</span> object is used for sending the <span class="hi-blue">GreetResponse
+            </span> object</p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: method <span class="bold">onNext</span> on the <span class="bold">StreamObserver</span>
+            object is used for sending the response object of type <span class="bold">GreetResponse</span></p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: method <span class="bold">onCompleted</span> on the <span class="bold">StreamObserver
+            </span> signals the succesful completion of sending a response</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java program called <span class="bold">GreetServer.java</span> that implements the
+        Unary RPC service <span class="bold">GreetService</span> located in the directory <span class="bold">
+        $HOME/java/grpc/src/main/java/com/polarsparc/gun/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">GreetServer.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   28 Nov 2020
+*/
+
+package com.polarsparc.gun.server;
+
+import io.grpc.Server;
+import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
+
+public class GreetServer {
+    public static void main(String[] args) {
+        Server server = NettyServerBuilder // [1]
+                .forAddress(new InetSocketAddress("127.0.0.1", 20001))
+                .addService(new GreetService()) // [2]
+                .build();
+
+        try {
+            server.start(); // [3]
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        System.out.print("Started the gRPC GreetService on 127.0.0.1:20001 ...\n");
+
+        try {
+            server.awaitTermination(); // [4]
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Java class(es)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: create an instance of the <span class="bold">gRPC</span> server
+            <span class="hi-yellow">NettyServerBuilder</span> on the specified ip address and port</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: register an instance of the <span class="hi-yellow">GreetService</span> object (that
+            implements the service method <span class="bold">Greet</span>) with the <span class="bold">gRPC</span> server</p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: start the <span class="bold">gRPC</span> server</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: wait till the <span class="bold">gRPC</span> server terminates</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java program called <span class="bold">GreetClientTest.java</span> that implements the
+        Unary RPC client for <span class="bold">GreetService</span> located in the directory <span class="bold">
+        $HOME/java/grpc/src/test/java/com/polarsparc/gun/client</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">GreetClientTest.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   28 Nov 2020
+*/
+
+package com.polarsparc.gun.client;
+
+import com.polarsparc.gun.GreetRequest;
+import com.polarsparc.gun.GreetResponse;
+import com.polarsparc.gun.GreetServiceGrpc;
+
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public class GreetClientTest {
+    private GreetServiceGrpc.GreetServiceBlockingStub stub;
+
+    @BeforeAll
+    public void setup() {
+        ManagedChannel channel = ManagedChannelBuilder.forAddress("127.0.0.1", 20001) // [1]
+                .usePlaintext() // [2]
+                .build();
+
+        this.stub = GreetServiceGrpc.newBlockingStub(channel); // [3]
+    }
+
+    @Test
+    public void greetTest() {
+        GreetRequest request = GreetRequest.newBuilder() // [4]
+                .setName("Bob")
+                .build();
+        GreetResponse response = this.stub.greet(request); // [5]
+        System.out.printf("%s\n", response.getMessage());
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Java class(es)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: create an instance of the object <span class="hi-yellow">ManagedChannel</span> that
+            represents a virtual <span class="bold">gRPC</span> connection to the service endpoint on the specified ip address
+            and port</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: indicate that we are using an unsecured communication channel</p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: create an instance of the <span class="bold">gRPC</span> client stub
+            <span class="hi-yellow">GreetServiceBlockingStub</span> generated by the <span class="bold">protoc</span> compiler</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: create an instance of the request object <span class="bold">GreetRequest</span></p>
+        </li>
+        <li>
+          <p><span class="bold">[5]</span> :: invoke the <span class="bold">gRPC</span> method <span class="bold">Greet</span> using
+            the client stub</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the contents of the directory <span class="bold">$HOME/java/grpc</span>:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/grpc-05.png" class="img-cls" alt="Java grpc Directory" />
+      <div class="img-cap">Figure-5</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Open two <span class="bold">Terminal</span> windows - one for the server and one for the client.</p>
+    </div>
+    <div id="para-div">
+      <p>In the server Terminal, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/grpc</p>
+      <p>$ mvn exec:java -Dexec.mainClass=com.polarsparc.gun.server.GreetServer</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>Started the gRPC GreetService on 127.0.0.1:20001 ...</pre>
+    </div>
+    <div id="para-div">
+      <p>In the client Terminal, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/grpc</p>
+      <p>$ mvn test -Dtest=com.polarsparc.gun.client.GreetClientTest</p>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! PITFALL !!!</h4>
+      <pre>Without the maven plugin <span class="bold">maven-surefire-plugin</span> defined in the <span class="bold">pom.xml</span> file, the maven command <span class="bold">mvn test ...</span> will <span class="underbold">NOT</span> execute any of the tests</pre>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>Hello Bob, Good Night !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>One could also test with the Go server running and using the Java client and vice versa.</p>
+    </div>
+    <div id="warn-div">
+      <h4>!!! PITFALL !!!</h4>
+      <pre>Without the same <span class="bold">package unary;</span> defined in the <span class="bold">greet.proto</span> file, the Go server and the Java client or vice versa will not be able communicate with each other</pre>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/gRPC/Protobuf3.html" target="_blank"><span class="bold">Introduction to Google Protocol Buffers</span></a></p>
+      <p><a href="https://grpc.io/docs/languages/go/" target="_blank"><span class="bold">gRPC Go Documentation</span></a></p>
+      <p><a href="https://grpc.io/docs/languages/java/" target="_blank"><span class="bold">gRPC Java Documentation</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

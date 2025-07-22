@@ -1,0 +1,973 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Introduction to gRPC - Part 2">
+    <meta name="subject" content="Introduction to gRPC - Part 2">
+    <meta name="keywords" content="go, grpc, java, protobuf">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Introduction to gRPC - Part 2</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="ps-header">
+      <img src="./images/grpc-hdr-1.png" />
+    </div>
+    <br/>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">12/04/2020</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+    <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/gRPC/gRPC-1.html" target="_blank"><span class="hi-yellow">Part 1</span></a> of
+        this series, we provided a high-level overview of <span class="bold">gRPC</span>, installed the necessary software, setup the
+        environment, and finally demonstrated the <span class="bold">Unary</span> RPC communication in both Go and Java.</p>
+      <p>In this part, we will continue the journey to the next RPC communication pattern - <span class="bold">Server Streaming</span>.</p>
+    </div>
+    <div id="step-div">
+      <p>Server Streaming RPC</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the high-level architecture of <span class="bold">Server Streaming</span> communication
+        pattern:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/grpc-06.png" class="img-cls" alt="Server Streaming Architecture" />
+      <div class="img-cap">Figure-6</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the Server Streaming RPC mode, the client sends a request to the server and the server responds with sequence (or stream)
+        of messages back to the client.</p>
+    </div>
+    <div id="para-div">
+      <p>For the Server Streaming RPC demonstration, we will implement a fictitious Currency Rate service, where the client sends the
+        'from' currency and the 'to' currency as the request and the server responds with a stream of 'rates' from different 'agents'.</p>
+    </div>
+    <div id="para-div">
+      <p>We will first demonstrate the Currency Rate service using the Go programming language.</p>
+      <p>In the <span class="bold">$GOPATH</span> directory, create the project directory hierarchy by executing the following
+        commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc</p>
+      <p>$ mkdir -p serverstream serverstream/currencypb serverstream/server serverstream/client</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="bold">currency.proto</span> located in the directory <span class="bold">
+        $GOPATH/src/polarsparc.com/grpc/serverstream/currencypb</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">currency.proto</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   04 Dec 2020
+*/
+
+syntax = "proto3";
+
+package serverstream;
+
+option go_package = "polarsparc.com/grpc/serverstream/currencypb";
+
+option java_multiple_files = true;
+option java_package = "com.polarsparc.gss";
+
+message CurrencyRateRequest {
+  string from = 1;
+  string to = 2;
+}
+
+message CurrencyRateResponse {
+  string agent = 1;
+  string from = 2;
+  string to = 3;
+  double rate = 4;
+}
+
+service CurrencyService {
+  rpc getCurrencyRate(CurrencyRateRequest) returns (stream CurrencyRateResponse) {};
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The request message is defined as <span class="hi-yellow">CurrencyRateRequest</span> and the response message is defined as
+        <span class="hi-yellow">CurrencyRateResponse</span>. The service interface is defined as <span class="hi-yellow">CurrencyService</span>
+        with an RPC method <span class="hi-blue">getCurrencyRate</span> that takes in a <span class="bold">CurrencyRateRequest</span>
+        as an input and returns a sequence (or <span class="hi-grey">stream</span>) of <span class="bold">CurrencyRateResponse</span>
+        objects.</p>
+    </div>
+    <div id="para-div">
+      <p>To compile the <span class="bold">currency.proto</span> file, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc/serverstream</p>
+      <p>$ protoc currencypb/currency.proto --go_out=plugins=grpc:$GOPATH/src</p>
+    </div>
+    <div id="para-div">
+      <p>On success, this will generate the Go code file called <span class="hi-yellow">currency.pb.go</span> located in the directory
+        <span class="bold">$GOPATH/src/polarsparc.com/grpc/serverstream/currencypb</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>From the file <span class="bold">currency.pb.go</span>, we see the <span class="hi-blue">CurrencyServiceServer</span> interface,
+        as shown below, that the server needs to implements:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">currency.pb.go</div>
+      <div class="src-body-1">
+      <pre>.
+.
+.
+type CurrencyServiceServer interface {
+	GetCurrencyRate(*CurrencyRateRequest, CurrencyService_GetCurrencyRateServer) error
+}
+.
+.
+.</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">currency_provider.go</span> that simulates an in-memory
+        store for initializing and returning currency rates from fictitious agents and is located in the directory <span class="bold">
+        $GOPATH/src/polarsparc.com/grpc/serverstream/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">currency_provider.go</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   04 Dec 2020
+*/
+
+package main
+
+import (
+  "fmt"
+  "github.com/pkg/errors"
+  "log"
+  "strings"
+)
+
+type CurrencyRate struct {
+  Agent string
+  Rate float64
+}
+
+type RatesCache map[string][]CurrencyRate
+
+type server struct {
+  cache RatesCache
+}
+
+func (s *server) Init() {
+  l1 := []CurrencyRate{{Agent: "Alice", Rate: 1.30}, {Agent: "Bob", Rate: 1.302},{Agent: "Dave", Rate: 1.31}}
+  s.cache["USD:CAD"] = l1
+  l2 := []CurrencyRate{{Agent: "Alice", Rate: 0.85}, {Agent: "Charlie", Rate: 0.84}}
+  s.cache["USD:EUR"] = l2
+  l3 := []CurrencyRate{{Agent: "Bob", Rate: 0.75}, {Agent: "Charlie", Rate: 0.751},{Agent: "Eve", Rate: 0.74}}
+  s.cache["USD:GBP"] = l3
+}
+
+func (s *server) GetAgentRates(from string, to string) ([]CurrencyRate, error) {
+  key := strings.ToUpper(from + ":" + to)
+
+  log.Printf("Currency rate request for key: %s\n", key)
+
+  rates := s.cache[key]
+  if rates == nil {
+    return nil, errors.New(fmt.Sprintf("No rate for currency from: %s, to: %s", from, to))
+  }
+
+  log.Printf("Currency rates for key: %s = %v", key, rates)
+
+  return rates, nil
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">server.go</span> for the Server Streaming RPC server that
+        implements the <span class="bold">CurrencyServiceServer</span> interface and is located in the directory <span class="bold">
+        $GOPATH/src/polarsparc.com/grpc/serverstream/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">server.go</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   04 Dec 2020
+*/
+
+package main
+
+import (
+  "google.golang.org/grpc"
+  "log"
+  "net"
+  "polarsparc.com/grpc/serverstream/currencypb" // [1]
+  "time"
+)
+
+func (s *server) GetCurrencyRate(req *currencypb.CurrencyRateRequest,
+  stream currencypb.CurrencyService_GetCurrencyRateServer) error { // [2]
+  log.Printf("Received a CurrencyRate request with req: %v\n", req)
+
+  from := req.From
+  to := req.To
+
+  rates, err := s.GetAgentRates(from, to)
+  if err == nil {
+    log.Printf("Rates from agents: %v\n", rates)
+    for _, r := range rates {
+      res := &currencypb.CurrencyRateResponse{Agent: r.Agent, From: from, To: to, Rate: r.Rate}
+      stream.Send(res) // [3]
+      time.Sleep(250 * time.Millisecond)
+    }
+    return nil
+  }
+
+  return err
+}
+
+func main()  {
+  cs := &server{
+    cache: RatesCache{},
+  }
+  cs.Init() // [4]
+
+  log.Println("Ready to start the CurrencyRate server...")
+
+  lis, err := net.Listen("tcp", "localhost:20002")
+  if err != nil {
+    log.Fatalf("Failed to create listener on localhost:20002")
+  }
+
+  srv := grpc.NewServer() // [5]
+
+  currencypb.RegisterCurrencyServiceServer(srv, cs) // [6]
+
+  if err = srv.Serve(lis); err != nil {
+    log.Fatalf("Failed to start server: %v", err)
+  }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Go type(s)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: import the code from the package <span class="bold">polarsparc.com/grpc/serverstream/currencypb
+            </span> generated by the <span class="bold">protoc</span> compiler</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: associate the service method <span class="bold">GetCurrencyRate</span> as receiver method
+            of the custom type <span class="hi-yellow">server</span>. This method takes two input arguments - a <span class="hi-yellow">
+              CurrencyRateRequest</span> object and a stream object called <span class="hi-yellow">CurrencyService_GetCurrencyRateServer
+            </span></p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: send a sequence (or stream) of <span class="bold">CurrencyRateResponse</span> objects (one
+            for each of the agents) back to the client that made the request</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: initialize the in-memory currency rates store (with some fictitious entries)</p>
+        </li>
+        <li>
+          <p><span class="bold">[5]</span> :: create an instance of the <span class="bold">gRPC</span> server</p>
+        </li>
+        <li>
+          <p><span class="bold">[6]</span> :: register an instance of the <span class="hi-yellow">server</span> object (that implements
+            the service method <span class="bold">GetCurrencyRate</span>) with the <span class="bold">gRPC</span> server</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">client.go</span> that implements the Server Streaming RPC
+        client for the <span class="bold">CurrencyServiceServer</span> located in the directory <span class="bold">
+        $GOPATH/src/polarsparc.com/grpc/serverstream/client</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">client.go</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   04 Dec 2020
+*/
+
+package main
+
+import (
+  "golang.org/x/net/context"
+  "google.golang.org/grpc"
+  "io"
+  "log"
+  "polarsparc.com/grpc/serverstream/currencypb"
+)
+
+func main() {
+  log.Println("Ready to start the CurrencyRate client...")
+
+  conn, err := grpc.Dial("localhost:20002", grpc.WithInsecure())
+  if err != nil {
+    log.Fatalf("Failed to connect to localhost:20002")
+  }
+  defer conn.Close()
+
+  cl := currencypb.NewCurrencyServiceClient(conn) // [1]
+
+  // Success
+  req := &currencypb.CurrencyRateRequest{From: "usd",
+    To: "eur"} // [2]
+  stream, err := cl.GetCurrencyRate(context.Background(), req) // [3]
+  if err != nil {
+    log.Fatalf("[1] Failed to send CurrencyRate request to localhost:20002")
+  }
+  for {
+    res, err := stream.Recv() // [4]
+    if err == io.EOF {
+      break
+    }
+    if err != nil {
+      log.Fatalf("[1] Received and error from CurrencyRate at localhost:20002: %v", err)
+    }
+    log.Printf("[1] ===> Agent: %s, Rate: %.03f\n", res.Agent, res.Rate)
+  }
+
+  // Error
+  req2 := &currencypb.CurrencyRateRequest{From: "usd",
+    To: "jpy"}
+  stream2, err := cl.GetCurrencyRate(context.Background(), req2)
+  if err != nil {
+    log.Fatalf("[2] Failed to send CurrencyRate request to localhost:20002")
+  }
+  for {
+    res, err := stream2.Recv()
+    if err == io.EOF {
+      break
+    }
+    if err != nil {
+      log.Fatalf("[2] Received and error from CurrencyRate at localhost:20002: %v", err)
+    }
+    log.Printf("[2] ===> Agent: %s, Rate: %.03f\n", res.Agent, res.Rate)
+  }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Go type(s)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: create an instance of the <span class="bold">gRPC</span> client stub
+            <span class="hi-yellow">NewCurrencyServiceClient</span> generated by the <span class="bold">protoc</span> compiler</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: create an instance of the request object <span class="bold">CurrencyRateRequest</span></p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: invoke the <span class="bold">gRPC</span> method <span class="bold">GetCurrencyRate</span>
+            using the client stub. The method invocation returns a stream object</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: invoke the <span class="hi-blue">Recv()</span> method on the stream object until the
+            end of the stream (return code of <span class="hi-yellow">io.EOF</span>)</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Open two <span class="bold">Terminal</span> windows - one for the server and one for the client.</p>
+    </div>
+    <div id="para-div">
+      <p>In the server Terminal, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc/serverstream/server</p>
+      <p>$ go run server.go currency_provider.go</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>2020/12/04 21:03:37 Ready to start the CurrencyRate server...</pre>
+    </div>
+    <div id="para-div">
+      <p>In the client Terminal, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $GOPATH/src/polarsparc.com/grpc/serverstream/client</p>
+      <p>$ go run client.go</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>2020/12/04 21:04:31 Ready to start the CurrencyRate client...
+2020/12/04 21:04:31 [1] ===> Agent: Alice, Rate: 0.850
+2020/12/04 21:04:31 [1] ===> Agent: Charlie, Rate: 0.840
+2020/12/04 21:04:32 [2] Received and error from CurrencyRate at localhost:20002: rpc error: code = Unknown desc = No rate for currency from: usd, to: jpy
+exit status 1</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">EXCELLENT</span> !!! We have successfully demonstrated the Server Streaming <span class="bold">gRPC</span>
+        communication style using the Go language.</p>
+    </div>
+    <div id="para-div">
+      <p>Copy the file <span class="bold">currency.proto</span> listed above to the directory <span class="bold">
+        $HOME/java/grpc/src/main/proto</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To compile the <span class="bold">currency.proto</span> file, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/grpc</p>
+      <p>$ mvn compile</p>
+    </div>
+    <div id="para-div">
+      <p>On success, this will generate some files in the directory
+        <span class="bold">$HOME/java/grpc/target/generated-sources/protobuf/java/com/polarsparc/gss</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the contents of the directory <span class="bold">$HOME/java/grpc/target/generated-sources
+        </span>:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/grpc-07.png" class="img-cls" alt="generated-sources Directory" />
+      <div class="img-cap">Figure-7</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">CurrencyRate.java</span> that acts a holder object for
+        storing the fictitious agent and the currency rate they offer and is located in the directory <span class="bold">
+        $HOME/java/grpc/src/main/java/com/polarsparc/gss/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">CurrencyRate.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   04 Dec 2020
+*/
+
+package com.polarsparc.gss.server;
+
+public class CurrencyRate {
+    private final String agent;
+    private final Double rate;
+
+    public CurrencyRate(String agent, Double rate) {
+        this.agent = agent;
+        this.rate = rate;
+    }
+
+    public String getAgent() {
+        return this.agent;
+    }
+
+    public Double getRate() {
+        return this.rate;
+    }
+
+    @Override
+    public String toString() {
+        return "CurrencyRate{" +
+                "agent='" + agent + '\'' +
+                ", rate=" + rate +
+                '}';
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">CurrencyRateProvider.java</span> that simulates an in-memory
+        store for initializing and returning currency rates from fictitious agents and is located in the directory <span class="bold">
+        $HOME/java/grpc/src/main/java/com/polarsparc/gss/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">CurrencyRateProvider.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   04 Dec 2020
+*/
+
+package com.polarsparc.gss.server;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class CurrencyRateProvider {
+    private final static Logger LOGGER = Logger.getLogger(CurrencyRateProvider.class.getName());
+
+    private final static Map&lt;String, List&lt;CurrencyRate>&gt;&gt; ratesTable = new HashMap&lt;&gt;();
+
+    static {
+        LOGGER.setLevel(Level.INFO);
+
+        ratesTable.put("USD:CAD", Arrays.asList(new CurrencyRate("Alice", 1.30),
+                new CurrencyRate("Bob", 1.302),
+                new CurrencyRate("Dave", 1.31)));
+        ratesTable.put("USD:EUR", Arrays.asList(new CurrencyRate("Alice", 0.85),
+                new CurrencyRate("Charlie", 0.84)));
+        ratesTable.put("USD:GBP", Arrays.asList(new CurrencyRate("Bob", 0.75),
+                new CurrencyRate("Charlie", 0.751),
+                new CurrencyRate("Eve", 0.74)));
+    }
+
+    private CurrencyRateProvider() {
+    }
+
+    public static List&lt;CurrencyRate>&gt; getCurrencyRate(String from, String to) {
+        String key = (from + ":" + to).toUpperCase();
+
+        LOGGER.info(String.format("Currency rate request for key: %s", key));
+
+        if (!ratesTable.containsKey(key)) {
+            throw new RuntimeException(String.format("No rate for currency from: %s, to: %s", from, to));
+        }
+
+        List&lt;CurrencyRate>&gt; rates = ratesTable.get(key);
+
+        LOGGER.info(String.format("Currency rates for key: %s = %s", key, rates));
+
+        return rates;
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java program called <span class="bold">CurrencyRateService.java</span> that implements the
+        Server Streaming <span class="bold">gRPC</span> service <span class="bold">CurrencyService</span> located in the directory
+        <span class="bold">$HOME/java/grpc/src/main/java/com/polarsparc/gss/server</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">CurrencyRateService.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   04 Dec 2020
+*/
+
+package com.polarsparc.gss.server;
+
+import com.polarsparc.gss.CurrencyRateRequest;
+import com.polarsparc.gss.CurrencyRateResponse;
+import com.polarsparc.gss.CurrencyServiceGrpc;
+
+import io.grpc.Status;
+import io.grpc.stub.StreamObserver;
+
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class CurrencyRateService extends CurrencyServiceGrpc.CurrencyServiceImplBase { // [1]
+    private final static Logger LOGGER = Logger.getLogger(CurrencyRateService.class.getName());
+
+    static {
+        LOGGER.setLevel(Level.INFO);
+    }
+
+    @Override
+    public void getCurrencyRate(CurrencyRateRequest request, 
+      StreamObserver&lt;CurrencyRateResponse&gt; responseObserver) { // [2]
+        String from = request.getFrom();
+        String to = request.getTo();
+
+        List&lt;CurrencyRate&gt; rates;
+        try {
+            rates = CurrencyRateProvider.getCurrencyRate(from, to);
+        }
+        catch (RuntimeException ex) {
+            Status status = Status.FAILED_PRECONDITION.withDescription(ex.getMessage());
+            responseObserver.onError(status.asRuntimeException());
+            return;
+        }
+
+        if (rates != null) {
+            LOGGER.info(String.format("Rates from agents: %s", rates));
+
+            rates.forEach(r -&gt; {
+                CurrencyRateResponse response = CurrencyRateResponse.newBuilder()
+                        .setAgent(r.getAgent())
+                        .setFrom(from)
+                        .setTo(to)
+                        .setRate(r.getRate())
+                        .build();
+                responseObserver.onNext(response); // [3]
+                try {
+                    Thread.sleep(250);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            });
+            responseObserver.onCompleted(); // [4]
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Java class(es)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: extend the base class <span class="bold">CurrencyServiceGrpc.CurrencyServiceImplBase
+            </span> generated by the maven <span class="bold">protobuf</span> compiler plugin</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: override the service method <span class="bold">getCurrencyRate</span> which takes two
+            input arguments - a <span class="hi-blue">CurrencyRateRequest</span> object and a <span class="hi-yellow">StreamObserver
+            </span> object. The <span class="bold">StreamObserver</span> object is used for sending the
+            <span class="hi-blue">CurrencyRateResponse</span> object</p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: send a sequence (or stream) of <span class="bold">CurrencyRateResponse</span> objects
+            (one for each of the agents) back to the client using the <span class="bold">onNext</span> method on the <span class="bold">
+              StreamObserver</span> object</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: method <span class="bold">onCompleted</span> on the <span class="bold">StreamObserver
+            </span> object signals the succesful completion of sending of a stream of responses</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java program called <span class="bold">CurrencyRateServer.java</span> that registers
+        the Server Streaming RPC service <span class="bold">CurrencyRateService</span> as a <span class="bold">gRPC</span> server
+        and is located in the directory <span class="bold">$HOME/java/grpc/src/main/java/com/polarsparc/gss/server</span> as shown
+        below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">CurrencyRateServer.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   04 Dec 2020
+*/
+
+package com.polarsparc.gss.server;
+
+import io.grpc.Server;
+import io.grpc.ServerBuilder;
+
+import java.io.IOException;
+
+public class CurrencyRateServer {
+    public static void main(String[] args) {
+        Server server = ServerBuilder.forPort(20002) // [1]
+                .addService(new CurrencyRateService()) // [2]
+                .build();
+
+        try {
+            server.start(); // [3]
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        System.out.print("Started the gRPC CurrencyRateService on 20002 ...\n");
+
+        try {
+            server.awaitTermination(); // [4]
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Java class(es)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: create an instance of the <span class="bold">gRPC</span> server on the specified port</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: register an instance of the <span class="hi-yellow">CurrencyRateService</span> object
+            (that implements the service method <span class="bold">getCurrencyRate</span>) with the <span class="bold">gRPC</span>
+            server</p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: start the <span class="bold">gRPC</span> server</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: wait till the <span class="bold">gRPC</span> server terminates</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To receive responses from the server in an asynchronous fashion, a client needs to implement the interface
+        <span class="hi-yellow">StreamObserver</span> and register it as a callback handler on the client stub. The following are the
+        contents of the Java program called <span class="bold">CurrencyRateStreamObserver.java</span> that implements the required interface
+        for the asynchronous callback and located in the directory <span class="bold">$HOME/java/grpc/src/test/java/com/polarsparc/gss/client
+        </span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">CurrencyRateStreamObserver.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   04 Dec 2020
+*/
+
+package com.polarsparc.gss.client;
+
+import com.polarsparc.gss.CurrencyRateResponse;
+import io.grpc.stub.StreamObserver;
+
+import java.util.concurrent.CountDownLatch;
+
+public class CurrencyRateStreamObserver implements StreamObserver&lt;CurrencyRateResponse&gt; {
+    private final CountDownLatch latch;
+
+    public CurrencyRateStreamObserver(CountDownLatch latch) {
+        this.latch = latch;
+    }
+
+    @Override
+    public void onNext(CurrencyRateResponse response) { // [1]
+        System.out.printf("Agent: %s, Rate: %.03f\n", response.getAgent(), response.getRate());
+    }
+
+    @Override
+    public void onError(Throwable ex) { // [2]
+        System.out.println("Exception: " + ex.getMessage());
+    }
+
+    @Override
+    public void onCompleted() { // [3]
+        System.out.println("Done !!!");
+        latch.countDown();
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Java class(es)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: method <span class="hi-blue">onNext()</span> is invoked when there is valid response
+            from the server</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: method <span class="hi-blue">onError()</span> is invoked when an error is encountered</p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: method <span class="hi-blue">onCompleted()</span> is invoked when the server is done
+            sending all the responses</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java program called <span class="bold">CurrencyRateClientTest.java</span> that
+        implements the Server Streaming RPC client for <span class="bold">CurrencyService</span> located in the directory
+        <span class="bold">$HOME/java/grpc/src/test/java/com/polarsparc/gss/client</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">CurrencyRateClientTest.java</div>
+      <div class="src-body-1">
+      <pre>/*
+  @Author: Bhaskar S
+  @Blog:   https://polarsparc.github.io
+  @Date:   04 Dec 2020
+*/
+
+package com.polarsparc.gss.client;
+
+import com.polarsparc.gss.CurrencyRateRequest;
+import com.polarsparc.gss.CurrencyRateResponse;
+import com.polarsparc.gss.CurrencyServiceGrpc;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+
+import java.util.Iterator;
+import java.util.concurrent.CountDownLatch;
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public class CurrencyRateClientTest {
+    private CurrencyServiceGrpc.CurrencyServiceBlockingStub blockingStub;
+    private CurrencyServiceGrpc.CurrencyServiceStub stub;
+
+    @BeforeAll
+    public void setup() {
+        ManagedChannel channel = ManagedChannelBuilder.forAddress("localhost", 20002) // [1]
+                .usePlaintext() // [2]
+                .build();
+        this.blockingStub = CurrencyServiceGrpc.newBlockingStub(channel); // [3]
+        this.stub = CurrencyServiceGrpc.newStub(channel); // [4]
+    }
+
+    @Test
+    public void currencyRateBlockingTestOne() {
+        CurrencyRateRequest request = CurrencyRateRequest.newBuilder()
+                .setFrom("usd")
+                .setTo("eur")
+                .build(); // [5]
+        Iterator&lt;CurrencyRateResponse&gt; response = this.blockingStub.getCurrencyRate(request); // [6]
+        response.forEachRemaining(res -> System.out.printf("Agent: %s, Rate: %.03f\n", res.getAgent(), res.getRate()));
+    }
+
+    @Test
+    public void currencyRateBlockingTestTwo() {
+        CurrencyRateRequest request = CurrencyRateRequest.newBuilder()
+                .setFrom("eur")
+                .setTo("jpy")
+                .build(); // [5]
+        Iterator&lt;CurrencyRateResponse&gt; response = this.blockingStub.getCurrencyRate(request); // [6]
+        Assertions.assertThrows(io.grpc.StatusRuntimeException.class, () -> response.forEachRemaining(res ->
+                System.out.printf("Agent: %s, Rate: %.03f\n", res.getAgent(), res.getRate())));
+    }
+
+    @Test
+    public void currencyRateAsyncTestOne() {
+        CountDownLatch latch = new CountDownLatch(1);
+        CurrencyRateRequest request = CurrencyRateRequest.newBuilder()
+                .setFrom("usd")
+                .setTo("cad")
+                .build(); // [5]
+        this.stub.getCurrencyRate(request, new CurrencyRateStreamObserver(latch)); // [7]
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the Java class(es)/method(s) used in the code above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">[1]</span> :: create an instance of the object <span class="hi-yellow">ManagedChannel</span> that
+            represents a virtual <span class="bold">gRPC</span> connection to the service endpoint on the specified ip address
+            and port</p>
+        </li>
+        <li>
+          <p><span class="bold">[2]</span> :: indicate that we are using an unsecured communication channel</p>
+        </li>
+        <li>
+          <p><span class="bold">[3]</span> :: create an instance of the <span class="bold">gRPC</span> synchronous (or blocking)
+            client stub <span class="hi-yellow">CurrencyServiceBlockingStub</span> generated by the <span class="bold">protoc</span>
+            compiler</p>
+        </li>
+        <li>
+          <p><span class="bold">[4]</span> :: create an instance of the <span class="bold">gRPC</span> asynchronous (non-blocking)
+            client stub <span class="hi-yellow">CurrencyServiceStub</span> generated by the <span class="bold">protoc</span>
+            compiler</p>
+        </li>
+        <li>
+          <p><span class="bold">[5]</span> :: create an instance of the request object <span class="bold">CurrencyRateRequest</span></p>
+        </li>
+        <li>
+          <p><span class="bold">[6]</span> :: invoke the <span class="bold">gRPC</span> method <span class="bold">getCurrencyRate</span>
+            using the synchronous client stub</p>
+        </li>
+        <li>
+          <p><span class="bold">[7]</span> :: invoke the <span class="bold">gRPC</span> method <span class="bold">getCurrencyRate</span>
+            using the asynchronous client stub, passing in the callback handler to an <span class="bold">CurrencyRateStreamObserver</span>
+            object</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Open two <span class="bold">Terminal</span> windows - one for the server and one for the client.</p>
+    </div>
+    <div id="para-div">
+      <p>In the server Terminal, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/grpc</p>
+      <p>$ mvn exec:java -Dexec.mainClass=com.polarsparc.gss.server.CurrencyRateServer</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>Started the gRPC CurrencyRateService on 20002 ...</pre>
+    </div>
+    <div id="para-div">
+      <p>In the client Terminal, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/grpc</p>
+      <p>$ mvn test -Dtest=com.polarsparc.gss.client.CurrencyRateClientTest</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>Running com.polarsparc.gss.client.CurrencyRateClientTest
+Agent: Alice, Rate: 1.300
+Agent: Bob, Rate: 1.302
+Agent: Dave, Rate: 1.310
+Done !!!
+Agent: Alice, Rate: 0.850
+Agent: Charlie, Rate: 0.840
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.849 s</pre>
+    </div>
+    <div id="para-div">
+      <p>One could also test with the Go server running and using the Java client and vice versa.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/gRPC/gRPC-1.html" target="_blank"><span class="bold">Introduction to gRPC - Part 1</span></a></p>
+      <p><a href="https://polarsparc.github.io/gRPC/Protobuf3.html" target="_blank"><span class="bold">Introduction to Google Protocol Buffers</span></a></p>
+      <p><a href="https://grpc.io/docs/languages/go/" target="_blank"><span class="bold">gRPC Go Documentation</span></a></p>
+      <p><a href="https://grpc.io/docs/languages/java/" target="_blank"><span class="bold">gRPC Java Documentation</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

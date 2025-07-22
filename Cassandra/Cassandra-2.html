@@ -1,0 +1,679 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Cassandra Quick Notes :: Part - 2">
+    <meta name="subject" content="Cassandra Quick Notes :: Part - 2">
+    <meta name="keywords" content="apache-cassandra, cassandra, nosql">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Cassandra Quick Notes :: Part - 2</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Cassandra Quick Notes :: Part - 2</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td"><span class="hi-yellow">*UPDATED*</span>11/27/2023</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="gen-step-div">
+      <p>Overview</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In <a target="_blank" href="https://polarsparc.github.io/Cassandra/Cassandra-1.html"><span class="bold">Part-1</span></a>
+        of this article series, we performed the necessary setup, started a single-node <span class="bold">Apache Cassandra</span>
+        cluster and got our hands dirty with <span class="bold">CQL</span> operations.</p>
+      <p>In this part, we will perform additional setup to activate a multi-node (3 nodes) <span class="bold">Apache Cassandra</span>
+        cluster. In addition, we will elaborate more on the concepts from <span class="bold">Part-1</span> and introduce additional
+        concepts on <span class="bold">Apache Cassandra</span>.</p>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>Additional Setup</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To run a multi node <span class="bold">Apache Cassandra</span> cluster, we need to download additional configuration files
+        to the directory <span class="bold">$CASSANDRA_HOME/etc/cassandra</span> by executing the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $CASSANDRA_HOME/etc/cassandra</p>
+      <p>$ wget https://github.com/apache/cassandra/raw/trunk/conf/jvm-clients.options</p>
+      <p>$ wget https://github.com/apache/cassandra/raw/trunk/conf/jvm17-clients.options</p>
+      <p>$ wget https://github.com/apache/cassandra/raw/trunk/conf/logback-tools.xml</p>
+      <p>$ cd $CASSANDRA_HOME</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will setup additional directory structures by executing the following commands from the users home directory:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ mkdir -p cassandra/data2</p>
+      <p>$ mkdir -p cassandra/data3</p>
+      <p>$ mkdir -p cassandra/logs2</p>
+      <p>$ mkdir -p cassandra/logs3</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To start the second node in the <span class="bold">Apache Cassandra</span> cluster, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name cas-node-2 --hostname cas-node-2 --network cassandra-db-net -e CASSANDRA_SEEDS=cas-node-1 -u $(id -u $USER):$(id -g $USER) -v $CASSANDRA_HOME/data2:/var/lib/cassandra/data -v $CASSANDRA_HOME/etc/cassandra:/etc/cassandra -v $CASSANDRA_HOME/logs2:/opt/cassandra/logs cassandra:5.0</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical trimmed output that appears in the first node:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>... [ SNIP ] ...
+INFO  [GossipStage:1] 2023-11-27 14:26:30,274 Gossiper.java:1460 - Node /172.18.0.3:7000 is now part of the cluster
+INFO  [GossipStage:1] 2023-11-27 14:26:30,277 Gossiper.java:1405 - InetAddress /172.18.0.3:7000 is now UP
+... [ SNIP ] ...</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Finally, to start the third node in the <span class="bold">Apache Cassandra</span> cluster, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name cas-node-3 --hostname cas-node-3 --network cassandra-db-net -e CASSANDRA_SEEDS=cas-node-1 -u $(id -u $USER):$(id -g $USER) -v $CASSANDRA_HOME/data3:/var/lib/cassandra/data -v $CASSANDRA_HOME/etc/cassandra:/etc/cassandra -v $CASSANDRA_HOME/logs3:/opt/cassandra/logs cassandra:5.0</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical trimmed output that appears in the first node:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>... [ SNIP ] ...
+INFO  [GossipStage:1] 2023-11-27 14:27:39,614 Gossiper.java:1460 - Node /172.18.0.4:7000 is now part of the cluster
+INFO  [GossipStage:1] 2023-11-27 14:27:39,615 Gossiper.java:1405 - InetAddress /172.18.0.4:7000 is now UP
+... [ SNIP ] ...</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To check the status of the <span class="bold">Apache Cassandra</span> cluster, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker exec -it cas-node-1 nodetool status</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>Datacenter: datacenter1
+=======================
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address     Load        Tokens  Owns (effective)  Host ID                               Rack 
+UN  172.18.0.3  86.52 KiB   16      59.3%             992f1632-c660-498a-8a02-3a0a1646d28a  rack1
+UN  172.18.0.2  121.88 KiB  16      64.7%             0073cae6-b42b-4133-b0a5-0a5f7ddb18c1  rack1
+UN  172.18.0.4  81.45 KiB   16      76.0%             b42f26eb-ec36-41dc-a8e2-504190f59c4e  rack1</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">BINGO</span> - At this point the 3-node <span class="bold">Apache Cassandra</span> cluster is ready !!!</p>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>Concepts - Level II</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following section elaborates and expands on the concepts on <span class="bold">Apache Cassandra</span>:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>From earlier, we know that a <span class="bold">Column</span> has a name and an associated value. Internally, it also
+            has an associated <span class="hi-green">timestamp</span>. Cassandra uses the <span class="bold">timestamp</span> to
+            determine the most recent update to a <span class="bold">Column</span></p>
+        </li>
+        <li>
+          <p>In Cassandra, the <span class="hi-yellow">Primary Key</span> (or the <span class="hi-vanila">Row Key</span>) on a <span
+            class="bold">Table</span> enables for efficient lookup of rows. The <span class="bold">Primary Key</span> plays a crucial
+            role in distributing the rows of a table across the nodes in a cluster. The first part of the <span class="bold">Primary
+            Key</span> is the <span class="hi-green">Partition Key</span>. For a <span class="bold">Primary Key</span> with only one
+            column (as was the case with the <span class="bold">book_catalog</span> table in Part-1), the <span class="bold">Primary
+            Key</span> is the same as the <span class="bold">Partition Key</span>. For a <span class="bold">Primary Key</span> with
+            more than one column (referred to as the <span class="hi-green">Composite Key</span>), the first part is the <span class
+            ="bold">Partition Key</span> and the remaining column(s) form the <span class="hi-green">Clustering Key</span>, which is
+            used for sorting (default is <span class="underbold">ASCENDING</span> order) the data within a partition</p>
+        </li>
+        <li>
+          <p>A <span class="hi-green">Partitioner</span> determines how the data gets distributed in the cluster. The default <span
+            class="bold">Partitioner</span> strategy used in Cassandra is the <span class="hi-green">Murmur3Partitioner</span> which
+            uses the hash of the <span class="bold">Partition Key</span> to determine the node</p>
+        </li>
+        <li>
+          <p>Cassandra also supports indexes on non-primary key <span class="bold">Column</span>s. They are referred to as the <span
+            class="hi-yellow">Secondary Indexes</span>. Under the covers, Cassandra creates a hidden <span class="bold">Table</span>
+            for the <span class="bold">Secondary Index</span>. <span class="bold">Secondary indexes</span> allow for efficient querying
+            of the non-primary key <span class="bold">Column</span>s using the <span class="underbold">Equality</span> operator. Note
+            that the <span class="bold">Secondary Indexes</span> are automatically built behind the scenes without blocking any read
+            or write operation(s)</p>
+        </li>
+        <li>
+          <p>Cassandra is a highly scalable, distributed and decentralized database. By starting more Cassandra node(s), we created
+            a multi-node cluster. All nodes in Cassandra cluster are peers - there is no concept of a master node or slave node(s)
+            unlike relational databases. A client can connect to any of the nodes in the cluster to perform read or write operation(s)</p>
+        </li>
+        <li>
+          <p>The cluster of node(s) is usually referred to as the <span class="hi-green">Ring</span> in the Cassandra parlance. In
+            other words, think of the nodes in a cluster as being arranged in a logical circle forming a ring</p>
+        </li>
+        <li>
+          <p>Cassandra uses <span class="hi-green">Gossip</span> communication protocol to discover information about the other nodes
+            in the cluster. The <span class="bold">Gossip</span> messages are exchanged every second among the nodes in the cluster.
+            <span class="bold">Gossip</span> only communicates the cluster metadata</p>
+        </li>
+        <li>
+          <p>When Cassandra is started on a new node, it needs to communicate with at least one other node to start the <span class=
+            "bold">Gossip</span> communication. This is what is called the <span class="hi-green">Seed</span> node. In other words,
+            the purpose of a <span class="bold">Seed</span> node is to bootstrap the <span class="bold">Gossip</span> process for any
+            new node(s) joining the cluster. One or more nodes in the cluster can be identified as the <span class="bold">Seed</span>
+            nodes</p>
+        </li>
+        <li>
+          <p>Cassandra provides fault tolerance by storing copies of a row (replicas) on multiple node(s) in the cluster. The number
+            of replicas in the cluster is known as the <span class="hi-green">Replication Factor</span>. A replication factor of
+            <span class="bold">1</span> means there is only one copy of a row in one node. A replication factor of <span class="bold">
+            2</span> means there are two copies of a row on two different nodes of the cluster</p>
+        </li>
+        <li>
+          <p>A <span class="hi-green">Snitch</span> in Cassandra just reports a node's rack and datacenter. It determines the topology
+            of a cluster, that is, which nodes belong where in the cluster. The default <span class="bold">Snitch</span> strategy used
+            in Cassandra is the <span class="hi-green">SimpleSnitch</span> which places all nodes in the same datacenter and rack</p>
+        </li>
+        <li>
+          <p>The following are 3 important properties in any scalable, fault-tolerant distributed system:</p>
+        </li>
+        <ul id="blue-disc-ul">
+          <li>
+            <p><span class="hi-vanila">Consistency</span> - Clients connecting to different nodes in a cluster will read the same
+              set of values for a given query even when there are writes being performed in parallel</p>
+          </li>
+          <li>
+            <p><span class="hi-vanila">Availability</span> - At least one node in a cluster is up and running so clients can
+              perform read or write operations</p>
+          </li>
+          <li>
+            <p><span class="hi-vanila">Partition Tolerance</span> - Clients are able to perform read or write operations even when
+              a network issue divides a cluster of nodes into disjoint groups</p>
+          </li>
+        </ul>
+        <li>
+          <p>Brewer's <span class="hi-yellow">CAP</span> (<span class="underbold">C</span>onsistency,
+            <span class="underbold">A</span>vailability, <span class="underbold">P</span>artition Tolerance) Theorem states that one
+            can achieve only 2 of the 3 properties with acceptable performance in a distributed system</p>
+        </li>
+        <li>
+          <p>Cassandra chooses to guarantee <span class="bold">AP</span> (<span class="underbold">A</span>vailability and <span class
+            ="underbold">P</span>artition Tolerance) and relaxes on <span class="underbold">C</span>onsistency resulting in what is
+            termed <span class="hi-yellow">Eventual Consistency</span></p>
+        </li>
+        <li>
+          <p>Cassandra enhances <span class="bold">Eventual Consistency</span> by offering <span class="hi-yellow">Tunable Consistency
+            </span> in which a client can indicate the level of consistency with each read or write operation</p>
+        </li>
+        <li>
+          <p>In Cassandra, when a write operation is performed, the row data is first appended to a disk file called the <span class=
+            "hi-green">commitlog</span> for durability. Then, it is written to an in-memory structure called the <span class="hi-green">
+            memtable</span>. A write operation is considered successful only after writes to both the <span class="bold">commitlog
+            </span> and the <span class="bold">memtable</span> have completed without errors. This results in minimal disk IO and
+            optimal write operation</p>
+        </li>
+        <li>
+          <p>Data in the <span class="bold">memtable</span> is stored in a sorted order by the row key</p>
+        </li>
+        <li>
+          <p>Periodically data in the <span class="bold">memtable</span> are flushed to a persistent immutable disk file called the
+            <span class="hi-green">SSTable</span> (short for the <span class="hi-green">Sorted String Table</span>). This disk IO
+            operation is performed in the background for optimal performance.</p>
+        </li>
+        <li>
+          <p>Since an <span class="bold">SSTable</span> is immutable disk based file structure (no in place update unlike relational
+            databases), data for a row key can be spread across several <span class="bold">SSTable</span> files</p>
+        </li>
+        <li>
+          <p>In Cassandra, when a read operation is performed for a given row key, the row data must be gathered from the <span class
+            ="bold">memtable</span> as well as all <span class="bold">SSTable</span> files on the node that contain columns for the
+            given row key. To optimize this data gathering process, Cassandra uses an in-memory structure called the <span class=
+            "hi-green">Bloom Filter</span>. Each <span class="bold">SSTable</span> has an associated <span class="bold">Bloom Filter
+            </span> which allows for checks to see if a requested row key exists in the <span class="bold">SSTable</span> before
+            performing any disk IO to fetch the actual data</p>
+        </li>
+      </ul>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>Hands-on with Cassandra - II</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To launch the <span class="bold">CQL</span> command-line interface, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run -it --rm --name cas-client --network cassandra-db-net cassandra:5.0 cqlsh cas-node-1</p>
+    </div>
+    <br/>
+    <div id="para-div">
+    <p>The following will be the output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>WARNING: cqlsh was built against 5.0-alpha2, but this server is 5.0.  All features may not work!
+Connected to Cassandra Cluster at cas-node-1:9042
+[cqlsh 6.2.0 | Cassandra 5.0-alpha2 | CQL spec 3.4.7 | Native protocol v5]
+Use HELP for help.
+cqlsh&gt;</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>On success, <span class="bold">CQL</span> will change the command prompt to "<span class="hi-grey">cqlsh&gt;</span>".</p>
+    </div>
+    <div id="para-div">
+      <p>To create a <span class="bold">Keyspace</span> called <span class="hi-yellow">mytestks2</span>, input the following command
+        at the "<span class="bold">cqlsh&gt;</span>" prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>cqlsh&gt; CREATE KEYSPACE IF NOT EXISTS mytestks2 WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 2};</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+      <p>Notice that we have now specified a <span class="bold">Replication Factor</span> of <span class="underbold">2</span> given
+        we have a 3-node cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>To use the <span class="bold">Keyspace</span> called <span class="hi-yellow">mytestks2</span>, input the following command
+        at the "<span class="bold">cqlsh&gt;</span>" prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>cqlsh&gt; USE mytestks2;</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output and the input prompt would change to "<span class="hi-grey">cqlsh:mytestks2&gt;</span>".</p>
+    </div>
+    <div id="para-div">
+      <p>To display information about any node in the cluster (for example cas-node-2), execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker exec -it cas-node-2 nodetool info -T</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>ID                     : cf8c8360-eeea-49ea-9fa0-6b417d30d98f
+Gossip active          : true
+Native Transport active: true
+Load                   : 169.54 KiB
+Uncompressed load      : 315.92 KiB
+Generation No          : 1701112276
+Uptime (seconds)       : 8947
+Heap Memory (MB)       : 504.97 / 8192.00
+Off Heap Memory (MB)   : 0.00
+Data Center            : datacenter1
+Rack                   : rack1
+Exceptions             : 0
+Key Cache              : entries 11, size 984 bytes, capacity 100 MiB, 101 hits, 119 requests, 0.849 recent hit rate, 14400 save period in seconds
+Row Cache              : entries 0, size 0 bytes, capacity 0 bytes, 0 hits, 0 requests, NaN recent hit rate, 0 save period in seconds
+Counter Cache          : entries 0, size 0 bytes, capacity 50 MiB, 0 hits, 0 requests, NaN recent hit rate, 7200 save period in seconds
+Network Cache          : size 8 MiB, overflow size: 0 bytes, capacity 128 MiB
+Percent Repaired       : 100.0%
+Token                  : -8225213037676917188
+Token                  : -7289299864885401768
+Token                  : -6873662205313761888
+Token                  : -5661981858641780742
+Token                  : -5264659006293067951
+Token                  : -4006238290347624863
+Token                  : -2971937643672220497
+Token                  : -2545651142391091107
+Token                  : -1195449315816413223
+Token                  : -138072798887455006
+Token                  : 1983622101114780101
+Token                  : 3242042692258433134
+Token                  : 4306383682031496531
+Token                  : 6126387983011442930
+Token                  : 8003452312524428959
+Token                  : 9172407235703443338
+Bootstrap state        : COMPLETED
+Bootstrap failed       : false
+Decommissioning        : false
+Decommission failed    : false</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a <span class="bold">Table</span> called <span class="hi-yellow">address_book</span> that consists of composite
+        <span class="bold">Primary Key</span> (with a <span class="bold">Partiton Key</span> and <span class="bold">Clustering Keys
+        </span>), input the following command at the "<span class="bold">cqlsh:mytestks2&gt;</span>" prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>cqlsh:mytestks2&gt; CREATE TABLE IF NOT EXISTS address_book (email_id text, first_name text, last_name text, state text, zip text, PRIMARY KEY ((email_id), state, zip));</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To check the various settings on the table <span class="bold">address_book</span>, input the following command at the "<span
+        class="bold">cqlsh:mytestks2&gt;</span>" prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>cqlsh:mytestks2&gt; DESCRIBE TABLE address_book;</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>CREATE TABLE mytestks2.address_book (
+    email_id text,
+    state text,
+    zip text,
+    first_name text,
+    last_name text,
+    PRIMARY KEY (email_id, state, zip)
+) WITH CLUSTERING ORDER BY (state ASC, zip ASC)
+    AND additional_write_policy = '99p'
+    AND allow_auto_snapshot = true
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}
+    AND cdc = false
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}
+    AND compression = {'chunk_length_in_kb': '16', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND memtable = 'default'
+    AND crc_check_chance = 1.0
+    AND default_time_to_live = 0
+    AND extensions = {}
+    AND gc_grace_seconds = 864000
+    AND incremental_backups = true
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair = 'BLOCKING'
+    AND speculative_retry = '99p';</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the table <span class="bold">address_book</span>, the column <span class="bold">email_id</span> will be the <span class
+        ="bold">Partiton Key</span>, while the columns <span class="bold">state</span> and <span class="bold">zip</span> will be the
+        <span class="bold">Clustering Keys</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the <span class="bold">Gossip</span> information for the cluster, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker exec -it cas-node-1 nodetool gossipinfo</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>/172.18.0.2
+  generation:1701112194
+  heartbeat:19309
+  STATUS:72:NORMAL,-1847922227964662486
+  LOAD:19252:231902.0
+  SCHEMA:10968:00313073-6c1f-356b-917c-525d4a726c36
+  DC:8:datacenter1
+  RACK:10:rack1
+  RELEASE_VERSION:5:5.0-alpha2
+  RPC_ADDRESS:4:172.18.0.2
+  NET_VERSION:1:12
+  HOST_ID:2:f142d327-4c51-43ea-8fa1-a5887c5359f4
+  RPC_READY:82:true
+  NATIVE_ADDRESS_AND_PORT:3:172.18.0.2:9042
+  STATUS_WITH_PORT:71:NORMAL,-1847922227964662486
+  SSTABLE_VERSIONS:6:big-nc
+  TOKENS:70:&lt;hidden&gt;
+/172.18.0.3
+  generation:1701112276
+  heartbeat:19226
+  LOAD:19192:230385.0
+  SCHEMA:10886:00313073-6c1f-356b-917c-525d4a726c36
+  DC:8:datacenter1
+  RACK:10:rack1
+  RELEASE_VERSION:5:5.0-alpha2
+  NET_VERSION:1:12
+  HOST_ID:2:cf8c8360-eeea-49ea-9fa0-6b417d30d98f
+  RPC_READY:97:true
+  NATIVE_ADDRESS_AND_PORT:3:172.18.0.3:9042
+  STATUS_WITH_PORT:84:NORMAL,-1195449315816413223
+  SSTABLE_VERSIONS:6:big-nc
+  TOKENS:83:&lt;hidden&gt;
+/172.18.0.4
+  generation:1701112367
+  heartbeat:19134
+  LOAD:19129:236722.0
+  SCHEMA:10791:00313073-6c1f-356b-917c-525d4a726c36
+  DC:8:datacenter1
+  RACK:10:rack1
+  RELEASE_VERSION:5:5.0-alpha2
+  NET_VERSION:1:12
+  HOST_ID:2:1072dc0b-9089-421c-8bf6-dc35f4a1a495
+  RPC_READY:96:true
+  NATIVE_ADDRESS_AND_PORT:3:172.18.0.4:9042
+  STATUS_WITH_PORT:83:NORMAL,-1447708912539482187
+  SSTABLE_VERSIONS:6:big-nc
+  TOKENS:82:&lt;hidden&gt;</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To insert three rows into the table <span class="bold">address_book</span>, input the following commands at the "<span class
+        ="bold">cqlsh:mytestks2&gt;</span>" prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>cqlsh:mytestks2&gt; INSERT INTO address_book (email_id, first_name, last_name, state, zip) VALUES ('alice@builder.com', 'alice', 'builder', 'NY', '10001');</p>
+      <p>cqlsh:mytestks2&gt; INSERT INTO address_book (email_id, first_name, state, zip) VALUES ('bob@coder.com', 'bob', 'NJ', '08550');</p>
+      <p>cqlsh:mytestks2&gt; INSERT INTO address_book (email_id, first_name, last_name, state, zip) VALUES ('charlie@dancer.com', 'charlie', 'dancer', 'NY', '10012');</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To select the values of the <span class="bold">email_id</span>, the <span class="bold">first_name</span>, and the latest
+        update timestamp (column metadata) of <span class="bold">first_name</span> for all the rows from the table <span class="bold">
+        address_book</span>, input the following command at the "<span class="bold">cqlsh:mytestks2&gt;</span>" prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>cqlsh:mytestks2&gt; SELECT email_id, first_name, writetime(first_name) FROM address_book;</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre> email_id           | first_name | writetime(first_name)
+--------------------+------------+-----------------------
+  alice@builder.com |      alice |      1701131587563197
+      bob@coder.com |        bob |      1701131597661015
+ charlie@dancer.com |    charlie |      1701131606944917
+
+(3 rows)</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To select the values of the <span class="bold">email_id</span> and its corresponding token generated by the default <span
+        class="bold">Murmur3Partitioner</span> for all the rows from the table <span class="bold">address_book</span>, input the
+        following command at the "<span class="bold">cqlsh:mytestks2&gt;</span>" prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>cqlsh:mytestks2&gt; SELECT email_id, token(email_id) FROM address_book;</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>email_id           | system.token(email_id)
+--------------------+------------------------
+  alice@builder.com |   -2094522160347831912
+      bob@coder.com |   -1716231266002284945
+ charlie@dancer.com |    1913932259381705508
+
+(3 rows)</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To check which nodes in the cluster stored the row for <span class="bold">alice@builder.com</span>, execute the following
+        command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker exec -it cas-node-1 nodetool getendpoints mytestks2 address_book "alice@builder.com"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>172.18.0.3
+172.18.0.4</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Next, to check which nodes in the cluster stored the row for <span class="bold">bob@coder.com</span>, execute the following
+        command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker exec -it cas-node-1 nodetool getendpoints mytestks2 address_book "bob@coder.com"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>172.18.0.4
+172.18.0.3</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Finally, to check which nodes in the cluster stored the row for <span class="bold">charlie@dancer.com</span>, execute the
+        following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker exec -it cas-node-1 nodetool getendpoints mytestks2 address_book "charlie@dancer.com"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>172.18.0.3
+172.18.0.4</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To drop the entire table <span class="bold">address_book</span>, input the following command at the "<span class="bold">
+        cqlsh:mytestks2&gt;</span>" prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>cqlsh:mytestks2&gt; DROP TABLE address_book;</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To drop the entire keyspace <span class="bold">mytestks2</span>, input the following command at the "<span class="bold">
+        cqlsh:mytestks2&gt;</span>" prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>cqlsh:mytestks2&gt; DROP KEYSPACE mytestks2;</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To exit the <span class="bold">CQL</span> command-line interface, input the following command at the "<span class="bold">
+        cqlsh:mytestks2&gt;</span>" prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>cqlsh:mytestks2&gt; exit;</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>This concludes the hands-on demonstration for this part in setting and using a 3-node <span class="bold">Apache Cassandra
+        </span> cluster !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/Cassandra/Cassandra-1.html" target="_blank"><span class="bold">Cassandra Quick Notes :: Part - 1</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

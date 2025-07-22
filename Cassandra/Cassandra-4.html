@@ -1,0 +1,976 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Cassandra Quick Notes :: Part - 4">
+    <meta name="subject" content="Cassandra Quick Notes :: Part - 4">
+    <meta name="keywords" content="apache-cassandra, cassandra, nosql, python, java">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Cassandra Quick Notes :: Part - 4</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Cassandra Quick Notes :: Part - 4</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td"><span class="hi-yellow">*UPDATED*</span>12/01/2023</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="gen-step-div">
+      <p>Overview</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In <a target="_blank" href="https://polarsparc.github.io/Cassandra/Cassandra-1.html"><span class="bold">Part-1</span></a>
+        of this article series, we performed the necessary setup, started a single-node <span class="bold">Apache Cassandra</span>
+        cluster and got our hands dirty with <span class="bold">CQL</span> operations.</p>
+      <p>In <a target="_blank" href="https://polarsparc.github.io/Cassandra/Cassandra-2.html"><span class="bold">Part-2</span></a>
+        of this article series, we performed the necessary setup to start a 3-node <span class="bold">Apache Cassandra</span> cluster
+        and got our hands dirty with some <span class="bold">Cassandra</span> concepts.</p>
+      <p>In <a target="_blank" href="https://polarsparc.github.io/Cassandra/Cassandra-3.html"><span class="bold">Part-3</span></a>
+        of this article series, we leverage the 3-node <span class="bold">Apache Cassandra</span> cluster setup and got our hands
+        dirty with additional <span class="bold">Cassandra</span> concepts.</p>
+      <p>In this part, we will demonstrate how to work with <span class="bold">Apache Cassandra</span> via an application code using
+        both <span class="bold">Python</span> and <span class="bold">Spring Boot Java</span>.</p>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>Hands-on with Python Cassandra Driver</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Ensure the Python Cassandra driver is installed by executing the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt install pip3 -y</p>
+      <p>$ sudo pip3 install cassandra-driver</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Python directory structure for the demonstrations, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $CASSANDRA_HOME</p>
+      <p>$ mkdir -p python</p>
+      <p>$ cd $CASSANDRA_HOME/python</p>
+    </div>
+    <div id="para-div">
+      <p>For the demonstration, we don't need all the nodes in the cluster running. Ensure that the single-node <span class="bold">
+        Apache Cassandra</span> cluster is up and running. Else, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name cas-node-1 --hostname cas-node-1 --network cassandra-db-net -p 7199:7199 -p 9042:9042 -u $(id -u $USER):$(id -g $USER) -v $CASSANDRA_HOME/data:/var/lib/cassandra/data -v $CASSANDRA_HOME/etc/cassandra:/etc/cassandra -v $CASSANDRA_HOME/logs:/opt/cassandra/logs cassandra:5.0</p>
+    </div>
+    <div id="para-div">
+      <p>To import the required <span class="bold">Python</span> modules and initialize some variables, execute the following code
+        snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>import logging
+from cassandra.cluster import Cluster, ExecutionProfile, EXEC_PROFILE_DEFAULT
+from cassandra.policies import WhiteListRoundRobinPolicy
+
+CASSANDRA_PORT = 9042
+CASSANDRA_HOST = '127.0.0.1'
+CASSANDRA_KS = 'my_test_ks'
+CASSANDRA_TABLE = 'book_catalog'
+
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To interact with a <span class="bold">Cassandra</span> cluster, one needs to create a cluster connection by providing some
+        configuration options, such as, the load balancing strategy, the network port, the protocol version, etc. An instance of
+        the <span class="bold">Python</span> class <span class="hi-yellow">Cluster</span> allows one to do just that. To create a
+        connection to the single-node <span class="bold">Cassandra</span> cluster, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>def get_cluster_session(host, port):
+  logging.info(f'Connecting to {host} at port {port}')
+  profile = ExecutionProfile(load_balancing_policy=WhiteListRoundRobinPolicy([host]))
+  cluster = Cluster(execution_profiles={EXEC_PROFILE_DEFAULT: profile},
+                    port=port,
+                    protocol_version=5)
+  session = cluster.connect()
+  logging.info(f'Connection successful !!!')
+  return cluster, session</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that an instance of the <span class="bold">Python</span> class <span class="hi-yellow">ExecutionProfile</span> indicates
+        the load balancing strategy.</p>
+    </div>
+    <div id="para-div">
+      <p>To create and use a desired <span class="bold">Keyspace</span> in <span class="bold">Cassandra</span>, execute the following
+        code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>def set_keyspace(session, ks):
+  logging.info(f'Checking for existence of keyspace {ks}')
+  rows = session.execute('SELECT keyspace_name FROM system_schema.keyspaces')
+  if ks not in [row[0] for row in rows]:
+    session.execute("""
+        CREATE KEYSPACE %s
+            WITH REPLICATION = {'class': 'SimpleStrategy', 'replication_factor': 1};
+        """ % ks)
+  session.set_keyspace(ks)
+  logging.info(f'Set keyspace successful !!!')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a <span class="bold">Table</span> in <span class="bold">Cassandra</span> within a <span class="bold">Keyspace</span>,
+        execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>def create_table(session, ks, table):
+  logging.info(f'Checking for existence of table {table}')
+  rows = session.execute("SELECT table_name FROM system_schema.tables WHERE keyspace_name='" + ks + "'")
+  if table not in [row[0] for row in rows]:
+    session.execute("""
+        CREATE TABLE %s (
+            isbn text,
+            title text,
+            year int,
+            price float,
+            PRIMARY KEY (isbn))
+        """ % table)
+  logging.info(f'Create table successful !!!')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To insert a new row into a <span class="bold">Table</span> in <span class="bold">Cassandra</span>, execute the following
+        code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>def insert_row(session, table, isbn, title=None, year=0, price=0.0):
+  logging.info(f'Inserting row in table {table} for key {isbn}')
+  session.execute("""
+      INSERT INTO %s (isbn, title, year, price)
+          VALUES ('%s', '%s', %d, %f)
+      """ % (table, isbn, title, year, price))
+  logging.info(f'Insert into table successful !!!')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To query all the rows from a <span class="bold">Table</span> in <span class="bold">Cassandra</span>, execute the following
+        code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>def select_all_rows(session, table):
+  logging.info(f'Querying from table {table}')
+  rows = session.execute("""
+            SELECT *
+            FROM %s
+            """ % table)
+  for row in rows:
+    if row.year is None:
+      logging.info(f'>>> {row.isbn}, {row.title}, null, null')
+    else:
+      logging.info(f'>>> {row.isbn}, {row.title}, {row.year}, {row.price:.02f}')
+  logging.info(f'Query from table successful !!!')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To update a row from a <span class="bold">Table</span> in <span class="bold">Cassandra</span> for a given key, execute the
+        following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>def update_row(session, table, isbn, title=None, year=0, price=0.0):
+  logging.info(f'Updating row in table {table} for key {isbn}')
+  session.execute("""
+      UPDATE %s SET price = %f,
+          title = '%s',
+          year = %d
+          WHERE isbn = '%s'
+      """ % (table, price, title, year, isbn))
+  logging.info(f'Update of table successful !!!')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To delete few columns from a <span class="bold">Table</span> in <span class="bold">Cassandra</span> for a given key, execute
+        the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>def delete_columns(session, table, isbn):
+  logging.info(f'Deleting columns from table {table} for key {isbn}')
+  session.execute("""
+      DELETE price, year
+          FROM %s
+          WHERE isbn = '%s';
+      """ % (table, isbn))
+  logging.info(f'Delete of columns from table successful !!!')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To clean up all the used resources and disconnect from <span class="bold">Cassandra</span> cluster, execute the following
+        code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>def clean_up(cluster, session, ks, table):
+  logging.info(f'Ready to perform cleanup')
+  session.execute("""DROP TABLE %s""" % table)
+  session.execute("""DROP KEYSPACE %s""" % ks)
+  session.shutdown()
+  cluster.shutdown()
+  logging.info(f'Cleanup successful !!!')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To test the <span class="underbold">CRUD</span> operations in the <span class="bold">Cassandra</span> cluster, execute the
+        following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>if __name__ == '__main__':
+  c_cluster, c_session = get_cluster_session(CASSANDRA_HOST, CASSANDRA_PORT)
+  set_keyspace(c_session, CASSANDRA_KS)
+  create_table(c_session, CASSANDRA_KS, CASSANDRA_TABLE)
+  insert_row(c_session, CASSANDRA_TABLE, isbn='ISBN-111')
+  select_all_rows(c_session, CASSANDRA_TABLE)
+  update_row(c_session, CASSANDRA_TABLE, isbn='ISBN-111', title='Cassandra Quick Notes', year=2023, price=2.99)
+  select_all_rows(c_session, CASSANDRA_TABLE)
+  insert_row(c_session, CASSANDRA_TABLE, isbn='ISBN-222', title='Cassandra Guide', year=2021, price=4.99)
+  insert_row(c_session, CASSANDRA_TABLE, isbn='ISBN-333', title='Cassandra For Developers', year=2019, price=3.99)
+  select_all_rows(c_session, CASSANDRA_TABLE)
+  delete_columns(c_session, CASSANDRA_TABLE, isbn='ISBN-333')
+  select_all_rows(c_session, CASSANDRA_TABLE)
+  clean_up(c_cluster, c_session, CASSANDRA_KS, CASSANDRA_TABLE)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>2023-11-30 11:53:18,914 - Connecting to 127.0.0.1 at port 9042
+2023-11-30 11:53:18,934 - Connection successful !!!
+2023-11-30 11:53:18,934 - Checking for existence of keyspace my_test_ks
+2023-11-30 11:53:18,971 - Set keyspace successful !!!
+2023-11-30 11:53:18,972 - Checking for existence of table book_catalog
+2023-11-30 11:53:19,080 - Create table successful !!!
+2023-11-30 11:53:19,080 - Inserting row in table book_catalog for key ISBN-111
+2023-11-30 11:53:19,081 - Insert into table successful !!!
+2023-11-30 11:53:19,081 - Querying from table book_catalog
+2023-11-30 11:53:19,082 - >>> ISBN-111, None, 0, 0.00
+2023-11-30 11:53:19,082 - Query from table successful !!!
+2023-11-30 11:53:19,082 - Updating row in table book_catalog for key ISBN-111
+2023-11-30 11:53:19,083 - Update of table successful !!!
+2023-11-30 11:53:19,083 - Querying from table book_catalog
+2023-11-30 11:53:19,083 - >>> ISBN-111, Cassandra Quick Notes, 2023, 2.99
+2023-11-30 11:53:19,084 - Query from table successful !!!
+2023-11-30 11:53:19,084 - Inserting row in table book_catalog for key ISBN-222
+2023-11-30 11:53:19,084 - Insert into table successful !!!
+2023-11-30 11:53:19,084 - Inserting row in table book_catalog for key ISBN-333
+2023-11-30 11:53:19,085 - Insert into table successful !!!
+2023-11-30 11:53:19,085 - Querying from table book_catalog
+2023-11-30 11:53:19,086 - >>> ISBN-333, Cassandra For Developers, 2019, 3.99
+2023-11-30 11:53:19,086 - >>> ISBN-111, Cassandra Quick Notes, 2023, 2.99
+2023-11-30 11:53:19,086 - >>> ISBN-222, Cassandra Guide, 2021, 4.99
+2023-11-30 11:53:19,086 - Query from table successful !!!
+2023-11-30 11:53:19,086 - Deleting columns from table book_catalog for key ISBN-333
+2023-11-30 11:53:19,086 - Delete of columns from table successful !!!
+2023-11-30 11:53:19,086 - Querying from table book_catalog
+2023-11-30 11:53:19,087 - >>> ISBN-333, Cassandra For Developers, null, null
+2023-11-30 11:53:19,087 - >>> ISBN-111, Cassandra Quick Notes, 2023, 2.99
+2023-11-30 11:53:19,087 - >>> ISBN-222, Cassandra Guide, 2021, 4.99
+2023-11-30 11:53:19,087 - Query from table successful !!!
+2023-11-30 11:53:19,087 - Ready to perform cleanup
+2023-11-30 11:53:19,733 - Cleanup successful !!!</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This wraps on how to work with <span class="bold">Apache Cassandra</span> using <span class="bold">Python</span>.</p>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>Hands-on with Cassandra using Spring Boot</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the demonstrations, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME</p>
+      <p>$ mkdir -p java/springboot/cassandra</p>
+      <p>$ cd $HOME/java/springboot/cassandra</p>
+      <p>$ mkdir -p src/main/java src/main/resources target</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/cassandra</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/cassandra/config</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/cassandra/model</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/cassandra/repository</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/cassandra/service src/main/java/com/polarsparc/cassandra/service/impl</p>
+    </div>
+    <div id="para-div">
+      <p>For the Spring Boot based demonstration, we will leverage <span class="bold">Maven</span> to manage the build as well as the
+        package dependencies.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Maven file <span class="hi-yellow">pom.xml</span> that is located in the directory <span class="bold">
+        $HOME/java/cassandra</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+  &lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+  &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+  &lt;parent&gt;
+    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-boot-starter-parent&lt;/artifactId&gt;
+    &lt;version&gt;3.2.0&lt;/version&gt;
+    &lt;relativePath/&gt; &lt;!-- lookup parent from repository --&gt;
+  &lt;/parent&gt;
+  &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+  &lt;artifactId&gt;Cassandra&lt;/artifactId&gt;
+  &lt;version&gt;1.0&lt;/version&gt;
+  &lt;name&gt;Cassandra&lt;/name&gt;
+  &lt;description&gt;Cassandra&lt;/description&gt;
+  &lt;properties&gt;
+    &lt;java.version&gt;17&lt;/java.version&gt;
+  &lt;/properties&gt;
+  &lt;dependencies&gt;
+    &lt;dependency&gt;
+      &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+      &lt;artifactId&gt;spring-boot-starter-data-cassandra&lt;/artifactId&gt;
+    &lt;/dependency&gt;
+    &lt;dependency&gt;
+      &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+      &lt;artifactId&gt;spring-boot-starter-test&lt;/artifactId&gt;
+      &lt;scope&gt;test&lt;/scope&gt;
+    &lt;/dependency&gt;
+  &lt;/dependencies&gt;
+  &lt;build&gt;
+    &lt;plugins&gt;
+      &lt;plugin&gt;
+        &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+        &lt;artifactId&gt;spring-boot-maven-plugin&lt;/artifactId&gt;
+      &lt;/plugin&gt;
+    &lt;/plugins&gt;
+  &lt;/build&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are the contents of the Spring Boot application properties file called <span class="hi-blue">application.properties
+        </span>, which defines the logging level and some <span class="bold">Cassandra</span> configuration options:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">application.properties</div>
+      <div class="src-body-1">
+      <pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   30 Nov 2023
+#
+
+logging.level.root=INFO
+
+spring.cassandra.contact-points=127.0.0.1
+spring.cassandra.port=9042
+spring.cassandra.keyspace-name=my_test_ks
+spring.cassandra.schema-action=NONE</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The property <span class="bold">spring.cassandra.schema-action</span> with a value of <span class="underbold">NONE</span>
+        means - don't create the <span class="bold">Cassandra</span> database on startup.</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are the contents of the Java POJO <span class="hi-blue">BookCatalog.java</span> which represents a row in the
+        <span class="bold">Cassandra</span> database:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">BookCatalog.java</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   30 Nov 2023
+*/
+
+package com.polarsparc.cassandra.model;
+
+import org.springframework.data.cassandra.core.mapping.Column;
+import org.springframework.data.cassandra.core.mapping.PrimaryKey;
+import org.springframework.data.cassandra.core.mapping.Table;
+
+@Table("book_catalog")
+public class BookCatalog {
+    @PrimaryKey
+    @Column
+    private String isbn;
+
+    @Column
+    private String title;
+
+    @Column
+    private int year;
+
+    @Column
+    private double price;
+
+    public BookCatalog() {
+        this.isbn = null;
+        this.title = null;
+        this.year = 0;
+        this.price = 0.0;
+    }
+
+    public BookCatalog(String isbn, String title, int year, double price) {
+        this.isbn = isbn;
+        this.title = title;
+        this.year = year;
+        this.price = price;
+    }
+
+    public BookCatalog(String isbn) {
+        this(isbn, null, 0, 0.0);
+    }
+
+    public String getIsbn() {
+        return isbn;
+    }
+
+    public void setIsbn(String isbn) {
+        this.isbn = isbn;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public int getYear() {
+        return year;
+    }
+
+    public void setYear(int year) {
+        this.year = year;
+    }
+
+    public double getPrice() {
+        return price;
+    }
+
+    public void setPrice(double price) {
+        this.price = price;
+    }
+
+    @Override
+    public String toString() {
+        return "BookCatalog{" +
+                "isbn='" + isbn + '\'' +
+                ", title='" + title + '\'' +
+                ", year=" + year +
+                ", price=" + price +
+                '}';
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For any <span class="bold">Spring Boot</span> application that wants to interact with <span class="bold">Cassandra</span>,
+        it needs a connection (session) to the cluster. The <span class="bold">application.properties</span> indicates the values
+        for where to connect, which <span class="bold">Keyspace</span> to use and so on. That information needs to be translated
+        into a configuration bean for <span class="bold">Spring Boot</span> to access, so that it can create the necessary session
+        bean.</p>
+      <p>The following are the contents of the <span class="bold">Spring Boot</span> configuration Java bean <span class="hi-blue">
+        CassandraConfig.java</span> located in the directory <span class="bold">src/main/java/com/polarsparc/cassandra/config</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">CassandraConfig.java</div>
+      <div class="src-body-1">
+      <pre>package com.polarsparc.cassandra.config;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.cassandra.config.AbstractCassandraConfiguration;
+import org.springframework.data.cassandra.config.SchemaAction;
+import org.springframework.lang.NonNull;
+
+@Configuration
+public class CassandraConfig extends AbstractCassandraConfiguration {
+    @Value("${spring.cassandra.keyspace-name}")
+    private String keySpace;
+
+    @Value("${spring.cassandra.contact-points}")
+    private String contactPoints;
+
+    @Value("${spring.cassandra.port}")
+    private int port;
+
+    @Value("${spring.cassandra.schema-action}")
+    private String schemaAction;
+
+    @Override
+    @NonNull
+    protected String getKeyspaceName() {
+        return keySpace;
+    }
+    @Override
+    @NonNull
+    protected String getContactPoints() {
+        return contactPoints;
+    }
+
+    @Override
+    protected int getPort() {
+        return port;
+    }
+
+    @Override
+    @NonNull
+    public SchemaAction getSchemaAction() {
+        return SchemaAction.valueOf(schemaAction);
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are the contents of the Java service interface called <span class="hi-blue">BookCatalogService.java</span>
+        which defines the various CRUD operations on the <span class="bold">Cassandra</span> database and is located in the directory
+        <span class="bold">src/main/java/com/polarsparc/cassandra/service</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">BookCatalogService.java</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   30 Nov 2023
+*/
+
+package com.polarsparc.cassandra.service;
+
+public interface BookCatalogService {
+    void insertBookCatalog(String isbn, String title, int year, double price);
+    void queryBookCatalogs();
+    void removeBookCatalogs();
+    void removePriceAndYear(String isbn);
+    void updateBookCatalog(String isbn, String title, int year, double price);
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are the contents of the Java class called <span class="hi-blue">BookCatalogServiceImpl.java</span> which
+        implements the Java service interface <span class="bold">BookCatalogService</span>, and is located in the directory <span
+        class="bold">src/main/java/com/polarsparc/cassandra/service/impl</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">BookCatalogService.java</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   30 Nov 2023
+*/
+
+package com.polarsparc.cassandra.service.impl;
+
+import com.polarsparc.cassandra.model.BookCatalog;
+import com.polarsparc.cassandra.repository.BookCatalogRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.polarsparc.cassandra.service.BookCatalogService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.Optional;
+
+@Service
+public class BookCatalogServiceImpl implements BookCatalogService {
+    private final static Logger LOGGER = LoggerFactory.getLogger(BookCatalogServiceImpl.class.getName());
+
+    private BookCatalogRepository repository;
+
+    @Autowired
+    public void setRepository(BookCatalogRepository repository) {
+        this.repository = repository;
+    }
+
+    @Override
+    public void insertBookCatalog(String isbn, String title, int year, double price) {
+        BookCatalog bookCatalog = new BookCatalog(isbn, title, year, price);
+        LOGGER.info(String.format("Inserting row for %s in book_catalog", isbn));
+        repository.insert(bookCatalog);
+    }
+
+    @Override
+    public void queryBookCatalogs() {
+        LOGGER.info(String.format("Count of rows in book_catalog: %d", repository.count()));
+        LOGGER.info("Querying all rows in book_catalog");
+        repository.findAll().forEach(row -> LOGGER.info(row.toString()));
+    }
+
+    @Override
+    public void removeBookCatalogs() {
+        LOGGER.info("Removing all rows from book_catalog");
+        repository.deleteAll();
+    }
+
+    @Override
+    public void removePriceAndYear(String isbn) {
+        LOGGER.info(String.format("Removing price and year for %s in book_catalog", isbn));
+        Optional&lt;BookCatalog&gt; bookCatalog = repository.findById(isbn);
+        if (bookCatalog.isPresent()) {
+            LOGGER.info(String.format("Found row for %s in book_catalog", isbn));
+            BookCatalog bc = bookCatalog.get();
+            bc.setPrice(0.0);
+            bc.setYear(0);
+            LOGGER.info(String.format("Updating row for %s in book_catalog", isbn));
+            repository.save(bc);
+        } else {
+            LOGGER.warn(String.format("No row for %s in book_catalog", isbn));
+        }
+    }
+
+    @Override
+    public void updateBookCatalog(String isbn, String title, int year, double price) {
+        LOGGER.info(String.format("Querying row for %s in book_catalog", isbn));
+        Optional&lt;BookCatalog&gt; bookCatalog = repository.findById(isbn);
+        if (bookCatalog.isPresent()) {
+            LOGGER.info(String.format("Found row for %s in book_catalog", isbn));
+            BookCatalog bc = bookCatalog.get();
+            bc.setTitle(title);
+            bc.setPrice(price);
+            bc.setYear(year);
+            LOGGER.info(String.format("Updating row for %s in book_catalog", isbn));
+            repository.save(bc);
+        } else {
+            LOGGER.warn(String.format("No row for %s in book_catalog", isbn));
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are the contents of the <span class="bold">Spring Boot</span> repository interface called <span class="hi-blue">
+        BookCatalogRepository.java</span> that defines all the CRUD operations on the <span class="bold">Cassandra</span> database
+        and is located in the directory <span class="bold">src/main/java/com/polarsparc/cassandra/repository</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">BookCatalogRepository.java</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   30 Nov 2023
+*/
+
+package com.polarsparc.cassandra.repository;
+
+import com.polarsparc.cassandra.model.BookCatalog;
+import org.springframework.data.cassandra.repository.CassandraRepository;
+
+public interface BookCatalogRepository extends CassandraRepository<BookCatalog, String> {}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Finally, the following are the contents of the Spring Boot application called <span class="hi-yellow">CassandraApplication.java
+        </span> that performs all the CRUD operations on the <span class="bold">Cassandra</span> database:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">CassandraApplication.java</div>
+      <div class="src-body-1">
+      <pre>/*
+        @Author: Bhaskar S
+        @Blog:   https://polarsparc.github.io
+        @Date:   30 Nov 2023
+    */
+    
+    package com.polarsparc.cassandra;
+    
+    import com.polarsparc.cassandra.repository.BookCatalogRepository;
+    import com.polarsparc.cassandra.service.BookCatalogService;
+    import org.springframework.beans.factory.annotation.Autowired;
+    import org.springframework.boot.CommandLineRunner;
+    import org.springframework.boot.SpringApplication;
+    import org.springframework.boot.autoconfigure.SpringBootApplication;
+    import org.springframework.context.ConfigurableApplicationContext;
+    import org.springframework.data.cassandra.repository.config.EnableCassandraRepositories;
+    
+    @SpringBootApplication
+    @EnableCassandraRepositories(basePackageClasses = BookCatalogRepository.class)
+    public class CassandraApplication implements CommandLineRunner {
+      private ConfigurableApplicationContext context;
+    
+      private BookCatalogService service;
+    
+      @Autowired
+      public void setContext(ConfigurableApplicationContext context) {
+        this.context = context;
+      }
+    
+      @Autowired
+      public void setService(BookCatalogService service) {
+        this.service = service;
+      }
+    
+      public static void main(String[] args) {
+        SpringApplication.run(CassandraApplication.class, args);
+      }
+    
+      @Override
+      public void run(String... args) {
+        service.insertBookCatalog("ISBN-111", null, 0, 0.0);
+        service.queryBookCatalogs();
+        service.updateBookCatalog("ISBN-111", "Cassandra Quick Notes", 2023, 2.99);
+        service.queryBookCatalogs();
+        service.insertBookCatalog("ISBN-222", "Cassandra Guide", 2021, 4.99);
+        service.insertBookCatalog("ISBN-333", "Cassandra For Developers", 2019, 3.99);
+        service.queryBookCatalogs();
+        service.removePriceAndYear("ISBN-333");
+        service.queryBookCatalogs();
+        service.removeBookCatalogs();
+        service.queryBookCatalogs();
+    
+        System.exit(SpringApplication.exit(context));
+      }
+    }</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Launch the <span class="bold">CQL</span> command-line interface by executing the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run -it --rm --name cas-client --network cassandra-db-net cassandra:5.0 cqlsh cas-node-1</p>
+    </div>
+    <br/>
+    <div id="para-div">
+    <p>The following will be the output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>WARNING: cqlsh was built against 5.0-alpha2, but this server is 5.0.  All features may not work!
+Connected to Cassandra Cluster at cas-node-1:9042
+[cqlsh 6.2.0 | Cassandra 5.0-alpha2 | CQL spec 3.4.7 | Native protocol v5]
+Use HELP for help.
+cqlsh&gt;</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>On success, <span class="bold">CQL</span> will change the command prompt to "<span class="hi-grey">cqlsh&gt;</span>".</p>
+    </div>
+    <div id="para-div">
+      <p>To create a <span class="bold">Keyspace</span> called <span class="hi-yellow">my_test_ks</span>, input the following command
+        at the "<span class="bold">cqlsh&gt;</span>" prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>cqlsh&gt; CREATE KEYSPACE IF NOT EXISTS my_test_ks WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To use the <span class="bold">Keyspace</span> called <span class="hi-yellow">my_test_ks</span>, input the following command
+        at the "<span class="bold">cqlsh&gt;</span>" prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>cqlsh&gt; USE my_test_ks;</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output and the input prompt would change to "<span class="hi-grey">cqlsh:my_test_ks&gt;</span>".</p>
+    </div>
+    <div id="para-div">
+      <p>To create a <span class="bold">Table</span> called <span class="hi-yellow">book_catalog</span> with a <span class="bold">
+        Primary Key</span>, input the following command at the "<span class="bold">cqlsh:my_test_ks&gt;</span>" prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>cqlsh:my_test_ks&gt; CREATE TABLE IF NOT EXISTS book_catalog (isbn text, title text, year int, price double, PRIMARY KEY (isbn));</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>Run the the Spring Boot application called <span class="bold">CassandraApplication</span> and following will be the typical
+        output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>2023-12-01T13:46:47.121-05:00  INFO 24098 --- [           main] c.p.cassandra.CassandraApplication       : Starting CassandraApplication using Java 21 with PID 24098 (/home/bswamina/MyProjects/Java/SpringBoot/Cassandra/target/classes started by bswamina in /home/bswamina/MyProjects/Java/SpringBoot/Cassandra)
+2023-12-01T13:46:47.123-05:00  INFO 24098 --- [           main] c.p.cassandra.CassandraApplication       : No active profile set, falling back to 1 default profile: "default"
+2023-12-01T13:46:47.250-05:00  INFO 24098 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Cassandra repositories in DEFAULT mode.
+2023-12-01T13:46:47.265-05:00  INFO 24098 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 13 ms. Found 1 Cassandra repository interface.
+2023-12-01T13:46:47.294-05:00  INFO 24098 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Reactive Cassandra repositories in DEFAULT mode.
+2023-12-01T13:46:47.298-05:00  INFO 24098 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 4 ms. Found 0 Reactive Cassandra repository interfaces.
+2023-12-01T13:46:47.481-05:00  INFO 24098 --- [           main] c.d.o.d.i.core.DefaultMavenCoordinates   : DataStax Java driver for Apache Cassandra(R) (com.datastax.oss:java-driver-core) version 4.17.0
+2023-12-01T13:46:47.526-05:00  INFO 24098 --- [           main] c.d.o.d.i.c.c.CqlPrepareAsyncProcessor   : Adding handler to invalidate cached prepared statements on type changes
+2023-12-01T13:46:47.667-05:00  INFO 24098 --- [     s0-admin-0] c.d.oss.driver.internal.core.time.Clock  : Using native clock for microsecond precision
+2023-12-01T13:46:47.916-05:00  INFO 24098 --- [           main] c.d.o.d.i.c.c.CqlPrepareAsyncProcessor   : Adding handler to invalidate cached prepared statements on type changes
+2023-12-01T13:46:47.917-05:00  INFO 24098 --- [     s1-admin-0] c.d.oss.driver.internal.core.time.Clock  : Using native clock for microsecond precision
+2023-12-01T13:46:48.127-05:00  INFO 24098 --- [           main] c.p.cassandra.CassandraApplication       : Started CassandraApplication in 1.161 seconds (process running for 1.427)
+2023-12-01T13:46:48.128-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Inserting row for ISBN-111 in book_catalog
+2023-12-01T13:46:48.175-05:00  WARN 24098 --- [        s1-io-3] c.d.o.d.i.core.cql.CqlRequestHandler     : Query '[0 values] SELECT count(1) FROM book_catalog' generated server side warning(s): Aggregation query used without partition key
+2023-12-01T13:46:48.176-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Count of rows in book_catalog: 1
+2023-12-01T13:46:48.176-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Querying all rows in book_catalog
+2023-12-01T13:46:48.185-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : BookCatalog{isbn='ISBN-111', title='null', year=0, price=0.0}
+2023-12-01T13:46:48.185-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Querying row for ISBN-111 in book_catalog
+2023-12-01T13:46:48.189-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Found row for ISBN-111 in book_catalog
+2023-12-01T13:46:48.189-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Updating row for ISBN-111 in book_catalog
+2023-12-01T13:46:48.193-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Count of rows in book_catalog: 1
+2023-12-01T13:46:48.193-05:00  WARN 24098 --- [        s1-io-3] c.d.o.d.i.core.cql.CqlRequestHandler     : Query '[0 values] SELECT count(1) FROM book_catalog' generated server side warning(s): Aggregation query used without partition key
+2023-12-01T13:46:48.193-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Querying all rows in book_catalog
+2023-12-01T13:46:48.194-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : BookCatalog{isbn='ISBN-111', title='Cassandra Quick Notes', year=2023, price=2.99}
+2023-12-01T13:46:48.194-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Inserting row for ISBN-222 in book_catalog
+2023-12-01T13:46:48.195-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Inserting row for ISBN-333 in book_catalog
+2023-12-01T13:46:48.197-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Count of rows in book_catalog: 3
+2023-12-01T13:46:48.197-05:00  WARN 24098 --- [        s1-io-3] c.d.o.d.i.core.cql.CqlRequestHandler     : Query '[0 values] SELECT count(1) FROM book_catalog' generated server side warning(s): Aggregation query used without partition key
+2023-12-01T13:46:48.197-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Querying all rows in book_catalog
+2023-12-01T13:46:48.198-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : BookCatalog{isbn='ISBN-333', title='Cassandra For Developers', year=2019, price=3.99}
+2023-12-01T13:46:48.198-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : BookCatalog{isbn='ISBN-111', title='Cassandra Quick Notes', year=2023, price=2.99}
+2023-12-01T13:46:48.198-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : BookCatalog{isbn='ISBN-222', title='Cassandra Guide', year=2021, price=4.99}
+2023-12-01T13:46:48.198-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Removing price and year for ISBN-333 in book_catalog
+2023-12-01T13:46:48.199-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Found row for ISBN-333 in book_catalog
+2023-12-01T13:46:48.199-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Updating row for ISBN-333 in book_catalog
+2023-12-01T13:46:48.201-05:00  WARN 24098 --- [        s1-io-3] c.d.o.d.i.core.cql.CqlRequestHandler     : Query '[0 values] SELECT count(1) FROM book_catalog' generated server side warning(s): Aggregation query used without partition key
+2023-12-01T13:46:48.201-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Count of rows in book_catalog: 3
+2023-12-01T13:46:48.201-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Querying all rows in book_catalog
+2023-12-01T13:46:48.202-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : BookCatalog{isbn='ISBN-333', title='Cassandra For Developers', year=0, price=0.0}
+2023-12-01T13:46:48.202-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : BookCatalog{isbn='ISBN-111', title='Cassandra Quick Notes', year=2023, price=2.99}
+2023-12-01T13:46:48.202-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : BookCatalog{isbn='ISBN-222', title='Cassandra Guide', year=2021, price=4.99}
+2023-12-01T13:46:48.202-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Removing all rows from book_catalog
+2023-12-01T13:46:48.275-05:00  WARN 24098 --- [        s1-io-3] c.d.o.d.i.core.cql.CqlRequestHandler     : Query '[0 values] SELECT count(1) FROM book_catalog' generated server side warning(s): Aggregation query used without partition key
+2023-12-01T13:46:48.275-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Count of rows in book_catalog: 0
+2023-12-01T13:46:48.275-05:00  INFO 24098 --- [           main] c.p.c.s.impl.BookCatalogServiceImpl      : Querying all rows in book_catalog</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To drop the entire table <span class="bold">book_catalog</span>, input the following command at the "<span class="bold">
+        cqlsh:my_test_ks&gt;</span>" prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>cqlsh:my_test_ks&gt; DROP TABLE book_catalog;</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To drop the entire keyspace <span class="bold">my_test_ks</span>, input the following command at the "<span class="bold">
+        cqlsh:my_test_ks&gt;</span>" prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>cqlsh:my_test_ks&gt; DROP KEYSPACE my_test_ks;</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To exit the <span class="bold">CQL</span> command-line interface, input the following command at the "<span class="bold">
+        cqlsh:my_test_ks&gt;</span>" prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>cqlsh:my_test_ks&gt; exit;</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To stop the single-node <span class="bold">Apache Cassandra</span> cluster, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker stop cas-node-1</p>
+    </div>
+    <div id="para-div">
+      <p>This concludes the hands-on demonstration on how to work with <span class="bold">Apache Cassandra</span> via an application
+        code using both <span class="bold">Python</span> and <span class="bold">Spring Boot Java</span> !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://docs.datastax.com/en/developer/python-driver/3.28/" target="_blank"><span class="bold">DataStax Python Driver</span></a></p>
+      <p><a href="https://polarsparc.github.io/Cassandra/Cassandra-3.html" target="_blank"><span class="bold">Cassandra Quick Notes :: Part - 3</span></a></p>
+      <p><a href="https://polarsparc.github.io/Cassandra/Cassandra-2.html" target="_blank"><span class="bold">Cassandra Quick Notes :: Part - 2</span></a></p>
+      <p><a href="https://polarsparc.github.io/Cassandra/Cassandra-1.html" target="_blank"><span class="bold">Cassandra Quick Notes :: Part - 1</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

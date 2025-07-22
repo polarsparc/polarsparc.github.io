@@ -1,0 +1,1151 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Java Rules Engine - Drools :: Part 3">
+    <meta name="subject" content="Java Rules Engine - Drools :: Part 3">
+    <meta name="keywords" content="java">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Java Rules Engine - Drools :: Part 3</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Java Rules Engine - Drools :: Part 3</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">06/12/2021</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/Drools/Drools-1.html" target="_blank"><span class="hi-yellow">Part 1</span></a>,
+        we provided an overview of <span class="bold">Drools</span> and its core components.</p>
+      <p>In <a href="https://polarsparc.github.io/Drools/Drools-2.html" target="_blank"><span class="hi-yellow">Part 2</span></a>,
+        we demonstrated two examples - one to isolate rules in different <span class="bold">KieBase</span>s and the other to showcase
+        a pseudo real-world scenario.</p>
+    </div>
+    <div id="para-div">
+      <p>In this part, we will demonstrate two more examples (that would be relevant in a typical enterprise environment) - one to
+        showcase the situation of hierarchical decisions (try option 1 and if it fails, try option 2, and so on) and the other to
+        execute rules in parallel and prove that each <span class="bold">KieSession</span> is isolated from the other (in other words
+        use different working memory).</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Drools</p>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">Fifth</span> application, we demonstrate the following business logic - for a given product, we
+        determine the primary supplier. The supplier provides a quote for the product and if the cost is within the 5% tolerance
+        (either up or down), we accept the quote and the processing is done. In case, the tolerance is breached, a secondary supplier
+        is identified and we go through the same process. In this case, if the tolerance is breached, we display an exception message
+        and the processing is done.</p>
+    </div>
+    <div id="step-div">
+      <p>Fifth Application</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the Fifth application, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Drools</p>
+      <p>$ mkdir -p $HOME/java/Drools/Fifth</p>
+      <p>$ mkdir -p Fifth/src/main/java Fifth/src/main/resources Fifth/target</p>
+      <p>$ mkdir -p Fifth/src/main/resources/com/polarsparc/fifth</p>
+      <p>$ cd $HOME/java/Drools/Fifth</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;parent&gt;
+        &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+        &lt;artifactId&gt;Drools&lt;/artifactId&gt;
+        &lt;version&gt;1.0&lt;/version&gt;
+    &lt;/parent&gt;
+
+    &lt;artifactId&gt;Fifth&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+    &lt;name&gt;Fifth&lt;/name&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The contents of the <span class="hi-green">simplelogger.properties</span> and <span class="hi-green">application.properties</span>
+        located in the directory <span class="bold">src/main/resources</span> will be identical to the one from the First application
+        listed in <a href="https://polarsparc.github.io/Drools/Drools-1.html" target="_blank"><span class="bold">Part 1</span></a> and
+        hence we will not show them here again.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the <span class="bold">Drools</span> rules set file called
+        <span class="hi-yellow">src/main/resources/com/polarsparc/fifth/fifth.drl</span> that handles our business logic:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.21</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   fifth.drl
+ * Author: Bhaskar S
+ * Date:   06/12/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.fifth;
+
+import com.polarsparc.fifth.model.*;
+import com.polarsparc.fifth.util.QuoteHelper;
+import org.slf4j.Logger;
+import java.util.Collection;
+import java.util.Comparator
+import com.polarsparc.fifth.util.QuoteHelper;
+
+global org.slf4j.Logger log;
+
+rule "Find_Preferred_Supplier"
+    when
+        Product($name: name)
+    then
+        log.info("{}: Product {} first preference Supplier S1",
+            drools.getRule().getName(),
+            $name);
+
+        insert(new Supplier(SupplierType.PRIMARY, "S1", $name));
+end
+
+rule "Get_Primary_Supplier_Quote"
+    when
+        Product($name: name)
+        $sup: Supplier(type == SupplierType.PRIMARY, product == $name)
+        $inv: Inventory(product == $name)
+    then
+        Quote quote = QuoteHelper.generateQuote($sup.getName(), $name, $inv.getPrice());
+
+        log.info("{}: Quote {} from Supplier {} for Product {}",
+            drools.getRule().getName(),
+            String.format("%.2f", quote.getPrice()),
+            $sup.getName(),
+            $name);
+
+        insert(quote);
+end
+
+rule "Verify_Primary_Quote"
+    when
+        Product($prod: name)
+        $sup: Supplier(type == SupplierType.PRIMARY, $supp: name, product == $prod)
+        Inventory(product == $prod, $iprc: price)
+        $quo: Quote(supplier == $supp, product == $prod, Math.abs((price - $iprc)/$iprc) &gt; 0.05, $qprc: price)
+    then
+        log.info("{}: Given {}, Quote {} from Supplier {} for Product {} REJECTED !!!",
+            drools.getRule().getName(),
+            $iprc,
+            String.format("%.2f", $qprc),
+            $supp,
+            $prod);
+
+        delete($sup);
+        delete($quo);
+
+        insert(new Supplier(SupplierType.SECONDARY, "S2", $prod));
+end
+
+rule "Accept_Primary_Quote"
+    when
+        $prd: Product($prod: name)
+        $sup: Supplier(type == SupplierType.PRIMARY, $supp: name, product == $prod)
+        $inv: Inventory(product == $prod, $iprc: price)
+        $quo: Quote(supplier == $supp, product == $prod, Math.abs((price - $iprc)/$iprc) &lt;= 0.05, $qprc: price)
+    then
+        log.info("{}: Given {}, Quote {} from Primary Supplier {} for Product {} ACCEPTED !!!",
+            drools.getRule().getName(),
+            $iprc,
+            String.format("%.2f", $qprc),
+            $supp,
+            $prod);
+
+        insert(new Order($supp, $prod, $qprc));
+
+        delete($prd);
+        delete($sup);
+        delete($inv);
+        delete($quo);
+end
+
+rule "Get_Secondary_Supplier_Quote"
+    when
+        Product($name: name)
+        $sup: Supplier(type == SupplierType.SECONDARY, product == $name)
+        $inv: Inventory(product == $name)
+    then
+        Quote quote = QuoteHelper.generateQuote($sup.getName(), $name, $inv.getPrice());
+
+        log.info("{}: Quote {} from Secondary Supplier {} for Product {}",
+            drools.getRule().getName(),
+            String.format("%.2f", quote.getPrice()),
+            $sup.getName(),
+            $name);
+
+        insert(quote);
+end
+
+rule "Verify_Secondary_Quote"
+    when
+        $prd: Product($prod: name)
+        $sup: Supplier(type == SupplierType.SECONDARY, $supp: name, product == $prod)
+        $inv: Inventory(product == $prod, $iprc: price)
+        $quo: Quote(supplier == $supp, product == $prod, Math.abs((price - $iprc)/$iprc) &gt; 0.05, $qprc: price)
+    then
+        log.info("{}: Given {}, Quote {} from Secondary Supplier {} for Product {} REJECTED !!!",
+            drools.getRule().getName(),
+            $iprc,
+            String.format("%.2f", $qprc),
+            $supp,
+            $prod);
+
+        delete($prd);
+        delete($sup);
+        delete($inv);
+        delete($quo);
+
+        log.info("{}: Product exception processing !!!", drools.getRule().getName());
+end
+
+rule "Accept_Secondary_Quote"
+    when
+        $prd: Product($prod: name)
+        $sup: Supplier(type == SupplierType.SECONDARY, $supp: name, product == $prod)
+        $inv: Inventory(product == $prod, $iprc: price)
+        $quo: Quote(supplier == $supp, product == $prod, Math.abs((price - $iprc)/$iprc) &lt;= 0.05, $qprc: price)
+    then
+        log.info("{}: Given {}, Quote {} from Secondary Supplier {} for Product {} ACCEPTED !!!",
+            drools.getRule().getName(),
+            $iprc,
+            String.format("%.2f", $qprc),
+            $supp,
+            $prod);
+
+        insert(new Order($supp, $prod, $qprc));
+
+        delete($prd);
+        delete($sup);
+        delete($inv);
+        delete($quo);
+end
+
+rule "Display_Supplier_Quote"
+    when
+        $ord: Order()
+    then
+        log.info("{}: CONFIRMED - Order Product {} from Supplier {} for Price {}",
+            drools.getRule().getName(),
+            $ord.getProduct(),
+            $ord.getSupplier(),
+            String.format("%.2f", $ord.getPrice()));
+end</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! WARNING !!!</h4>
+      <pre>Watch out for the <span class="bold">if-then-else</span> logic in the <span class="underbold">then</span> part; it is an indication that the rule needs to be REFACTORED !!!</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java POJO that encapsulates the product details:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.22</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Product
+ * Author: Bhaskar S
+ * Date:   06/12/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.fifth.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.ToString;
+
+@AllArgsConstructor
+@Getter
+@ToString
+public class Product {
+    private final String name;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java enum POJO that encapsulates the supplier type:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.23</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   SupplierType
+ * Author: Bhaskar S
+ * Date:   06/12/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.fifth.model;
+
+public enum SupplierType {
+    PRIMARY,
+    SECONDARY
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java POJO that encapsulates the supplier details:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.24</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Supplier
+ * Author: Bhaskar S
+ * Date:   06/12/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.fifth.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.ToString;
+
+@AllArgsConstructor
+@Getter
+@ToString
+public class Supplier {
+    private final SupplierType type;
+    private final String name;
+    private final String product;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java POJO that encapsulates the inventory details:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.25</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Inventory
+ * Author: Bhaskar S
+ * Date:   06/12/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.fifth.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+public class Inventory {
+    private String product;
+    private double price;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java POJO that encapsulates the quote details:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.26</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Quote
+ * Author: Bhaskar S
+ * Date:   06/12/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.fifth.model;
+
+import lombok.*;
+
+@AllArgsConstructor
+@Getter
+@ToString
+public class Quote {
+    private final String supplier;
+    private final String product;
+    private final double price;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java POJO that encapsulates the order details:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.27</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Order
+ * Author: Bhaskar S
+ * Date:   06/12/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.fifth.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.ToString;
+
+@AllArgsConstructor
+@Getter
+@ToString
+public class Order {
+    private final String supplier;
+    private final String product;
+    private final double price;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java Config that defines the desired <span class="bold">Drools</span> container bean:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.28</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   FifthDroolsConfig
+ * Author: Bhaskar S
+ * Date:   06/12/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.fifth.config;
+
+import org.kie.api.KieServices;
+import org.kie.api.builder.*;
+import org.kie.api.io.KieResources;
+import org.kie.api.runtime.KieContainer;
+import org.springframework.beans.factory.BeanCreationException;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class FifthDroolsConfig {
+    private final static String FIFTH_DRL = "com/polarsparc/fifth/fifth.drl";
+
+    @Bean
+    public KieContainer fifthKieContainer() {
+        KieServices services = KieServices.Factory.get();
+        KieResources resources = services.getResources();
+
+        KieFileSystem fileSystem = services.newKieFileSystem();
+        fileSystem.write(resources.newClassPathResource(FIFTH_DRL));
+
+        KieBuilder builder = services.newKieBuilder(fileSystem);
+        Results results = builder.buildAll().getResults();
+        if (results.hasMessages(Message.Level.ERROR)) {
+            throw new BeanCreationException("Error building rules: " + results.getMessages());
+        }
+
+        KieModule module = builder.getKieModule();
+
+        return services.newKieContainer(module.getReleaseId());
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the main <span class="bold">Spring Boot</span> application to test the <span class="bold">Drools</span>
+        rules engine:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.29</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   FifthApplication
+ * Author: Bhaskar S
+ * Date:   06/12/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.fifth;
+
+import com.polarsparc.fifth.model.Inventory;
+import com.polarsparc.fifth.model.Order;
+import com.polarsparc.fifth.model.Product;
+import lombok.extern.slf4j.Slf4j;
+import org.kie.api.KieBase;
+import org.kie.api.runtime.KieContainer;
+import org.kie.api.runtime.KieSession;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+import java.util.Optional;
+
+@SpringBootApplication
+@Slf4j
+public class FifthApplication implements ApplicationRunner {
+    private KieContainer container;
+
+    @Autowired
+    public void setKieContainer(KieContainer container) {
+        this.container = container;
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(FifthApplication.class, args);
+    }
+
+    @Override
+    public void run(ApplicationArguments args) {
+        KieBase kb = container.getKieBase();
+        
+        // Test Case 1
+        {
+            // Product P1
+            Product p1 = new Product("P1");
+
+            // Current inventory of P1
+            Inventory in = new Inventory("P1", 18.99);
+
+            KieSession ks = kb.newKieSession();
+            ks.setGlobal("log", log);
+            ks.insert(p1);
+            ks.insert(in);
+            ks.fireAllRules();
+
+            Optional&lt;?&gt; op = ks.getObjects().stream().filter(obj -> obj instanceof Order).findFirst();
+            if (op.isPresent()) {
+                Order order = (Order) op.get();
+                log.info("{}: [1] Supplier: {}, Product: {}, Discount: {}",
+                        FifthApplication.class.getName(),
+                        order.getSupplier(),
+                        order.getProduct(),
+                        String.format("%.2f", order.getPrice()));
+            }
+
+            ks.dispose();
+        }
+
+        // Test Case 2
+        {
+            // Product P2
+            Product p2 = new Product("P2");
+
+            // Current inventory of P1
+            Inventory in = new Inventory("P2", 21.99);
+
+            KieSession ks = kb.newKieSession();
+            ks.setGlobal("log", log);
+            ks.insert(p2);
+            ks.insert(in);
+            ks.fireAllRules();
+
+            Optional&lt;?&gt; op = ks.getObjects().stream().filter(obj -> obj instanceof Order).findFirst();
+            if (op.isPresent()) {
+                Order order = (Order) op.get();
+                log.info("{}: [2] Supplier: {}, Product: {}, Discount: {}",
+                        FifthApplication.class.getName(),
+                        order.getSupplier(),
+                        order.getProduct(),
+                        String.format("%.2f", order.getPrice()));
+            }
+
+            ks.dispose();
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.29</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Drools/Fifth</p>
+      <p>$ mvn spring-boot:run</p>
+    </div>
+    <div id="para-div">
+      <p>The following could be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>2021-06-12 15:26:57:233 [main] INFO com.polarsparc.fifth.FifthApplication - Starting FifthApplication using Java 15.0.2 on polarsparc with PID 17988 (/home/polarsparc/java/Drools/Fifth/target/classes started by polarsparc in /home/polarsparc/java/Drools/Fifth)
+2021-06-12 15:26:57:233 [main] INFO com.polarsparc.fifth.FifthApplication - No active profile set, falling back to default profiles: default
+2021-06-12 15:26:58:472 [main] INFO com.polarsparc.fifth.FifthApplication - Started FifthApplication in 1.514 seconds (JVM running for 1.763)
+2021-06-12 15:26:58:474 [main] INFO org.springframework.boot.availability.ApplicationAvailabilityBean - Application availability state LivenessState changed to CORRECT
+2021-06-12 15:26:58:474 [main] INFO org.drools.compiler.kie.builder.impl.KieContainerImpl - Start creation of KieBase: defaultKieBase
+2021-06-12 15:26:58:522 [main] INFO org.drools.compiler.kie.builder.impl.KieContainerImpl - End creation of KieBase: defaultKieBase
+2021-06-12 15:26:58:567 [main] INFO com.polarsparc.fifth.FifthApplication - Find_Preferred_Supplier: Product P1 first preference Supplier S1
+2021-06-12 15:26:58:572 [main] INFO com.polarsparc.fifth.FifthApplication - Get_Primary_Supplier_Quote: Quote 17.28 from Supplier S1 for Product P1
+2021-06-12 15:26:58:577 [main] INFO com.polarsparc.fifth.FifthApplication - Verify_Primary_Quote: Given 18.99, Quote 17.28 from Supplier S1 for Product P1 REJECTED !!!
+2021-06-12 15:26:58:580 [main] INFO com.polarsparc.fifth.FifthApplication - Get_Secondary_Supplier_Quote: Quote 17.66 from Secondary Supplier S2 for Product P1
+2021-06-12 15:26:58:582 [main] INFO com.polarsparc.fifth.FifthApplication - Verify_Secondary_Quote: Given 18.99, Quote 17.66 from Secondary Supplier S2 for Product P1 REJECTED !!!
+2021-06-12 15:26:58:582 [main] INFO com.polarsparc.fifth.FifthApplication - Verify_Secondary_Quote: Product exception processing !!!
+2021-06-12 15:26:58:584 [main] INFO com.polarsparc.fifth.FifthApplication - Find_Preferred_Supplier: Product P2 first preference Supplier S1
+2021-06-12 15:26:58:585 [main] INFO com.polarsparc.fifth.FifthApplication - Get_Primary_Supplier_Quote: Quote 21.33 from Supplier S1 for Product P2
+2021-06-12 15:26:58:587 [main] INFO com.polarsparc.fifth.FifthApplication - Accept_Primary_Quote: Given 21.99, Quote 21.33 from Primary Supplier S1 for Product P2 ACCEPTED !!!
+2021-06-12 15:26:58:588 [main] INFO com.polarsparc.fifth.FifthApplication - Display_Supplier_Quote: CONFIRMED - Order Product P2 from Supplier S1 for Price 21.33
+2021-06-12 15:26:58:589 [main] INFO com.polarsparc.fifth.FifthApplication - com.polarsparc.fifth.FifthApplication: [2] Supplier: S1, Product: P2, Discount: 21.33
+2021-06-12 15:26:58:590 [main] INFO org.springframework.boot.availability.ApplicationAvailabilityBean - Application availability state ReadinessState changed to ACCEPTING_TRAFFIC
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.719 s
+[INFO] Finished at: 2021-06-12T15:26:58-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be observed from the <span class="bold">Output.5</span> above, both the primary and secondary supplier quotes were
+        rejected for product P1 and resulted in an exception process. For product P2, the quote from the primary supplier was accepted.</p>
+    </div>
+    <div id="para-div">
+      <p>Re-running the command once more, the following could be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>2021-06-12 15:29:12:762 [main] INFO com.polarsparc.fifth.FifthApplication - Starting FifthApplication using Java 15.0.2 on polarsparc with PID 18271 (/home/polarsparc/java/Drools/Fifth/target/classes started by polarsparc in /home/polarsparc/java/Drools/Fifth)
+2021-06-12 15:29:12:763 [main] INFO com.polarsparc.fifth.FifthApplication - No active profile set, falling back to default profiles: default
+2021-06-12 15:29:14:000 [main] INFO com.polarsparc.fifth.FifthApplication - Started FifthApplication in 1.529 seconds (JVM running for 1.78)
+2021-06-12 15:29:14:002 [main] INFO org.springframework.boot.availability.ApplicationAvailabilityBean - Application availability state LivenessState changed to CORRECT
+2021-06-12 15:29:14:002 [main] INFO org.drools.compiler.kie.builder.impl.KieContainerImpl - Start creation of KieBase: defaultKieBase
+2021-06-12 15:29:14:050 [main] INFO org.drools.compiler.kie.builder.impl.KieContainerImpl - End creation of KieBase: defaultKieBase
+2021-06-12 15:29:14:094 [main] INFO com.polarsparc.fifth.FifthApplication - Find_Preferred_Supplier: Product P1 first preference Supplier S1
+2021-06-12 15:29:14:099 [main] INFO com.polarsparc.fifth.FifthApplication - Get_Primary_Supplier_Quote: Quote 17.28 from Supplier S1 for Product P1
+2021-06-12 15:29:14:107 [main] INFO com.polarsparc.fifth.FifthApplication - Verify_Primary_Quote: Given 18.99, Quote 17.28 from Supplier S1 for Product P1 REJECTED !!!
+2021-06-12 15:29:14:113 [main] INFO com.polarsparc.fifth.FifthApplication - Get_Secondary_Supplier_Quote: Quote 18.80 from Secondary Supplier S2 for Product P1
+2021-06-12 15:29:14:115 [main] INFO com.polarsparc.fifth.FifthApplication - Accept_Secondary_Quote: Given 18.99, Quote 18.80 from Secondary Supplier S2 for Product P1 ACCEPTED !!!
+2021-06-12 15:29:14:117 [main] INFO com.polarsparc.fifth.FifthApplication - Display_Supplier_Quote: CONFIRMED - Order Product P1 from Supplier S2 for Price 18.80
+2021-06-12 15:29:14:118 [main] INFO com.polarsparc.fifth.FifthApplication - com.polarsparc.fifth.FifthApplication: [1] Supplier: S2, Product: P1, Discount: 18.80
+2021-06-12 15:29:14:119 [main] INFO com.polarsparc.fifth.FifthApplication - Find_Preferred_Supplier: Product P2 first preference Supplier S1
+2021-06-12 15:29:14:120 [main] INFO com.polarsparc.fifth.FifthApplication - Get_Primary_Supplier_Quote: Quote 23.31 from Supplier S1 for Product P2
+2021-06-12 15:29:14:120 [main] INFO com.polarsparc.fifth.FifthApplication - Verify_Primary_Quote: Given 21.99, Quote 23.31 from Supplier S1 for Product P2 REJECTED !!!
+2021-06-12 15:29:14:121 [main] INFO com.polarsparc.fifth.FifthApplication - Get_Secondary_Supplier_Quote: Quote 21.33 from Secondary Supplier S2 for Product P2
+2021-06-12 15:29:14:122 [main] INFO com.polarsparc.fifth.FifthApplication - Accept_Secondary_Quote: Given 21.99, Quote 21.33 from Secondary Supplier S2 for Product P2 ACCEPTED !!!
+2021-06-12 15:29:14:122 [main] INFO com.polarsparc.fifth.FifthApplication - Display_Supplier_Quote: CONFIRMED - Order Product P2 from Supplier S2 for Price 21.33
+2021-06-12 15:29:14:123 [main] INFO com.polarsparc.fifth.FifthApplication - com.polarsparc.fifth.FifthApplication: [2] Supplier: S2, Product: P2, Discount: 21.33
+2021-06-12 15:29:14:124 [main] INFO org.springframework.boot.availability.ApplicationAvailabilityBean - Application availability state ReadinessState changed to ACCEPTING_TRAFFIC
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.123 s
+[INFO] Finished at: 2021-06-12T15:29:14-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be observed from the <span class="bold">Output.6</span> above, for both the products P1 and P2, the primary supplier
+        quotes were rejected and the quote from the secondary supplier were accepted.</p>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">Sixth</span> application, we will demonstrate how to execute a rule set in multiple threads (in
+        parallel) and also prove that each <span class="bold">KieSession</span> uses its own working memory.</p>
+    </div>
+    <div id="step-div">
+      <p>Sixth Application</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the Sixth application, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Drools</p>
+      <p>$ mkdir -p $HOME/java/Drools/Sixth</p>
+      <p>$ mkdir -p Sixth/src/main/java Sixth/src/main/resources Sixth/target</p>
+      <p>$ mkdir -p Sixth/src/main/resources/com/polarsparc/sixth</p>
+      <p>$ cd $HOME/java/Drools/Sixth</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;parent&gt;
+        &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+        &lt;artifactId&gt;Drools&lt;/artifactId&gt;
+        &lt;version&gt;1.0&lt;/version&gt;
+    &lt;/parent&gt;
+
+    &lt;artifactId&gt;Sixth&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+    &lt;name&gt;Sixth&lt;/name&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The contents of the <span class="hi-green">simplelogger.properties</span> and <span class="hi-green">application.properties</span>
+        located in the directory <span class="bold">src/main/resources</span> will be identical to the one from the First application
+        listed in <a href="https://polarsparc.github.io/Drools/Drools-1.html" target="_blank"><span class="bold">Part 1</span></a> and
+        hence we will not show them here again.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the <span class="bold">Drools</span> rules set file called
+        <span class="hi-yellow">src/main/resources/com/polarsparc/sixth/sixth.drl</span> that finds the primary supplier for a given
+        product:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.30</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   sixth.drl
+ * Author: Bhaskar S
+ * Date:   06/12/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.sixth;
+
+import com.polarsparc.sixth.model.*;
+
+global org.slf4j.Logger log;
+
+rule "Find_Preferred_Supplier_For_P1"
+no-loop true
+    when
+        $prd: Product(name == "P1")
+    then
+        log.info("{}: Product P1 {} first preference Supplier S1", drools.getRule().getName(), $prd.getId());
+
+        modify($prd){incCounter()}
+        insert(new Supplier(SupplierType.PRIMARY, "S1", "P1"));
+end
+
+rule "Find_Preferred_Supplier_For_P2"
+salience 5
+lock-on-active true
+    when
+        $prd: Product(name == "P2")
+    then
+        log.info("{}: Product P2 {} first preference Supplier S2", drools.getRule().getName(), $prd.getId());
+
+        modify($prd){incCounter()}
+        insert(new Supplier(SupplierType.PRIMARY, "S2", "P2"));
+end
+
+rule "Display_Primary_Supplier"
+    when
+        $prd: Product($id: id, $name: name)
+        $sup: Supplier(type == SupplierType.PRIMARY, product == $name)
+    then
+        log.info("{}: Primary Supplier {} for Product {} {}",
+            drools.getRule().getName(),
+            $sup.getName(),
+            $name,
+            $id);
+
+        delete($sup);
+        delete($prd);
+end</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The rules from <span class="bold">Listing.30</span> above needs some explanation:</p>
+      <p>The keyword <span class="hi-green">no-loop true</span> prevents self-looping. When a fact (domain data object) is updated
+        via <span class="hi-blue">modify()</span>, it triggers the pattern matcher to evaluate the rules from the production memory
+        which causes the rule that triggered the change to be activated again for execution. This causes the infinite looping. The
+        use of <span class="bold">no-loop true</span> prevents this self-looping.</p>
+      <p>The following pictorially depicts the self-looping in <span class="bold">Drools</span> rules engine:</p>
+      <div id="img-outer-div">
+        <img class="img-cls" src="./images/drools-loop.png" alt="Drools Self Looping" />
+        <div class="img-cap">Drools Self Looping</div>
+      </div>
+      <br/>
+      <p>How do we prevent looping in a situation where rule A triggers another rule B, which in turn triggers rule A. In those cases,
+        <span class="bold">no-loop true</span> will <span class="underbold">NOT</span> work. In those complex looping situations, the
+        keyword <span class="hi-green">lock-on-active true</span> must be used to prevent looping.</p>
+      <p>The keyword <span class="hi-blue">salience N</span> (where N is a number) allows one to control the priority of a rule. The
+        higher the number, the higher the priority. In this example, we will have the rule for product P2 take a higher priority than
+        that for product P1.</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java POJO that encapsulates the product details:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.31</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Product
+ * Author: Bhaskar S
+ * Date:   06/12/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.sixth.model;
+
+import lombok.*;
+
+@RequiredArgsConstructor
+@Getter
+@ToString
+public class Product {
+    private final String id;
+    private final String name;
+
+    private long counter = 0;
+
+    public void incCounter() {
+        counter++;
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java enum POJO that encapsulates the supplier type:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.32</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   SupplierType
+ * Author: Bhaskar S
+ * Date:   06/12/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.sixth.model;
+
+public enum SupplierType {
+    PRIMARY,
+    SECONDARY
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java POJO that encapsulates the supplier details:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.33</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Supplier
+ * Author: Bhaskar S
+ * Date:   06/12/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.sixth.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.ToString;
+
+@AllArgsConstructor
+@Getter
+@ToString
+public class Supplier {
+    private final SupplierType type;
+    private final String name;
+    private final String product;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java Config that defines the desired <span class="bold">Drools</span> container bean:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.34</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   SixthDroolsConfig
+ * Author: Bhaskar S
+ * Date:   06/12/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.sixth.config;
+
+import org.kie.api.KieServices;
+import org.kie.api.builder.*;
+import org.kie.api.io.KieResources;
+import org.kie.api.runtime.KieContainer;
+import org.springframework.beans.factory.BeanCreationException;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+@Configuration
+public class SixthDroolsConfig {
+    private final static String SIXTH_DRL = "com/polarsparc/sixth/sixth.drl";
+
+    @Bean
+    public ThreadPoolTaskExecutor sixthThreadPoolTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+
+        executor.setCorePoolSize(3);
+        executor.setMaxPoolSize(3);
+        executor.setThreadNamePrefix("SixthThreadPoolTask-");
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.initialize();
+
+        return executor;
+    }
+
+    @Bean
+    public KieContainer sixthKieContainer() {
+        KieServices services = KieServices.Factory.get();
+        KieResources resources = services.getResources();
+
+        KieFileSystem fileSystem = services.newKieFileSystem();
+        fileSystem.write(resources.newClassPathResource(SIXTH_DRL));
+
+        KieBuilder builder = services.newKieBuilder(fileSystem);
+        Results results = builder.buildAll().getResults();
+        if (results.hasMessages(Message.Level.ERROR)) {
+            throw new BeanCreationException("Error building rules: " + results.getMessages());
+        }
+
+        KieModule module = builder.getKieModule();
+
+        return services.newKieContainer(module.getReleaseId());
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice the definition of the <span class="bold">org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor</span>
+        bean, which will be used to start multiple threads to execute the <span class="bold">Drools</span> rules in parallel.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the main <span class="bold">Spring Boot</span> application to test the <span class="bold">Drools</span>
+        rules engine:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.35</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   SixthApplication
+ * Author: Bhaskar S
+ * Date:   06/12/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.sixth;
+
+import com.polarsparc.sixth.model.Product;
+import lombok.extern.slf4j.Slf4j;
+import org.kie.api.KieBase;
+import org.kie.api.runtime.KieContainer;
+import org.kie.api.runtime.KieSession;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+import java.util.concurrent.CountDownLatch;
+
+@SpringBootApplication
+@Slf4j
+public class SixthApplication implements ApplicationRunner {
+    private ThreadPoolTaskExecutor executor;
+    private KieContainer container;
+
+    @Autowired
+    public void setThreadPoolTaskExecutor(@Qualifier("sixthThreadPoolTaskExecutor") ThreadPoolTaskExecutor executor) {
+        this.executor = executor;
+    }
+
+    @Autowired
+    public void setKieContainer(KieContainer container) {
+        this.container = container;
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(SixthApplication.class, args);
+    }
+
+    @Override
+    public void run(ApplicationArguments args) throws InterruptedException {
+        final int COUNT = 3;
+
+        KieBase kb = container.getKieBase();
+
+        Product gp1 = new Product("GP1", "P1");
+        Product gp2 = new Product("GP2", "P2");
+
+        CountDownLatch latch = new CountDownLatch(COUNT);
+
+        for (int i = 1; i &lt;= COUNT; i++) {
+            int finalI = i;
+            executor.execute(() -> {
+                Product lp1 = new Product("LP1-" + finalI, "P1");
+                Product lp2 = new Product("LP2-" + finalI, "P2");
+
+                KieSession ks = kb.newKieSession();
+                ks.setGlobal("log", log);
+                ks.insert(gp1);
+                ks.insert(gp2);
+                ks.insert(lp1);
+                ks.insert(lp2);
+                ks.fireAllRules();
+                ks.dispose();
+
+                log.info("{}: Product (lp1): {}", SixthApplication.class.getName(), lp1);
+                log.info("{}: Product (lp2): {}", SixthApplication.class.getName(), lp2);
+
+                latch.countDown();
+            });
+        }
+
+        latch.await();
+
+        log.info("{}: Product (gp1): {}", SixthApplication.class.getName(), gp1);
+        log.info("{}: Product (gp2): {}", SixthApplication.class.getName(), gp2);
+
+        executor.shutdown();
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.35</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Drools/Sixth</p>
+      <p>$ mvn spring-boot:run</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>2021-06-12 16:42:21:103 [main] INFO com.polarsparc.sixth.SixthApplication - Starting SixthApplication using Java 15.0.2 on polarsparc with PID 20558 (/home/polarsparc/java/Drools/Sixth/target/classes started by polarsparc in /home/polarsparc/java/Drools/Sixth)
+2021-06-12 16:42:21:103 [main] INFO com.polarsparc.sixth.SixthApplication - No active profile set, falling back to default profiles: default
+2021-06-12 16:42:22:189 [main] INFO com.polarsparc.sixth.SixthApplication - Started SixthApplication in 1.368 seconds (JVM running for 1.627)
+2021-06-12 16:42:22:190 [main] INFO org.springframework.boot.availability.ApplicationAvailabilityBean - Application availability state LivenessState changed to CORRECT
+2021-06-12 16:42:22:191 [main] INFO org.drools.compiler.kie.builder.impl.KieContainerImpl - Start creation of KieBase: defaultKieBase
+2021-06-12 16:42:22:233 [main] INFO org.drools.compiler.kie.builder.impl.KieContainerImpl - End creation of KieBase: defaultKieBase
+2021-06-12 16:42:22:295 [SixthThreadPoolTask-3] INFO com.polarsparc.sixth.SixthApplication - Find_Preferred_Supplier_For_P2: Product P2 LP2-3 first preference Supplier S2
+2021-06-12 16:42:22:295 [SixthThreadPoolTask-2] INFO com.polarsparc.sixth.SixthApplication - Find_Preferred_Supplier_For_P2: Product P2 LP2-2 first preference Supplier S2
+2021-06-12 16:42:22:295 [SixthThreadPoolTask-1] INFO com.polarsparc.sixth.SixthApplication - Find_Preferred_Supplier_For_P2: Product P2 LP2-1 first preference Supplier S2
+2021-06-12 16:42:22:297 [SixthThreadPoolTask-3] INFO com.polarsparc.sixth.SixthApplication - Find_Preferred_Supplier_For_P2: Product P2 GP2 first preference Supplier S2
+2021-06-12 16:42:22:298 [SixthThreadPoolTask-1] INFO com.polarsparc.sixth.SixthApplication - Find_Preferred_Supplier_For_P2: Product P2 GP2 first preference Supplier S2
+2021-06-12 16:42:22:298 [SixthThreadPoolTask-2] INFO com.polarsparc.sixth.SixthApplication - Find_Preferred_Supplier_For_P2: Product P2 GP2 first preference Supplier S2
+2021-06-12 16:42:22:299 [SixthThreadPoolTask-3] INFO com.polarsparc.sixth.SixthApplication - Find_Preferred_Supplier_For_P1: Product P1 GP1 first preference Supplier S1
+2021-06-12 16:42:22:299 [SixthThreadPoolTask-2] INFO com.polarsparc.sixth.SixthApplication - Find_Preferred_Supplier_For_P1: Product P1 GP1 first preference Supplier S1
+2021-06-12 16:42:22:299 [SixthThreadPoolTask-1] INFO com.polarsparc.sixth.SixthApplication - Find_Preferred_Supplier_For_P1: Product P1 GP1 first preference Supplier S1
+2021-06-12 16:42:22:299 [SixthThreadPoolTask-3] INFO com.polarsparc.sixth.SixthApplication - Find_Preferred_Supplier_For_P1: Product P1 LP1-3 first preference Supplier S1
+2021-06-12 16:42:22:299 [SixthThreadPoolTask-1] INFO com.polarsparc.sixth.SixthApplication - Find_Preferred_Supplier_For_P1: Product P1 LP1-1 first preference Supplier S1
+2021-06-12 16:42:22:304 [SixthThreadPoolTask-1] INFO com.polarsparc.sixth.SixthApplication - Display_Primary_Supplier: Primary Supplier S1 for Product P1 GP1
+2021-06-12 16:42:22:306 [SixthThreadPoolTask-1] INFO com.polarsparc.sixth.SixthApplication - Display_Primary_Supplier: Primary Supplier S2 for Product P2 GP2
+2021-06-12 16:42:22:306 [SixthThreadPoolTask-1] INFO com.polarsparc.sixth.SixthApplication - Display_Primary_Supplier: Primary Supplier S1 for Product P1 LP1-1
+2021-06-12 16:42:22:306 [SixthThreadPoolTask-1] INFO com.polarsparc.sixth.SixthApplication - Display_Primary_Supplier: Primary Supplier S2 for Product P2 LP2-1
+2021-06-12 16:42:22:311 [SixthThreadPoolTask-1] INFO com.polarsparc.sixth.SixthApplication - com.polarsparc.sixth.SixthApplication: Product (lp1): Product(id=LP1-1, name=P1, counter=1)
+2021-06-12 16:42:22:311 [SixthThreadPoolTask-1] INFO com.polarsparc.sixth.SixthApplication - com.polarsparc.sixth.SixthApplication: Product (lp2): Product(id=LP2-1, name=P2, counter=1)
+2021-06-12 16:42:22:312 [SixthThreadPoolTask-2] INFO com.polarsparc.sixth.SixthApplication - Find_Preferred_Supplier_For_P1: Product P1 LP1-2 first preference Supplier S1
+2021-06-12 16:42:22:312 [SixthThreadPoolTask-2] INFO com.polarsparc.sixth.SixthApplication - Display_Primary_Supplier: Primary Supplier S1 for Product P1 GP1
+2021-06-12 16:42:22:313 [SixthThreadPoolTask-3] INFO com.polarsparc.sixth.SixthApplication - Display_Primary_Supplier: Primary Supplier S1 for Product P1 GP1
+2021-06-12 16:42:22:313 [SixthThreadPoolTask-2] INFO com.polarsparc.sixth.SixthApplication - Display_Primary_Supplier: Primary Supplier S2 for Product P2 GP2
+2021-06-12 16:42:22:313 [SixthThreadPoolTask-2] INFO com.polarsparc.sixth.SixthApplication - Display_Primary_Supplier: Primary Supplier S1 for Product P1 LP1-2
+2021-06-12 16:42:22:313 [SixthThreadPoolTask-3] INFO com.polarsparc.sixth.SixthApplication - Display_Primary_Supplier: Primary Supplier S2 for Product P2 GP2
+2021-06-12 16:42:22:313 [SixthThreadPoolTask-2] INFO com.polarsparc.sixth.SixthApplication - Display_Primary_Supplier: Primary Supplier S2 for Product P2 LP2-2
+2021-06-12 16:42:22:313 [SixthThreadPoolTask-2] INFO com.polarsparc.sixth.SixthApplication - com.polarsparc.sixth.SixthApplication: Product (lp1): Product(id=LP1-2, name=P1, counter=1)
+2021-06-12 16:42:22:314 [SixthThreadPoolTask-2] INFO com.polarsparc.sixth.SixthApplication - com.polarsparc.sixth.SixthApplication: Product (lp2): Product(id=LP2-2, name=P2, counter=1)
+2021-06-12 16:42:22:314 [SixthThreadPoolTask-3] INFO com.polarsparc.sixth.SixthApplication - Display_Primary_Supplier: Primary Supplier S1 for Product P1 LP1-3
+2021-06-12 16:42:22:314 [SixthThreadPoolTask-3] INFO com.polarsparc.sixth.SixthApplication - Display_Primary_Supplier: Primary Supplier S2 for Product P2 LP2-3
+2021-06-12 16:42:22:315 [SixthThreadPoolTask-3] INFO com.polarsparc.sixth.SixthApplication - com.polarsparc.sixth.SixthApplication: Product (lp1): Product(id=LP1-3, name=P1, counter=1)
+2021-06-12 16:42:22:315 [SixthThreadPoolTask-3] INFO com.polarsparc.sixth.SixthApplication - com.polarsparc.sixth.SixthApplication: Product (lp2): Product(id=LP2-3, name=P2, counter=1)
+2021-06-12 16:42:22:315 [main] INFO com.polarsparc.sixth.SixthApplication - com.polarsparc.sixth.SixthApplication: Product (gp1): Product(id=GP1, name=P1, counter=3)
+2021-06-12 16:42:22:315 [main] INFO com.polarsparc.sixth.SixthApplication - com.polarsparc.sixth.SixthApplication: Product (gp2): Product(id=GP2, name=P2, counter=3)
+2021-06-12 16:42:22:316 [main] INFO org.springframework.boot.availability.ApplicationAvailabilityBean - Application availability state ReadinessState changed to ACCEPTING_TRAFFIC
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.527 s
+[INFO] Finished at: 2021-06-12T16:42:22-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://polarsparc.github.io/Drools/Drools-2.html"><span class="bold">Java Rules Engine - Drools :: Part 2</span></a></p>
+      <p><a target="_blank" href="https://polarsparc.github.io/Drools/Drools-1.html"><span class="bold">Java Rules Engine - Drools :: Part 1</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

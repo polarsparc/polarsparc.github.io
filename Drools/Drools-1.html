@@ -1,0 +1,997 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Java Rules Engine - Drools :: Part 1">
+    <meta name="subject" content="Java Rules Engine - Drools :: Part 1">
+    <meta name="keywords" content="java">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Java Rules Engine - Drools :: Part 1</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Java Rules Engine - Drools :: Part 1</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">06/05/2021</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>Typical business applications comprise of two aspects - the core application logic and some business rules. The core logic
+        does not change that often and remains static over time, while the business rules tend to change quite frequently over time.
+        As an example, consider a retailer who offers promotions on different products based on different situations. The promotions
+        will have to be coded as business rules as they will have to change often based on different situations. If the business rules
+        are coded as Java class(es), then they will have to change every time the promotions change. This results in a tight coupling
+        between the business rules and the core application logic. To accomodate for flexiblity of promotions, we need to externalize
+        the business rules from the core application logic so they can be changed independent of the core application logic. This is
+        where <span class="bold">Rules Engine</span> like <a href="https://www.drools.org/" target="_blank">
+        <span class="hi-yellow">Drools</span></a> comes into play.</p>
+    </div>
+    <div id="section-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The setup will be on a <span class="bold">Ubuntu 20.04 LTS</span> based Linux desktop. Ensure at least <span class="bold">
+        Java 11</span> or above is installed and setup. Also, ensure <a href="http://maven.apache.org/" target="_blank">
+        <span class="hi-yellow">Apache Maven</span></a> is installed and setup.</p>
+      <p>We will use <span class="bold">Drools</span></a> with <span class="bold">Spring Boot</span> for all the demonstrations in
+        this article.</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the root Java directory structure for the demonstrations in this article, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME</p>
+      <p>$ mkdir -p $HOME/java/Drools</p>
+      <p>$ cd $HOME/java/Drools</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the parent <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span>
+        that will be located at <span class="hi-yellow">$HOME/java/Drools</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+    &lt;artifactId&gt;Drools&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+    &lt;packaging&gt;pom&lt;/packaging&gt;
+
+    &lt;parent&gt;
+        &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+        &lt;artifactId&gt;spring-boot-starter-parent&lt;/artifactId&gt;
+        &lt;version&gt;2.5.0&lt;/version&gt;
+    &lt;/parent&gt;
+
+    &lt;properties&gt;
+        &lt;java.version&gt;11&lt;/java.version&gt;
+        &lt;maven.compiler.source&gt;11&lt;/maven.compiler.source&gt;
+        &lt;maven.compiler.target&gt;11&lt;/maven.compiler.target&gt;
+        &lt;drools.version&gt;7.54.0.Final&lt;/drools.version&gt;
+        &lt;slf4j.version&gt;1.7.30&lt;/slf4j.version&gt;
+    &lt;/properties&gt;
+
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-boot-starter&lt;/artifactId&gt;
+            &lt;exclusions&gt;
+                &lt;exclusion&gt;
+                    &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+                    &lt;artifactId&gt;spring-boot-starter-logging&lt;/artifactId&gt;
+                &lt;/exclusion&gt;
+            &lt;/exclusions&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-boot-starter-test&lt;/artifactId&gt;
+            &lt;scope&gt;test&lt;/scope&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.projectlombok&lt;/groupId&gt;
+            &lt;artifactId&gt;lombok&lt;/artifactId&gt;
+            &lt;optional&gt;true&lt;/optional&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.kie&lt;/groupId&gt;
+            &lt;artifactId&gt;kie-api&lt;/artifactId&gt;
+            &lt;version&gt;${drools.version}&lt;/version&gt;
+            &lt;scope&gt;provided&lt;/scope&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.drools&lt;/groupId&gt;
+            &lt;artifactId&gt;drools-core&lt;/artifactId&gt;
+            &lt;version&gt;${drools.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.drools&lt;/groupId&gt;
+            &lt;artifactId&gt;drools-compiler&lt;/artifactId&gt;
+            &lt;version&gt;${drools.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.drools&lt;/groupId&gt;
+            &lt;artifactId&gt;drools-decisiontables&lt;/artifactId&gt;
+            &lt;version&gt;${drools.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.drools&lt;/groupId&gt;
+            &lt;artifactId&gt;drools-templates&lt;/artifactId&gt;
+            &lt;version&gt;${drools.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;slf4j-api&lt;/artifactId&gt;
+            &lt;version&gt;${slf4j.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;slf4j-simple&lt;/artifactId&gt;
+            &lt;version&gt;${slf4j.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+
+    &lt;build&gt;
+        &lt;plugins&gt;
+            &lt;plugin&gt;
+                &lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
+                &lt;artifactId&gt;maven-compiler-plugin&lt;/artifactId&gt;
+                &lt;version&gt;3.8.1&lt;/version&gt;
+                &lt;configuration&gt;
+                    &lt;source&gt;${java.version}&lt;/source&gt;
+                    &lt;target&gt;${java.version}&lt;/target&gt;
+                &lt;/configuration&gt;
+            &lt;/plugin&gt;
+            &lt;plugin&gt;
+                &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+                &lt;artifactId&gt;spring-boot-maven-plugin&lt;/artifactId&gt;
+                &lt;configuration&gt;
+                    &lt;excludes&gt;
+                        &lt;exclude&gt;
+                            &lt;groupId&gt;org.projectors&lt;/groupId&gt;
+                            &lt;artifactId&gt;lombok&lt;/artifactId&gt;
+                        &lt;/exclude&gt;
+                    &lt;/excludes&gt;
+                &lt;/configuration&gt;
+            &lt;/plugin&gt;
+        &lt;/plugins&gt;
+    &lt;/build&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Drools Overview</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="bold">Drools</span> rules engine uses a <span class="underbold">declarative</span> style of programming.
+        What this means is that one defines a set of business rules as <span class="bold">Condition-Action</span> pairs without
+        defining the sequence of flow that must be followed. As the domain data flows through the rules engine, and if the
+        <span class="bold">Condition</span> part matches, the <span class="bold">Action</span> part is executed. A subtle point
+        here - the order of the rules execution is not based on the order of the rules defined in the rules engine. In other words,
+        with the declarative approach, one does not specify the sequence of rules execution flow. It is determined by the conditions
+        of the domain data flowing through the rules engine and triggers the execution of the actions.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are some of the terminology used to describe the <span class="bold">Drools</span> rules engine:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-grey">Rules</span> :: the busines logic that is expressed as a <span class="bold">Condition</span>
+          and <span class="bold">Action</span> pair</p></li>
+        <li><p><span class="hi-grey">Rule Set</span> :: a set of <span class="bold">Rule</span>s that are logically grouped
+          together and deployed</p></li>
+        <li><p><span class="hi-grey">Facts</span> :: the domain data objects that flow through the rules engine for evaluation
+          of the conditions in the <span class="bold">Rule Set</span></p></li>
+        <li><p><span class="hi-grey">Production Memory</span> :: the memory location where the deployed <span class="bold">
+          Rule</span>s are stored</p></li>
+        <li><p><span class="hi-grey">Working Memory</span> :: the memory location where the <span class="bold">Fact</span>s are
+          stored</p></li>
+        <li><p><span class="hi-grey">Pattern Matcher</span> :: the core component of rules engine that matches the conditions in
+          the <span class="bold">Rule Set</span> based on the <span class="bold">Fact</span>s. The set of <span class="bold">Rule</span>s
+          whose conditions have matched is referred to as the activated <span class="bold">Rule</span>s</p></li>
+        <li><p><span class="hi-grey">Agenda</span> :: the memory location where all the activated <span class="bold">Rule</span>s
+          are stored</p></li>
+      </ul>
+      <p>The following is the high-level architecture of <span class="bold">Drools</span> rules engine:</p>
+      <div id="img-outer-div">
+        <img class="img-cls" src="./images/drools-arch.png" alt="Drools Architecture" />
+        <div class="img-cap">Drools Architecture</div>
+      </div>
+      <br/>
+      <p>At a high level, when an application starts with <span class="bold">Drools</span>, the <span class="bold">Rules</span> are
+        loaded into the <span class="bold">Production Memory</span>. As the application starts to add <span class="bold">Facts</span>
+        into <span class="bold">Drools</span>, they get stored in the <span class="bold">Working Memory</span> and the
+        <span class="bold">Pattern Matcher</span> identifies all the <span class="bold">Rules</span> from the <span class="bold">
+        Production Memory</span> whose conditions match the various <span class="bold">Facts</span> in the <span class="bold">Working
+        Memory</span>. The matched <span class="bold">Rules</span>  are then activated in the <span class="bold">Agenda</span> for
+        execution.</p>
+    </div>
+    <div id="section-div">
+      <p>Drools Core Components</p>
+    </div>
+    <div id="para-div">
+      <p>Every core component in <span class="bold">Drools</span> revolves around knowledge - hence we will observe the prefix
+        <span class="hi-green">KIE</span>, which stands for <span class="bold">K</span>nowledge <span class="bold">I</span>s
+        <span class="bold">E</span>verything in all the core components.</p>
+      <p>The following are some of the core components used in <span class="bold">Drools</span> rules engine:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-grey">KieServices</span> :: is a thread-safe singleton that acts as a factory for all the other
+          core components of <span class="bold">Drools</span></p></li>
+        <li><p><span class="hi-grey">KieBase</span> :: is a repository of the knowledge definitions for an application. It contains
+          the main assets of the rules engine such as the rules, the types, the functions, etc. One important point - it does not
+          contain the runtime assets such as the domain data objects. It is heavy to create an instance of this object and hence
+          it is recommended that it be cached where possible</p></li>
+        <li><p><span class="hi-grey">KieSession</span> :: represents an instance of the rules engine (with all the rules of the
+          associated <span class="bold">KieBase</span>) and allows an application to interact with it. It stores and executes the
+          rules on the application domain data at runtime</p></li>
+        <li><p><span class="hi-grey">KieModule</span> :: is the main container for definitions (along with their configurations) of
+          all the application specific <span class="bold">KieBase</span>s and their associated <span class="bold">KieSession</span>s.
+          Under-the-hood it has a structure similar to that of a <span class="bold">Maven</span> project</p></li>
+        <li><p><span class="hi-grey">KieContainer</span> :: is the container of all the runtime <span class="bold">KieBase</span>
+          instances (defined in the <span class="bold">KieModule</span>) from which one can create the associated runtime instances
+          of the <span class="bold">KieSession</span></p></li>
+      </ul>
+      <p>The following is the pictorial representation of the <span class="bold">Drools</span> core components:</p>
+      <div id="img-outer-div">
+        <img class="img-cls" src="./images/drools-comps.png" alt="Drools Core Components" />
+        <div class="img-cap">Drools Core Components</div>
+      </div>
+      <br/>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Drools</p>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">First</span> application, we will have the application compute the cost of shipping based on the
+        given weight.</p>
+    </div>
+    <div id="step-div">
+      <p>First Application</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the First application, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Drools</p>
+      <p>$ mkdir -p $HOME/java/Drools/First</p>
+      <p>$ mkdir -p First/src/main/java First/src/main/resources First/target</p>
+      <p>$ mkdir -p First/src/main/resources/com/polarsparc/first</p>
+      <p>$ cd $HOME/java/Drools/First</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;parent&gt;
+        &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+        &lt;artifactId&gt;Drools&lt;/artifactId&gt;
+        &lt;version&gt;1.0&lt;/version&gt;
+    &lt;/parent&gt;
+
+    &lt;artifactId&gt;First&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+    &lt;name&gt;First&lt;/name&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="hi-yellow">slf4j-simple</span> logger properties file
+        <span class="hi-green">simplelogger.properties</span> located in the directory <span class="bold">src/main/resources</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">simplelogger.properties</div>
+      <div class="src-body-1">
+<pre>#
+### SLF4J Simple Logger properties
+#
+
+org.slf4j.simpleLogger.defaultLogLevel=info
+org.slf4j.simpleLogger.showDateTime=true
+org.slf4j.simpleLogger.dateTimeFormat=yyyy-MM-dd HH:mm:ss:SSS
+org.slf4j.simpleLogger.showThreadName=true</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Spring Boot</span> application properties file
+        <span class="hi-green">application.properties</span> located in the directory <span class="bold">src/main/resources</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">application.properties</div>
+      <div class="src-body-1">
+<pre>#
+### Spring Boot Application properties
+#
+
+spring.main.banner-mode=off</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the <span class="bold">Drools</span> rules set file (with file extension <span class="hi-green">.drl</span>)
+        called <span class="hi-yellow">src/main/resources/com/polarsparc/first/first.drl</span>, that computes the shipping cost based
+        on the given weight:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.1</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   first.drl
+ * Author: Bhaskar S
+ * Date:   06/05/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.first;
+
+import com.polarsparc.first.model.First;
+import org.slf4j.Logger;
+
+global org.slf4j.Logger log;
+
+rule "Rule 1"
+    when
+        $f: First(weight &gt; 0 && weight &lt;= 15)
+    then
+        log.info("Shipping Price I - the weight {} will be charged $ 12.00", $f.getWeight());
+end
+
+rule "Rule 2"
+    when
+        $f: First(weight &gt; 15 && weight &lt;= 25)
+    then
+        log.info("Shipping Price II - the weight {} will be charged $ 24.00", $f.getWeight());
+end
+
+rule "Rule 3"
+    when
+        $f: First(weight &gt; 25)
+    then
+        log.info("Shipping Price III - the weight {} will be charged $ 48.00", $f.getWeight());
+end</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The general format of each <span class="bold">Drools</span> rule is as follows:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Drools Rule Format</div>
+      <div class="src-body-1">
+<pre>package PACKAGE_NAME;
+
+import IMPORT_STATEMENTS;
+
+global G_TYPE G_NAME;
+
+rule "RULE_NAME"
+  when
+    R_VARIABLE: R_CONDITION
+  then
+    ACTION_STATEMENTS;
+end</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are the explanations:</p>
+      <ul id="blue-sqr-ul">
+        <li><p>The <span class="bold">PACKAGE_NAME</span> is similar to that in Java for namespace isolation</p></li>
+        <li><p>The <span class="bold">IMPORT_STATEMENTS</span> is similar to that in Java to import Java classes to be used in the
+          rule</p></li>
+        <li><p>The <span class="bold">G_TYPE</span> is the Java class that is defined external to this rule</p></li>
+        <li><p>The <span class="bold">G_NAME</span> is the corresponding name associated with externally defined data object</p></li>
+        <li><p>The <span class="bold">RULE_NAME</span> is the human friendly name for the rule</p></li>
+        <li><p>The <span class="bold">R_CONDITION</span> is the condition to match for a given data object</p></li>
+        <li><p>The <span class="bold">R_VARIABLE</span> is the variable that references the data object when the condition is met</p></li>
+        <li><p>The <span class="bold">ACTION_STATEMENTS</span> is the action part of the rule that could reference R_VARIABLE</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the Java POJO that encapsulates the weight:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.2</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   First
+ * Author: Bhaskar S
+ * Date:   06/05/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.first.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.ToString;
+
+@Getter
+@AllArgsConstructor
+@ToString
+public class First {
+    private final int weight;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java Config that defines the desired <span class="bold">Drools</span> container bean:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.3</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   FirstDroolsConfig
+ * Author: Bhaskar S
+ * Date:   06/05/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.first.config;
+
+import org.kie.api.KieServices;
+import org.kie.api.builder.*;
+import org.kie.api.io.KieResources;
+import org.kie.api.runtime.KieContainer;
+import org.springframework.beans.factory.BeanCreationException;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class FirstDroolsConfig {
+    private final static String FIRST_DRL = "com/polarsparc/first/first.drl";
+
+    @Bean
+    public KieContainer firstKieContainer() {
+        KieServices services = KieServices.Factory.get();
+        KieResources resources = services.getResources();
+
+        KieFileSystem fileSystem = services.newKieFileSystem();
+        fileSystem.write(resources.newClassPathResource(FIRST_DRL));
+
+        KieBuilder builder = services.newKieBuilder(fileSystem);
+        Results results = builder.buildAll().getResults();
+        if (results.hasMessages(Message.Level.ERROR)) {
+            throw new BeanCreationException("Error building rules: " + results.getMessages());
+        }
+
+        KieModule module = builder.getKieModule();
+
+        return services.newKieContainer(module.getReleaseId());
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The code from <span class="bold">Listing.3</span> above needs some explanation:</p>
+      <p><span class="bold">@Configuration</span> is a class level annotation and is used to tag a class as the source of bean
+        definitions.</p>
+      <p><span class="bold">@Bean</span> is a method level annotation to define a bean. By default, the method name is used as the
+        <span class="bold">name</span> of the bean.</p>
+      <p>The interface <span class="hi-yellow">org.kie.api.io.KieResources</span> is a factory that provides the implementations of
+        the various IO wrappers for the application resources such as the rules, etc. The method
+        <span class="hi-blue">newClassPathResource()</span> locates the specified rules file from the project resources directory
+        at <span class="bold">src/main/resources</span> via the classpath.</p>
+      <p>The interface <span class="hi-yellow">org.kie.api.builder.KieFileSystem</span> is an in-memory file system that is used to
+        programatically compose a <span class="bold">KieModule</span>, which under-the-hood encapsulates the core components
+        <span class="bold">KieBase</span> and <span class="bold">KieSession</span>. The method <span class="hi-blue">write()</span>
+        is used to add the specified rules file as a resource.</p>
+      <p>The interface <span class="hi-yellow">org.kie.api.builder.KieBuilder</span> is a builder for the resources (such as rules)
+        contained in a <span class="bold">KieModule</span>. The method <span class="hi-blue">buildAll()</span> builds a default
+        <span class="bold">KieBase</span> with the added rules file. The method <span class="hi-blue">getResults()</span> returns
+        the results from the build processs.</p>
+      <p>The following is the main <span class="bold">Spring Boot</span> application to test the <span class="bold">Drools</span>
+        rules engine:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.4</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   FirstApplication
+ * Author: Bhaskar S
+ * Date:   06/05/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.first;
+
+import com.polarsparc.first.model.First;
+import lombok.extern.slf4j.Slf4j;
+import org.kie.api.runtime.KieContainer;
+import org.kie.api.runtime.KieSession;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+@Slf4j
+public class FirstApplication implements ApplicationRunner {
+    private KieContainer container;
+
+    @Autowired
+    public void setKieContainer(KieContainer container) {
+        this.container = container;
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(FirstApplication.class, args);
+    }
+
+    @Override
+    public void run(ApplicationArguments args) {
+        log.info("ReleaseId: {}", container.getReleaseId());
+
+        // Test 1
+        KieSession ks1 = container.newKieSession();
+        ks1.setGlobal("log", log);
+        First f1 = new First(12);
+        ks1.insert(f1);
+        ks1.fireAllRules();
+        ks1.dispose();
+        log.info("[1] First: f1 = {}", f1);
+
+        // Test 2
+        KieSession ks2 = container.newKieSession();
+        ks2.setGlobal("log", log);
+        First f2 = new First(23);
+        ks2.insert(f2);
+        ks2.fireAllRules();
+        ks2.dispose();
+        log.info("[2] First: f2 = {}", f2);
+
+        // Test 3
+        KieSession ks3 = container.newKieSession();
+        ks3.setGlobal("log", log);
+        First f3 = new First(36);
+        ks3.insert(f3);
+        ks3.fireAllRules();
+        ks3.dispose();
+        log.info("[3] First: f3 = {}", f3);
+
+        log.info("Done !!!");
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The code from <span class="bold">Listing.4</span> above needs some explanation:</p>
+      <p><span class="bold">@SpringBootApplication</span> is a class level annotation that triggers automatic scan of all the beans
+        and auto configurations them.</p>
+      <p><span class="bold">@Slf4j</span> is a class level annotation that causes <span class="bold">Lombok</span> to generate an
+        instance of <span class="bold">org.slf4j.Logger</span> as a variable <span class="hi-yellow">log</span>.</p>
+      <p>The interface <span class="hi-yellow">org.springframework.boot.ApplicationRunner</span> indicates that a bean should run
+        as a standalone Java application.</p>
+      <p>The method <span class="hi-blue">setGlobal()</span> on a <span class="bold">KieSession</span> allows one to pass an external
+        object to the rules engine. In this example, we are passing a reference to the <span class="bold">Logger</span>.</p>
+      <p>The method <span class="hi-blue">insert()</span> allows one to add a fact to the rules engine. In other words, it allows one
+        to add an application object to the working memory of the rules engine. This in-turn triggers the evaluation of the rules
+        and all the matches rules are activated in the agenda of the rules engine.</p>
+      <p>The method <span class="hi-blue">fireAllRules()</span> triggers the execution of all the activated rules in the agenda of
+        the rules engine.</p>
+      <p>The method <span class="hi-blue">dispose()</span> is *<span class="underbold">VERY</span>* important and needs to be called
+        in the end. It allows one to free-up all the <span class="bold">KieSession</span> resources and allows for it to be garbage
+        collected.</p>
+    </div>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.4</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Drools/First</p>
+      <p>$ mvn spring-boot:run</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>2021-06-05 13:31:10:339 [main] INFO com.polarsparc.first.FirstApplication - Starting FirstApplication using Java 15.0.2 on polarsparc with PID 16908 (/home/polarsparc/java/Drools/First/target/classes started by polarsparc in /home/polarsparc/java/Drools/First)
+2021-06-05 13:31:10:340 [main] INFO com.polarsparc.first.FirstApplication - No active profile set, falling back to default profiles: default
+2021-06-05 13:31:11:422 [main] INFO com.polarsparc.first.FirstApplication - Started FirstApplication in 1.358 seconds (JVM running for 1.611)
+2021-06-05 13:31:11:423 [main] INFO org.springframework.boot.availability.ApplicationAvailabilityBean - Application availability state LivenessState changed to CORRECT
+2021-06-05 13:31:11:424 [main] INFO com.polarsparc.first.FirstApplication - ReleaseId: org.default:artifact:1.0.0
+2021-06-05 13:31:11:424 [main] INFO com.polarsparc.first.FirstApplication - KieBases: [defaultKieBase]
+2021-06-05 13:31:11:424 [main] INFO com.polarsparc.first.FirstApplication - KieBase: defaultKieBase, KieSessions: [defaultStatelessKieSession, defaultKieSession]
+2021-06-05 13:31:11:424 [main] INFO org.drools.compiler.kie.builder.impl.KieContainerImpl - Start creation of KieBase: defaultKieBase
+2021-06-05 13:31:11:466 [main] INFO org.drools.compiler.kie.builder.impl.KieContainerImpl - End creation of KieBase: defaultKieBase
+2021-06-05 13:31:11:511 [main] INFO com.polarsparc.first.FirstApplication - Shipping Price I - the weight 12 will be charged $ 12.00
+2021-06-05 13:31:11:515 [main] INFO com.polarsparc.first.FirstApplication - [1] First: f1 = First(weight=12)
+2021-06-05 13:31:11:518 [main] INFO com.polarsparc.first.FirstApplication - Shipping Price II - the weight 23 will be charged $ 24.00
+2021-06-05 13:31:11:518 [main] INFO com.polarsparc.first.FirstApplication - [2] First: f2 = First(weight=23)
+2021-06-05 13:31:11:521 [main] INFO com.polarsparc.first.FirstApplication - Shipping Price III - the weight 36 will be charged $ 48.00
+2021-06-05 13:31:11:521 [main] INFO com.polarsparc.first.FirstApplication - [3] First: f3 = First(weight=36)
+2021-06-05 13:31:11:522 [main] INFO com.polarsparc.first.FirstApplication - Done !!!
+2021-06-05 13:31:11:523 [main] INFO org.springframework.boot.availability.ApplicationAvailabilityBean - Application availability state ReadinessState changed to ACCEPTING_TRAFFIC
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  2.971 s
+[INFO] Finished at: 2021-06-05T13:31:11-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">Second</span> application, we will have the application display the supplier name, the product,
+        and the product cost (per the supplier).</p>
+    </div>
+    <div id="step-div">
+      <p>Second Application</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the Second application, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Drools</p>
+      <p>$ mkdir -p $HOME/java/Drools/Second</p>
+      <p>$ mkdir -p Second/src/main/java Second/src/main/resources Second/target</p>
+      <p>$ mkdir -p Second/src/main/resources/com/polarsparc/second</p>
+      <p>$ cd $HOME/java/Drools/Second</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;parent&gt;
+        &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+        &lt;artifactId&gt;Drools&lt;/artifactId&gt;
+        &lt;version&gt;1.0&lt;/version&gt;
+    &lt;/parent&gt;
+
+    &lt;artifactId&gt;Second&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+    &lt;name&gt;Second&lt;/name&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The contents of the <span class="hi-green">simplelogger.properties</span> and <span class="hi-green">application.properties</span>
+        located in the directory <span class="bold">src/main/resources</span> will be identical to the one from the First application
+        listed above and hence we will not show them here again.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the <span class="bold">Drools</span> rules set file called
+        <span class="hi-yellow">src/main/resources/com/polarsparc/second/second.drl</span>, that display the supplier name, the product,
+        and the product cost (per the supplier):</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.5</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   second.drl
+ * Author: Bhaskar S
+ * Date:   06/05/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.second;
+
+import com.polarsparc.second.model.Second;
+import org.slf4j.Logger;
+
+global org.slf4j.Logger log;
+
+rule "Rule One"
+    when
+        $s: Second()
+    then
+        log.info("Second - supplier: {}, product: {}, price: {}", $s.getSupplier(), $s.getProduct(), $s.getPrice());
+end</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java POJO that encapsulates the supplier-product details:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.6</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Second
+ * Author: Bhaskar S
+ * Date:   06/05/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.second.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+
+@Getter
+@Setter
+@AllArgsConstructor
+@ToString
+public class Second {
+    private String supplier;
+    private String product;
+    private double price;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java Config that defines the desired <span class="bold">Drools</span> container bean:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.7</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   SecondDroolsConfig
+ * Author: Bhaskar S
+ * Date:   06/05/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.second.config;
+
+import org.kie.api.KieServices;
+import org.kie.api.builder.*;
+import org.kie.api.builder.model.KieBaseModel;
+import org.kie.api.builder.model.KieModuleModel;
+import org.kie.api.builder.model.KieSessionModel;
+import org.kie.api.conf.EqualityBehaviorOption;
+import org.kie.api.conf.EventProcessingOption;
+import org.kie.api.io.KieResources;
+import org.kie.api.io.Resource;
+import org.kie.api.io.ResourceType;
+import org.kie.api.runtime.KieContainer;
+import org.kie.api.runtime.conf.ClockTypeOption;
+import org.springframework.beans.factory.BeanCreationException;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class SecondDroolsConfig {
+    private final static String SECOND_DRL = "src/main/resources/com/polarsparc/second/second.drl";
+
+    @Bean
+    public KieContainer secondKieContainer() {
+        KieServices services = KieServices.Factory.get();
+
+        ReleaseId releaseId = services.newReleaseId("com.polarsparc.second", "second", "1.0");
+
+        KieFileSystem fileSystem = services.newKieFileSystem();
+
+        KieResources resources = services.getResources();
+        Resource drlResource = resources.newFileSystemResource(SECOND_DRL)
+                .setResourceType(ResourceType.DRL);
+
+        KieModuleModel model = services.newKieModuleModel();
+        KieBaseModel base = model.newKieBaseModel("second-base")
+                .setDefault(true)
+                .addPackage("com.polarsparc.second")
+                .setEqualsBehavior(EqualityBehaviorOption.EQUALITY)
+                .setEventProcessingMode(EventProcessingOption.CLOUD);
+        base.newKieSessionModel("second-session")
+                .setDefault(true)
+                .setType(KieSessionModel.KieSessionType.STATEFUL)
+                .setClockType(ClockTypeOption.REALTIME);
+
+        fileSystem.generateAndWritePomXML(releaseId)
+                .write(drlResource)
+                .writeKModuleXML(model.toXML());
+
+        KieBuilder builder = services.newKieBuilder(fileSystem);
+        Results results = builder.buildAll().getResults();
+        if (results.hasMessages(Message.Level.ERROR)) {
+            throw new BeanCreationException("Error building rules: " + results.getMessages());
+        }
+
+        KieModule module = builder.getKieModule();
+
+        return services.newKieContainer(module.getReleaseId());
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The code from <span class="bold">Listing.7</span> above needs some explanation:</p>
+      <p>The interface <span class="hi-yellow">org.kie.api.builder.ReleaseId</span> is the <span class="bold">Maven</span> like 3-pair
+        tuple resource identifier. As indicated earlier, the <span class="bold">KieModule</span> has a <span class="bold">Maven</span>
+        like structure. This implies it has an associated 3-pair tuple - the groupID, the artifactId, and a version.</p>
+      <p>The interface <span class="hi-yellow">org.kie.api.io.Resource</span> is a resource wrapper for the application resources such
+        as the rules, etc.</p>
+      <p>The interface <span class="hi-yellow">org.kie.api.builder.model.KieModuleModel</span> is a factory for programatically creating
+        a <span class="bold">KieModule</span>.</p>
+      <p>The interface <span class="hi-yellow">org.kie.api.builder.model.KieBaseModel</span> is a factory for programatically creating
+        a <span class="bold">KieBase</span>. The method <span class="hi-blue">setDefault()</span> allows one to set the created
+        <span class="bold">KieBase</span> as the default instance. The method <span class="hi-blue">addPackage()</span> isolates the
+        created <span class="bold">KieBase</span> to the specified rules package (which is <span class="bold">com.polarsparc.second</span>
+        for this example).</p>
+      <p>The enum <span class="hi-green">EqualityBehaviorOption</span> has two values - <span class="bold">EQUALITY</span> and
+        <span class="bold">IDENTITY</span>. It defines how <span class="bold">Drools</span> will behave when a new fact (domain object)
+        is inserted into the working memory. With <span class="bold">EQUALITY</span>, when a fact object is inserted, a new reference
+        to the fact object is created and added to the working memory only if the fact object is not equal to a similar fact object.
+        On the other hand, with <span class="bold">IDENTITY</span>, a new reference to the fact object is created and added to the
+        working memory only if the same fact object is not already present.</p>
+      <p>The enum <span class="hi-green">EventProcessingOption</span> has two values - <span class="bold">CLOUD</span> and
+        <span class="bold">STREAM</span>. In the <span class="bold">CLOUD</span> mode, every fact object inserted into the working
+        memory is treated without any regard for time (as is individually). On the other hand, in the <span class="bold">STREAM</span>
+        mode, <span class="bold">Drools</span> will try to correlate the fact objects inserted into the working memory. In other words,
+        this mode is suitable for complex events processing.</p>
+      <p>The method <span class="hi-blue">newKieSessionModel()</span> returns an object that is a factory for programatically creating
+        a <span class="bold">KieSession</span>.</p>
+      <p>The enum <span class="hi-green">KieSessionModel.KieSessionType</span> has two values - <span class="bold">STATEFUL</span> and
+        <span class="bold">STATELESS</span>. In the <span class="bold">STATEFUL</span> mode, the <span class="bold">KieSession</span>
+        is long-lived and allows for iterative changes to the state of the fact objects. In other words, the rules engine continuously
+        matches and processes rules as the state of the fact objects change. On the other hand, the <span class="bold">STATELESS</span>
+        mode, is for simple one-off execution of the rules and any state changes to the fact objects does not trigger additional rules
+        processing.</p>
+      <p>The option <span class="hi-green">ClockTypeOption</span> has two values - <span class="bold">PSEUDO</span> and
+        <span class="bold">REALTIME</span>. In the <span class="bold">PSEUDO</span> mode, the clock is controlled by the application,
+        while in the <span class="bold">REALTIME</span> mode, the clock is determined by the system clock.</p>
+      <p>The following is the main <span class="bold">Spring Boot</span> application to test the <span class="bold">Drools</span>
+        rules engine:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.8</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   SecondApplication
+ * Author: Bhaskar S
+ * Date:   06/05/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.second;
+
+import com.polarsparc.second.model.Second;
+import lombok.extern.slf4j.Slf4j;
+import org.kie.api.runtime.KieContainer;
+import org.kie.api.runtime.KieSession;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+@Slf4j
+public class SecondApplication implements ApplicationRunner {
+    private KieContainer container;
+
+    @Autowired
+    public void setKieContainer(KieContainer container) {
+        this.container = container;
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(SecondApplication.class, args);
+    }
+
+    @Override
+    public void run(ApplicationArguments args) {
+        log.info("ReleaseId: {}", container.getReleaseId());
+        log.info("KieBases: {}", container.getKieBaseNames());
+        container.getKieBaseNames().forEach(name ->
+                log.info("KieBase: {}, KieSessions: {}", name, container.getKieSessionNamesInKieBase(name)));
+
+        KieSession ks = container.newKieSession();
+        ks.setGlobal("log", log);
+        Second s1 = new Second("S1", "P1", 25.49);
+        Second s2 = new Second("S2", "P1", 24.99);
+        Second s3 = new Second("S3", "P2", 18.78);
+        ks.insert(s1);
+        ks.insert(s2);
+        ks.insert(s3);
+        ks.fireAllRules();
+        ks.dispose();
+
+        log.info("Done !!!");
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.8</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Drools/Second</p>
+      <p>$ mvn spring-boot:run</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>2021-06-05 14:54:34:303 [main] INFO com.polarsparc.second.SecondApplication - Starting SecondApplication using Java 15.0.2 on polarsparc with PID 21471 (/home/polarsparc/java/Drools/Second/target/classes started by polarsparc in /home/polarsparc/java/Drools/Second)
+2021-06-05 14:54:34:304 [main] INFO com.polarsparc.second.SecondApplication - No active profile set, falling back to default profiles: default
+2021-06-05 14:54:35:402 [main] INFO com.polarsparc.second.SecondApplication - Started SecondApplication in 1.392 seconds (JVM running for 1.636)
+2021-06-05 14:54:35:403 [main] INFO org.springframework.boot.availability.ApplicationAvailabilityBean - Application availability state LivenessState changed to CORRECT
+2021-06-05 14:54:35:404 [main] INFO com.polarsparc.second.SecondApplication - ReleaseId: com.polarsparc.second:second:1.0
+2021-06-05 14:54:35:405 [main] INFO com.polarsparc.second.SecondApplication - KieBases: [second-base]
+2021-06-05 14:54:35:405 [main] INFO com.polarsparc.second.SecondApplication - KieBase: second-base, KieSessions: [second-session]
+2021-06-05 14:54:35:405 [main] INFO org.drools.compiler.kie.builder.impl.KieContainerImpl - Start creation of KieBase: second-base
+2021-06-05 14:54:35:442 [main] INFO org.drools.compiler.kie.builder.impl.KieContainerImpl - End creation of KieBase: second-base
+2021-06-05 14:54:35:495 [main] INFO com.polarsparc.second.SecondApplication - Second - supplier: S1, product: P1, price: 25.49
+2021-06-05 14:54:35:495 [main] INFO com.polarsparc.second.SecondApplication - Second - supplier: S2, product: P1, price: 24.99
+2021-06-05 14:54:35:495 [main] INFO com.polarsparc.second.SecondApplication - Second - supplier: S3, product: P2, price: 18.78
+2021-06-05 14:54:35:496 [main] INFO com.polarsparc.second.SecondApplication - Done !!!
+2021-06-05 14:54:35:497 [main] INFO org.springframework.boot.availability.ApplicationAvailabilityBean - Application availability state ReadinessState changed to ACCEPTING_TRAFFIC
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.478 s
+[INFO] Finished at: 2021-06-05T14:54:35-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://docs.jboss.org/drools/release/7.54.0.Final/drools-docs/html_single/"><span class="bold">Drools Documentation</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

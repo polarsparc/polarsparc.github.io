@@ -1,0 +1,905 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Java Rules Engine - Drools :: Part 2">
+    <meta name="subject" content="Java Rules Engine - Drools :: Part 2">
+    <meta name="keywords" content="java">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Java Rules Engine - Drools :: Part 2</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Java Rules Engine - Drools :: Part 2</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">06/11/2021</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/Drools/Drools-1.html" target="_blank"><span class="hi-yellow">Part 1</span></a>,
+        we provided an overview of <span class="bold">Drools</span> and its core components.</p>
+      <p>In this part, we will demonstrate two more examples - one to isolate rules in different <span class="bold">KieBase</span>s
+        and the other to showcase a pseudo real-world scenario.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Drools</p>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">Third</span> application, we will have the application display the supplier details from rules
+        that are deployed into separate <span class="bold">KieBase</span>s. This is to demonstrate that each <span class="bold">
+        KieBase</span> is isolated from the other.</p>
+    </div>
+    <div id="step-div">
+      <p>Third Application</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the Third application, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Drools</p>
+      <p>$ mkdir -p $HOME/java/Drools/Third</p>
+      <p>$ mkdir -p Third/src/main/java Third/src/main/resources Third/target</p>
+      <p>$ mkdir -p Third/src/main/resources/com/polarsparc/third/r1</p>
+      <p>$ mkdir -p Third/src/main/resources/com/polarsparc/third/r2</p>
+      <p>$ cd $HOME/java/Drools/Third</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;parent&gt;
+        &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+        &lt;artifactId&gt;Drools&lt;/artifactId&gt;
+        &lt;version&gt;1.0&lt;/version&gt;
+    &lt;/parent&gt;
+
+    &lt;artifactId&gt;Third&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+    &lt;name&gt;Third&lt;/name&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The contents of the <span class="hi-green">simplelogger.properties</span> and <span class="hi-green">application.properties</span>
+        located in the directory <span class="bold">src/main/resources</span> will be identical to the one from the First application
+        listed in <a href="https://polarsparc.github.io/Drools/Drools-1.html" target="_blank"><span class="bold">Part 1</span></a> and
+        hence we will not show them here again.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the <span class="bold">Drools</span> rules set file called
+        <span class="hi-yellow">src/main/resources/com/polarsparc/third/r1/third_r1.drl</span>, that display the supplier name, the
+        product, and the product cost (per the supplier):</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.9</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   third_r1.drl
+ * Author: Bhaskar S
+ * Date:   06/11/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.third.r1;
+
+import com.polarsparc.third.model.Third;
+import org.slf4j.Logger;
+
+global org.slf4j.Logger log;
+
+rule "Third_R1"
+    when
+        $t: Third()
+    then
+        log.info("{}: supplier: {}, product: {}, price: {}",
+            drools.getRule().getName(),
+            $t.getSupplier(),
+            $t.getProduct(),
+            $t.getPrice());
+end</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the other <span class="bold">Drools</span> rules set file called
+        <span class="hi-yellow">src/main/resources/com/polarsparc/third/r2/third_r2.drl</span>, that display the supplier name, the
+        product, and the product cost (per the supplier):</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.10</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   third_r2.drl
+ * Author: Bhaskar S
+ * Date:   06/11/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.third.r2;
+
+import com.polarsparc.third.model.Third;
+import org.slf4j.Logger;
+
+global org.slf4j.Logger log;
+
+rule "Third_R2"
+    when
+        $t: Third()
+    then
+        log.info("{}: Supplier: {}, Product: {}, Price: {}",
+            drools.getRule().getName(),
+            $t.getSupplier(),
+            $t.getProduct(),
+            $t.getPrice());
+end</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java POJO that encapsulates the supplier-product details:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.11</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Third
+ * Author: Bhaskar S
+ * Date:   06/11/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.third.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.ToString;
+
+@AllArgsConstructor
+@Getter
+@ToString
+public class Third {
+    private final String supplier;
+    private final String product;
+    private final double price;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java Config that defines the desired <span class="bold">Drools</span> container bean:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.12</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   ThirdDroolsConfig
+ * Author: Bhaskar S
+ * Date:   06/11/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.third.config;
+
+import org.kie.api.KieServices;
+import org.kie.api.builder.*;
+import org.kie.api.builder.model.KieBaseModel;
+import org.kie.api.builder.model.KieModuleModel;
+import org.kie.api.builder.model.KieSessionModel;
+import org.kie.api.conf.EqualityBehaviorOption;
+import org.kie.api.conf.EventProcessingOption;
+import org.kie.api.io.KieResources;
+import org.kie.api.io.Resource;
+import org.kie.api.io.ResourceType;
+import org.kie.api.runtime.KieContainer;
+import org.kie.api.runtime.conf.ClockTypeOption;
+import org.springframework.beans.factory.BeanCreationException;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class ThirdDroolsConfig {
+    private final static String THIRD_R1_DRL = "src/main/resources/com/polarsparc/third/r1/third_r1.drl";
+    private final static String THIRD_R2_DRL = "src/main/resources/com/polarsparc/third/r2/third_r2.drl";
+
+    @Bean
+    public KieContainer thirdKieContainer() {
+        KieServices services = KieServices.Factory.get();
+
+        ReleaseId releaseId = services.newReleaseId("com.polarsparc.third", "third", "1.0");
+
+        KieFileSystem fileSystem = services.newKieFileSystem();
+
+        KieResources resources = services.getResources();
+
+        Resource drlResource_1 = resources.newFileSystemResource(THIRD_R1_DRL)
+                .setResourceType(ResourceType.DRL);
+        Resource drlResource_2 = resources.newFileSystemResource(THIRD_R2_DRL)
+                .setResourceType(ResourceType.DRL);
+
+        KieModuleModel model = services.newKieModuleModel();
+
+        KieBaseModel base_1 = model.newKieBaseModel("third-r1-base")
+                .setDefault(true)
+                .addPackage("com.polarsparc.third.r1")
+                .setEqualsBehavior(EqualityBehaviorOption.EQUALITY)
+                .setEventProcessingMode(EventProcessingOption.CLOUD);
+        base_1.newKieSessionModel("third-r1-session")
+                .setDefault(true)
+                .setType(KieSessionModel.KieSessionType.STATEFUL)
+                .setClockType(ClockTypeOption.REALTIME);
+
+        KieBaseModel base_2 = model.newKieBaseModel("third-r2-base")
+                .addPackage("com.polarsparc.third.r2")
+                .setEqualsBehavior(EqualityBehaviorOption.EQUALITY)
+                .setEventProcessingMode(EventProcessingOption.CLOUD);
+        base_2.newKieSessionModel("third-r2-session")
+                .setType(KieSessionModel.KieSessionType.STATEFUL)
+                .setClockType(ClockTypeOption.REALTIME);
+
+        fileSystem.generateAndWritePomXML(releaseId)
+                .write(drlResource_1)
+                .write(drlResource_2)
+                .writeKModuleXML(model.toXML());
+
+        KieBuilder builder = services.newKieBuilder(fileSystem);
+        Results results = builder.buildAll().getResults();
+        if (results.hasMessages(Message.Level.ERROR)) {
+            throw new BeanCreationException("Error building rules: " + results.getMessages());
+        }
+
+        KieModule module = builder.getKieModule();
+
+        return services.newKieContainer(module.getReleaseId());
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the <span class="bold">Listing.12</span> above, notice how the two <span class="bold">KieBase</span>s are created from
+        the <span class="bold">KieServices</span> and how the rules are segregated based on the package.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the main <span class="bold">Spring Boot</span> application to test the <span class="bold">Drools</span>
+        rules engine:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.13</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   ThirdApplication
+ * Author: Bhaskar S
+ * Date:   06/11/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.third;
+
+import com.polarsparc.third.model.Third;
+import lombok.extern.slf4j.Slf4j;
+import org.kie.api.runtime.KieContainer;
+import org.kie.api.runtime.KieSession;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+@Slf4j
+public class ThirdApplication implements ApplicationRunner {
+    private KieContainer container;
+
+    @Autowired
+    public void setKieContainer(KieContainer container) {
+        this.container = container;
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(ThirdApplication.class, args);
+    }
+
+    @Override
+    public void run(ApplicationArguments args) {
+        log.info("ReleaseId: {}", container.getReleaseId());
+        log.info("KieBases: {}", container.getKieBaseNames());
+        container.getKieBaseNames().forEach(name ->
+                log.info("KieBase: {}, KieSessions: {}", name, container.getKieSessionNamesInKieBase(name)));
+
+        Third t1 = new Third("S1", "P1", 19.99);
+        Third t2 = new Third("S2", "P1", 19.79);
+
+        // Default - third-r1-session
+        KieSession ks1 = container.newKieSession();
+        ks1.setGlobal("log", log);
+        ks1.insert(t1);
+        ks1.insert(t2);
+        ks1.fireAllRules();
+        ks1.dispose();
+
+        log.info("ks1 - Done !!!");
+
+        // Specific - third-r2-session
+        KieSession ks2 = container.newKieSession("third-r2-session");
+        ks2.setGlobal("log", log);
+        ks2.insert(t1);
+        ks2.insert(t2);
+        ks2.fireAllRules();
+        ks2.dispose();
+
+        log.info("ks2 - Done !!!");
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.13</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Drools/Third</p>
+      <p>$ mvn spring-boot:run</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>2021-06-11 20:53:29:604 [main] INFO com.polarsparc.third.ThirdApplication - Starting ThirdApplication using Java 15.0.2 on polarsparc with PID 37438 (/home/polarsparc/java/Drools/Third/target/classes started by polarsparc in /home/polarsparc/java/Drools/Third)
+2021-06-11 20:53:29:605 [main] INFO com.polarsparc.third.ThirdApplication - No active profile set, falling back to default profiles: default
+2021-06-11 20:53:30:776 [main] INFO com.polarsparc.third.ThirdApplication - Started ThirdApplication in 1.47 seconds (JVM running for 1.716)
+2021-06-11 20:53:30:777 [main] INFO org.springframework.boot.availability.ApplicationAvailabilityBean - Application availability state LivenessState changed to CORRECT
+2021-06-11 20:53:30:778 [main] INFO com.polarsparc.third.ThirdApplication - ReleaseId: com.polarsparc.third:third:1.0
+2021-06-11 20:53:30:778 [main] INFO com.polarsparc.third.ThirdApplication - KieBases: [third-r1-base, third-r2-base]
+2021-06-11 20:53:30:778 [main] INFO com.polarsparc.third.ThirdApplication - KieBase: third-r1-base, KieSessions: [third-r1-session]
+2021-06-11 20:53:30:779 [main] INFO com.polarsparc.third.ThirdApplication - KieBase: third-r2-base, KieSessions: [third-r2-session]
+2021-06-11 20:53:30:779 [main] INFO org.drools.compiler.kie.builder.impl.KieContainerImpl - Start creation of KieBase: third-r1-base
+2021-06-11 20:53:30:815 [main] INFO org.drools.compiler.kie.builder.impl.KieContainerImpl - End creation of KieBase: third-r1-base
+2021-06-11 20:53:30:868 [main] INFO com.polarsparc.third.ThirdApplication - Third_R1: supplier: S1, product: P1, price: 19.99
+2021-06-11 20:53:30:868 [main] INFO com.polarsparc.third.ThirdApplication - Third_R1: supplier: S2, product: P1, price: 19.79
+2021-06-11 20:53:30:869 [main] INFO com.polarsparc.third.ThirdApplication - ks1 - Done !!!
+2021-06-11 20:53:30:869 [main] INFO org.drools.compiler.kie.builder.impl.KieContainerImpl - Start creation of KieBase: third-r2-base
+2021-06-11 20:53:30:870 [main] INFO org.drools.compiler.kie.builder.impl.KieContainerImpl - End creation of KieBase: third-r2-base
+2021-06-11 20:53:30:872 [main] INFO com.polarsparc.third.ThirdApplication - Third_R2: Supplier: S1, Product: P1, Price: 19.99
+2021-06-11 20:53:30:872 [main] INFO com.polarsparc.third.ThirdApplication - Third_R2: Supplier: S2, Product: P1, Price: 19.79
+2021-06-11 20:53:30:872 [main] INFO com.polarsparc.third.ThirdApplication - ks2 - Done !!!
+2021-06-11 20:53:30:873 [main] INFO org.springframework.boot.availability.ApplicationAvailabilityBean - Application availability state ReadinessState changed to ACCEPTING_TRAFFIC
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.555 s
+[INFO] Finished at: 2021-06-11T20:53:30-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">Fourth</span> application, we will have a pseudo real-world scenario application which determines
+        discounts for products based on the product price from the supplier. If the supplier quotes a price, which compared to the
+        current price (in the inventory) is below some threshold, the product is eligible for a discount.</p>
+    </div>
+    <div id="step-div">
+      <p>Fourth Application</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the Fourth application, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Drools</p>
+      <p>$ mkdir -p $HOME/java/Drools/Fourth</p>
+      <p>$ mkdir -p Fourth/src/main/java Fourth/src/main/resources Fourth/target</p>
+      <p>$ mkdir -p Fourth/src/main/resources/com/polarsparc/fourth</p>
+      <p>$ cd $HOME/java/Drools/Fourth</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;parent&gt;
+        &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+        &lt;artifactId&gt;Drools&lt;/artifactId&gt;
+        &lt;version&gt;1.0&lt;/version&gt;
+    &lt;/parent&gt;
+
+    &lt;artifactId&gt;Fourth&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+    &lt;name&gt;Fourth&lt;/name&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The contents of the <span class="hi-green">simplelogger.properties</span> and <span class="hi-green">application.properties</span>
+        located in the directory <span class="bold">src/main/resources</span> will be identical to the one from the First application
+        listed in <a href="https://polarsparc.github.io/Drools/Drools-1.html" target="_blank"><span class="bold">Part 1</span></a> and
+        hence we will not show them here again.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the <span class="bold">Drools</span> rules set file called
+        <span class="hi-yellow">src/main/resources/com/polarsparc/fourth/fourth.drl</span>, that determines the discount for a product
+        based on the price quote (from the supplier):</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.14</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   fourth.drl
+ * Author: Bhaskar S
+ * Date:   06/11/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.fourth;
+
+import com.polarsparc.fourth.model.*;
+import org.slf4j.Logger;
+import java.util.Collection;
+import java.util.Comparator;
+
+global org.slf4j.Logger log;
+
+rule "Find_Best_Supplier"
+    when
+        $suppliers: Collection(size > 0)
+        $best: Supplier($low: price) from $suppliers
+        not Supplier(price &lt; $low) from $suppliers
+    then
+        log.info("{}: Supplier {} is preferred for Product {}",
+            drools.getRule().getName(),
+            $best.getSupplier(),
+            $best.getProduct());
+
+        delete($suppliers);
+        insert($best);
+end
+
+rule "Compute_Threshold"
+    when
+        $best: Supplier()
+        $invt: Inventory()
+        $thr: Threshold()
+        $pm: Promotion()
+    then
+        double pct = ($invt.getPrice() - $best.getPrice()) / $invt.getPrice();
+
+        log.info("{}: Threshold: {}, Computed: {}",
+            drools.getRule().getName(),
+            $thr.getThreshold(),
+            String.format("%.3f", pct));
+
+            delete($invt);
+        modify($pm){
+            setComputed(pct),
+            setSupplier($best)
+        }
+        delete($best);
+end
+
+rule "Compute_Discount"
+    when
+        $thr: Threshold()
+        $pm: Promotion(computed > $thr.getThreshold())
+    then
+        log.info("{}: Threshold: {}, Computed: {} -> Discount eligible",
+            drools.getRule().getName(),
+            $thr.getThreshold(),
+            String.format("%.3f", $pm.getComputed()));
+
+        delete($thr);
+        modify($pm){
+            setDiscount($pm.getComputed()/2.0)
+        }
+end
+
+rule "Display_Discount"
+    when
+        $p: Promotion(discount > 0.0)
+    then
+        log.info("{}: Product {} allows a Discount of {}%",
+            drools.getRule().getName(),
+            $p.getSupplier().getProduct(),
+            String.format("%.2f", $p.getDiscount() * 100.0));
+end</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The rules from <span class="bold">Listing.14</span> above needs some explanation:</p>
+      <p>The keyword <span class="hi-green">from</span> allows the rules engine to use a data source that is not in the working memory.
+        The data source can be an element in a <span class="bold">java.util.Collection</span>, a POJO field on a bound variable pointing
+        to the domain data object in the working memory, or the result of a method call.</p>
+      <p>The call <span class="hi-blue">insert()</span> allows one to add a fact (domain data object) into the working memory.</p>
+      <p>The call <span class="hi-blue">delete()</span> allows one to remove a fact (domain data object) from the working memory.</p>
+      <p>The call <span class="hi-blue">modify()</span> allows one to update a field on a fact (domain data object) from the working
+        memory and notify the rules engine so it can reconsider the same fact for pattern matching (given the field has changed).</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java POJO that encapsulates the supplier details:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.15</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Supplier
+ * Author: Bhaskar S
+ * Date:   06/11/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.fourth.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+public class Supplier {
+    private String supplier;
+    private String product;
+    private double price;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java POJO that encapsulates the inventory (product and its current price) details:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.16</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Inventory
+ * Author: Bhaskar S
+ * Date:   06/11/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.fourth.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+public class Inventory {
+    private String product;
+    private double price;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java POJO that encapsulates the percent threshold used to determine a discount:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.17</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Threshold
+ * Author: Bhaskar S
+ * Date:   06/11/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.fourth.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+
+@AllArgsConstructor
+@Getter
+@Setter
+@ToString
+public class Threshold {
+    private String product;
+    private double threshold;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java POJO that encapsulates the product promotion details:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.18</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Promotion
+ * Author: Bhaskar S
+ * Date:   06/11/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.fourth.model;
+
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+
+@Getter
+@Setter
+@ToString
+public class Promotion {
+    private double computed = 0.0;
+    private double discount = 0.0;
+    private Supplier supplier;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java Config that defines the desired <span class="bold">Drools</span> container bean:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.19</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   FourthDroolsConfig
+ * Author: Bhaskar S
+ * Date:   06/11/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.fourth.config;
+
+import org.kie.api.KieServices;
+import org.kie.api.builder.*;
+import org.kie.api.io.KieResources;
+import org.kie.api.runtime.KieContainer;
+import org.springframework.beans.factory.BeanCreationException;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class FourthDroolsConfig {
+    private final static String FOURTH_DRL = "com/polarsparc/fourth/fourth.drl";
+
+    @Bean
+    public KieContainer fourthKieContainer() {
+        KieServices services = KieServices.Factory.get();
+        KieResources resources = services.getResources();
+
+        KieFileSystem fileSystem = services.newKieFileSystem();
+        fileSystem.write(resources.newClassPathResource(FOURTH_DRL));
+
+        KieBuilder builder = services.newKieBuilder(fileSystem);
+        Results results = builder.buildAll().getResults();
+        if (results.hasMessages(Message.Level.ERROR)) {
+            throw new BeanCreationException("Error building rules: " + results.getMessages());
+        }
+
+        KieModule module = builder.getKieModule();
+
+        return services.newKieContainer(module.getReleaseId());
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the main <span class="bold">Spring Boot</span> application to test the <span class="bold">Drools</span>
+        rules engine:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.20</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   FourthApplication
+ * Author: Bhaskar S
+ * Date:   06/11/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.fourth;
+
+import com.polarsparc.fourth.model.Inventory;
+import com.polarsparc.fourth.model.Promotion;
+import com.polarsparc.fourth.model.Supplier;
+import com.polarsparc.fourth.model.Threshold;
+import lombok.extern.slf4j.Slf4j;
+import org.kie.api.runtime.KieContainer;
+import org.kie.api.runtime.KieSession;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+import java.util.Arrays;
+
+@SpringBootApplication
+@Slf4j
+public class FourthApplication implements ApplicationRunner {
+    private KieContainer container;
+
+    @Autowired
+    public void setKieContainer(KieContainer container) {
+        this.container = container;
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(FourthApplication.class, args);
+    }
+
+    @Override
+    public void run(ApplicationArguments args) {
+        // Test Case - 1
+        {
+            // Suppliers for Product P1
+            Supplier s1 = new Supplier("S1", "P1", 18.99);
+            Supplier s2 = new Supplier("S2", "P1", 18.59);
+            Supplier s3 = new Supplier("S3", "P1", 18.79);
+
+            // Current inventory
+            Inventory in = new Inventory("P1", 18.99);
+
+            // Price difference threshold
+            Threshold th = new Threshold("P1", 0.05);
+
+            // Promotion
+            Promotion pm = new Promotion();
+
+            KieSession ks = container.newKieSession();
+            ks.setGlobal("log", log);
+            ks.insert(Arrays.asList(s1, s2, s3));
+            ks.insert(in);
+            ks.insert(th);
+            ks.insert(pm);
+            ks.fireAllRules();
+            ks.dispose();
+
+            log.info("{}: [1] Supplier: {}, Product: {}, Discount: {}",
+                    FourthApplication.class.getName(),
+                    pm.getSupplier(),
+                    pm.getSupplier().getProduct(),
+                    String.format("%.3f", pm.getDiscount()));
+        }
+
+        // Test Case - 2
+        {
+            // Suppliers for Product P1
+            Supplier s1 = new Supplier("S2", "P2", 18.99);
+            Supplier s2 = new Supplier("S3", "P2", 17.49);
+            Supplier s3 = new Supplier("S4", "P2", 16.99);
+
+            // Current inventory
+            Inventory in = new Inventory("P2", 19.99);
+
+            // Price difference threshold
+            Threshold th = new Threshold("P2", 0.10);
+
+            // Promotion
+            Promotion pm = new Promotion();
+
+            KieSession ks = container.newKieSession();
+            ks.setGlobal("log", log);
+            ks.insert(Arrays.asList(s1, s2, s3));
+            ks.insert(in);
+            ks.insert(th);
+            ks.insert(pm);
+            ks.fireAllRules();
+            ks.dispose();
+
+            log.info("{}: [2] Supplier: {}, Product: {}, Discount: {}",
+                    FourthApplication.class.getName(),
+                    pm.getSupplier(),
+                    pm.getSupplier().getProduct(),
+                    String.format("%.3f", pm.getDiscount()));
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.20</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/Drools/Fourth</p>
+      <p>$ mvn spring-boot:run</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>2021-06-11 20:59:12:058 [main] INFO com.polarsparc.fourth.FourthApplication - Starting FourthApplication using Java 15.0.2 on polarsparc with PID 38308 (/home/polarsparc/java/Drools/Fourth/target/classes started by polarsparc in /home/polarsparc/java/Drools/Fourth)
+2021-06-11 20:59:12:058 [main] INFO com.polarsparc.fourth.FourthApplication - No active profile set, falling back to default profiles: default
+2021-06-11 20:59:13:206 [main] INFO com.polarsparc.fourth.FourthApplication - Started FourthApplication in 1.43 seconds (JVM running for 1.683)
+2021-06-11 20:59:13:207 [main] INFO org.springframework.boot.availability.ApplicationAvailabilityBean - Application availability state LivenessState changed to CORRECT
+2021-06-11 20:59:13:207 [main] INFO org.drools.compiler.kie.builder.impl.KieContainerImpl - Start creation of KieBase: defaultKieBase
+2021-06-11 20:59:13:253 [main] INFO org.drools.compiler.kie.builder.impl.KieContainerImpl - End creation of KieBase: defaultKieBase
+2021-06-11 20:59:13:305 [main] INFO com.polarsparc.fourth.FourthApplication - Find_Best_Supplier: Supplier S3 is preferred for Product P1
+2021-06-11 20:59:13:309 [main] INFO com.polarsparc.fourth.FourthApplication - Compute_Threshold: Threshold: 0.05, Computed: 0.011
+2021-06-11 20:59:13:314 [main] INFO com.polarsparc.fourth.FourthApplication - com.polarsparc.fourth.FourthApplication: [1] Supplier: Supplier(supplier=S2, product=P1, price=18.59), Product: P1, Discount: 0.000
+2021-06-11 20:59:13:315 [main] INFO com.polarsparc.fourth.FourthApplication - Find_Best_Supplier: Supplier S4 is preferred for Product P2
+2021-06-11 20:59:13:316 [main] INFO com.polarsparc.fourth.FourthApplication - Compute_Threshold: Threshold: 0.1, Computed: 0.150
+2021-06-11 20:59:13:317 [main] INFO com.polarsparc.fourth.FourthApplication - Compute_Discount: Threshold: 0.1, Computed: 0.150 -> Discount eligible
+2021-06-11 20:59:13:318 [main] INFO com.polarsparc.fourth.FourthApplication - Display_Discount: Product P2 allows a Discount of 7.50%
+2021-06-11 20:59:13:319 [main] INFO com.polarsparc.fourth.FourthApplication - com.polarsparc.fourth.FourthApplication: [2] Supplier: Supplier(supplier=S4, product=P2, price=16.99), Product: P2, Discount: 0.075
+2021-06-11 20:59:13:319 [main] INFO org.springframework.boot.availability.ApplicationAvailabilityBean - Application availability state ReadinessState changed to ACCEPTING_TRAFFIC
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.553 s
+[INFO] Finished at: 2021-06-11T20:59:13-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://polarsparc.github.io/Drools/Drools-1.html"><span class="bold">Java Rules Engine - Drools :: Part 1</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
