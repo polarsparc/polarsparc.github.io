@@ -1,0 +1,1332 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Building a Linux Container using Namespaces :: Part - 1">
+    <meta name="subject" content="Building a Linux Container using Namespaces :: Part - 1">
+    <meta name="keywords" content="container, linux, namespaces, golang">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Building a Linux Container using Namespaces :: Part - 1</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Building a Linux Container using Namespaces :: Part - 1</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">03/13/2020</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>Ever wondered how Linux <span class="hi-yellow">Container</span>s worked ???</p>
+      <p>Currently, <a href="https://polarsparc.github.io/xhtml/Docker.html" target="_blank"><span class="hi-yellow">Docker</span></a>
+        is one of the most popular and prevalent container implementations.</p>
+      <p>Containers run on top of the same Operating System kernel, but isolate the application processes running inside them
+        from one another. One of the secret sauces behind containers is <a href="http://man7.org/linux/man-pages/man7/namespaces.7.html"
+        target="_blank"><span class="hi-yellow">Namespaces</span></a>.</p>
+      <p>A <span class="bold">Namespace</span> abstracts global system resources, such as, host names, user IDs, group IDs,
+        process IDs, network ports, etc., in a way that it appears to the processes (within the namespace) as though they have
+        their own isolated instance of the global system resources. One of the primary goals of namespaces is to support the
+        implementation of containers (lightweight virtualization).</p>
+      <p>Currently, in Linux there are <span class="underbold">6</span> types of namespaces - <span class="hi-blue">IPC</span>,
+        <span class="hi-blue">Network</span>, <span class="hi-blue">Mount</span>, <span class="hi-blue">PID</span>,
+        <span class="hi-blue">User</span>, and <span class="hi-blue">UTS</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for each of the namespaces:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-blue">IPC</span> :: This namespace isolates certain interprocess communication (IPC) resources,
+            namely, Message Queues, Semaphores, and Shared Memory</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Network</span> :: This namespace provides isolation of the system resources associated with
+            networking, such as, Network devices, IP addresses, IP routing tables, /proc/net directory, port numbers, and so on</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Mount</span> :: This namespace isolates the set of filesystem mount points seen by a group
+            of processes. Processes in different mount namespaces can have different views of the filesystem hierarchy</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">PID</span> :: This namespace isolates the process ID number space. This allows processes
+            in different PID namespaces to have the same PID</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">User</span> :: This namespace isolates the user and group ID number spaces, such that, a
+            process's user and group IDs can be different inside and outside the user namespace</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">UTS</span> :: This namespace isolates two system identifiers — the hostname and the
+            domainname. For containers, the UTS namespaces allows each container to have its own hostname and NIS domain name</p>
+        </li>
+      </ul>
+      <div id="para-div">
+        <p>For the demonstration in this article, we will be using the <span class="hi-yellow">unshare</span> Linux command
+          as well as implement, build, and execute a simple container using <span class="hi-yellow">golang</span>.</p>
+      </div>
+    </div>
+    <div id="section-div">
+      <p>Installation and Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The installation is on a <span class="bold">Ubuntu 18.04 LTS</span> based Linux desktop.</p>
+    </div>
+    <div id="para-div">
+      <p>We will need two commands <span class="hi-yellow">newuidmap</span> and <span class="hi-yellow">newgidmap</span>
+        to demonstrate <span class="hi-blue">User</span> namespace. For this, we need to install the package
+        <span class="hi-yellow">uidmap</span>.</p>
+      <p>To install the package <span class="bold">uidmap</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt install -y uidmap</p>
+    </div>
+    <div id="para-div">
+      <p>Next, we will need the <span class="hi-yellow">brctl</span> command to create a <span class="bold">bridge</span>
+        network interface. For this, we need to install the package <span class="hi-yellow">bridge-utils</span>.</p>
+      <p>To install the package <span class="bold">bridge-utils</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt install -y bridge-utils</p>
+    </div>
+    <div id="para-div">
+      <p>To develop, build, and execute the simple container in <span class="hi-yellow">go</span> programming language, we
+        need to install the <span class="bold">golang</span> package.</p>
+      <p>To check the version of <span class="bold">golang</span> available to install, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt-cache policy golang</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>golang:
+  Installed: (none)
+  Candidate: 2:1.13~1ubuntu1ppa1~bionic
+  Version table:
+ *** 2:1.13~1ubuntu1ppa1~bionic 500
+        500 http://ppa.launchpad.net/hnakamur/golang-1.13/ubuntu bionic/main amd64 Packages
+        500 http://ppa.launchpad.net/hnakamur/golang-1.13/ubuntu bionic/main i386 Packages
+        100 /var/lib/dpkg/status
+     2:1.10~4ubuntu1 500
+        500 http://archive.ubuntu.com/ubuntu bionic/main amd64 Packages</pre>
+    </div>
+    <div id="para-div">
+      <p>To install <span class="bold">golang</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt install -y golang</p>
+    </div>
+    <div id="para-div">
+      <p>The above installation procedure installs <span class="bold">golang</span> from the official Ubuntu repository.</p>
+    </div>
+    <div id="para-div">
+      <p>Create a directory for developing, building, and running <span class="bold">go</span> programs by executing the
+        following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir $HOME/projects/go</p>
+      <p>$ export GOPATH=$HOME/projects/go</p>
+    </div>
+    
+    <div id="para-div">
+      <p>We will need one of the popular <span class="bold">go</span> packages on <span class="hi-yellow">netlink</span>
+        for networking.</p>
+    </div>
+    <div id="para-div">
+      <p>To download the <span class="bold">go</span> package, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ go get github.com/vishvananda/netlink</p>
+    </div>
+    <div id="para-div">
+      <p>Open two <span class="bold">Terminal</span> windows - we will refer to them as <span class="hi-yellow">TA</span>
+        and <span class="hi-yellow">TB</span> respectively. <span class="bold">TB</span> is where we will demonstrate the
+        simple container.</p>
+    </div>
+    <div id="para-div">
+      <p>We need to download a minimal root filesystem (<span class="hi-yellow">rootfs</span>) that will be used as the base
+        image for the simple container. For our demonstration, we will choose the latest <span class="bold">
+        <a href="http://cdimage.ubuntu.com/ubuntu-base/releases/18.04.4/release/ubuntu-base-18.04.4-base-amd64.tar.gz"
+           target="_blank"><span class="bold">Ubuntu Base 18.04.4 LTS</span></a></span> at the time of this article.</p>
+      <p>We will assume the latest Ubuntu Base is downloaded to the directory <span class="hi-yellow">$HOME/Downloads</span>.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Namespaces</p>
+    </div>
+    <div id="step-div">
+      <p>UTS Namespace</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="underbold">unshare</span> command executes the specified program with the indicated namespace(s)
+        isolated from the parent process.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the options for the <span class="bold">unshare</span> command, execute the following command in
+        <span class="bold">TA</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ unshare -h</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Usage:
+ unshare [options] [&lt;program&gt; [&lt;argument&gt;...]]
+
+Run a program with some namespaces unshared from the parent.
+
+Options:
+ -m, --mount[=&lt;file&gt;]      unshare mounts namespace
+ -u, --uts[=&lt;file&gt;]        unshare UTS namespace (hostname etc)
+ -i, --ipc[=&lt;file&gt;]        unshare System V IPC namespace
+ -n, --net[=&lt;file&gt;]        unshare network namespace
+ -p, --pid[=&lt;file&gt;]        unshare pid namespace
+ -U, --user[=&lt;file&gt;]       unshare user namespace
+ -C, --cgroup[=&lt;file&gt;]     unshare cgroup namespace
+ -f, --fork                fork before launching &lt;program&gt;
+     --mount-proc[=&lt;dir&gt;]  mount proc filesystem first (implies --mount)
+ -r, --map-root-user       map current user to root (implies --user)
+     --propagation slave|shared|private|unchanged
+                           modify mount propagation in mount namespace
+ -s, --setgroups allow|deny  control the setgroups syscall in user namespaces
+
+ -h, --help                display this help
+ -V, --version             display version</pre>
+    </div>
+    <div id="para-div">
+      <p>Each process (with [PID]) has associated with it a sub-directory <span class="hi-yellow">/proc/[PID]/ns</span> that
+        contains one entry for each of the namespaces.</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the namespaces associated with a process, execute the following command in <span class="bold">TA</span>
+        :</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ls -l /proc/$$/ns</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>total 0
+lrwxrwxrwx 1 alice alice 0 Mar  7 12:17 cgroup -> 'cgroup:[4026531835]'
+lrwxrwxrwx 1 alice alice 0 Mar  7 12:17 ipc -> 'ipc:[4026531839]'
+lrwxrwxrwx 1 alice alice 0 Mar  7 12:17 mnt -> 'mnt:[4026531840]'
+lrwxrwxrwx 1 alice alice 0 Mar  7 12:17 net -> 'net:[4026531993]'
+lrwxrwxrwx 1 alice alice 0 Mar  7 12:17 pid -> 'pid:[4026531836]'
+lrwxrwxrwx 1 alice alice 0 Mar  7 20:41 pid_for_children -> 'pid:[4026531836]'
+lrwxrwxrwx 1 alice alice 0 Mar  7 12:17 user -> 'user:[4026531837]'
+lrwxrwxrwx 1 alice alice 0 Mar  7 12:17 uts -> 'uts:[4026531838]'</pre>
+    </div>
+    <div id="para-div">
+      <p>To launch a simple container whose host name is isolated from the parent host name, execute the following command in
+        <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo unshare -u /bin/sh</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="hi-green">-u</span> option enables the <span class="bold">UTS</span> namespace.</p>
+      <p>The command prompt will change to a <span class="bold">#</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To check the <span class="bold">PID</span> of the simple container, execute the following command in <span class="bold">
+        TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># echo $$</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>18872</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the namespaces associated with the simple container, execute the following command in <span class="bold">
+        TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># ls -l /proc/$$/ns</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>total 0
+lrwxrwxrwx 1 root root 0 Mar  7 12:36 cgroup -> 'cgroup:[4026531835]'
+lrwxrwxrwx 1 root root 0 Mar  7 12:36 ipc -> 'ipc:[4026531839]'
+lrwxrwxrwx 1 root root 0 Mar  7 12:36 mnt -> 'mnt:[4026531840]'
+lrwxrwxrwx 1 root root 0 Mar  7 12:36 net -> 'net:[4026531993]'
+lrwxrwxrwx 1 root root 0 Mar  7 12:36 pid -> 'pid:[4026531836]'
+lrwxrwxrwx 1 root root 0 Mar  7 12:36 pid_for_children -> 'pid:[4026531836]'
+lrwxrwxrwx 1 root root 0 Mar  7 12:36 user -> 'user:[4026531837]'
+lrwxrwxrwx 1 root root 0 Mar  7 12:36 uts -> 'uts:[4026533064]'</pre>
+    </div>
+    <div id="para-div">
+      <p>Comparing Output.5 to Output.3, we see a change in the <span class="bold">uts</span> namespace, which is expected
+        and correct.</p>
+    </div>
+    <div id="para-div">
+      <p>To change the host name of the simple container, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># hostname leopard</p>
+    </div>
+    <div id="para-div">
+      <p>To display the host name of the parent host, execute the following command in <span class="bold">TA</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ hostname</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>polarsparc</pre>
+    </div>
+    <div id="para-div">
+      <p>To display the host name of the simple container, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># hostname</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>leopard</pre>
+    </div>
+    <div id="para-div">
+      <p>This demonstrates to us that we have isolated the host name of the simple container from the parent host name.</p>
+    </div>
+    <div id="para-div">
+      <p>To exit the simple container, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># exit</p>
+    </div>
+    <div id="para-div">
+      <p>Next, we will mimic the above <span class="bold">UTS</span> namespace isolation using the following <span class="bold">
+        go</span> program:</p>
+    </div>    
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.1</div>
+      <div class="src-body-1">
+      <pre>package main
+
+import (
+    "log"
+    "os"
+    "os/exec"
+    "syscall"
+)
+
+func execContainerShell() {
+    log.Printf("Ready to exec container shell ...\n")
+
+    if err := syscall.Sethostname([]byte("leopard")); err != nil {
+       panic(err)
+    }
+
+    const sh = "/bin/sh"
+
+    env := os.Environ()
+    env = append(env, "PS1=-> ")
+
+    if err := syscall.Exec(sh, []string{""}, env); err != nil {
+        panic(err)
+    }
+}
+
+func main() {
+    log.Printf("Starting process %s with args: %v\n", os.Args[0], os.Args)
+
+    const clone = "CLONE"
+
+    if len(os.Args) > 1 && os.Args[1] == clone {
+        execContainerShell()
+    }
+
+    log.Printf("Ready to run command ...\n")
+
+    cmd := exec.Command(os.Args[0], []string{clone}...)
+    cmd.Stdin = os.Stdin
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
+    cmd.SysProcAttr = &syscall.SysProcAttr{
+        Cloneflags: syscall.CLONE_NEWUTS,
+    }
+
+    if err := cmd.Run(); err != nil {
+        panic(err)
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The <span class="hi-green">Command</span> function from the <span class="hi-yellow">exec</span> package allows one
+        to run the specified command (1st parameter) with the supplied arguments (2nd parameter). It returns an instance of
+        the <span class="hi-blue">Cmd</span> struct.</p>
+      <p>One can set the standard input (<span class="hi-yellow">os.Stdin</span>), the standard output <span class="hi-yellow">
+        os.Stdout</span>, the standard error <span class="hi-yellow">os.Stderr</span>, and some operating system specific
+        attributes on the returned <span class="bold">Cmd</span> instance. In this case, we specify the <span class="hi-yellow">
+        syscall.CLONE_NEWUTS</span> OS attribute to indicate the command be run in a new <span class="bold">UTS</span>
+        namespace.</p>
+      <p><span class="underbold">IMPORTANT</span> : When the <span class="hi-yellow">main</span> process starts, it internally 
+        spawns another <span class="bold">main</span> process (with the <span class="bold">CLONE</span> argument) in a new
+        namespace. It is this spawned <span class="bold">main</span> process (running in the new namespace) that is overlayed
+        (<span class="bold">syscall.Exec</span>) with the shell command by invoking the function <span class="hi-blue">
+        execContainerShell</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Create and change to the directory <span class="bold">$GOPATH/uts</span> by executing the following commands in
+        <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p $GOPATH/uts</p>
+      <p>$ cd $GOPATH/uts</p>
+    </div>
+    <div id="para-div">
+      <p>Copy the above code into the program file <span class="bold">main.go</span> in the current directory.</p>
+    </div>
+    <div id="para-div">
+      <p>To compile the program file <span class="bold">main.go</span>, execute the following command in <span class="bold">
+        TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ go build main.go</p>
+    </div>
+    <div id="para-div">
+      <p>To run program <span class="bold">main</span>, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo ./main</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>2020/03/07 12:49:11 Starting process ./main with args: [./main]
+2020/03/07 12:49:11 Ready to run command ...
+2020/03/07 12:49:11 Starting process ./main with args: [./main CLONE]
+2020/03/07 12:49:11 Ready to exec container shell ...
+-></pre>
+    </div>
+    <div id="para-div">
+      <p>The command prompt will change to a <span class="bold">-&gt;</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the host name of the simple container, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>-&gt; hostname</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>leopard</pre>
+    </div>
+    <div id="para-div">
+      <p>To exit the simple container, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>-&gt; exit</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">SUCCESS !!!</span> We have demonstrated the <span class="bold">UTS</span> namespace using both
+        the <span class="bold">unshare</span> command and a simple <span class="bold">go</span> program.</p>
+    </div>
+    <div id="step-div">
+      <p>User Namespace</p>
+    </div>
+    <div id="para-div">
+      <p>Let us layer the <span class="bold">User</span> namespace on top of the <span class="bold">UTS</span> namespace.</p>
+      <p>To launch a simple container whose user/group IDs as well as the host name are isolated from the parent namespace,
+        execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo unshare -uU /bin/sh</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="hi-green">-U</span> option enables the <span class="bold">User</span> namespace.</p>
+      <p>To display the user ID and group ID in the new namespace, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ id</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>uid=65534(nobody) gid=65534(nogroup) groups=65534(nogroup)</pre>
+    </div>
+    <div id="para-div">
+      <p>When a <span class="bold">User</span> namespace is created, it starts without a mapping for the user/group IDs in
+        the new namespace to the parent user/group IDs. The unmapped user/group ID is assigned the default value of the
+        overflow user/group ID. The default value for the overflow user ID is read from
+        <span class="hi-yellow">/proc/sys/kernel/overflowuid</span> (which is 65534). Similarly, the default value for the
+        overflow group ID is read from <span class="hi-yellow">/proc/sys/kernel/overflowgid</span> (which is 65534).</p>
+    </div>
+    <div id="para-div">
+      <p>To fix the mapping for the user/group ID to the parent user/group ID, exit the simple container by executing the
+        following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ exit</p>
+    </div>
+    <div id="para-div">
+      <p>To re-launch the simple container with the current effective user/group ID mapped to the superuser user/group ID
+        in the new namespace, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo unshare -uUr /bin/sh</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="hi-green">-r</span> option enables the mapping of the user/group IDs in the new namespace to the
+        parent namespace user/group IDs.</p>
+      <p>The command prompt will change to a <span class="bold">#</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the user ID and group ID in the new namespace, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># id</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>uid=0(root) gid=0(root) groups=0(root)</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the namespaces associated with the simple container, execute the following command in <span class="bold">
+        TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># ls -l /proc/$$/ns</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>total 0
+lrwxrwxrwx 1 root root 0 Mar 7 13:09 cgroup -> 'cgroup:[4026531835]'
+lrwxrwxrwx 1 root root 0 Mar 7 13:09 ipc -> 'ipc:[4026531839]'
+lrwxrwxrwx 1 root root 0 Mar 7 13:09 mnt -> 'mnt:[4026531840]'
+lrwxrwxrwx 1 root root 0 Mar 7 13:09 net -> 'net:[4026531993]'
+lrwxrwxrwx 1 root root 0 Mar 7 13:09 pid -> 'pid:[4026531836]'
+lrwxrwxrwx 1 root root 0 Mar 7 13:09 pid_for_children -> 'pid:[4026531836]'
+lrwxrwxrwx 1 root root 0 Mar 7 13:09 user -> 'user:[4026532892]'
+lrwxrwxrwx 1 root root 0 Mar 7 13:09 uts -> 'uts:[4026533401]'</pre>
+    </div>
+    <div id="para-div">
+      <p>Comparing Output.12 to Output.3, we see a change in both the <span class="bold">uts</span> namespace as well as
+        the <span class="bold">user</span> namespace, which is what is expected and correct.</p>
+    </div>
+    <div id="para-div">
+      <p>To exit the simple container, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># exit</p>
+    </div>
+    <div id="para-div">
+      <p>Next, we will mimic the above <span class="bold">UTS</span> and <span class="bold">User</span> namespace isolation
+        using the following <span class="bold">go</span> program:</p>
+    </div>    
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.2</div>
+      <div class="src-body-1">
+      <pre>package main
+
+import (
+    "log"
+    "os"
+    "os/exec"
+    "syscall"
+)
+
+func execContainerShell() {
+    log.Printf("Ready to exec container shell ...\n")
+
+    if err := syscall.Sethostname([]byte("leopard")); err != nil {
+        panic(err)
+    }
+
+    const sh = "/bin/sh"
+
+    env := os.Environ()
+    env = append(env, "PS1=-> ")
+
+    if err := syscall.Exec(sh, []string{""}, env); err != nil {
+        panic(err)
+    }
+}
+
+func main() {
+    log.Printf("Starting process %s with args: %v\n", os.Args[0], os.Args)
+
+    const clone = "CLONE"
+
+    if len(os.Args) > 1 && os.Args[1] == clone {
+        execContainerShell()
+        os.Exit(0)
+    }
+
+    log.Printf("Ready to run command ...\n")
+
+    cmd := exec.Command(os.Args[0], []string{clone}...)
+    cmd.Stdin = os.Stdin
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
+    cmd.SysProcAttr = &syscall.SysProcAttr{
+        Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWUSER,
+        UidMappings: []syscall.SysProcIDMap{
+            {ContainerID: 0, HostID: 0, Size: 1},
+        },
+        GidMappings: []syscall.SysProcIDMap{
+            {ContainerID: 0, HostID: 0, Size: 1},
+        },
+    }
+
+    if err := cmd.Run(); err != nil {
+        panic(err)
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>As indicated previously, the <span class="bold">Command</span> function returns an instance of the
+        <span class="bold">Cmd</span> struct.</p>
+      <p>In this example, we specify the additional <span class="hi-yellow">syscall.CLONE_NEWUSER</span> OS attribute
+        to indicate the command be run in a new <span class="bold">User</span> namespace.</p>
+      <p>In addition, we set the user ID map <span class="hi-yellow">UidMappings</span> as an array of
+        <span class="hi-yellow">syscall.SysProcIDMap</span> struct entries, each consisting of the user ID mapping in
+        the container (<span class="hi-blue">ContainerID</span>) to the user ID in the host namespace
+        (<span class="hi-blue">HostID</span>). In this case, we map the <span class="bold">root</span> user ID
+        <span class="bold">0</span> in the container to the <span class="bold">root</span> user ID <span class="bold">
+        0</span> of the host namespace. Similarly, we set the group ID map <span class="hi-yellow">GidMappings</span></p>
+    </div>
+    <div id="para-div">
+      <p>Create and change to the directory <span class="bold">$GOPATH/user</span> by executing the following commands in
+        <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p $GOPATH/user</p>
+      <p>$ cd $GOPATH/user</p>
+    </div>
+    <div id="para-div">
+      <p>Copy the above code into the program file <span class="bold">main.go</span> in the current directory.</p>
+    </div>
+    <div id="para-div">
+      <p>To compile the program file <span class="bold">main.go</span>, execute the following command in <span class="bold">
+        TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ go build main.go</p>
+    </div>
+    <div id="para-div">
+      <p>To run program <span class="bold">main</span>, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo ./main</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>2020/03/07 13:17:02 Starting process ./main with args: [./main]
+2020/03/07 13:17:02 Ready to run command ...
+2020/03/07 13:17:02 Starting process ./main with args: [./main CLONE]
+2020/03/07 13:17:02 Ready to exec container shell ...
+-></pre>
+    </div>
+    <div id="para-div">
+      <p>The command prompt will change to a <span class="bold">-&gt;</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the user ID and group ID in the new namespace, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>-&gt; id</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>uid=0(root) gid=0(root) groups=0(root)</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the namespaces associated with the simple container, execute the following command in <span class="bold">
+        TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>-&gt; ls -l /proc/$$/ns</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>total 0
+lrwxrwxrwx 1 root root 0 Mar 13 21:17 cgroup -> 'cgroup:[4026531835]'
+lrwxrwxrwx 1 root root 0 Mar 13 21:17 ipc -> 'ipc:[4026531839]'
+lrwxrwxrwx 1 root root 0 Mar 13 21:17 mnt -> 'mnt:[4026531840]'
+lrwxrwxrwx 1 root root 0 Mar 13 21:17 net -> 'net:[4026531993]'
+lrwxrwxrwx 1 root root 0 Mar 13 21:17 pid -> 'pid:[4026531836]'
+lrwxrwxrwx 1 root root 0 Mar 13 21:17 pid_for_children -> 'pid:[4026531836]'
+lrwxrwxrwx 1 root root 0 Mar 13 21:17 user -> 'user:[4026532666]'
+lrwxrwxrwx 1 root root 0 Mar 13 21:17 uts -> 'uts:[4026532723]'</pre>
+    </div>
+    <div id="para-div">
+      <p>To display the host name of the simple container, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>-&gt; hostname</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>leopard</pre>
+    </div>
+    <div id="para-div">
+      <p>To exit the simple container, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>-&gt; exit</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">SUCCESS !!!</span> We have demonstrated the combined <span class="bold">UTS</span> and
+        <span class="bold">User</span> namespaces using both the <span class="bold">unshare</span> command and a simple
+        <span class="bold">go</span> program.</p>
+    </div>
+    <div id="step-div">
+      <p>PID Namespace</p>
+    </div>
+    <div id="para-div">
+      <p>Let us now layer the <span class="bold">PID</span> namespace on top of the <span class="bold">User</span> namespace
+        and the <span class="bold">UTS</span> namespace.</p>
+      <p>To launch a simple container whose process IDs as well as the user/group IDs and the host name are isolated from
+        the parent namespace, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo unshare -uUrpf --mount-proc /bin/sh</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="hi-green">-p</span> option enables the <span class="bold">PID</span> namespace.</p>
+      <p>The <span class="hi-green">-f</span> option enables spawning (or forking) of new processes in the new namespace.</p>
+      <p>The <span class="hi-green">--mount-proc</span> option mounts the <span class="hi-yellow">proc</span> filesystem as
+        a private mount at <span class="hi-blue">/proc</span> in the new namespace. This means the <span class="bold">
+        /proc</span> pseudo directory only shows information only about processes within that <span class="bold">PID</span>
+        namespace.</p>
+    </div>
+    <div id="error-div">
+      <h4>ATTENTION</h4>
+      <pre><span class="underbold">Ensure</span> the option <span class="bold">-f</span> is *<span class="underbold">SPECIFIED</span>*. Else will encounter the following error:<br/><br/><span class="bold">/bin/sh: 4: Cannot fork</span></pre>
+    </div>
+    <div id="para-div">
+      <p>The command prompt will change to a <span class="bold">#</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To display all the processes in the new namespace, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># ps -fu</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.17</h4>
+      <pre>USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root         1  0.0  0.0   4628   880 pts/1    S    09:08   0:00 /bin/sh
+root         6  0.0  0.0  37368  3340 pts/1    R+   09:12   0:00 ps -fu</pre>
+    </div>
+    <div id="para-div">
+      <p>To display all the processes in the parent namespace, execute the following command in <span class="bold">TA</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ps -fu</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.18</h4>
+      <pre>USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+polarsparc  8695  0.0  0.0  22840  5424 pts/1    Ss   08:43   0:00 bash
+polarsparc  8681  0.0  0.0  22708  5096 pts/0    Ss   08:43   0:00 bash
+polarsparc  9635  0.0  0.0  37368  3364 pts/0    R+   09:12   0:00  \_ ps -fu</pre>
+    </div>
+    <div id="para-div">
+      <p>Comparing Output.17 to Output.18, we see the isolation between the new namespace and the parent namespace, which is
+        what is expected and correct.</p>
+    </div>
+    <div id="para-div">
+      <p>To exit the simple container, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># exit</p>
+    </div>
+    <div id="para-div">
+      <p>Next, we will mimic the above <span class="bold">UTS</span>, <span class="bold">User</span>, and <span class="bold">
+        PID</span> namespace isolation using the following <span class="bold">go</span> program:</p>
+    </div>    
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.3</div>
+      <div class="src-body-1">
+      <pre>package main
+
+import (
+    "log"
+    "os"
+    "os/exec"
+    "syscall"
+)
+
+func execContainerShell() {
+    log.Printf("Ready to exec container shell ...\n")
+
+    if err := syscall.Sethostname([]byte("leopard")); err != nil {
+        panic(err)
+    }
+    
+    if err := syscall.Mount("proc", "/proc", "proc", 0, ""); err != nil {
+        panic(err)
+    }
+
+    const sh = "/bin/sh"
+
+    env := os.Environ()
+    env = append(env, "PS1=-> ")
+
+    if err := syscall.Exec(sh, []string{""}, env); err != nil {
+        panic(err)
+    }
+}
+
+func main() {
+    log.Printf("Starting process %s with args: %v\n", os.Args[0], os.Args)
+
+    const clone = "CLONE"
+
+    if len(os.Args) > 1 && os.Args[1] == clone {
+        execContainerShell()
+        os.Exit(0)
+    }
+
+    log.Printf("Ready to run command ...\n")
+
+    cmd := exec.Command(os.Args[0], []string{clone}...)
+    cmd.Stdin = os.Stdin
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
+    cmd.SysProcAttr = &syscall.SysProcAttr{
+        Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWUSER | syscall.CLONE_NEWNS | syscall.CLONE_NEWPID,
+        UidMappings: []syscall.SysProcIDMap{
+            {ContainerID: 0, HostID: 0, Size: 1},
+        },
+        GidMappings: []syscall.SysProcIDMap{
+            {ContainerID: 0, HostID: 0, Size: 1},
+        },
+    }
+
+    if err := cmd.Run(); err != nil {
+        panic(err)
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>As indicated previously, the <span class="bold">Command</span> function returns an instance of the
+        <span class="bold">Cmd</span> struct.</p>
+      <p>In this example, we specify the additional <span class="hi-yellow">syscall.CLONE_NEWNS</span> and
+        <span class="hi-yellow">syscall.CLONE_NEWPID</span> OS attributes to indicate the command be run in a new
+        <span class="bold">PID</span> namespace.</p>
+    </div>
+    <div id="para-div">
+      <p>Create and change to the directory <span class="bold">$GOPATH/pid</span> by executing the following commands in
+        <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p $GOPATH/pid</p>
+      <p>$ cd $GOPATH/pid</p>
+    </div>
+    <div id="para-div">
+      <p>Copy the above code into the program file <span class="bold">main.go</span> in the current directory.</p>
+    </div>
+    <div id="para-div">
+      <p>To compile the program file <span class="bold">main.go</span>, execute the following command in <span class="bold">
+        TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ go build main.go</p>
+    </div>
+    <div id="para-div">
+      <p>To run program <span class="bold">main</span>, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo ./main</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.19</h4>
+      <pre>2020/03/07 13:38:02 Starting process ./main with args: [./main]
+2020/03/07 13:38:02 Ready to run command ...
+2020/03/07 13:38:02 Starting process ./main with args: [./main CLONE]
+2020/03/07 13:38:02 Ready to exec container shell ...
+-></pre>
+    </div>
+    <div id="para-div">
+      <p>The command prompt will change to a <span class="bold">-&gt;</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the host name of the simple container, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>-&gt; hostname</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.20</h4>
+      <pre>leopard</pre>
+    </div>
+    <div id="para-div">
+      <p>To display the user ID and group ID in the new namespace, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>-&gt; id</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.21</h4>
+      <pre>uid=0(root) gid=0(root) groups=0(root)</pre>
+    </div>
+    <div id="para-div">
+      <p>To display all the processes in the simple container, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>-&gt; ps -fu</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.22</h4>
+      <pre>USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root         1  0.0  0.0   4628   776 pts/1    S    09:41   0:00 
+root         6  0.0  0.0  37368  3400 pts/1    R+   09:41   0:00 ps -fu</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the namespaces associated with the simple container, execute the following command in <span class="bold">
+        TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>-&gt; ls -l /proc/$$/ns</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.23</h4>
+      <pre>total 0
+lrwxrwxrwx 1 root root 0 Mar 14 09:44 cgroup -> 'cgroup:[4026531835]'
+lrwxrwxrwx 1 root root 0 Mar 14 09:44 ipc -> 'ipc:[4026531839]'
+lrwxrwxrwx 1 root root 0 Mar 14 09:44 mnt -> 'mnt:[4026532366]'
+lrwxrwxrwx 1 root root 0 Mar 14 09:44 net -> 'net:[4026531993]'
+lrwxrwxrwx 1 root root 0 Mar 14 09:44 pid -> 'pid:[4026532368]'
+lrwxrwxrwx 1 root root 0 Mar 14 09:44 pid_for_children -> 'pid:[4026532368]'
+lrwxrwxrwx 1 root root 0 Mar 14 09:44 user -> 'user:[4026532365]'
+lrwxrwxrwx 1 root root 0 Mar 14 09:44 uts -> 'uts:[4026532367]'</pre>
+    </div>
+    <div id="para-div">
+      <p>To exit the simple container, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>-&gt; exit</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">SUCCESS !!!</span> We have demonstrated the combined <span class="bold">UTS</span>,
+        <span class="bold">User</span>, and <span class="bold">PID</span> namespaces using both the
+        <span class="bold">unshare</span> command and a simple <span class="bold">go</span> program.</p>
+    </div>
+    <div id="step-div">
+      <p>Mount Namespace</p>
+    </div>
+    <div id="para-div">
+      <p>We will now setup the minimal Ubuntu Base image for use in the new namespace in the <span class="bold">/tmp</span>
+        directory.</p>
+    </div>
+    <div id="para-div">
+      <p>To create and copy the base image to a directory in <span class="bold">/tmp</span>, execute the following commands
+        in <span class="bold">TA</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p /tmp/rootfs/.old_root</p>
+      <p>$ tar -xvf $HOME/Downloads/ubuntu-base-18.04.4-base-amd64.tar.gz --directory /tmp/rootfs</p>
+      <p>cd /tmp</p>
+    </div>
+    <div id="para-div">
+      <p>Now let us now layer the <span class="bold">Mount</span> namespace on top of the <span class="bold">User</span>,
+        the <span class="bold">UTS</span>, and the <span class="bold">PID</span> namespaces.</p>
+    </div>
+    <div id="para-div">
+      <p>To launch a simple container whose mount points as well as the process IDs, the user/group IDs, and the host name
+        are isolated from the parent namespace, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo unshare -uUrpfm --mount-proc /bin/sh</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="hi-green">-m</span> option enables the <span class="bold">Mount</span> namespace.</p>
+    </div>
+    <div id="para-div">
+      <p>The command prompt will change to a <span class="bold">#</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the mount points in the parent namespace, execute the following command in <span class="bold">TA</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cat /proc/mounts | sort</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.24</h4>
+      <pre>cgroup /sys/fs/cgroup/blkio cgroup rw,nosuid,nodev,noexec,relatime,blkio 0 0
+cgroup /sys/fs/cgroup/cpu,cpuacct cgroup rw,nosuid,nodev,noexec,relatime,cpu,cpuacct 0 0
+cgroup /sys/fs/cgroup/cpuset cgroup rw,nosuid,nodev,noexec,relatime,cpuset 0 0
+cgroup /sys/fs/cgroup/devices cgroup rw,nosuid,nodev,noexec,relatime,devices 0 0
+cgroup /sys/fs/cgroup/freezer cgroup rw,nosuid,nodev,noexec,relatime,freezer 0 0
+cgroup /sys/fs/cgroup/hugetlb cgroup rw,nosuid,nodev,noexec,relatime,hugetlb 0 0
+cgroup /sys/fs/cgroup/memory cgroup rw,nosuid,nodev,noexec,relatime,memory 0 0
+cgroup /sys/fs/cgroup/net_cls,net_prio cgroup rw,nosuid,nodev,noexec,relatime,net_cls,net_prio 0 0
+cgroup /sys/fs/cgroup/perf_event cgroup rw,nosuid,nodev,noexec,relatime,perf_event 0 0
+cgroup /sys/fs/cgroup/pids cgroup rw,nosuid,nodev,noexec,relatime,pids 0 0
+cgroup /sys/fs/cgroup/rdma cgroup rw,nosuid,nodev,noexec,relatime,rdma 0 0
+cgroup /sys/fs/cgroup/systemd cgroup rw,nosuid,nodev,noexec,relatime,xattr,name=systemd 0 0
+cgroup /sys/fs/cgroup/unified cgroup2 rw,nosuid,nodev,noexec,relatime,nsdelegate 0 0
+configfs /sys/kernel/config configfs rw,relatime 0 0
+debugfs /sys/kernel/debug debugfs rw,relatime 0 0
+devpts /dev/pts devpts rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000 0 0
+/dev/sda1 / ext4 rw,relatime,errors=remount-ro,data=ordered 0 0
+/dev/sdb1 /home ext4 rw,relatime,data=ordered 0 0
+/dev/sdc1 /home/data ext4 rw,relatime,data=ordered 0 0
+fusectl /sys/fs/fuse/connections fusectl rw,relatime 0 0
+gvfsd-fuse /run/user/1000/gvfs fuse.gvfsd-fuse rw,nosuid,nodev,relatime,user_id=1000,group_id=1000 0 0
+hugetlbfs /dev/hugepages hugetlbfs rw,relatime,pagesize=2M 0 0
+mqueue /dev/mqueue mqueue rw,relatime 0 0
+proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
+pstore /sys/fs/pstore pstore rw,nosuid,nodev,noexec,relatime 0 0
+securityfs /sys/kernel/security securityfs rw,nosuid,nodev,noexec,relatime 0 0
+sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
+systemd-1 /proc/sys/fs/binfmt_misc autofs rw,relatime,fd=25,pgrp=1,timeout=0,minproto=5,maxproto=5,direct,pipe_ino=28210 0 0
+tmpfs /dev/shm tmpfs rw,nosuid,nodev 0 0
+tmpfs /run/lock tmpfs rw,nosuid,nodev,noexec,relatime,size=5120k 0 0
+tmpfs /run tmpfs rw,nosuid,noexec,relatime,size=3293620k,mode=755 0 0
+tmpfs /run/user/1000 tmpfs rw,nosuid,nodev,relatime,size=3293616k,mode=700,uid=1000,gid=1000 0 0
+tmpfs /sys/fs/cgroup tmpfs ro,nosuid,nodev,noexec,mode=755 0 0
+udev /dev devtmpfs rw,nosuid,relatime,size=16402556k,nr_inodes=4100639,mode=755 0 0</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, let us list all the mount points in the new namespace by executing the following command in <span class="bold">
+        TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># cat /proc/mounts | sort</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.25</h4>
+      <pre>cgroup /sys/fs/cgroup/blkio cgroup rw,nosuid,nodev,noexec,relatime,blkio 0 0
+cgroup /sys/fs/cgroup/cpu,cpuacct cgroup rw,nosuid,nodev,noexec,relatime,cpu,cpuacct 0 0
+cgroup /sys/fs/cgroup/cpuset cgroup rw,nosuid,nodev,noexec,relatime,cpuset 0 0
+cgroup /sys/fs/cgroup/devices cgroup rw,nosuid,nodev,noexec,relatime,devices 0 0
+cgroup /sys/fs/cgroup/freezer cgroup rw,nosuid,nodev,noexec,relatime,freezer 0 0
+cgroup /sys/fs/cgroup/hugetlb cgroup rw,nosuid,nodev,noexec,relatime,hugetlb 0 0
+cgroup /sys/fs/cgroup/memory cgroup rw,nosuid,nodev,noexec,relatime,memory 0 0
+cgroup /sys/fs/cgroup/net_cls,net_prio cgroup rw,nosuid,nodev,noexec,relatime,net_cls,net_prio 0 0
+cgroup /sys/fs/cgroup/perf_event cgroup rw,nosuid,nodev,noexec,relatime,perf_event 0 0
+cgroup /sys/fs/cgroup/pids cgroup rw,nosuid,nodev,noexec,relatime,pids 0 0
+cgroup /sys/fs/cgroup/rdma cgroup rw,nosuid,nodev,noexec,relatime,rdma 0 0
+cgroup /sys/fs/cgroup/systemd cgroup rw,nosuid,nodev,noexec,relatime,xattr,name=systemd 0 0
+cgroup /sys/fs/cgroup/unified cgroup2 rw,nosuid,nodev,noexec,relatime,nsdelegate 0 0
+configfs /sys/kernel/config configfs rw,relatime 0 0
+debugfs /sys/kernel/debug debugfs rw,relatime 0 0
+devpts /dev/pts devpts rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000 0 0
+/dev/sda1 / ext4 rw,relatime,errors=remount-ro,data=ordered 0 0
+/dev/sdb1 /home ext4 rw,relatime,data=ordered 0 0
+/dev/sdc1 /home/data ext4 rw,relatime,data=ordered 0 0
+fusectl /sys/fs/fuse/connections fusectl rw,relatime 0 0
+gvfsd-fuse /run/user/1000/gvfs fuse.gvfsd-fuse rw,nosuid,nodev,relatime,user_id=1000,group_id=1000 0 0
+hugetlbfs /dev/hugepages hugetlbfs rw,relatime,pagesize=2M 0 0
+mqueue /dev/mqueue mqueue rw,relatime 0 0
+proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
+proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0
+pstore /sys/fs/pstore pstore rw,nosuid,nodev,noexec,relatime 0 0
+securityfs /sys/kernel/security securityfs rw,nosuid,nodev,noexec,relatime 0 0
+sysfs /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
+systemd-1 /proc/sys/fs/binfmt_misc autofs rw,relatime,fd=25,pgrp=0,timeout=0,minproto=5,maxproto=5,direct,pipe_ino=28210 0 0
+tmpfs /dev/shm tmpfs rw,nosuid,nodev 0 0
+tmpfs /run/lock tmpfs rw,nosuid,nodev,noexec,relatime,size=5120k 0 0
+tmpfs /run tmpfs rw,nosuid,noexec,relatime,size=3293620k,mode=755 0 0
+tmpfs /run/user/1000 tmpfs rw,nosuid,nodev,relatime,size=3293616k,mode=700,uid=1000,gid=1000 0 0
+tmpfs /sys/fs/cgroup tmpfs ro,nosuid,nodev,noexec,mode=755 0 0
+udev /dev devtmpfs rw,nosuid,relatime,size=16402556k,nr_inodes=4100639,mode=755 0 0</pre>
+    </div>
+    <div id="para-div">
+      <p>Comparing Output.25 and Output.24, we see the one difference for <span class="bold">proc</span>. When a new
+        <span class="bold">Mount</span> namespace is created, the mount points of the new namespace is a copy of the
+        mount points in the parent's namespace.</p>
+    </div>
+    <div id="para-div">
+      <p>We will now demonstrate any changes to the new namespace will not affect the parent namespace.</p>
+    </div>
+    <div id="para-div">
+      <p>To make the mount point <span class="bold">/</span> (and its children recursively) to be private to the new
+        namespace, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># mount --make-rprivate /</p>
+    </div>
+    <div id="para-div">
+      <p>To recursive bind the mount point <span class="bold">rootfs/</span> to <span class="bold">rootfs/</span> in the new
+        namespace, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># mount --rbind rootfs/ rootfs/</p>
+    </div>
+    <div id="para-div">
+      <p>We need the <span class="bold">proc</span> filesystem in the new namespace for making changes to mounts. To mount
+        <span class="bold">/proc</span> as the proc filesystem <span class="hi-yellow">proc</span> in the new namespace,
+        execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># mount -t proc proc rootfs/proc</p>
+    </div>
+    <div id="para-div">
+      <p>Next, we need to make <span class="bold">rootfs/</span> the root filesystem in the new namespace and move the parent
+        root filesystem to <span class="bold">rootfs/.old_root</span> using the <span class="hi-yellow">pivot_root</span>
+        command. To do that, execute the following commands in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># pivot_root rootfs/ rootfs/.old_root</p>
+      <p># cd /</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the file(s) under <span class="bold">/</span> in the parent namespace, execute the following command in
+        <span class="bold">TA</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ls -l /</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.26</h4>
+      <pre>total 96
+drwxr-xr-x   2 root root  4096 Mar  1 10:58 bin
+drwxr-xr-x   3 root root  4096 Mar 16 21:15 boot
+drwxr-xr-x   2 root root  4096 Sep 13  2019 cdrom
+drwxr-xr-x  22 root root  4560 Mar 21 06:59 dev
+drwxr-xr-x 163 root root 12288 Mar 20 10:01 etc
+drwxr-xr-x   5 root root  4096 Sep 13  2019 home
+lrwxrwxrwx   1 root root    33 Mar 16 21:15 initrd.img -> boot/initrd.img-4.15.0-91-generic
+lrwxrwxrwx   1 root root    33 Feb 17 14:08 initrd.img.old -> boot/initrd.img-4.15.0-88-generic
+drwxr-xr-x  25 root root  4096 Mar 16 13:37 lib
+drwxr-xr-x   2 root root  4096 Jul 29  2019 lib64
+drwx------   2 root root 16384 Sep 13  2019 lost+found
+drwxr-xr-x   3 root root  4096 Nov 10 13:00 media
+drwxr-xr-x   2 root root  4096 Jul 29  2019 mnt
+drwxr-xr-x   7 root root  4096 Mar 13 08:04 opt
+dr-xr-xr-x 328 root root     0 Mar 21 06:59 proc
+drwx------   9 root root  4096 Feb 23 13:25 root
+drwxr-xr-x  36 root root  1140 Mar 21 07:04 run
+drwxr-xr-x   2 root root 12288 Mar 16 13:37 sbin
+drwxr-xr-x   2 root root  4096 Jul 29  2019 srv
+dr-xr-xr-x  13 root root     0 Mar 21 06:59 sys
+drwxrwxrwt  20 root root  4096 Mar 21 11:10 tmp
+drwxr-xr-x  11 root root  4096 Jul 29  2019 usr
+drwxr-xr-x  11 root root  4096 Jul 29  2019 var
+lrwxrwxrwx   1 root root    30 Mar 16 21:15 vmlinuz -> boot/vmlinuz-4.15.0-91-generic
+lrwxrwxrwx   1 root root    30 Feb 17 14:08 vmlinuz.old -> boot/vmlinuz-4.15.0-88-generic</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the file(s) under <span class="bold">/</span> in the new namespace, execute the following command in
+        <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># ls -l /</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.27</h4>
+      <pre>total 72
+drwxr-xr-x   2 nobody nogroup 4096 Feb  3 20:24 bin
+drwxr-xr-x   2 nobody nogroup 4096 Apr 24  2018 boot
+drwxr-xr-x   2 nobody nogroup 4096 Feb  3 20:24 dev
+drwxr-xr-x  29 nobody nogroup 4096 Feb  3 20:24 etc
+drwxr-xr-x   2 nobody nogroup 4096 Apr 24  2018 home
+drwxr-xr-x   8 nobody nogroup 4096 May 23  2017 lib
+drwxr-xr-x   2 nobody nogroup 4096 Feb  3 20:23 lib64
+drwxr-xr-x   2 nobody nogroup 4096 Feb  3 20:23 media
+drwxr-xr-x   2 nobody nogroup 4096 Feb  3 20:23 mnt
+drwxr-xr-x   2 nobody nogroup 4096 Feb  3 20:23 opt
+dr-xr-xr-x 328 root   root       0 Mar 21 14:10 proc
+drwx------   2 nobody nogroup 4096 Feb  3 20:24 root
+drwxr-xr-x   4 nobody nogroup 4096 Feb  3 20:23 run
+drwxr-xr-x   2 nobody nogroup 4096 Feb  3 20:24 sbin
+drwxr-xr-x   2 nobody nogroup 4096 Feb  3 20:23 srv
+drwxr-xr-x   2 nobody nogroup 4096 Apr 24  2018 sys
+drwxrwxr-x   2 nobody nogroup 4096 Feb  3 20:24 tmp
+drwxr-xr-x  10 nobody nogroup 4096 Feb  3 20:23 usr
+drwxr-xr-x  11 nobody nogroup 4096 Feb  3 20:24 var</pre>
+    </div>
+    <div id="para-div">
+      <p>Comparing Output.26 and Output.27, we see the root filesystems are totally different.</p>
+    </div>
+    <div id="para-div">
+      <p>To mount <span class="bold">/tmp</span> as the temporary filesystem <span class="hi-yellow">tmpfs</span> in the
+        new namespace, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># mount -t tmpfs tmpfs /tmp</p>
+    </div>
+    <div id="para-div">
+      <p>To create a text file <span class="bold">/tmp/leopard.txt</span> in the directory <span class="bold">/tmp</span>
+        of the new namespace, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># echo 'leopard' > /tmp/leopard.txt</p>
+    </div>
+    <div id="para-div">
+      <p>To list the properties of the file <span class="bold">/tmp/leopard.txt</span> in the new namespace, execute
+        the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># ls -l /tmp/leopard.txt</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.28</h4>
+      <pre>-rw-r--r-- 1 root root 7 Mar 14 22:05 /tmp/leopard.txt</pre>
+    </div>
+    <div id="para-div">
+      <p>To list the properties of the file <span class="bold">/tmp/leopard.txt</span> in the parent namespace, execute
+        the following command in <span class="bold">TA</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ls -l /tmp/leopard.txt</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.29</h4>
+      <pre>ls: cannot access '/tmp/leopard.txt': No such file or directory</pre>
+    </div>
+    <div id="para-div">
+      <p>Finally, to completely remove the parent root filesystem <span class="bold">rootfs/.old_root</span> from the new
+        namespace, execute the following commands in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># mount --make-rprivate /.old_root</p>
+      <p># umount -l /.old_root</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the mount points in the new namespace by executing the following command in <span class="bold">TB</span>
+        :</p>
+    </div>
+    <div id="cmd-div">
+      <p># cat /proc/mounts | sort</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.30</h4>
+      <pre>/dev/sda1 / ext4 rw,relatime,errors=remount-ro,data=ordered 0 0
+proc /proc proc rw,relatime 0 0
+tmpfs /tmp tmpfs rw,relatime 0 0</pre>
+    </div>
+    <div id="para-div">
+      <p>To exit the new namespace, execute the following command in <span class="bold">TB</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p># exit</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">SUCCESS !!!</span> We have demonstrated the combined <span class="bold">UTS</span>,
+        <span class="bold">User</span>, <span class="bold">PID</span>, and <span class="bold">Mount</span> namespaces
+        using the <span class="bold">unshare</span> command.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="http://man7.org/linux/man-pages/man7/namespaces.7.html" target="_blank"><span class="bold">Overview of Linux Namespaces</span></a></p>
+      <p><a href="http://man7.org/linux/man-pages/man7/user_namespaces.7.html" target="_blank"><span class="bold">Overview of Linux User Namespace</span></a></p>
+      <p><a href="http://man7.org/linux/man-pages/man7/pid_namespaces.7.html" target="_blank"><span class="bold">Overview of Linux PID Namespace</span></a></p>
+      <p><a href="http://man7.org/linux/man-pages/man7/mount_namespaces.7.html" target="_blank"><span class="bold">Overview of Linux Mount Namespace</span></a></p>
+      <p><a href="https://lwn.net/Articles/531114/" target="_blank"><span class="bold">Namespaces in Operation</span></a></p>
+      <p><a href="http://man7.org/linux/man-pages/man1/unshare.1.html" target="_blank"><span class="bold">unshare Linux Command</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

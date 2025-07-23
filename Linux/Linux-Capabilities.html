@@ -1,0 +1,946 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+  <meta name="author" content="Bhaskar.S">
+  <meta name="description" content="Linux Capabilities Unraveled">
+  <meta name="subject" content="Linux Capabilities Unraveled">
+  <meta name="keywords" content="linux, security">
+  <meta name="robots" content="index, follow">
+  <meta name="googlebot" content="index, follow">
+  <title>Linux Capabilities Unraveled</title>
+  <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+</head>
+<body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="http://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Linux Capabilities Unraveled</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">06/26/2021</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Introduction</p>
+    </div>
+    <div id="para-div">
+      <p>Ever wondered why the Linux command <span class="hi-yellow">passwd</span> allowed a regular non-privileged user (not the
+        privileged user <span class="hi-yellow">root</span>) to change their password (and update system owned file(s)) ???</p>
+    </div>
+    <div id="para-div">
+      <p>Let us list the file details by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ls -l /usr/bin/passwd</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration shows the typical output:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/linux-cap-1.png" class="img-cls" alt="passwd command" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice the pointers (red arrows) highlighting the important aspects in the illustration above. It is because of the special
+        Linux <span class="hi-grey">set uid</span> bit (<span class="hi-red">s</span>), any regular user executing the command will
+        run in the context of the owner of the command (<span class="hi-red">root</span>) and hence able to change their password
+        (and update system owned file(s)).</p>
+    </div>
+    <div id="para-div">
+      <p>What about the Linux command <span class="hi-yellow">ping</span> that sends out <span class="bold">ICMP</span> packets to
+        the desired destination using a raw <span class="hi-yellow">socket</span> (which needs system privileges) ???</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, let us list the file details by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ls -l /usr/bin/ping</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration shows the typical output:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/linux-cap-2.png" class="img-cls" alt="ping command" />
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">STRANGE</span> !!! As is evident from the illustration above, there is *<span class="underbold">NO</span>*
+        special Linux <span class="hi-grey">set uid</span> bit set, even though the command file is owned by the privileged user
+        <span class="hi-red">root</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>One can look at the source code for <a href="https://github.com/iputils/iputils/blob/master/ping/ping.c" target="_blank">
+        <span class="bold">ping</span></a> and infer that it does use a raw socket. Let us try to implement a simple C code to open
+        a raw socket to determine if it is permitted.</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">simple_test.c</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   simple_test
+ * Author: Bhaskar S
+ * Date:   06/26/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+#include "stdio.h"
+#include "string.h"
+#include "errno.h"
+#include "stdlib.h"
+#include "sys/socket.h"
+#include "netinet/ip.h"
+
+#define STOP_ALL 2
+
+int main()
+{
+    int sd = socket(PF_INET, SOCK_RAW, IPPROTO_TCP);
+    if (sd &lt; 0) {
+        printf("%s: ERROR - %s\n", __FILE__, strerror(errno));
+        exit(1);
+    }
+    shutdown(sd, STOP_ALL);
+
+    printf("%s: SUCCESS !!!\n", __FILE__);
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To compile the above C code, open a terminal window and execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ gcc -o simple_test simple_test.c</p>
+    </div>
+    <div id="para-div">
+      <p>To run the compiled binary, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./simple_test</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>simple_test.c: ERROR - Operation not permitted</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">WHAT</span> ??? This seems to prove the point that one needs system privileges to open raw socket
+        connections.</p>
+    </div>
+    <div id="para-div">
+      <p>Let us change the ownership of the compiled binary to root by executing the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo chown root:root simple_test</p>
+    </div>
+    <div id="para-div">
+      <p>Re-running the compiled binary (with the root ownership) will still produce the same result as shown in Output.1 above.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, let us enable the suid bit of the compiled binary by executing the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo chmod u+s simple_test</p>
+    </div>
+    <div id="para-div">
+      <p>Re-running the compiled binary (with the suid bit enabled and with the root ownership), the following would be the typical
+        output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>simple_test.c: SUCCESS !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>How come the <span class="bold">ping</span> command not have the suid bit enabled and still is able to open a raw socket
+        to send the ICMP packets ???</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">MAGIC</span> !!! This is where the Linux <span class="hi-yellow">Capabilities</span> come into play !!!</p>
+    </div>
+    <div id="para-div">
+      <p>In the traditional unix world, the typical way to grant a command (executable file) the superuser (root) privileges is to
+        enable the suid bit and have it owned by root. This gave the command the full unrestricted access on the system. Any security
+        vulnerabilities in the command (executable file) would then allow a bad actor (hacker) to compromise the system(s). In the
+        current times, this all or nothing approach is a challenge, as it opens the attack vector on the systems.</p>
+    </div>
+    <div id="para-div">
+      <p>Linux capabilities breaks the all-or-nothing model into distinct <span class="hi-grey">capabilities</span>, which allows a
+        command (executable running as a process) to perform only those actions it is permitted to, irrespective of the user. For
+        example, to open a raw socket connection, one needs to have the <span class="hi-green">cap_net_raw</span> capability enabled
+        in the capability set.</p>
+    </div>
+    <div id="para-div">
+      <p>To determine the capability set of the <span class="bold">ping</span> command, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ getcap /usr/bin/ping</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>/usr/bin/ping = cap_net_raw+ep</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, let us undo the suid bit and root ownership from our compiled binary and instead enable the cap_net_raw capability by
+        executing the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo setcap cap_net_raw+ep simple_test</p>
+    </div>
+    <div id="para-div">
+      <p>Re-running the compiled binary (<span class="underbold">WITHOUT</span> the suid bit and root ownership) will produce the
+        same result as shown in Output.2 above.</p>
+    </div>
+    <div id="para-div">
+      <p>To determine the capability set of our compiled binary, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ getcap simple_test</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>simple_test = cap_net_raw+ep</pre>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Capabilities in Depth</p>
+    </div>
+    <div id="para-div">
+      <p>There is a list of capabilities defined in Linux, but we will only describe a handful, which are as follows:</p>
+    </div>
+    <br/>
+    <table id="col2-table">
+      <thead>
+        <tr>
+          <th>Linux Capability</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">CAP_CHOWN</span></td>
+          <td class="col2-c2-odd">Change a file's user ID (owner) or group ID</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">CAP_NET_BIND_SERVICE</span></td>
+          <td class="col2-c2-even">Bind a socket to a network port that is less than 1024</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">CAP_NET_RAW</span></td>
+          <td class="col2-c2-odd">Allow the use of raw and packet sockets</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">CAP_SYS_NICE</span></td>
+          <td class="col2-c2-even">Lower a process nice value (increase priority) of any process</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">CAP_SYS_TIME</span></td>
+          <td class="col2-c2-odd">Modify the system clock</td>
+        </tr>
+      </tbody>
+    </table>
+    <br/>
+    <div id="para-div">
+      <p>In the following paragraph(s), we will use the term <span class="underbold">thread</span> to be synonymous with either a
+        <span class="bold">process</span> or a <span class="bold">thread</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>A <span class="hi-yellow">capability set</span> is a 64-bit number where each bit position represents a certain capability.</p>
+      <p>Each thread has 5 capability sets associated with it, which are as follows:</p>
+    </div>
+    <br/>
+    <table id="col2-table">
+      <thead>
+        <tr>
+          <th>Thread Capability Set</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">Bounding Set</span></td>
+          <td class="col2-c2-odd">Referred to as <span class="hi-yellow">CapBnd</span>, it is the set of all the capabilities that
+            a thread may ever acquire and is limited to</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">Inheritable Set</span></td>
+          <td class="col2-c2-even">Referred to as <span class="hi-yellow">CapInh</span>, it is the set of all the capabilities that
+            a child thread may inherit from its parent</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">Permitted Set</span></td>
+          <td class="col2-c2-odd">Referred to as <span class="hi-yellow">CapPrm</span>, it is the set of all the capabilities that
+            a thread can use</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">Effective Set</span></td>
+          <td class="col2-c2-even">Referred to as <span class="hi-yellow">CapEff</span>, it is the the set of all the capabilities
+            that is in effect for a thread, which is used by the kernel to check against</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">Ambient Set</span></td>
+          <td class="col2-c2-odd">Referred to as <span class="hi-yellow">CapAmb</span>, it is the the set of all the capabilities
+            that apply to the non-suid executables. One *<span class="underbold">VERY</span>* important requirement is that no
+            capability can ever be in this set if it is not *<span class="underbold">BOTH</span>* in the permitted and the inheritable
+            sets</td>
+        </tr>
+      </tbody>
+    </table>
+    <br/>
+    <div id="para-div">
+      <p>Let us implement a simple C code that basically tries to open a raw socket and then displays a message and goes to sleep
+        in a loop.</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">simple_wait_loop.c</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   simple_wait_loop
+ * Author: Bhaskar S
+ * Date:   06/26/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+#include "stdio.h"
+#include "unistd.h"
+#include "string.h"
+#include "errno.h"
+#include "sys/socket.h"
+#include "netinet/ip.h"
+
+#define MAX_LOOP_COUNT 1000
+#define MAX_SLEEP_SECS 10
+#define STOP_ALL 2
+
+int main()
+{
+    printf("%s: Ready to open a raw socket !!!\n", __FILE__);
+
+    int sd = socket(PF_INET, SOCK_RAW, IPPROTO_TCP);
+    if (sd &lt; 0) {
+        printf("%s: ERROR - %s\n", __FILE__, strerror(errno));
+    }
+    else {
+        shutdown(sd, STOP_ALL);
+
+        printf("%s: SUCCESS !!!\n", __FILE__);
+    }
+
+    printf("%s: Ready to perform wait-loop !!!\n", __FILE__);
+
+    for (int i = 0; i &lt; MAX_LOOP_COUNT; i++) {
+        printf("%s: [%03d] Just woke up to say Hello !!!\n", __FILE__, i+1);
+        sleep(MAX_SLEEP_SECS);
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To compile the above C code, open a terminal window and execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ gcc -o simple_wait_loop simple_wait_loop.c</p>
+    </div>
+    <div id="para-div">
+      <p>To run the compiled binary, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./simple_wait_loop</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>simple_wait_loop.c: Ready to open a raw socket !!!
+simple_wait_loop.c: ERROR - Operation not permitted
+simple_wait_loop.c: Ready to perform wait-loop !!!
+simple_wait_loop.c: [001] Just woke up to say Hello !!!
+simple_wait_loop.c: [002] Just woke up to say Hello !!!
+...
+...</pre>
+    </div>
+    <div id="para-div">
+      <p>How do we determine the 5 capability sets associated with this process ???</p>
+    </div>
+    <div id="para-div">
+      <p>We first need to determine the process ID (pid) of the above process. To determine that, open a terminal window and execute
+        the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ps -fu$USER | grep simple | grep -v grep</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>polarsparc    8908    8549  0 16:50 pts/0    00:00:00 ./simple_wait_loop</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.6 above, we can infer the pid as 8908.</p>
+    </div>
+    <div id="para-div">
+      <p>Next, to determine the capability sets of the process with pid 8908, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cat /proc/8908/status | grep Cap</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>CapInh: 0000000000000000
+CapPrm: 0000000000000000
+CapEff: 0000000000000000
+CapBnd: 0000003fffffffff
+CapAmb: 0000000000000000</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.7 above, it is clear that all the capability sets are empty except for the bounding set (CapBnd). The results
+        are correct as our executable has no capabilities enabled. The bounding set is assigned by the kernel to a default value. Now,
+        the question that may arise is how do we interpret the hexadecimal capability value in the bounding set ???</p>
+    </div>
+    <div id="para-div">
+      <p>To decode the hexadecimal capability value, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ capsh --decode=0000003fffffffff</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>0x0000003fffffffff=cap_chown,cap_dac_override,cap_dac_read_search,cap_fowner,cap_fsetid,cap_kill,cap_setgid,cap_setuid,cap_setpcap,cap_linux_immutable,cap_net_bind_service,cap_net_broadcast,cap_net_admin,cap_net_raw,cap_ipc_lock,cap_ipc_owner,cap_sys_module,cap_sys_rawio,cap_sys_chroot,cap_sys_ptrace,cap_sys_pacct,cap_sys_admin,cap_sys_boot,cap_sys_nice,cap_sys_resource,cap_sys_time,cap_sys_tty_config,cap_mknod,cap_lease,cap_audit_write,cap_audit_control,cap_setfcap,cap_mac_override,cap_mac_admin,cap_syslog,cap_wake_alarm,cap_block_suspend,cap_audit_read</pre>
+    </div>
+    <div id="para-div">
+      <p>Just to be clear - it is the terminal shell (parent) that is fork'ing and exec'ing our simple_wait_loop (child) process.</p>
+    </div>
+    <div id="para-div">
+      <p>Now that we know there are 5 capability sets associated with any thread and looking from the context of a thread (without
+        considering the file capability sets which we will cover next), the following illustration shows how the thread capability sets
+        propagate from the parent thread to the child thread after the clone (fork) and exec:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/linux-cap-3.png" class="img-cls" alt="Parent-Child Capabilities" />
+      <div class="img-cap">Figure.3</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Just like a thread can have capability sets, an executable can have capability sets as well. Each file can have 3 capability
+        sets associated with it, which are as follows:</p>
+    </div>
+    <br/>
+    <table id="col2-table">
+      <thead>
+        <tr>
+          <th>File Capability Set</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">Permitted Set</span></td>
+          <td class="col2-c2-odd">these capabilities are automatically added to the permitted set (CapPrm) of a thread. This is
+            the <span class="hi-blue">p</span> flag in the <span class="bold">setcap</span> command</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">Inheritable Set</span></td>
+          <td class="col2-c2-even">these capabilities are AND'ed with the inheritable set (CapInh) of a thread and added to the
+            permitted set (CapPrm) of a thread. This is the <span class="hi-blue">i</span> flag in the <span class="bold">setcap
+            </span> command</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">Effective Set</span></td>
+          <td class="col2-c2-odd">it is really *<span class="underbold">NOT</span>* a set, but just a single bit (flag), which
+            if enabled (set), will make the effective set (CapEff) of a thread equal to the permitted set (CapPrm) of a thread
+            after exec. If this flag is *<span class="underbold">NOT</span>* set (disabled), it will EMPTY the effective set (CapEff)
+            of a thread. This is the <span class="hi-blue">e</span> flag in the <span class="bold">setcap</span> command</td>
+        </tr>
+      </tbody>
+    </table>
+    <br/>
+    <div id="para-div">
+      <p>Now that we understand both the thread and file capability sets, the following illustration shows how the capability sets
+        propagate from the parent thread to the child thread after the clone (fork) and exec (taking into account the file capability
+        sets as well):</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/linux-cap-4.png" class="img-cls" alt="Capabilities on exec" />
+      <div class="img-cap">Figure.4</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now, we are in a much better situation to understand the command <span class="bold">setcap cap_net_raw+ep</span> we used
+        on the simple_test executable above. This command enabled the effective set (flag) on the executable file (option 'e') and
+        added the cap_net_raw capability to the permitted set of the executable file (options '+'' and 'p').</p>
+    </div>
+    <div id="para-div">
+      <p>We now know that non-privileged user thread(s) need the appropriate Linux capabilities to perform the desired action. Rather
+        than grant every user developed utility the Linux capabilities, it would be more prudent to have a single utility with the
+        desired Linux capabilities and have it exec the user developed utility to propagate the Linux capabilities.</p>
+    </div>
+    <div id="para-div">
+      <p>Let us implement a simple C code that will be granted a small set of Linux capabilities and will exec a child process. The
+        child executable file will <span class="underbold">NOT</span> have any capabilities assigned on itself.</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">simple_exec.c</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   simple_exec
+ * Author: Bhaskar S
+ * Date:   06/26/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+#include "stdio.h"
+#include "errno.h"
+#include "string.h"
+#include "stdlib.h"
+#include "unistd.h"
+
+#define CHILD "./simple_wait_loop"
+
+int main()
+{
+    char *p_args[] = { NULL };
+    char *p_env[] = { NULL };
+
+    printf("%s: Parent process started !!!\n", __FILE__);
+
+    printf("Press ENTER to exec child ...\n");
+    getchar();
+
+    printf("%s: Process [%d] ready to exec child\n", __FILE__, getpid());
+
+    int rc = execve(CHILD, p_args, p_env);
+    if (rc &lt; 0) {
+        printf("%s: [2] ERROR - %s\n", __FILE__, strerror(errno));
+        exit(1);
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To compile the above C code, open a terminal window and execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ gcc -o simple_exec simple_exec.c</p>
+    </div>
+    <div id="para-div">
+      <p>Now, let us enable the capabilities of cap_chown, cap_net_raw, and cap_sys_nice on our compiled binary by executing the
+        following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo setcap 'cap_chown,cap_net_raw,cap_sys_nice+eip' ./simple_exec</p>
+    </div>
+    <div id="para-div">
+      <p>To verify the capability set of our compiled binary, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ getcap ./simple_exec</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>./simple_exec = cap_chown,cap_net_raw,cap_sys_nice+eip</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now, to run the compiled binary, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./simple_exec</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>simple_exec.c: Parent process started !!!
+Press ENTER to exec child ...</pre>
+    </div>
+    <div id="para-div">
+      <p>The binary simple_exec is waiting for the user to press the ENTER key, allowing us to determine the current capabilities
+        of the parent thread.</p>
+    </div>
+    <div id="para-div">
+      <p>To determine the process ID (pid) of the above process, open a terminal window and execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ps -fu$USER | grep simple | grep -v grep</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>polarsparc    9517    8549  0 16:50 pts/0    00:00:00 ./simple_exec</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.11 above, we can infer the pid as 9517.</p>
+    </div>
+    <div id="para-div">
+      <p>Next, to determine the capability sets of the process with pid 9517, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cat /proc/9517/status | grep Cap</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>CapInh: 0000000000000000
+CapPrm:	0000000000802001
+CapEff:	0000000000802001
+CapBnd:	0000003fffffffff
+CapAmb:	0000000000000000</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.12 above, it is clear that permitted and effective sets are enabled.</p>
+    </div>
+    <div id="para-div">
+      <p>To decode the hexadecimal capability value of the effective set, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ capsh --decode=0000000000802001</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>0x0000000000802001=cap_chown,cap_net_raw,cap_sys_nice</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, it is time to see what the capabilities look once the child is exec'ed. For that press the ENTER key on the terminal
+        where the thread is waiting.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>simple_exec.c: Process [9517] ready to exec child
+simple_wait_loop.c: Ready to open a raw socket !!!
+simple_wait_loop.c: ERROR - Operation not permitted
+simple_wait_loop.c: Ready to perform wait-loop !!!
+simple_wait_loop.c: [001] Just woke up to say Hello !!!
+simple_wait_loop.c: [002] Just woke up to say Hello !!!
+...
+...</pre>
+    </div>
+    <div id="para-div">
+      <p>Right off the bat we can see that the child thread (process) did not inherit any capability as one of the operations failed
+        as can be inferred from Output.14 above. Let us verify that is the case.</p>
+      <p>To determine the process ID (pid) of the child process, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ps -fu$USER | grep simple | grep -v grep</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>polarsparc    9517    8549  0 16:50 pts/0    00:00:00 [simple_wait_loo]</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.15 above, we can infer the pid as 9517 and it has not changed.</p>
+    </div>
+    <div id="para-div">
+      <p>Next, to determine the capability sets of the process with pid 9517, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cat /proc/9517/status | grep Cap</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>CapInh: 0000000000000000
+CapPrm:	0000000000000000
+CapEff:	0000000000000000
+CapBnd:	0000003fffffffff
+CapAmb:	0000000000000000</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.16 above, it is clear that the child process has *<span class="underbold">NO</span>* capabilities and it
+        is the correct behavior (which can be inferred from the capabilities flow in Figure.4 above).</p>
+    </div>
+    <div id="para-div">
+      <p>From the capabilities flow in Figure.4 above, it is clear that the only way a child thread (process) can acquire capabilities
+        is when it is in the ambient set. One important constraint for the ambient set is that the capabilities have to be in both
+        the inheritable and the permitted sets.</p>
+    </div>
+    <div id="para-div">
+      <p>The ambient set can only be set via system calls. Ensure that the package <span class="hi-yellow">libcap-dev</span> is
+        installed on the system. To do just that, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt install libcap-dev -y</p>
+    </div>
+    <div id="para-div">
+      <p>Let us implement a simple C code that will be granted a small set of Linux capabilities via the inheritable and the permitted
+        sets, which will be added to the ambient set (via system calls), and then will exec a child process to propagate the required
+        capabilities.</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ambient_exec.c</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   ambient_exec
+ * Author: Bhaskar S
+ * Date:   06/26/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+#include "stdio.h"
+#include "errno.h"
+#include "string.h"
+#include "sys/types.h"
+#include "stdlib.h"
+#include "unistd.h"
+#include "sys/prctl.h"
+#include "sys/capability.h"
+
+#define CHILD "./simple_wait_loop"
+#define MAX_LOOP_COUNT 3
+
+int main()
+{
+    pid_t pid;
+
+    int amb_cap[] = { CAP_CHOWN, CAP_NET_RAW, CAP_SYS_NICE };
+
+    char *p_args[] = { NULL };
+    char *p_env[] = { NULL };
+
+    /* Set the ambient capabilities */
+    for (int i = 0; i &lt; MAX_LOOP_COUNT; i++) {
+        printf("%s: Ready to set capability bit for %s\n", __FILE__, cap_to_name(amb_cap[i]));
+
+        cap_t caps = cap_get_proc();
+        if (caps == NULL) {
+            printf("%s: ERROR in cap_get_proc() - %s\n", __FILE__, strerror(errno));
+            exit(1);
+        }
+
+        cap_value_t cap_value[1];
+        cap_value[0] = amb_cap[i];
+
+        int rc = cap_set_flag(caps, CAP_INHERITABLE, 1, cap_value, CAP_SET);
+        if (rc &lt; 0) {
+            printf("%s: ERROR in cap_set_flag() - %s\n", __FILE__, strerror(errno));
+            cap_free(caps);
+            exit(1);
+        }
+
+        rc = cap_set_proc(caps);
+        if (rc &lt; 0) {
+            printf("%s: ERROR in cap_set_proc() - %s\n", __FILE__, strerror(errno));
+            cap_free(caps);
+            exit(1);
+        }
+
+        rc = prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, amb_cap[i], 0, 0);
+        if (rc &lt; 0) {
+            printf("%s: ERROR in prctl() - %s\n", __FILE__, strerror(errno));
+            cap_free(caps);
+            exit(1);
+        }
+
+        cap_free(caps);
+    }
+
+    printf("Press ENTER to exec child ...\n");
+    getchar();
+
+    printf("%s: Process [%d] ready to exec child\n", __FILE__, getpid());
+
+    int rc = execve(CHILD, p_args, p_env);
+    if (rc &lt; 0) {
+        printf("%s: ERROR in execve() - %s\n", __FILE__, strerror(errno));
+        exit(1);
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To compile the above C code, open a terminal window and execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ gcc -o ambient_exec ambient_exec.c -lcap</p>
+    </div>
+    <div id="para-div">
+      <p>Now, let us enable the capabilities of cap_chown, cap_net_raw, and cap_sys_nice on our compiled binary by executing the
+        following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo setcap 'cap_chown,cap_net_raw,cap_sys_nice+ip' ./ambient_exec</p>
+    </div>
+    <div id="para-div">
+      <p>Notice that we *<span class="underbold">ONLY</span>* need the inheritable and permitted sets for the ambient set to be
+        activated - hence the use of the flag <span class="hi-blue">+ip</span> in the command above.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, to run the compiled binary, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./ambient_exec</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.17</h4>
+      <pre>ambient_exec.c: Ready to set capability bit for cap_chown
+ambient_exec.c: Ready to set capability bit for cap_net_raw
+ambient_exec.c: Ready to set capability bit for cap_sys_nice
+Press ENTER to exec child ...</pre>
+    </div>
+    <div id="para-div">
+      <p>The binary ambient_exec is waiting for the user to press the ENTER key, allowing us to determine the current capabilities
+        of the parent thread.</p>
+    </div>
+    <div id="para-div">
+      <p>To determine the process ID (pid) of the above process, open a terminal window and execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ps -fu$USER | grep ambient | grep -v grep</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.18</h4>
+      <pre>polarsparc    10048    8549  0 16:50 pts/0    00:00:00 ./ambient_exec</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.18 above, we can infer the pid as 10048.</p>
+    </div>
+    <div id="para-div">
+      <p>Next, to determine the capability sets of the process with pid 10048, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cat /proc/10048/status | grep Cap</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.19</h4>
+      <pre>CapInh: 0000000000802001
+CapPrm:	0000000000802001
+CapEff:	0000000000000000
+CapBnd:	0000003fffffffff
+CapAmb:	0000000000802001</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.19 above, it is clear that the ambient set is initialized to the required value.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, it is time to see what the capabilities look once the child is exec'ed. For that press the ENTER key on the terminal
+        where the thread is waiting.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.20</h4>
+      <pre>ambient_exec.c: Process [10048] ready to exec child
+simple_wait_loop.c: Ready to open a raw socket !!!
+simple_wait_loop.c: SUCCESS !!!
+simple_wait_loop.c: Ready to perform wait-loop !!!
+simple_wait_loop.c: [001] Just woke up to say Hello !!!
+simple_wait_loop.c: [002] Just woke up to say Hello !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>Clearly we can see that the child thread (process) has succeeded as can be inferred from Output.20 above. Let us verify that
+        is the case.</p>
+      <p>To determine the process ID (pid) of the child process, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ps -fu$USER | grep simple | grep -v grep</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.21</h4>
+      <pre>polarsparc    10048    8549  0 16:50 pts/0    00:00:00 [simple_wait_loo]</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.21 above, we can infer the pid as 10048 and it has not changed.</p>
+    </div>
+    <div id="para-div">
+      <p>Next, to determine the capability sets of the process with pid 10048, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cat /proc/10048/status | grep Cap</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.22</h4>
+      <pre>CapInh: 0000000000802001
+CapPrm:	0000000000802001
+CapEff:	0000000000802001
+CapBnd:	0000003fffffffff
+CapAmb:	0000000000802001</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">BINGO</span> !!! We have successfully developed a single utility with the desired Linux capabilities and
+        used it exec a child thread (process) to propagate the Linux capabilities.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://man7.org/linux/man-pages/man7/capabilities.7.html" target="_blank"><span class="bold">Capabilities Man Page</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

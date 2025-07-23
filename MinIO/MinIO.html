@@ -1,0 +1,624 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Hands-on with MinIO">
+    <meta name="subject" content="Hands-on with MinIO">
+    <meta name="keywords" content="cloud, minio, s3">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Hands-on with MinIO</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Hands-on with MinIO</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">10/29/2022</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>The distributed object storage <span class="hi-yellow">Simple Storage Service</span> (or <span class="hi-yellow">S3</span>
+        for short) was made popular by Amazon in the late 2000s in their cloud offering. Ever since, it has gained traction even in
+        the private cloud environments of the Enterprises.</p>
+      <p>The idea of the distributed object store S3 is to provide highly available, durable, scable, and performant object storage,
+        where objects (documents, images, videos, etc) are stored into containers called <span class="hi-yellow">Buckets</span>.</p>
+      <p>Ever wondered if one can have such a storage setup in one's home labs ???</p>
+      <p>The answer is <span class="bold">YES</span> and this is where the open source distributed object store <a href="https://min.io/"
+        target="_blank"><span class="hi-yellow">MinIO</span></a> comes to the rescue !!!</p>
+    </div>
+    <div id="para-div">
+      <p>In other words, MinIO is a highly performant, open source distributed object storage solution, which is compatible to the
+        S3 offering from Amazon, with support for all the core features of S3.</p>
+    </div>
+    <div id="section-div">
+      <p>Installation and Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The installation is on a <span class="bold">Ubuntu 22.04 LTS</span> based Linux desktop.</p>
+      <p>Ensure <span class="bold">Docker</span> is installed and setup. Else, refer to the article
+        <a href="http://polarsparc.github.io/Docker/Docker.html" target="_blank"><span class="bold">Introduction to Docker</span></a>
+        for help.</p>
+    </div>
+    <div id="para-div">
+      <p>Assuming that we are logged in as <span class="bold">polarsparc</span> and the current working directory is the home
+        directory <span class="bold">/home/polarsparc</span>, we will setup a directory structure by executing the following commands
+        in a terminal window:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p minio/data</p>
+      <p>$ mkdir -p minio/client</p>
+    </div>
+    <div id="para-div">
+      <p>Now, change the current working directory to the directory <span class="bold">/home/polarsparc/minio</span>. In the following
+        paragraphs we will refer to this location as <span class="hi-red">$MINIO_HOME</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>For our exploration, we will be downloading and using the following two docker images:</p>
+      <ul id="blue-sqr-ul">
+        <li><p>MinIO Server - <a href="https://hub.docker.com/r/bitnami/minio" target="_blank"><span class="hi-yellow">bitnami/minio:2022.10.24</span></a></p></li>
+        <li><p>MinIO Client - <a href="https://hub.docker.com/r/bitnami/minio-client" target="_blank"><span class="hi-yellow">bitnami/minio-client:2022.10.20</span></a></p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To pull and download the docker image for MinIO server, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker pull bitnami/minio:2022.10.24</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>2022.10.24: Pulling from bitnami/minio
+1d8866550bdd: Already exists 
+f44865fd5b5b: Pull complete 
+Digest: sha256:945f9a5c942b25a85f8edc6e222ffd752870bc014304aa4ae45a163160fbe7e8
+Status: Downloaded newer image for bitnami/minio:2022.10.24
+docker.io/bitnami/minio:2022.10.24</pre>
+    </div>
+    <div id="para-div">
+      <p>Once the download is complete, execute the following command to check everything was ok with the image for MinIO:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name minio bitnami/minio:2022.10.24 /opt/bitnami/minio/bin/minio --help</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre> 23:31:14.68 
+ 23:31:14.69 Welcome to the Bitnami minio container
+ 23:31:14.69 Subscribe to project updates by watching https://github.com/bitnami/containers
+ 23:31:14.69 Submit issues and feature requests at https://github.com/bitnami/containers/issues
+ 23:31:14.69 
+
+NAME:
+  minio - High Performance Object Storage
+
+DESCRIPTION:
+  Build high performance data infrastructure for machine learning, analytics and application data workloads with MinIO
+
+USAGE:
+  minio [FLAGS] COMMAND [ARGS...]
+
+COMMANDS:
+  server   start object storage server
+  gateway  start object storage gateway
+  
+FLAGS:
+  --certs-dir value, -S value  path to certs directory (default: "/.minio/certs")
+  --quiet                      disable startup and info messages
+  --anonymous                  hide sensitive information from logging
+  --json                       output logs in JSON format
+  --help, -h                   show help
+  --version, -v                print the version
+  
+VERSION:
+  DEVELOPMENT.2022-10-24T18-35-07Z</pre>
+    </div>
+    <div id="para-div">
+      <p>To pull and download the docker image for MinIO client, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker pull bitnami/minio-client:2022.10.20</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>2022.10.20: Pulling from bitnami/minio-client
+1d8866550bdd: Already exists 
+b85eadab25a9: Pull complete 
+Digest: sha256:c074eb6bf78944d8e9c5c6f4d37136ae0b41b7f747ae106207ce903514ff33a1
+Status: Downloaded newer image for bitnami/minio-client:2022.10.20
+docker.io/bitnami/minio-client:2022.10.20</pre>
+    </div>
+    <div id="para-div">
+      <p>Once the download is complete, execute the following command to check everything was ok with the image for MinIO:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name mc bitnami/minio-client:2022.10.20 --help</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre> 12:54:18.37 
+ 12:54:18.38 Welcome to the Bitnami minio-client container
+ 12:54:18.38 Subscribe to project updates by watching https://github.com/bitnami/containers
+ 12:54:18.38 Submit issues and feature requests at https://github.com/bitnami/containers/issues
+ 12:54:18.38 
+ 12:54:18.38 INFO  ==> ** Starting MinIO Client setup **
+ 12:54:18.39 INFO  ==> ** MinIO Client setup finished! **
+
+NAME:
+  mc - MinIO Client for object storage and filesystems.
+
+USAGE:
+  mc [FLAGS] COMMAND [COMMAND FLAGS | -h] [ARGUMENTS...]
+
+COMMANDS:
+  alias      manage server credentials in configuration file
+  ls         list buckets and objects
+  mb         make a bucket
+  rb         remove a bucket
+  cp         copy objects
+  mv         move objects
+  rm         remove object(s)
+  mirror     synchronize object(s) to a remote site
+  cat        display object contents
+  head       display first 'n' lines of an object
+  pipe       stream STDIN to an object
+  find       search for objects
+  sql        run sql queries on objects
+  stat       show object metadata
+  tree       list buckets and objects in a tree format
+  du         summarize disk usage recursively
+  retention  set retention for object(s)
+  legalhold  manage legal hold for object(s)
+  support    support related commands
+  license    license related commands
+  share      generate URL for temporary access to an object
+  version    manage bucket versioning
+  ilm        manage bucket lifecycle
+  encrypt    manage bucket encryption config
+  event      manage object notifications
+  watch      listen for object notification events
+  undo       undo PUT/DELETE operations
+  anonymous  manage anonymous access to buckets and objects
+  tag        manage tags for bucket and object(s)
+  diff       list differences in object name, size, and date between two buckets
+  replicate  configure server side bucket replication
+  admin      manage MinIO servers
+  update     update mc to latest release
+  ready      checks if the cluster is ready or not
+  ping       perform liveness check
+  od         measure single stream upload and download
+  batch      manage batch jobs
+  
+GLOBAL FLAGS:
+  --autocompletion              install auto-completion for your shell
+  --config-dir value, -C value  path to configuration folder (default: "/.mc")
+  --quiet, -q                   disable progress bar display
+  --no-color                    disable color theme
+  --json                        enable JSON lines formatted output
+  --debug                       enable debug output
+  --insecure                    disable SSL certificate verification
+  --help, -h                    show help
+  --version, -v                 print the version
+  
+TIP:
+  Use 'mc --autocompletion' to enable shell autocompletion
+
+COPYRIGHT:
+  Copyright (c) 2015-2022 MinIO, Inc.
+
+LICENSE:
+  GNU AGPLv3 &lt;https://www.gnu.org/licenses/agpl-3.0.html></pre>
+    </div>
+    <div id="para-div">
+      <p>The following is the MinIO client configuration file (in JSON format) located under <span class="bold">$MINIO_HOME/client</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">config.json</div>
+      <div class="src-body-1">
+<pre>{
+  "version": "10",
+  "aliases": {
+      "local": {
+          "url": "http://172.17.0.2:9000",
+          "accessKey": "minio_adm",
+          "secretKey": "s3cr3t_4ce",
+          "api": "S3v4",
+          "path": "auto"
+      }
+   }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice the definition for the MinIO target alias <span class="underbold">local</span> in the above client configuration file.
+        This is the target name that will be used in the MinIO client commands later in this article.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with MinIO</p>
+    </div>
+    <div id="para-div">
+      <p>For the demonstration, we will use MinIO in a <span class="underbold">Single Node</span> mode (versus deploying in a multi
+        node cluster mode).</p>
+    </div>
+    <div id="para-div">
+      <p>To run the MinIO object storage server, execute the following command in the terminal window:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name minio -e "MINIO_ROOT_USER=minio_adm" -e "MINIO_ROOT_PASSWORD=s3cr3t_4ce" -u $(id -u $USER):$(id -g $USER) -p 9000:9000 -p 9001:9001 -v $MINIO_HOME/data:/mnt/data bitnami/minio:2022.10.24 /opt/bitnami/minio/bin/minio server /mnt/data --console-address ":9001"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre> 23:32:20.83 
+ 23:32:20.83 Welcome to the Bitnami minio container
+ 23:32:20.83 Subscribe to project updates by watching https://github.com/bitnami/containers
+ 23:32:20.83 Submit issues and feature requests at https://github.com/bitnami/containers/issues
+ 23:32:20.83 
+
+Formatting 1st pool, 1 set(s), 1 drives per set.
+WARNING: Host local has more than 0 drives of set. A host failure will result in data becoming unavailable.
+MinIO Object Storage Server
+Copyright: 2015-2022 MinIO, Inc.
+License: GNU AGPLv3 &lt;https://www.gnu.org/licenses/agpl-3.0.html>
+Version: DEVELOPMENT.2022-10-24T18-35-07Z (go1.18.7 linux/amd64)
+
+Status:         1 Online, 0 Offline. 
+API: http://172.17.0.2:9000  http://127.0.0.1:9000 
+Console: http://172.17.0.2:9001 http://127.0.0.1:9001 
+
+Documentation: https://min.io/docs/minio/linux/index.html</pre>
+    </div>
+    <div id="para-div">
+      <p>Launch a browser and open the console url <span class="hi-yellow">http://localhost:9001</span>. This will oprn the MinIO
+        web console login as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-01.png" alt="MinIO Console" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Enter the user name <span class="bold">minio_adm</span>, the password <span class="bold">s3cr3t_4ce</span>, and then click
+        on the <span class="bold">Login</span> button as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-02.png" alt="Console Login" />
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>On successful login, one is presented with a screen for creating <span class="bold">Buckets</span> as shown in the
+        illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-03.png" alt="Buckets" />
+      <div class="img-cap">Figure.3</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Click on the <span class="bold">Create Bucket +</span> button as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-04.png" alt="Create Bucket Button" />
+      <div class="img-cap">Figure.4</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>One is presented with the <span class="bold">Create Bucket</span> screen as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-05.png" alt="Create Bucket" />
+      <div class="img-cap">Figure.5</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Click on the <span class="bold">View Bucket Naming Rules</span> drop-down as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-06.png" alt="Bucket Naming Rules" />
+      <div class="img-cap">Figure.6</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>One is presented with the <span class="bold">Create Bucket</span> screen as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-07.png" alt="Create Bucket" />
+      <div class="img-cap">Figure.7</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Enter the S3 bucket name <span class="bold">b-test-1</span>, toggle the <span class="bold">Versioning</span> switch, and
+        then click on the <span class="bold">Create Bucket</span> button as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-08.png" alt="Create User Bucket" />
+      <div class="img-cap">Figure.8</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>One is presented with the <span class="bold">b-test-1 Bucket</span> screen as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-09.png" alt="b-test-1 Bucket" />
+      <div class="img-cap">Figure.9</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Click on the <span class="bold">Configure Bucket</span> icon as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-10.png" alt="Configure Bucket" />
+      <div class="img-cap">Figure.10</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>One is presented with the <span class="bold">Bucket Summary</span> screen (with options to configure the bucket) as shown
+        in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-11.png" alt="Bucket Summary" />
+      <div class="img-cap">Figure.11</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Click on the <span class="bold">Browse Bucket</span> icon as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-12.png" alt="Browse Bucket" />
+      <div class="img-cap">Figure.12</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will land back on the screen as shown in the illustration of Figure.9 above.</p>
+    </div>
+    <div id="para-div">
+      <p>Click on the <span class="bold">Upload</span> button to upload any object as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-13.png" alt="Upload Object" />
+      <div class="img-cap">Figure.13</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>One is presented with the option to either <span class="bold">Upload File</span> or <span class="bold">Upload Folder</span>
+        as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-14.png" alt="Upload Option" />
+      <div class="img-cap">Figure.14</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Click on the <span class="bold">Upload File</span> option to upload any file object (document or image) as shown in the
+        illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-15.png" alt="Upload File Object" />
+      <div class="img-cap">Figure.15</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>One is presented with the desktop <span class="bold">Open Files</span> dialog to choose a file to upload. In this demo, we
+        choose a sample JPEG image to upload.</p>
+    </div>
+    <div id="para-div">
+      <p>When the upload completes, one is presented with a screen as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-16.png" alt="Upload Successful" />
+      <div class="img-cap">Figure.16</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Click on the <span class="bold">Exit</span> icon of the <span class="bold">Downloads/Uploads</span> dialog box as shown in
+        the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-17.png" alt="Exit Dialog" />
+      <div class="img-cap">Figure.17</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>One is presented with <span class="bold">Bucket Browser</span> screen as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-18.png" alt="Bucket Browser" />
+      <div class="img-cap">Figure.18</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now, we will switch gears to use the command-line MinIO client (using the docker minio-client).</p>
+      <p>Before we get started, open a new terminal window (referred to as the client terminal window) for executing the various
+        MinIO client commands.</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the buckets and objects on the MinIO server (referred by alias <span class="hi-yellow">local</span>), execute
+        the following command in the client terminal window:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name mc -u $(id -u $USER):$(id -g $USER) -v $MINIO_HOME/client:/.mc bitnami/minio-client:2022.10.20 ls --versions local</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre> 15:29:10.44 
+ 15:29:10.44 Welcome to the Bitnami minio-client container
+ 15:29:10.44 Subscribe to project updates by watching https://github.com/bitnami/containers
+ 15:29:10.44 Submit issues and feature requests at https://github.com/bitnami/containers/issues
+ 15:29:10.44 
+ 15:29:10.44 INFO  ==> ** Starting MinIO Client setup **
+ 15:29:10.45 INFO  ==> ** MinIO Client setup finished! **
+
+[2022-10-29 00:10:52 UTC]     0B b-test-1/
+[2022-10-29 00:32:59 UTC]  30KiB STANDARD ac05b181-d5be-43d2-bf3a-6f3c1440126d v1 PUT b-test-1/jpeg-sample.jpg</pre>
+    </div>
+    <div id="para-div">
+      <p>To create a new bucket named <span class="bold">b-test-2</span> with versioning enabled, execute the following command in
+        the client terminal window:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name mc -u $(id -u $USER):$(id -g $USER) -v $MINIO_HOME/client:/.mc bitnami/minio-client:2022.10.20 mb --with-versioning local/b-test-2</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre> 15:51:00.98 
+ 15:51:00.98 Welcome to the Bitnami minio-client container
+ 15:51:00.98 Subscribe to project updates by watching https://github.com/bitnami/containers
+ 15:51:00.98 Submit issues and feature requests at https://github.com/bitnami/containers/issues
+ 15:51:00.98 
+ 15:51:00.98 INFO  ==> ** Starting MinIO Client setup **
+ 15:51:00.99 INFO  ==> ** MinIO Client setup finished! **
+
+Bucket created successfully `local/b-test-2`.</pre>
+    </div>
+    <div id="para-div">
+      <p>Checking on the <span class="bold">Buckets</span> screen in the web console, we see a screen as shown in the illustration
+        below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-19.png" alt="Buckets" />
+      <div class="img-cap">Figure.19</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To copy the image file object <span class="bold">jpeg-sample.jpg</span> in the bucket <span class="bold">b-test-1</span> to
+        the bucket <span class="bold">b-test-2</span>, execute the following command in the client terminal window:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name mc -u $(id -u $USER):$(id -g $USER) -v $MINIO_HOME/client:/.mc bitnami/minio-client:2022.10.20 cp local/b-test-1/jpeg-sample.jpg local/b-test-2/jpeg-sample.jpg</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre> 16:02:33.16 
+ 16:02:33.17 Welcome to the Bitnami minio-client container
+ 16:02:33.17 Subscribe to project updates by watching https://github.com/bitnami/containers
+ 16:02:33.17 Submit issues and feature requests at https://github.com/bitnami/containers/issues
+ 16:02:33.17 
+ 16:02:33.17 INFO  ==> ** Starting MinIO Client setup **
+ 16:02:33.17 INFO  ==> ** MinIO Client setup finished! **
+
+`local/b-test-1/jpeg-sample.jpg` -> `local/b-test-2/jpeg-sample.jpg`
+Total: 0 B, Transferred: 29.50 KiB, Speed: 2.25 MiB/s</pre>
+    </div>
+    <div id="para-div">
+      <p>Checking on the <span class="bold">Bucket</span> browser in the web console, we see a screen as shown in the illustration
+        below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/minio-20.png" alt="Bucket Browser" />
+      <div class="img-cap">Figure.20</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To delete the image file object <span class="bold">jpeg-sample.jpg</span> from the bucket <span class="bold">b-test-1</span>,
+        execute the following command in the client terminal window:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name mc -u $(id -u $USER):$(id -g $USER) -v $MINIO_HOME/client:/.mc bitnami/minio-client:2022.10.20 rm local/b-test-1/jpeg-sample.jpg</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre> 16:40:48.29 
+ 16:40:48.29 Welcome to the Bitnami minio-client container
+ 16:40:48.29 Subscribe to project updates by watching https://github.com/bitnami/containers
+ 16:40:48.29 Submit issues and feature requests at https://github.com/bitnami/containers/issues
+ 16:40:48.30 
+ 16:40:48.30 INFO  ==> ** Starting MinIO Client setup **
+ 16:40:48.30 INFO  ==> ** MinIO Client setup finished! **
+
+Created delete marker `local/b-test-1/jpeg-sample.jpg` (versionId=a59b853d-e3e0-48b6-b71e-05f75de3815b).</pre>
+    </div>
+    <div id="para-div">
+      <p>Once again, to list all the buckets and objects, execute the following command in the client terminal window:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name mc -u $(id -u $USER):$(id -g $USER) -v $MINIO_HOME/client:/.mc bitnami/minio-client:2022.10.20 ls --versions local</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre> 16:45:41.23 
+ 16:45:41.23 Welcome to the Bitnami minio-client container
+ 16:45:41.23 Subscribe to project updates by watching https://github.com/bitnami/containers
+ 16:45:41.24 Submit issues and feature requests at https://github.com/bitnami/containers/issues
+ 16:45:41.24 
+ 16:45:41.24 INFO  ==> ** Starting MinIO Client setup **
+ 16:45:41.24 INFO  ==> ** MinIO Client setup finished! **
+
+[2022-10-29 00:10:52 UTC]     0B b-test-1/
+[2022-10-29 16:40:48 UTC]     0B STANDARD a59b853d-e3e0-48b6-b71e-05f75de3815b v2 DEL b-test-1/jpeg-sample.jpg
+[2022-10-29 00:32:59 UTC]  30KiB STANDARD ac05b181-d5be-43d2-bf3a-6f3c1440126d v1 PUT b-test-1/jpeg-sample.jpg
+[2022-10-29 15:51:01 UTC]     0B b-test-2/
+[2022-10-29 16:02:33 UTC]  30KiB STANDARD 1284fa60-ff17-43c0-9db3-fc1136ff07f4 v1 PUT b-test-2/jpeg-sample.jpg</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>With this last MinIO client command, we conclude this hands-on demonstration of MinIO. Note that we have barely scratched
+        the surface of the MinIO object storage capabilities.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://hub.docker.com/r/bitnami/minio/" target="_blank"><span class="bold">Bitnami Object Storage based on MinIO</span></a></p>
+      <p><a href="https://min.io/docs/minio/container/index.html" target="_blank"><span class="bold">MinIO High Performance Object Storage</span></a></p>
+      <p><a href="https://min.io/docs/minio/linux/reference/minio-mc.html" target="_blank"><span class="bold">MinIO Client</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

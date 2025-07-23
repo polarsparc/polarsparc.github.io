@@ -1,0 +1,646 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="SSH Tunnelling Basics">
+    <meta name="subject" content="SSH Tunnelling Basics">
+    <meta name="keywords" content="linux, networking, python, ssh, tunnel">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>SSH Tunnelling Basics</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="ps-header">
+      <img src="./images/ssh-tunnel-1.png" />
+    </div>
+    <br/>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">11/08/2020</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In networking, a <span class="hi-yellow">Tunnel</span> is used to encapsulate a communication protocol that is not supported
+        by the network inside a protocol that is supported by the network.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are some of terms used in this article:</p>
+    </div>
+    <table id="col2-table">
+      <thead>
+        <tr>
+          <th>Term</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">SSH</span></td>
+          <td class="col2-c2-odd">short for <span class="bold">S</span>ecure <span class="bold">SH</span>ell is a protocol that sets
+            up an encrypted connection between two nodes over an unsecured network using a Client-Server architecture</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">SSH Server</span></td>
+          <td class="col2-c2-even">a server that listens on the TCP port <span class="underbold">22</span> for incoming SSH client
+            requests, then authenticates those client requests, and provides a command prompt</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">SSH Client</span></td>
+          <td class="col2-c2-odd">a client used to connect to the remote SSH Server on a specific network node</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">SSH Tunnel</span></td>
+          <td class="col2-c2-even">a method of encapsulating and transmitting arbitrary networking data over an encrypted SSH
+            connection between a client node and a server node</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">SSH Port Forwarding</span></td>
+          <td class="col2-c2-odd">another name for <span class="bold">SSH Tunnel</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>So, why do we need <span class="bold">tunneling</span> ??? The following are some of the reasons:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>To allow access to legacy applications or unsecure services such as IMAP, POP3, VNC, etc</p>
+        </li>
+        <li>
+          <p>To implement a virtual private network (<span class="bold">VPN</span>)</p>
+        </li>
+        <li>
+          <p>To allow access to services behind a firewall</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>There are <span class="underbold">3</span> types of <span class="bold">SSH Tunnel</span> options as listed below:</p>
+      <ol id="blue-ol">
+        <li>
+          <p><span class="hi-yellow">Local</span> Port Forwarding</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Remote</span> Port Forwarding</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Dynamic</span> Port Forwarding</p>
+        </li>
+      </ol>
+    </div>
+    <div id="para-div">
+      <p>We will discuss and demonstrate each of the above options in the following sections.</p>
+    </div>
+    <div id="section-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The setup will be on a Ubuntu 20.04 LTS based Linux desktop. For the demonstrations, we will create an environment with
+        3 virtual machines running on the hypervisor <span class="hi-yellow">VirtualBox</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the environment setup:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/ssh-tunnel-2.png" class="img-cls" alt="Environment" />
+      <div class="img-cap">Environment</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are some of the highlights of the 3 virtual machines:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">vm-1</span> :: 1 vCPU, 2GB RAM, 20GB storage, Ubuntu 20.04 OS, and uses a single virtual network
+            interface with <span class="bold">NAT</span> networking (<span class="hi-red">10.0.2.15</span>)</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">vm-2</span> :: 1 vCPU, 2GB RAM, 20GB storage, Ubuntu 20.04 OS, and uses a single virtual network
+            interface with <span class="bold">Host-only</span> networking (<span class="hi-green">192.168.56.104</span>)</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">vm-3</span> :: 1 vCPU, 2GB RAM, 20GB storage, Ubuntu 20.04 OS, and uses a two separate virtual
+            network interfaces - one with <span class="bold">NAT</span> networking (<span class="hi-red">10.0.2.4</span>) and the
+            other with <span class="bold">Host-only</span> networking (<span class="hi-green">192.168.56.103</span>)</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Open a Terminal window in each of the 3 virtual machines <span class="bold">vm-1</span> thru <span class="bold">vm-3</span>
+        and install <span class="bold">Python Flask</span>, <span class="bold">Net Tools</span>, and <span class="bold">SSH Server
+        </span> by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt install python3-flask net-tools openssh-server -y</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Reading package lists... Done
+Building dependency tree       
+Reading state information... Done
+The following additional packages will be installed:
+  javascript-common libjs-jquery ncurses-term openssh-sftp-server python3-itsdangerous python3-jinja2 python3-markupsafe
+  python3-openssl python3-pyinotify python3-werkzeug ssh-import-id
+Suggested packages:
+  apache2 | lighttpd | httpd molly-guard monkeysphere ssh-askpass python-flask-doc python-jinja2-doc python-openssl-doc
+  python3-openssl-dbg python-pyinotify-doc ipython3 python-werkzeug-doc python3-lxml python3-termcolor python3-watchdog
+The following NEW packages will be installed:
+  javascript-common libjs-jquery ncurses-term net-tools openssh-server openssh-sftp-server python3-flask python3-itsdangerous
+  python3-jinja2 python3-markupsafe python3-openssl python3-pyinotify python3-werkzeug ssh-import-id
+0 upgraded, 14 newly installed, 0 to remove and 0 not upgraded.
+Need to get 1,478 kB of archives.
+After this operation, 9,096 kB of additional disk space will be used.
+Get:1 http://us.archive.ubuntu.com/ubuntu focal/main amd64 javascript-common all 11 [6,066 B]
+Get:2 http://us.archive.ubuntu.com/ubuntu focal/main amd64 libjs-jquery all 3.3.1~dfsg-3 [329 kB]
+Get:3 http://us.archive.ubuntu.com/ubuntu focal/main amd64 ncurses-term all 6.2-0ubuntu2 [249 kB]
+Get:4 http://us.archive.ubuntu.com/ubuntu focal/main amd64 net-tools amd64 1.60+git20180626.aebd88e-1ubuntu1 [196 kB]
+Get:5 http://us.archive.ubuntu.com/ubuntu focal-updates/main amd64 openssh-sftp-server amd64 1:8.2p1-4ubuntu0.1 [51.5 kB]
+Get:6 http://us.archive.ubuntu.com/ubuntu focal-updates/main amd64 openssh-server amd64 1:8.2p1-4ubuntu0.1 [377 kB]
+Get:7 http://us.archive.ubuntu.com/ubuntu focal/main amd64 python3-itsdangerous all 1.1.0-1 [14.6 kB]
+Get:9 http://us.archive.ubuntu.com/ubuntu focal/main amd64 python3-markupsafe amd64 1.1.0-1build2 [13.9 kB]
+Get:9 http://us.archive.ubuntu.com/ubuntu focal/main amd64 python3-jinja2 all 2.10.1-2 [95.5 kB]
+Get:10 http://us.archive.ubuntu.com/ubuntu focal/main amd64 python3-werkzeug all 0.16.1+dfsg1-2 [183 kB]
+Get:11 http://us.archive.ubuntu.com/ubuntu focal/main amd64 python3-flask all 1.1.1-2 [80.3 kB]
+Get:12 http://us.archive.ubuntu.com/ubuntu focal/main amd64 python3-openssl all 19.0.0-1build1 [43.3 kB]
+Get:13 http://us.archive.ubuntu.com/ubuntu focal/main amd64 python3-pyinotify all 0.9.6-1.2ubuntu1 [24.8 kB]
+Get:14 http://us.archive.ubuntu.com/ubuntu focal/main amd64 ssh-import-id all 5.10-0ubuntu1 [10.0 kB]
+Fetched 1,478 kB in 0s (5,095 kB/s)  
+Preconfiguring packages ...
+Selecting previously unselected package javascript-common.
+(Reading database ... 192970 files and directories currently installed.)
+Preparing to unpack .../00-javascript-common_11_all.deb ...
+Unpacking javascript-common (11) ...
+Selecting previously unselected package libjs-jquery.
+Preparing to unpack .../01-libjs-jquery_3.3.1~dfsg-3_all.deb ...
+Unpacking libjs-jquery (3.3.1~dfsg-3) ...
+Selecting previously unselected package ncurses-term.
+Preparing to unpack .../02-ncurses-term_6.2-0ubuntu2_all.deb ...
+Unpacking ncurses-term (6.2-0ubuntu2) ...
+Preparing to unpack .../net-tools_1.60+git20180626.aebd88e-1ubuntu1_amd64.deb ...
+Unpacking net-tools (1.60+git20180626.aebd88e-1ubuntu1) ...
+Selecting previously unselected package openssh-sftp-server.
+Preparing to unpack .../03-openssh-sftp-server_1%3a8.2p1-4ubuntu0.1_amd64.deb ...
+Unpacking openssh-sftp-server (1:8.2p1-4ubuntu0.1) ...
+Selecting previously unselected package openssh-server.
+Preparing to unpack .../04-openssh-server_1%3a8.2p1-4ubuntu0.1_amd64.deb ...
+Unpacking openssh-server (1:8.2p1-4ubuntu0.1) ...
+Selecting previously unselected package python3-itsdangerous.
+Preparing to unpack .../05-python3-itsdangerous_1.1.0-1_all.deb ...
+Unpacking python3-itsdangerous (1.1.0-1) ...
+Selecting previously unselected package python3-markupsafe.
+Preparing to unpack .../06-python3-markupsafe_1.1.0-1build2_amd64.deb ...
+Unpacking python3-markupsafe (1.1.0-1build2) ...
+Selecting previously unselected package python3-jinja2.
+Preparing to unpack .../07-python3-jinja2_2.10.1-2_all.deb ...
+Unpacking python3-jinja2 (2.10.1-2) ...
+Selecting previously unselected package python3-werkzeug.
+Preparing to unpack .../08-python3-werkzeug_0.16.1+dfsg1-2_all.deb ...
+Unpacking python3-werkzeug (0.16.1+dfsg1-2) ...
+Selecting previously unselected package python3-flask.
+Preparing to unpack .../09-python3-flask_1.1.1-2_all.deb ...
+Unpacking python3-flask (1.1.1-2) ...
+Selecting previously unselected package python3-openssl.
+Preparing to unpack .../10-python3-openssl_19.0.0-1build1_all.deb ...
+Unpacking python3-openssl (19.0.0-1build1) ...
+Selecting previously unselected package python3-pyinotify.
+Preparing to unpack .../11-python3-pyinotify_0.9.6-1.2ubuntu1_all.deb ...
+Unpacking python3-pyinotify (0.9.6-1.2ubuntu1) ...
+Selecting previously unselected package ssh-import-id.
+Preparing to unpack .../12-ssh-import-id_5.10-0ubuntu1_all.deb ...
+Unpacking ssh-import-id (5.10-0ubuntu1) ...
+Setting up javascript-common (11) ...
+Setting up net-tools (1.60+git20180626.aebd88e-1ubuntu1) ...
+Setting up openssh-sftp-server (1:8.2p1-4ubuntu0.1) ...
+Setting up openssh-server (1:8.2p1-4ubuntu0.1) ...
+Creating config file /etc/ssh/sshd_config with new version
+Creating SSH2 RSA key; this may take some time ...
+3072 SHA256:OVmIaDeM2PCBtB6O5tddPIC3q4nuZVdqfcs/7A3QM5A root@vm-3 (RSA)
+Creating SSH2 ECDSA key; this may take some time ...
+256 SHA256:qDrGgauXE9LwZ6S1j4fjbY0LIPyrL+YSU8iq+PbR7jM root@vm-3 (ECDSA)
+Creating SSH2 ED25519 key; this may take some time ...
+256 SHA256:WBk+gqOXD47VoAJrw+JeZLxQlzBWdaKFRxi5xfPAkYg root@vm-3 (ED25519)
+Created symlink /etc/systemd/system/sshd.service → /lib/systemd/system/ssh.service.
+Created symlink /etc/systemd/system/multi-user.target.wants/ssh.service → /lib/systemd/system/ssh.service.
+rescue-ssh.target is a disabled or a static unit, not starting it.
+Setting up python3-openssl (19.0.0-1build1) ...
+Setting up ssh-import-id (5.10-0ubuntu1) ...
+Attempting to convert /etc/ssh/ssh_import_id
+Setting up python3-pyinotify (0.9.6-1.2ubuntu1) ...
+Setting up python3-itsdangerous (1.1.0-1) ...
+Setting up python3-markupsafe (1.1.0-1build2) ...
+Setting up python3-jinja2 (2.10.1-2) ...
+Setting up libjs-jquery (3.3.1~dfsg-3) ...
+Setting up ncurses-term (6.2-0ubuntu2) ...
+Setting up python3-werkzeug (0.16.1+dfsg1-2) ...
+Setting up python3-flask (1.1.1-2) ...
+Processing triggers for systemd (245.4-4ubuntu3.3) ...
+Processing triggers for man-db (2.9.1-1) ...
+Processing triggers for ufw (0.36-6) ...</pre>
+    </div>
+    <div id="step-div">
+      <p>Local Port Forwarding</p>
+    </div>
+    <div id="para-div">
+      <p>Assuming <span class="bold">vm-3</span> is hosting a useful web application on <span class="hi-red">10.0.2.4</span>, it is
+        *ONLY* accessible within the <span class="hi-red">10.0.2.x</span> network. What if a client on the <span class="bold">
+        vm-2</span> wants to access the web application ???</p>
+    </div>
+    <div id="para-div">
+      <p>In this situation, one could use Local Port Forwarding SSH Tunnel option to allow the client <span class="bold">vm-2</span>
+        running on <span class="hi-green">192.168.56.104</span> to access the web application server running on the
+        <span class="hi-red">10.0.2.x</span> network.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the code for the simple <span class="bold">Python</span> based web application:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Web.py</div>
+      <div class="src-body-1">
+      <pre>import sys
+from datetime import datetime
+from flask import Flask
+
+app = Flask(__name__)
+HOST = ''
+PORT = 0
+
+HTML = """
+&lt;html&gt;
+&lt;head&gt;
+  &lt;title&gt;From %s&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h3&gt;Hello from %s:%d&lt;/h3&gt;
+  &lt;h3&gt;Timestamp: %s&lt;/h3&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+"""
+
+@app.route('/')
+def index():
+    return HTML % (HOST, HOST, PORT, datetime.now())
+
+if __name__ == '__main__':
+    if len(sys.argv) == 3:
+        HOST = sys.argv[1]
+        PORT = int(sys.argv[2])
+        app.run(host=HOST, port=PORT)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>To start the simple <span class="bold">Python</span> web application on <span class="bold">vm-3</span>, execute the following
+        command in the Terminal for <span class="bold">vm-3</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ python3 Web.py 10.0.2.4 8080</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>* Serving Flask app "Web" (lazy loading)
+* Environment: production
+  WARNING: This is a development server. Do not use it in a production deployment.
+  Use a production WSGI server instead.
+* Debug mode: off
+* Running on http://10.0.2.4:8080/ (Press CTRL+C to quit)</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the TCP ports listening for a connection on <span class="bold">vm-2</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ netstat -tlnp</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>(Not all processes could be identified, non-owned process info
+will not be shown, you would have to be root to see it all.)
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
+tcp        0      0 127.0.0.1:631           0.0.0.0:*               LISTEN      -                   
+tcp        0      0 127.0.0.53:53           0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      -                   
+tcp6       0      0 ::1:631                 :::*                    LISTEN      -                   
+tcp6       0      0 :::22                   :::*                    LISTEN      -</pre>
+    </div>
+    <div id="para-div">
+      <p>To setup the Local Port Forwarding SSH Tunnel on <span class="bold">vm-2</span>, execute the following command in the Terminal
+        for <span class="bold">vm-2</span> (which will prompt the user for authentication on the remote SSH Server running on
+        <span class="hi-green">192.168.56.103</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ssh -L 8080:10.0.2.4:8080 192.168.56.103</p>
+    </div>
+    <div id="para-div">
+      <p>With Local Port Forwarding SSH Tunnel option, any request on a specified local port 8080 on the client
+        <span class="hi-green">192.168.56.104</span> is tunneled to the remote SSH Server running on
+        <span class="hi-green">192.168.56.103</span>, which is then transparently forwarded to the desired target
+        <span class="hi-red">10.0.2.4</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The general format for the <span class="hi-blue">-L</span> option is: [bind-address]:local-port:target-host:target-port, where
+        the [bind-address] is optional. If not specified (like in the above example), it uses <span class="bold">localhost</span> as the
+        default.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, let us list all the TCP ports listening for a connection on <span class="bold">vm-2</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ netstat -tlnp</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>(Not all processes could be identified, non-owned process info
+will not be shown, you would have to be root to see it all.)
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name    
+tcp        0      0 127.0.0.1:631           0.0.0.0:*               LISTEN      -                   
+tcp        0      0 127.0.0.1:8080          0.0.0.0:*               LISTEN      3247/ssh            
+tcp        0      0 127.0.0.53:53           0.0.0.0:*               LISTEN      -                   
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      -                   
+tcp6       0      0 ::1:631                 :::*                    LISTEN      -                   
+tcp6       0      0 ::1:8080                :::*                    LISTEN      3247/ssh            
+tcp6       0      0 :::22                   :::*                    LISTEN      -</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.4 above, we see that the SSH Tunnel is listening on the port 8080 on the client
+        <span class="hi-green">192.168.56.104</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Launch a browser on <span class="bold">vm-2</span> and open the URL <span class="bold">http://localhost:8080/</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the screenshot of the browser:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/ssh-tunnel-3.png" class="img-cls" alt="Local Port Forward Browser" />
+      <div class="img-cap">Browser (Local Port Forward)</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Terminate the SSH Tunnel on <span class="bold">vm-2</span> by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ exit</p>
+    </div>
+    <div id="para-div">
+      <p>Refresh the browser on <span class="bold">vm-2</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the screenshot of the browser:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/ssh-tunnel-4.png" class="img-cls" alt="Exited Local Port Forward Browser" />
+      <div class="img-cap">Browser (Local Port Forward Exited)</div>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">PERFECT</span> !!! The setup works as expected.</p>
+    </div>
+    <div id="step-div">
+      <p>Remote Port Forwarding</p>
+    </div>
+    <div id="para-div">
+      <p>Assume <span class="bold">vm-1</span> is hosting the same web application on <span class="hi-red">10.0.2.15</span>. It is
+        *ONLY* accessible within the 10.0.2.x network. What if a client on the <span class="bold">vm-2</span> wants to access the
+        web application ???</p>
+    </div>
+    <div id="warn-div">
+      <h4>!! ATTENTION !!</h4>
+      <pre><span class="bold">vm-1</span> is using <span class="bold">NAT</span> networking which implies it can access nodes outside its network while *<span class="underbold">NOT</span>* the other way around</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In this situation, one could use Remote Port Forwarding SSH Tunnel option (the reverse of Local Port Forwarding SSH Tunnel)
+        to allow the client <span class="bold">vm-2</span> on <span class="hi-green">192.168.56.104</span> access to the web application
+        running on <span class="hi-red">10.0.2.15</span>. In other words, the SSH Tunnel will be setup from the SSH Server to the
+        client.</p>
+      <p>Typically, Remote Port Forwarding SSH Tunnel option is used to give access to an internal service to an external user or an
+        external service.</p>
+    </div>
+    <div id="para-div">
+      <p>We will reuse the same code listed above for the simple <span class="bold">Python</span> based web application in this
+        demonstration.</p>
+    </div>
+    <div id="para-div">
+      <p>To start the simple <span class="bold">Python</span> web application on <span class="bold">vm-1</span>, execute the following
+        command in the Terminal for <span class="bold">vm-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ python3 Web.py 10.0.2.15 8080</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>* Serving Flask app "Web" (lazy loading)
+* Environment: production
+  WARNING: This is a development server. Do not use it in a production deployment.
+  Use a production WSGI server instead.
+* Debug mode: off
+* Running on http://10.0.2.15:8080/ (Press CTRL+C to quit)</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the TCP ports listening for a connection on <span class="bold">vm-2</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ netstat -tlnp</p>
+    </div>
+    <div id="para-div">
+      <p>The result should be similar to the one in Output.3 above.</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Remote Port Forwarding SSH Tunnel on <span class="bold">vm-1</span>, execute the following command in the Terminal
+        for <span class="bold">vm-1</span> (which will prompt the user for authentication on the remote SSH Server running on
+        <span class="hi-green">192.168.56.104</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ssh -R 8080:10.0.2.15:8080 192.168.56.104</p>
+    </div>
+    <div id="para-div">
+      <p>With Remote Port Forwarding SSH Tunnel option, any request on a specified remote port 8080 on the client
+        <span class="hi-green">192.168.56.104</span> is tunneled to the SSH Server running on <span class="hi-red">10.0.2.15</span>,
+        which is then transparently forwarded to the desired target on <span class="hi-red">10.0.2.15</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The general format for the <span class="hi-blue">-R</span> option is: [bind-address]:remote-port:target-host:target-port, where
+        the [bind-address] is optional. If not specified (like in the above example), it uses <span class="bold">localhost</span> as the
+        default.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, let us list all the TCP ports listening for a connection on <span class="bold">vm-2</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ netstat -tlnp</p>
+    </div>
+    <div id="para-div">
+      <p>The result should be similar to the one in Output.4 above.</p>
+    </div>
+    <div id="para-div">
+      <p>Launch a browser on <span class="bold">vm-2</span> and open the URL <span class="bold">http://localhost:8080/</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the screenshot of the browser:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/ssh-tunnel-5.png" class="img-cls" alt="Remote Port Forward Browser" />
+      <div class="img-cap">Browser (Remote Port Forward)</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Terminate the SSH Tunnel on <span class="bold">vm-1</span> by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ exit</p>
+    </div>
+    <div id="para-div">
+      <p>Refresh the browser on <span class="bold">vm-2</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the screenshot of the browser:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/ssh-tunnel-4.png" class="img-cls" alt="Exited Remote Port Forward Browser" />
+      <div class="img-cap">Browser (Remote Port Forward Exited)</div>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">AWESOME</span> !!! The setup works as expected.</p>
+    </div>
+    <div id="step-div">
+      <p>Dynamic Port Forwarding</p>
+    </div>
+    <div id="para-div">
+      <p>Going back to our first demonstration, assume <span class="bold">vm-3</span> is hosting the useful web application on
+        <span class="hi-red">10.0.2.4</span>. It is *ONLY* accessible within the 10.0.2.x network. In addition, given that
+        <span class="bold">vm-3</span> is also on the 192.168.56.x network (second interface), it can access the web application.
+        Is there a way for the client on <span class="bold">vm-2</span> access the web application (other than Local Port Forwarding
+        SSH Tunnel option) ???</p>
+    </div>
+    <div id="para-div">
+      <p>The answer is *<span class="underbold">YES</span>* - it can using the Dynamic Port Forwarding SSH Tunnel option.</p>
+    </div>
+    <div id="para-div">
+      <p>We will reuse the same code listed above for the simple <span class="bold">Python</span> based web application in this
+        demonstration.</p>
+    </div>
+    <div id="para-div">
+      <p>To start the simple <span class="bold">Python</span> web application on <span class="bold">vm-3</span>, execute the following
+        command in the Terminal for <span class="bold">vm-3</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ python3 Web.py 10.0.2.4 8080</p>
+    </div>
+    <div id="para-div">
+      <p>The result should be similar to the one in Output.2 above.</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Dynamic Port Forwarding SSH Tunnel on <span class="bold">vm-2</span>, execute the following command in the Terminal
+        for <span class="bold">vm-2</span> (which will prompt the user for authentication on the remote SSH Server running on
+        <span class="hi-green">192.168.56.103</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ssh -D 8080 192.168.56.103</p>
+    </div>
+    <div id="para-div">
+      <p>The Dynamic Port Forwarding SSH Tunnel option automatically sets up a <span class="hi-yellow">SOCKS</span> proxy on the client
+        <span class="bold">vm-2</span>. Once the browser is configured to use the <span class="bold">SOCKS</span> proxy, all requests
+        are routed through the proxy to the SSH Server, which then transparently forwards the request to the desired target on
+        <span class="hi-red">10.0.2.4</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The general format for the <span class="hi-blue">-D</span> option is: [bind-address]:local-port, where the [bind-address]
+        is optional. If not specified (like in the above example), it uses <span class="bold">localhost</span> as the default.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, let us list all the TCP ports listening for a connection on <span class="bold">vm-2</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ netstat -tlnp</p>
+    </div>
+    <div id="para-div">
+      <p>The result should be similar to the one in Output.4 above.</p>
+    </div>
+    <div id="para-div">
+      <p>Launch a browser on <span class="bold">vm-2</span> and open the URL <span class="bold">http://10.0.2.4:8080/</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the screenshot of the browser:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/ssh-tunnel-6.png" class="img-cls" alt="Dynamic Port Forward Browser" />
+      <div class="img-cap">Browser (Dynamic Port Forward)</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This was expected as we have not yet configured the browser to use the <span class="bold">SOCKS</span> proxy.</p>
+    </div>
+    <div id="para-div">
+      <p>Click on the three horizontal lines (top right-hand corner) and then on the <span class="bold">Preferences</span> option
+        as shown in the illustration below:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/ssh-tunnel-7.png" class="img-cls" alt="Browser Preferences" />
+      <div class="img-cap">Browser Preferences</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Scroll down and click on the <span class="bold">Settings</span> button as shown in the illustration below:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/ssh-tunnel-8.png" class="img-cls" alt="Browser Network Settings" />
+      <div class="img-cap">Browser Network Settings</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Select the <span class="bold">Manual proxy configuration</span> option, enter the details for the <span class="bold">
+        SOCKS Host</span> and <span class="bold">Port</span>, and finally click the <span class="bold">OK</span> button as shown
+        in the illustration below:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/ssh-tunnel-9.png" class="img-cls" alt="Browser SOCKS Settings" />
+      <div class="img-cap">Browser SOCKS Settings</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Open the URL <span class="bold">http://10.0.2.4:8080/</span> in a new tab of the browser.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the screenshot of the browser:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/ssh-tunnel-9a.png" class="img-cls" alt="Dynamic Port Forward Browser" />
+      <div class="img-cap">Browser (Dynamic Port Forward)</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">WALLA</span> !!! The setup works as expected.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://help.ubuntu.com/community/SSH/OpenSSH/PortForwarding" target="_blank"><span class="bold">SSH/OpenSSH/PortForwarding</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
