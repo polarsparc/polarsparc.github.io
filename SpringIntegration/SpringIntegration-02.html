@@ -1,0 +1,1482 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Spring Integration Notes :: Part - 2">
+    <meta name="subject" content="Spring Integration Notes :: Part - 2">
+    <meta name="keywords" content="eip, java, spring">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Spring Integration Notes :: Part - 2</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Spring Integration Notes :: Part - 2</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">04/24/2021 (<span class="hi-yellow">UPDATED</span>)</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <span class="bold"><a href="https://polarsparc.github.io/SpringIntegration/SpringIntegration-01.html" target="_blank">
+        Part-1</a></span>, we covered the basics of <span class="bold">Spring Integration</span> and got our hands dirty with two
+        simple examples.</p>
+      <p>We will continue our journey to explore the following capabilities in <span class="bold">Spring Integration</span>:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>Logging Messages</p>
+        </li>
+        <li>
+          <p>Multi-Threading</p>
+        </li>
+        <li>
+          <p>Exception Handling</p>
+        </li>
+      </ul>
+    </div>
+    <div id="section-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the demonstrations in this part, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringIntegration</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/si/p2</p>
+      <p>$ mkdir -p src/main/resources/p2</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on Spring Integration</p>
+    </div>
+    <div id="step-div">
+      <p>Logging Messages</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Spring Integration</span> provides facilities for intercepting and logging <span class="bold">message</span>s
+        that flow through a <span class="bold">channel</span>. This can be useful for audit or debugging purposes.</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">XML based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>For demonstrating the logging capability, we will leverage the handler class defined in <span class="bold">Listing.1</span> and
+        the custom <span class="bold">gateway</span> interface defined in <span class="bold">Listing.7</span> from <span class="bold">
+        <a href="http://polarsparc.github.io/xhtml/SpringIntegration-01.html" target="_blank">Part-1</a></span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the <span class="bold">XML</span> based <span class="bold">Spring Integration</span> configuration that
+        wires up the <span class="bold">channel</span>s and the <span class="bold">endpoint</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.12</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;beans xmlns="http://www.springframework.org/schema/beans"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:int="http://www.springframework.org/schema/integration"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans
+                            http://www.springframework.org/schema/beans/spring-beans.xsd
+                            http://www.springframework.org/schema/integration
+                            http://www.springframework.org/schema/integration/spring-integration.xsd"&gt;
+
+    &lt;bean id="inMsgHandler" class="com.polarsparc.si.p1.StrUpCaseHandler" /&gt;
+
+    &lt;int:channel id="inChannel"&gt;
+        &lt;int:interceptors&gt;
+            &lt;int:wire-tap channel="logger1" /&gt;
+        &lt;/int:interceptors&gt;
+    &lt;/int:channel&gt;
+
+    &lt;int:channel id="outChannel"&gt;
+        &lt;int:queue capacity="5" /&gt;
+
+        &lt;int:interceptors&gt;
+            &lt;int:wire-tap channel="logger2" /&gt;
+        &lt;/int:interceptors&gt;
+    &lt;/int:channel&gt;
+
+    &lt;int:logging-channel-adapter id="logger1" level="INFO" /&gt;
+
+    &lt;int:logging-channel-adapter id="logger2" level="INFO" log-full-message="true" /&gt;
+
+    &lt;!--
+        The primary purpose of a Gateway is to hide the messaging API provided
+        by Spring Integration
+    --&gt;
+
+    &lt;int:gateway id="gateway"
+                  service-interface="com.polarsparc.si.p1.StrUpCaseGateway"
+                  default-request-channel="inChannel"
+                  default-reply-channel="outChannel" /&gt;
+
+    &lt;int:service-activator input-channel="inChannel"
+                            output-channel="outChannel"
+                            ref="inMsgHandler"
+                            method="handler" /&gt;
+
+&lt;/beans&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">Listing.12</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>A <span class="hi-yellow">logging-channel-adapter</span> sub-element allows one to log <span class="bold">messages</span>.</p>
+          <p>By default, it only logs the <span class="bold">payload</span>.</p>
+          <p>To log the full <span class="bold">message</span> (that includes the <span class="bold">header</span> as well as the
+            <span class="bold">payload</span>), set the <span class="hi-green">log-full-message</span> attribute to <span class="bold">
+            true</span>.</p>
+          <p>Under-the-hood, <span class="bold">Spring Integration</span> uses
+            <span class="hi-yellow">org.springframework.integration.handler.LoggingHandler</span> for logging <span class="bold">
+            messages</span></p>
+          <p>In our example, we have defined two <span class="bold">logging-channel-adapter</span>s - one with an <span class="bold">
+            id</span> of <span class="bold">logger1</span> which logs only the <span class="bold">payload</span> and the other with
+            an <span class="bold">id</span> of <span class="bold">logger2</span> which logs the full <span class="bold">message</span></p>
+        </li>
+        <li>
+          <p>An <span class="hi-yellow">interceptors</span> sub-element allows one to specify an interceptor for a <span class="bold">
+            channel</span>. An interceptor allows us to peek at the <span class="bold">messages</span> flowing through the
+            <span class="bold">channel</span>.</p>
+          <p>A <span class="hi-yellow">wire-tap</span> is a simple out-of-the-box interceptor provided by <span class="bold">Spring
+            Integration</span>. It intercepts a <span class="bold">message</span> following into a <span class="bold">channel</span>,
+            makes a copy and forks it into another <span class="bold">channel</span> as specified in the
+            <span class="hi-green">channel</span> attribute.</p>
+          <div id="img-outer-div">
+            <img class="img-cls" src="./images/spring-int-04.png" alt="Wire Tap" />
+            <div class="img-cap">Wire Tap</div>
+          </div>
+          <p>In our example, we have defined two <span class="bold">wire-tap</span>s - one for the <span class="bold">channel</span>
+            named <span class="bold">inChannel</span> to go to the <span class="bold">logging-channel-adapter</span> named
+            <span class="bold">logger1</span> and the other for the <span class="bold">channel</span> named <span class="bold">
+            outChannel</span> to go to the <span class="bold">logging-channel-adapter</span> named <span class="bold">logger2</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is our main application to test logging of <span class="bold">messages</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.13</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   StrUpCase3MainXml
+ * Author: Bhaskar S
+ * Date:   04/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p2;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+import com.polarsparc.si.p1.StrUpCaseGateway;
+
+public class StrUpCase3MainXml {
+    private static final Logger LOGGER = LoggerFactory.getLogger(StrUpCase3MainXml.class);
+
+    public static void main(String[] args) {
+        ApplicationContext context = new ClassPathXmlApplicationContext("p2/StrUpCase3.xml");
+
+        StrUpCaseGateway gateway = (StrUpCaseGateway) context.getBean("gateway");
+        gateway.send("Spring Integration using WireTap with Xml");
+
+        String msg = gateway.receive();
+
+        LOGGER.info("OUTPUT: {}", msg);
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.13</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringIntegration</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.si.p2.StrUpCase3MainXml"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------&lt; com.polarsparc.si:SpringIntegration &gt;-----------------
+[INFO] Building SpringIntegration 1.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec-maven-plugin:3.0.0:java (default-cli) @ SpringIntegration ---
+2021-04-24 11:31:27:533 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'errorChannel' has been explicitly defined. Therefore, a default PublishSubscribeChannel will be created.
+2021-04-24 11:31:27:537 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'taskScheduler' has been explicitly defined. Therefore, a default ThreadPoolTaskScheduler will be created.
+2021-04-24 11:31:27:544 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'integrationHeaderChannelRegistry' has been explicitly defined. Therefore, a default DefaultHeaderChannelRegistry will be created.
+2021-04-24 11:31:27:790 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler - Initializing ExecutorService 'taskScheduler'
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.springframework.util.ReflectionUtils (file:/home/bswamina/.m2/repository/org/springframework/spring-core/5.3.5/spring-core-5.3.5.jar) to constructor java.lang.invoke.MethodHandles$Lookup(java.lang.Class)
+WARNING: Please consider reporting this to the maintainers of org.springframework.util.ReflectionUtils
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+2021-04-24 11:31:27:881 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {logging-channel-adapter:logger1.adapter} as a subscriber to the 'logger1' channel
+2021-04-24 11:31:27:882 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@7a15dd75.logger1' has 1 subscriber(s).
+2021-04-24 11:31:27:883 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'logger1.adapter'; defined in: 'class path resource [p2/StrUpCase3.xml]'; from source: ''int:logging-channel-adapter' with id='logger1''
+2021-04-24 11:31:27:884 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {logging-channel-adapter:logger2.adapter} as a subscriber to the 'logger2' channel
+2021-04-24 11:31:27:884 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@7a15dd75.logger2' has 1 subscriber(s).
+2021-04-24 11:31:27:885 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'logger2.adapter'; defined in: 'class path resource [p2/StrUpCase3.xml]'; from source: ''int:logging-channel-adapter' with id='logger2''
+2021-04-24 11:31:27:886 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {service-activator} as a subscriber to the 'inChannel' channel
+2021-04-24 11:31:27:887 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@7a15dd75.inChannel' has 1 subscriber(s).
+2021-04-24 11:31:27:887 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'org.springframework.integration.config.ConsumerEndpointFactoryBean#0'
+2021-04-24 11:31:27:888 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {logging-channel-adapter:_org.springframework.integration.errorLogger} as a subscriber to the 'errorChannel' channel
+2021-04-24 11:31:27:889 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.channel.PublishSubscribeChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@7a15dd75.errorChannel' has 1 subscriber(s).
+2021-04-24 11:31:27:890 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean '_org.springframework.integration.errorLogger'
+2021-04-24 11:31:27:891 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean$MethodInvocationGateway - started bean 'gateway#send(String)'
+2021-04-24 11:31:27:891 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean$MethodInvocationGateway - started bean 'gateway#receive()'
+2021-04-24 11:31:27:892 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean - started bean 'gateway'
+2021-04-24 11:31:27:905 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.handler.LoggingHandler - Spring Integration using WireTap with Xml
+2021-04-24 11:31:27:906 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-04-24 11:31:27:911 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO com.polarsparc.si.p1.StrUpCaseHandler - INPUT: msg = Spring Integration using WireTap with Xml
+2021-04-24 11:31:27:913 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO org.springframework.integration.handler.LoggingHandler - GenericMessage [payload=SPRING INTEGRATION USING WIRETAP WITH XML, headers={replyChannel=nullChannel, id=3423703a-f024-185c-d469-bc49e1750f1c, timestamp=1619278287913}]
+2021-04-24 11:31:27:914 [com.polarsparc.si.p2.StrUpCase3MainXml.main()] INFO com.polarsparc.si.p2.StrUpCase3MainXml - OUTPUT: SPRING INTEGRATION USING WIRETAP WITH XML
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.552 s
+[INFO] Finished at: 2021-04-24T11:31:27-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Java Config based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The following is the Java Config based POJO that defines the input and output <span class="bold">channel</span>s, the two
+        <span class="bold">logging-channel-adapter</span>s, and the two <span class="bold">wire-tap</span>s similar to the one
+        defined in the <span class="bold">XML</span> configuration file of <span class="bold">Listing.12</span> above:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.14</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   StrUpCase3Config
+ * Author: Bhaskar S
+ * Date:   04/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p2;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.integration.channel.AbstractMessageChannel;
+import org.springframework.integration.channel.DirectChannel;
+import org.springframework.integration.channel.QueueChannel;
+import org.springframework.integration.channel.interceptor.WireTap;
+import org.springframework.integration.config.EnableIntegration;
+import org.springframework.integration.handler.LoggingHandler;
+import org.springframework.messaging.MessageChannel;
+
+@Configuration
+@EnableIntegration
+public class StrUpCase3Config {
+    @Bean
+    public MessageChannel inChannel() {
+        AbstractMessageChannel channel = new DirectChannel();
+        channel.addInterceptor(wireTapOne());
+        return channel;
+    }
+
+    @Bean
+    public MessageChannel outChannel() {
+        AbstractMessageChannel channel = new QueueChannel(5);
+        channel.addInterceptor(wireTapTwo());
+        return channel;
+    }
+
+    @Bean
+    @ServiceActivator(inputChannel = "logger1")
+    public LoggingHandler loggerOne() {
+        return new LoggingHandler(LoggingHandler.Level.INFO);
+    }
+
+    @Bean
+    @ServiceActivator(inputChannel = "logger2")
+    public LoggingHandler loggerTwo() {
+        LoggingHandler logger = new LoggingHandler(LoggingHandler.Level.INFO);
+        logger.setShouldLogFullMessage(true);
+        return logger;
+    }
+
+    @Bean
+    public WireTap wireTapOne() {
+        return new WireTap("logger1");
+    }
+
+    @Bean
+    public WireTap wireTapTwo() {
+        return new WireTap("logger2");
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">Listing.14</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>The class <span class="hi-yellow">org.springframework.integration.channel.interceptor.WireTap</span> implements the
+            equivalent <span class="bold">wire-tap</span> functionality similar to the one in <span class="bold">XML</span> based
+            configuration</p>
+        </li>
+        <li>
+          <p>The abstract base class <span class="hi-yellow">org.springframework.integration.channel.AbstractMessageChannel</span>
+            implements the interface <span class="hi-yellow">org.springframework.messaging.MessageChannel</span> and allows one to
+            add a <span class="bold">wire-tap</span> interceptor via the method <span class="hi-green">addInterceptor(...)</span></p>
+        </li>
+        <li>
+          <p>The class <span class="hi-yellow">org.springframework.integration.handler.LoggingHandler</span> implements the
+            equivalent <span class="bold">logging-channel-adapter</span> functionality similar to the one in <span class="bold">
+            XML</span> based configuration</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>And finally, the following is the main application that uses the POJOs from <span class="bold">Listing.5</span>,
+        <span class="bold">Listing.10</span> and <span class="bold">Listing.14</span> to publish and consume data:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.15</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   StrUpCase3MainConfig
+ * Author: Bhaskar S
+ * Date:   04/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p2;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+import com.polarsparc.si.p1.StrUpCaseGateway2;
+import com.polarsparc.si.p1.StrUpCaseHandler2;
+
+public class StrUpCase3MainConfig {
+    private static final Logger LOGGER = LoggerFactory.getLogger(StrUpCase3MainConfig.class);
+
+    public static void main(String[] args) {
+        ApplicationContext context = new AnnotationConfigApplicationContext(StrUpCase3Config.class,
+                StrUpCaseHandler2.class, StrUpCaseGateway2.class);
+
+        StrUpCaseGateway2 gateway = (StrUpCaseGateway2) context.getBean("gateway");
+        gateway.send("Spring Integration using WireTap with Config");
+
+        String msg = gateway.receive();
+
+        LOGGER.info("OUTPUT: {}", msg);
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.15</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringIntegration</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.si.p2.StrUpCase3MainConfig"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------&lt; com.polarsparc.si:SpringIntegration &gt;-----------------
+[INFO] Building SpringIntegration 1.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec-maven-plugin:3.0.0:java (default-cli) @ SpringIntegration ---
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.springframework.cglib.core.ReflectUtils (file:/home/bswamina/.m2/repository/org/springframework/spring-core/5.3.5/spring-core-5.3.5.jar) to method java.lang.ClassLoader.defineClass(java.lang.String,byte[],int,int,java.security.ProtectionDomain)
+WARNING: Please consider reporting this to the maintainers of org.springframework.cglib.core.ReflectUtils
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+2021-04-24 11:33:51:221 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'errorChannel' has been explicitly defined. Therefore, a default PublishSubscribeChannel will be created.
+2021-04-24 11:33:51:225 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'taskScheduler' has been explicitly defined. Therefore, a default ThreadPoolTaskScheduler will be created.
+2021-04-24 11:33:51:230 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'integrationHeaderChannelRegistry' has been explicitly defined. Therefore, a default DefaultHeaderChannelRegistry will be created.
+2021-04-24 11:33:51:268 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'integrationChannelResolver' of type [org.springframework.integration.support.channel.BeanFactoryChannelResolver] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)
+2021-04-24 11:33:51:307 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'integrationDisposableAutoCreatedBeans' of type [org.springframework.integration.config.annotation.Disposables] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)
+2021-04-24 11:33:51:470 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler - Initializing ExecutorService 'taskScheduler'
+2021-04-24 11:33:51:568 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {logging-channel-adapter:_org.springframework.integration.errorLogger} as a subscriber to the 'errorChannel' channel
+2021-04-24 11:33:51:569 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.channel.PublishSubscribeChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@396abb96.errorChannel' has 1 subscriber(s).
+2021-04-24 11:33:51:570 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean '_org.springframework.integration.errorLogger'
+2021-04-24 11:33:51:571 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {message-handler:strUpCase3Config.loggerOne.serviceActivator} as a subscriber to the 'logger1' channel
+2021-04-24 11:33:51:571 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@396abb96.logger1' has 1 subscriber(s).
+2021-04-24 11:33:51:572 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'strUpCase3Config.loggerOne.serviceActivator'
+2021-04-24 11:33:51:573 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {message-handler:strUpCase3Config.loggerTwo.serviceActivator} as a subscriber to the 'logger2' channel
+2021-04-24 11:33:51:574 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@396abb96.logger2' has 1 subscriber(s).
+2021-04-24 11:33:51:574 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'strUpCase3Config.loggerTwo.serviceActivator'
+2021-04-24 11:33:51:575 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {service-activator:strUpCaseHandler2.handler.serviceActivator} as a subscriber to the 'inChannel' channel
+2021-04-24 11:33:51:576 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@396abb96.inChannel' has 1 subscriber(s).
+2021-04-24 11:33:51:577 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'strUpCaseHandler2.handler.serviceActivator'
+2021-04-24 11:33:51:578 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean$MethodInvocationGateway - started bean 'gateway#send(String)'
+2021-04-24 11:33:51:579 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean$MethodInvocationGateway - started bean 'gateway#receive()'
+2021-04-24 11:33:51:579 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean - started bean 'gateway'
+2021-04-24 11:33:51:592 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.handler.LoggingHandler - Spring Integration using WireTap with Config
+2021-04-24 11:33:51:593 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-04-24 11:33:51:597 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO com.polarsparc.si.p1.StrUpCaseHandler2 - INPUT: msg = Spring Integration using WireTap with Config
+2021-04-24 11:33:51:598 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO org.springframework.integration.handler.LoggingHandler - GenericMessage [payload=SPRING INTEGRATION USING WIRETAP WITH CONFIG, headers={replyChannel=nullChannel, id=ef5b1978-35d8-7064-e500-bdf5da953e8f, timestamp=1619278431598}]
+2021-04-24 11:33:51:600 [com.polarsparc.si.p2.StrUpCase3MainConfig.main()] INFO com.polarsparc.si.p2.StrUpCase3MainConfig - OUTPUT: SPRING INTEGRATION USING WIRETAP WITH CONFIG
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.258 s
+[INFO] Finished at: 2021-04-24T11:33:51-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be inferred from the <span class="bold">Output.5</span> and <span class="bold">Output.6</span> above,
+        <span class="bold">Spring Integration</span> is using <span class="bold">LoggingHandler</span> to log <span class="bold">
+        message</span>s intercepted by the <span class="bold">wire-tap</span>.</p>
+    </div>
+    <div id="step-div">
+      <p>Multi-Threading</p>
+    </div>
+    <div id="para-div">
+      <p>By default, <span class="bold">Spring Integration</span> uses the caller thread to process messages from end-to-end. There
+        are situations when one needs to use a pool of thread(s) to process a stream of <span class="bold">message</span>s.</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">XML based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>For demonstrating the multi-threading capability, we will leverage the custom <span class="bold">gateway</span> interface
+        defined in  <span class="bold">Listing.7</span> from <span class="bold">
+        <a href="http://polarsparc.github.io/xhtml/SpringIntegration-01.html" target="_blank">Part-1</a></span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the POJO that converts the input text to upper-case and introduces an artificial delay of <span class="bold">
+        1000</span>ms. This will act as an <span class="bold">endpoint</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.16</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   StrUpCaseHandler3
+ * Author: Bhaskar S
+ * Date:   04/16/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p2;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class StrUpCaseHandler3 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(StrUpCaseHandler3.class);
+
+    public String handler(String msg) {
+        LOGGER.info("INPUT: msg = {}", msg);
+
+        try {
+            Thread.sleep(1000);
+        }
+        catch (Exception ignored) {
+        }
+
+        return msg.toUpperCase();
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the <span class="bold">XML</span> based <span class="bold">Spring Integration</span> configuration that
+        wires up the <span class="bold">channels</span> and the <span class="bold">endpoint</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.17</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;beans xmlns="http://www.springframework.org/schema/beans"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:task="http://www.springframework.org/schema/task"
+        xmlns:int="http://www.springframework.org/schema/integration"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans
+                            http://www.springframework.org/schema/beans/spring-beans.xsd
+                            http://www.springframework.org/schema/task
+                            http://www.springframework.org/schema/task/spring-task.xsd
+                            http://www.springframework.org/schema/integration
+                            http://www.springframework.org/schema/integration/spring-integration.xsd"&gt;
+
+    &lt;bean id="inMsgHandler" class="com.polarsparc.si.p2.StrUpCaseHandler3" /&gt;
+
+    &lt;task:executor id="executor" queue-capacity="5" pool-size="3" /&gt;
+
+    &lt;int:channel id="inChannel1"&gt;
+        &lt;int:dispatcher task-executor="executor" /&gt;
+    &lt;/int:channel&gt;
+
+    &lt;int:channel id="outChannel1"&gt;
+        &lt;int:queue capacity="5" /&gt;
+    &lt;/int:channel&gt;
+
+    &lt;!--
+        The primary purpose of a Gateway is to hide the messaging API provided
+        by Spring Integration
+    --&gt;
+
+    &lt;int:gateway id="gateway"
+                  service-interface="com.polarsparc.si.p1.StrUpCaseGateway"
+                  default-request-channel="inChannel1"
+                  default-reply-channel="outChannel1" /&gt;
+
+    &lt;int:service-activator input-channel="inChannel1"
+                            output-channel="outChannel1"
+                            ref="inMsgHandler"
+                            method="handler" /&gt;
+
+&lt;/beans&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">Listing.17</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>The <span class="hi-yellow">executor</span> element allows one to define a thread pool.</p>
+          <p>The value of the <span class="bold">id</span> attribute is used as the prefix for the thread names in the thread pool.</p>
+          <p>The value of the <span class="bold">pool-size</span> attribute specifies the maximum number of threads in the thread
+            pool.</p>
+          <p>The value of the <span class="bold">queue-capacity</span> attribute specifies the maximum queue size for the tasks being
+            submitted for execution. The executor will first try to use a free thread from the thread pool. If the thread pool is
+            empty and all the threads are active, then the task will be added to the queue as long as its capacity has not yet been
+            reached. If the queue becomes full, then the executor will reject the task.</p>
+          <p>Under-the-hood, <span class="bold">Spring Integration</span> uses
+            <span class="hi-yellow">org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor</span> for the thread pool</p>
+        </li>
+        <li>
+          <p>The <span class="hi-yellow">dispatcher</span> sub-element creates and uses an instance of
+            <span class="hi-yellow">org.springframework.integration.channel.ExecutorChannel</span> under-the-hood. This
+            <span class="bold">channel</span> is a point-to-point <span class="bold">channel</span> similar to the default simple
+            <span class="bold">channel</span> except that it uses a thread pool executor.</p>
+          <p>Every <span class="bold">message</span> coming into the <span class="bold">channel</span> is dispatched to the specified
+            thread pool executor for further processing</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is our main application to test the multi-threaded execution:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.18</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   StrUpCase4MainXml
+ * Author: Bhaskar S
+ * Date:   04/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p2;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+import com.polarsparc.si.p1.StrUpCaseGateway;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+public class StrUpCase4MainXml {
+    private static final Logger LOGGER = LoggerFactory.getLogger(StrUpCase4MainXml.class);
+
+    public static void main(String[] args) {
+        ApplicationContext context = new ClassPathXmlApplicationContext("p2/StrUpCase4.xml");
+
+        StrUpCaseGateway gateway = (StrUpCaseGateway) context.getBean("gateway");
+
+        for (int i = 1; i &lt;= 5; i++) {
+            gateway.send("Spring Integration using Executor - " + i + " with Xml");
+        }
+
+        for (int i = 1; i &lt;= 5; i++) {
+            String msg = gateway.receive();
+
+            LOGGER.info("OUTPUT: {}", msg);
+        }
+
+        ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) context.getBean("executor");
+        while (executor.getActiveCount() != 0) {
+            try {
+                Thread.sleep(1000);
+            }
+            catch (Exception ignored) {
+            }
+        }
+        executor.shutdown();
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.18</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringIntegration</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.si.p2.StrUpCase4MainXml"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------&lt; com.polarsparc.si:SpringIntegration &gt;-----------------
+[INFO] Building SpringIntegration 1.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec-maven-plugin:3.0.0:java (default-cli) @ SpringIntegration ---
+2021-04-24 12:22:50:277 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'errorChannel' has been explicitly defined. Therefore, a default PublishSubscribeChannel will be created.
+2021-04-24 12:22:50:280 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'taskScheduler' has been explicitly defined. Therefore, a default ThreadPoolTaskScheduler will be created.
+2021-04-24 12:22:50:284 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'integrationHeaderChannelRegistry' has been explicitly defined. Therefore, a default DefaultHeaderChannelRegistry will be created.
+2021-04-24 12:22:50:322 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor - Initializing ExecutorService
+2021-04-24 12:22:50:465 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler - Initializing ExecutorService 'taskScheduler'
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.springframework.util.ReflectionUtils (file:/home/bswamina/.m2/repository/org/springframework/spring-core/5.3.5/spring-core-5.3.5.jar) to constructor java.lang.invoke.MethodHandles$Lookup(java.lang.Class)
+WARNING: Please consider reporting this to the maintainers of org.springframework.util.ReflectionUtils
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+2021-04-24 12:22:50:558 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {service-activator} as a subscriber to the 'inChannel1' channel
+2021-04-24 12:22:50:558 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO org.springframework.integration.channel.ExecutorChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@7a15dd75.inChannel1' has 1 subscriber(s).
+2021-04-24 12:22:50:559 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'org.springframework.integration.config.ConsumerEndpointFactoryBean#0'
+2021-04-24 12:22:50:560 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {logging-channel-adapter:_org.springframework.integration.errorLogger} as a subscriber to the 'errorChannel' channel
+2021-04-24 12:22:50:560 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO org.springframework.integration.channel.PublishSubscribeChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@7a15dd75.errorChannel' has 1 subscriber(s).
+2021-04-24 12:22:50:561 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean '_org.springframework.integration.errorLogger'
+2021-04-24 12:22:50:562 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean$MethodInvocationGateway - started bean 'gateway#send(String)'
+2021-04-24 12:22:50:563 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean$MethodInvocationGateway - started bean 'gateway#receive()'
+2021-04-24 12:22:50:563 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean - started bean 'gateway'
+2021-04-24 12:22:50:578 [executor-1] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-04-24 12:22:50:580 [executor-3] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-04-24 12:22:50:581 [executor-2] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-04-24 12:22:50:583 [executor-1] INFO com.polarsparc.si.p2.StrUpCaseHandler3 - INPUT: msg = Spring Integration using Executor - 1 with Xml
+2021-04-24 12:22:50:583 [executor-3] INFO com.polarsparc.si.p2.StrUpCaseHandler3 - INPUT: msg = Spring Integration using Executor - 3 with Xml
+2021-04-24 12:22:50:583 [executor-2] INFO com.polarsparc.si.p2.StrUpCaseHandler3 - INPUT: msg = Spring Integration using Executor - 2 with Xml
+2021-04-24 12:22:51:586 [executor-3] INFO com.polarsparc.si.p2.StrUpCaseHandler3 - INPUT: msg = Spring Integration using Executor - 4 with Xml
+2021-04-24 12:22:51:586 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO com.polarsparc.si.p2.StrUpCase4MainXml - OUTPUT: SPRING INTEGRATION USING EXECUTOR - 1 WITH XML
+2021-04-24 12:22:51:586 [executor-2] INFO com.polarsparc.si.p2.StrUpCaseHandler3 - INPUT: msg = Spring Integration using Executor - 5 with Xml
+2021-04-24 12:22:51:588 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO com.polarsparc.si.p2.StrUpCase4MainXml - OUTPUT: SPRING INTEGRATION USING EXECUTOR - 3 WITH XML
+2021-04-24 12:22:51:590 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO com.polarsparc.si.p2.StrUpCase4MainXml - OUTPUT: SPRING INTEGRATION USING EXECUTOR - 2 WITH XML
+2021-04-24 12:22:52:588 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO com.polarsparc.si.p2.StrUpCase4MainXml - OUTPUT: SPRING INTEGRATION USING EXECUTOR - 4 WITH XML
+2021-04-24 12:22:52:589 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO com.polarsparc.si.p2.StrUpCase4MainXml - OUTPUT: SPRING INTEGRATION USING EXECUTOR - 5 WITH XML
+2021-04-24 12:22:52:590 [com.polarsparc.si.p2.StrUpCase4MainXml.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor - Shutting down ExecutorService
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.221 s
+[INFO] Finished at: 2021-04-24T12:22:52-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Java Config based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The following is the Java Config based POJO that acts as an <span class="bold">endpoint</span> that converts the input text
+        to upper-case (with an artificially introduced delay):</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.19</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   StrUpCaseHandler4
+ * Author: Bhaskar S
+ * Date:   04/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p2;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.integration.config.EnableIntegration;
+
+@Configuration
+@EnableIntegration
+public class StrUpCaseHandler4 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(StrUpCaseHandler4.class);
+
+    @ServiceActivator(inputChannel = "inChannel", outputChannel = "outChannel")
+    public String handler(String msg) {
+        LOGGER.info("INPUT: msg = {}", msg);
+
+        try {
+            Thread.sleep(1000);
+        }
+        catch (Exception ignored) {
+        }
+
+        return msg.toUpperCase();
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java Config based POJO that defines the input and output <span class="bold">channel</span>s and the
+        <span class="bold">executor</span> thread pool similar to the one defined in the <span class="bold">XML</span> configuration
+        file of <span class="bold">Listing.17</span> above:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.20</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   StrUpCase4Config
+ * Author: Bhaskar S
+ * Date:   04/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p2;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.channel.ExecutorChannel;
+import org.springframework.integration.channel.QueueChannel;
+import org.springframework.integration.config.EnableIntegration;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+@Configuration
+@EnableIntegration
+public class StrUpCase4Config {
+    @Bean
+    public MessageChannel inChannel() {
+        return new ExecutorChannel(threadPoolTaskExecutor());
+    }
+
+    @Bean
+    public MessageChannel outChannel() {
+        return new QueueChannel(5);
+    }
+
+    @Bean(name = "executor")
+    public ThreadPoolTaskExecutor threadPoolTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setQueueCapacity(5);
+        executor.setCorePoolSize(3);
+        executor.setBeanName("executor");
+        return executor;
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">Listing.20</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>The class <span class="hi-yellow">org.springframework.integration.channel.ExecutorChannel</span> is an implementation
+            of the <span class="bold">channel</span> that delegates the dispatching of <span class="bold">message</span>s to an
+            underlying thread pool for further processing</p>
+        </li>
+        <li>
+          <p>The class <span class="hi-yellow">org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor</span> implements a
+            thread pool is similar to the <span class="bold">executor</span> defined in <span class="bold">XML</span> based
+            configuration</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>And finally, the following is the main application that uses the POJOs from <span class="bold">Listing.10</span>,
+        <span class="bold">Listing.19</span>, and <span class="bold">Listing.20</span> to publish data that is consumed and processed
+        by a pool of threads:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.21</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   StrUpCase4MainConfig
+ * Author: Bhaskar S
+ * Date:   04/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p2;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+import com.polarsparc.si.p1.StrUpCaseGateway2;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+public class StrUpCase4MainConfig {
+    private static final Logger LOGGER = LoggerFactory.getLogger(StrUpCase4MainConfig.class);
+
+    public static void main(String[] args) {
+        ApplicationContext context = new AnnotationConfigApplicationContext(StrUpCase4Config.class,
+                StrUpCaseHandler4.class, StrUpCaseGateway2.class);
+
+        StrUpCaseGateway2 gateway = (StrUpCaseGateway2) context.getBean("gateway");
+
+        for (int i = 1; i &lt;= 5; i++) {
+            gateway.send("Spring Integration using Executor - " + i + " with Config");
+        }
+
+        for (int i = 1; i &lt;= 5; i++) {
+            String msg = gateway.receive();
+
+            LOGGER.info("OUTPUT: {}", msg);
+        }
+
+        ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor) context.getBean("executor");
+        while (executor.getActiveCount() != 0) {
+            try {
+                Thread.sleep(1000);
+            }
+            catch (Exception ignored) {
+            }
+        }
+        executor.shutdown();
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.21</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringIntegration</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.si.p2.StrUpCase4MainConfig"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------&lt; com.polarsparc.si:SpringIntegration &gt;-----------------
+[INFO] Building SpringIntegration 1.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec-maven-plugin:3.0.0:java (default-cli) @ SpringIntegration ---
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.springframework.cglib.core.ReflectUtils (file:/home/bswamina/.m2/repository/org/springframework/spring-core/5.3.5/spring-core-5.3.5.jar) to method java.lang.ClassLoader.defineClass(java.lang.String,byte[],int,int,java.security.ProtectionDomain)
+WARNING: Please consider reporting this to the maintainers of org.springframework.cglib.core.ReflectUtils
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+2021-04-24 12:27:25:339 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'errorChannel' has been explicitly defined. Therefore, a default PublishSubscribeChannel will be created.
+2021-04-24 12:27:25:345 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'taskScheduler' has been explicitly defined. Therefore, a default ThreadPoolTaskScheduler will be created.
+2021-04-24 12:27:25:348 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'integrationHeaderChannelRegistry' has been explicitly defined. Therefore, a default DefaultHeaderChannelRegistry will be created.
+2021-04-24 12:27:25:384 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'integrationChannelResolver' of type [org.springframework.integration.support.channel.BeanFactoryChannelResolver] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)
+2021-04-24 12:27:25:423 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'integrationDisposableAutoCreatedBeans' of type [org.springframework.integration.config.annotation.Disposables] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)
+2021-04-24 12:27:25:465 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor - Initializing ExecutorService 'executor'
+2021-04-24 12:27:25:589 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler - Initializing ExecutorService 'taskScheduler'
+2021-04-24 12:27:25:688 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {logging-channel-adapter:_org.springframework.integration.errorLogger} as a subscriber to the 'errorChannel' channel
+2021-04-24 12:27:25:690 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO org.springframework.integration.channel.PublishSubscribeChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@396abb96.errorChannel' has 1 subscriber(s).
+2021-04-24 12:27:25:691 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean '_org.springframework.integration.errorLogger'
+2021-04-24 12:27:25:691 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {service-activator:strUpCaseHandler4.handler.serviceActivator} as a subscriber to the 'inChannel' channel
+2021-04-24 12:27:25:692 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO org.springframework.integration.channel.ExecutorChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@396abb96.inChannel' has 1 subscriber(s).
+2021-04-24 12:27:25:693 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'strUpCaseHandler4.handler.serviceActivator'
+2021-04-24 12:27:25:695 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean$MethodInvocationGateway - started bean 'gateway#send(String)'
+2021-04-24 12:27:25:695 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean$MethodInvocationGateway - started bean 'gateway#receive()'
+2021-04-24 12:27:25:696 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean - started bean 'gateway'
+2021-04-24 12:27:25:715 [executor-1] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-04-24 12:27:25:718 [executor-3] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-04-24 12:27:25:718 [executor-2] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-04-24 12:27:25:721 [executor-3] INFO com.polarsparc.si.p2.StrUpCaseHandler4 - INPUT: msg = Spring Integration using Executor - 3 with Config
+2021-04-24 12:27:25:721 [executor-2] INFO com.polarsparc.si.p2.StrUpCaseHandler4 - INPUT: msg = Spring Integration using Executor - 2 with Config
+2021-04-24 12:27:25:721 [executor-1] INFO com.polarsparc.si.p2.StrUpCaseHandler4 - INPUT: msg = Spring Integration using Executor - 1 with Config
+2021-04-24 12:27:26:723 [executor-1] INFO com.polarsparc.si.p2.StrUpCaseHandler4 - INPUT: msg = Spring Integration using Executor - 4 with Config
+2021-04-24 12:27:26:724 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO com.polarsparc.si.p2.StrUpCase4MainConfig - OUTPUT: SPRING INTEGRATION USING EXECUTOR - 3 WITH CONFIG
+2021-04-24 12:27:26:724 [executor-2] INFO com.polarsparc.si.p2.StrUpCaseHandler4 - INPUT: msg = Spring Integration using Executor - 5 with Config
+2021-04-24 12:27:26:726 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO com.polarsparc.si.p2.StrUpCase4MainConfig - OUTPUT: SPRING INTEGRATION USING EXECUTOR - 1 WITH CONFIG
+2021-04-24 12:27:26:727 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO com.polarsparc.si.p2.StrUpCase4MainConfig - OUTPUT: SPRING INTEGRATION USING EXECUTOR - 2 WITH CONFIG
+2021-04-24 12:27:27:725 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO com.polarsparc.si.p2.StrUpCase4MainConfig - OUTPUT: SPRING INTEGRATION USING EXECUTOR - 4 WITH CONFIG
+2021-04-24 12:27:27:726 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO com.polarsparc.si.p2.StrUpCase4MainConfig - OUTPUT: SPRING INTEGRATION USING EXECUTOR - 5 WITH CONFIG
+2021-04-24 12:27:27:728 [com.polarsparc.si.p2.StrUpCase4MainConfig.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor - Shutting down ExecutorService 'executor'
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.220 s
+[INFO] Finished at: 2021-04-24T12:27:27-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be inferred from the <span class="bold">Output.7</span> and <span class="bold">Output.8</span> above,
+        <span class="bold">Spring Integration</span> is using the configured thread pool executor to process <span class="bold">
+        message</span>s.</p>
+    </div>
+    <div id="step-div">
+      <p>Exception Handling</p>
+    </div>
+    <div id="para-div">
+      <p>In <span class="bold">Spring Integration</span>, when a <span class="bold">message</span> is processed by an
+        <span class="bold">endpoint</span> via a synchronous <span class="bold">channel</span> (without any <span class="bold">
+        queue</span> or <span class="bold">executor</span>), any exception(s) thrown by the <span class="bold">endpoint</span> is
+        sent back to the caller in the callers thread. In the case of an asynchronous <span class="bold">channel</span>, the
+        <span class="bold">message</span> is processed by the <span class="bold">endpoint</span> in a thread that is different from
+        the callers thread and the only way to handle the exception(s) is to configure an <span class="hi-yellow">error-channel</span>,
+        where the exception(s) can be logged.</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">XML based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>For demonstrating the error handling capability, we will use a different example - the use-case of checking if a user-id is
+        valid and throwing an exception if not valid.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the POJO that checks if the specified user-id is valid. Else, it throws a run-time exception:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.22</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CheckUserHandler
+ * Author: Bhaskar S
+ * Date:   04/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p2;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+import java.util.List;
+
+public class CheckUserHandler {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CheckUserHandler.class);
+
+    List<String> users = Arrays.asList("alice", "bob", "charlie");
+
+    public boolean checkUser(String id) {
+        LOGGER.info("Check user = {}", id);
+
+        if (!users.contains(id)) {
+            throw new RuntimeException("User " + id + " is invalid");
+        }
+
+        return true;
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the POJO that handles the run-time exception:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.23</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CheckUserErrorHandler
+ * Author: Bhaskar S
+ * Date:   04/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p2;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHandlingException;
+
+public class CheckUserErrorHandler {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CheckUserErrorHandler.class);
+
+    @ServiceActivator(inputChannel = "errChannel")
+    public void handleError(Message&lt;MessageHandlingException&gt; msg) {
+        LOGGER.error("Exception message = {}", msg);
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">Spring Integration</span> wraps all exceptions into the class
+        <span class="hi-yellow">org.springframework.messaging.MessageHandlingException</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the simple interface to check the validity of an user-id:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.24</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CheckUserGateway
+ * Author: Bhaskar S
+ * Date:   04/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p2;
+
+public interface CheckUserGateway {
+    public boolean checkUser(String id);
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the <span class="bold">XML</span> based <span class="bold">Spring Integration</span> configuration that
+        wires up the <span class="bold">channel</span>s, a <span class="bold">gateway</span> with with the appropriate
+        <span class="bold">error-channel</span>, and the <span class="bold">endpoint</span>s:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.25</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;beans xmlns="http://www.springframework.org/schema/beans"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:task="http://www.springframework.org/schema/task"
+        xmlns:int="http://www.springframework.org/schema/integration"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans
+                            http://www.springframework.org/schema/beans/spring-beans.xsd
+                            http://www.springframework.org/schema/task
+                            http://www.springframework.org/schema/task/spring-task.xsd
+                            http://www.springframework.org/schema/integration
+                            http://www.springframework.org/schema/integration/spring-integration.xsd"&gt;
+
+    &lt;bean id="inMsgHandler" class="com.polarsparc.si.p2.CheckUserHandler" /&gt;
+    &lt;bean id="errMsgHandler" class="com.polarsparc.si.p2.CheckUserErrorHandler" /&gt;
+
+    &lt;task:executor id="executor" queue-capacity="5" pool-size="3" /&gt;
+
+    &lt;int:channel id="inChannel"&gt;
+        &lt;int:dispatcher task-executor="executor" /&gt;
+    &lt;/int:channel&gt;
+
+    &lt;!--
+        The primary purpose of a Gateway is to hide the messaging API provided
+        by Spring Integration
+    --&gt;
+
+    &lt;int:gateway id="gateway"
+                  service-interface="com.polarsparc.si.p2.CheckUserGateway"
+                  default-request-channel="inChannel"
+                  error-channel="errChannel" /&gt;
+
+    &lt;int:service-activator input-channel="inChannel"
+                            ref="inMsgHandler"
+                            method="checkUser" /&gt;
+
+    &lt;int:service-activator input-channel="errChannel"
+                            ref="errMsgHandler"
+                            method="handleError" /&gt;
+
+&lt;/beans&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Only one aspect of the <span class="bold">Listing.25</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>The <span class="hi-yellow">error-channel</span> attribute of the <span class="bold">gateway</span> element specifies
+            the <span class="bold">channel</span> to which exception <span class="bold">messages</span> need to be routed. In our
+            example, we have defined a <span class="bold">service-activator</span> to handle exceptions</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is our main application to test exception handling in <span class="bold">Spring Integration</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.26</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CheckUserMainXml
+ * Author: Bhaskar S
+ * Date:   04/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p2;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+public class CheckUserMainXml {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CheckUserMainXml.class);
+
+    public static void main(String[] args) {
+        ApplicationContext context = new ClassPathXmlApplicationContext("p2/CheckUser.xml");
+
+        CheckUserGateway gateway = (CheckUserGateway) context.getBean("gateway");
+
+        LOGGER.info("CheckUser for alice: {} with Xml", Boolean.toString(gateway.checkUser("alice")));
+
+        LOGGER.info("CheckUser for john: {} with Xml", Boolean.toString(gateway.checkUser("john")));
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.26</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringIntegration</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.si.p2.CheckUserMainXml"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------&lt; com.polarsparc.si:SpringIntegration &gt;-----------------
+[INFO] Building SpringIntegration 1.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec-maven-plugin:3.0.0:java (default-cli) @ SpringIntegration ---
+2021-04-24 12:48:16:705 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'errorChannel' has been explicitly defined. Therefore, a default PublishSubscribeChannel will be created.
+2021-04-24 12:48:16:710 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'taskScheduler' has been explicitly defined. Therefore, a default ThreadPoolTaskScheduler will be created.
+2021-04-24 12:48:16:714 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'integrationHeaderChannelRegistry' has been explicitly defined. Therefore, a default DefaultHeaderChannelRegistry will be created.
+2021-04-24 12:48:16:759 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor - Initializing ExecutorService
+2021-04-24 12:48:16:908 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler - Initializing ExecutorService 'taskScheduler'
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.springframework.util.ReflectionUtils (file:/home/bswamina/.m2/repository/org/springframework/spring-core/5.3.5/spring-core-5.3.5.jar) to constructor java.lang.invoke.MethodHandles$Lookup(java.lang.Class)
+WARNING: Please consider reporting this to the maintainers of org.springframework.util.ReflectionUtils
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+2021-04-24 12:48:17:012 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {service-activator} as a subscriber to the 'inChannel' channel
+2021-04-24 12:48:17:013 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO org.springframework.integration.channel.ExecutorChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@4278a583.inChannel' has 1 subscriber(s).
+2021-04-24 12:48:17:014 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'org.springframework.integration.config.ConsumerEndpointFactoryBean#0'
+2021-04-24 12:48:17:014 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {service-activator} as a subscriber to the 'errChannel' channel
+2021-04-24 12:48:17:015 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@4278a583.errChannel' has 1 subscriber(s).
+2021-04-24 12:48:17:016 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'org.springframework.integration.config.ConsumerEndpointFactoryBean#1'
+2021-04-24 12:48:17:016 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {logging-channel-adapter:_org.springframework.integration.errorLogger} as a subscriber to the 'errorChannel' channel
+2021-04-24 12:48:17:017 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO org.springframework.integration.channel.PublishSubscribeChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@4278a583.errorChannel' has 1 subscriber(s).
+2021-04-24 12:48:17:018 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean '_org.springframework.integration.errorLogger'
+2021-04-24 12:48:17:020 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean$MethodInvocationGateway - started bean 'gateway#checkUser(String)'
+2021-04-24 12:48:17:021 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean - started bean 'gateway'
+2021-04-24 12:48:17:036 [executor-1] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-04-24 12:48:17:043 [executor-1] INFO com.polarsparc.si.p2.CheckUserHandler - Check user = alice
+2021-04-24 12:48:17:045 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO com.polarsparc.si.p2.CheckUserMainXml - CheckUser for alice: true with Xml
+2021-04-24 12:48:17:047 [executor-2] INFO com.polarsparc.si.p2.CheckUserHandler - Check user = john
+2021-04-24 12:48:17:054 [com.polarsparc.si.p2.CheckUserMainXml.main()] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-04-24 12:48:17:056 [com.polarsparc.si.p2.CheckUserMainXml.main()] ERROR com.polarsparc.si.p2.CheckUserErrorHandler - Exception message = ErrorMessage [payload=org.springframework.messaging.MessageHandlingException: error occurred during processing message in 'MethodInvokingMessageProcessor' [org.springframework.integration.handler.MethodInvokingMessageProcessor@62b3a0b]; nested exception is java.lang.RuntimeException: User john is invalid, failedMessage=GenericMessage [payload=john, headers={replyChannel=org.springframework.messaging.core.GenericMessagingTemplate$TemporaryReplyChannel@d242962, errorChannel=org.springframework.messaging.core.GenericMessagingTemplate$TemporaryReplyChannel@d242962, id=4d37bdf5-2f87-461b-9ca3-069fd7b3b9bc, timestamp=1619282897047}], headers={replyChannel=org.springframework.messaging.core.GenericMessagingTemplate$TemporaryReplyChannel@5e640abb, errorChannel=org.springframework.messaging.core.GenericMessagingTemplate$TemporaryReplyChannel@5e640abb, id=7486dc01-1677-14eb-688a-93632a1aafa5, timestamp=1619282897054}]
+--- CTRL-C ---</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Java Config based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The following is the Java Config based POJO that acts as an <span class="bold">endpoint</span> that checks if the specified
+        user-id is valid. Else, it throws a run-time exception:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.27</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CheckUserHandler2
+ * Author: Bhaskar S
+ * Date:   04/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p2;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.integration.config.EnableIntegration;
+
+import java.util.Arrays;
+import java.util.List;
+
+@Configuration
+@EnableIntegration
+public class CheckUserHandler2 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CheckUserHandler2.class);
+
+    List<String> users = Arrays.asList("alice", "bob", "charlie");
+
+    @ServiceActivator(inputChannel = "inChannel")
+    public boolean checkUser(String id) {
+        LOGGER.info("Check user = {}", id);
+
+        if (!users.contains(id)) {
+            throw new RuntimeException("User " + id + " is invalid");
+        }
+
+        return true;
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java Config based POJO that acts as an <span class="bold">endpoint</span> that handles the run-time
+        exception:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.28</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CheckUserErrorHandler2
+ * Author: Bhaskar S
+ * Date:   04/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p2;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.integration.config.EnableIntegration;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.MessageHandlingException;
+
+@Configuration
+@EnableIntegration
+public class CheckUserErrorHandler2 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CheckUserErrorHandler2.class);
+
+    @ServiceActivator(inputChannel = "errChannel")
+    public void handleError(Message&lt;MessageHandlingException&gt; msg) {
+        LOGGER.error("Exception message = {}", msg);
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java Config based POJO that acts as a custom <span class="bold">gateway</span> interface that checks
+        the validity of an user-id and defines the request and error <span class="bold">channel</span>s:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.29</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CheckUserGateway2
+ * Author: Bhaskar S
+ * Date:   04/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p2;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.annotation.IntegrationComponentScan;
+import org.springframework.integration.annotation.MessagingGateway;
+import org.springframework.integration.config.EnableIntegration;
+
+@Configuration
+@EnableIntegration
+@IntegrationComponentScan
+@MessagingGateway(name = "gateway", defaultRequestChannel = "inChannel", errorChannel = "errChannel")
+public interface CheckUserGateway2 {
+    public boolean checkUser(String id);
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>And finally, the following is the main application that uses the POJOs from <span class="bold">Listing.27</span>,
+        <span class="bold">Listing.28</span>, and <span class="bold">Listing.29</span> to test exception handling:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.30</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CheckUserMainConfig
+ * Author: Bhaskar S
+ * Date:   04/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p2;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+public class CheckUserMainConfig {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CheckUserMainConfig.class);
+
+    public static void main(String[] args) {
+        ApplicationContext context = new AnnotationConfigApplicationContext(CheckUserHandler2.class,
+                CheckUserErrorHandler2.class, CheckUserGateway2.class);
+
+        CheckUserGateway2 gateway = (CheckUserGateway2) context.getBean("gateway");
+
+        LOGGER.info("CheckUser for alice: {} with Config", Boolean.toString(gateway.checkUser("alice")));
+
+        LOGGER.info("CheckUser for john: {} with Config", Boolean.toString(gateway.checkUser("john")));
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.30</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringIntegration</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.si.p2.CheckUserMainConfig"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------&lt; com.polarsparc.si:SpringIntegration &gt;-----------------
+[INFO] Building SpringIntegration 1.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec-maven-plugin:3.0.0:java (default-cli) @ SpringIntegration ---
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.springframework.cglib.core.ReflectUtils (file:/home/bswamina/.m2/repository/org/springframework/spring-core/5.3.5/spring-core-5.3.5.jar) to method java.lang.ClassLoader.defineClass(java.lang.String,byte[],int,int,java.security.ProtectionDomain)
+WARNING: Please consider reporting this to the maintainers of org.springframework.cglib.core.ReflectUtils
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+2021-04-24 12:55:26:520 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'errorChannel' has been explicitly defined. Therefore, a default PublishSubscribeChannel will be created.
+2021-04-24 12:55:26:526 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'taskScheduler' has been explicitly defined. Therefore, a default ThreadPoolTaskScheduler will be created.
+2021-04-24 12:55:26:530 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'integrationHeaderChannelRegistry' has been explicitly defined. Therefore, a default DefaultHeaderChannelRegistry will be created.
+2021-04-24 12:55:26:571 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'integrationChannelResolver' of type [org.springframework.integration.support.channel.BeanFactoryChannelResolver] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)
+2021-04-24 12:55:26:607 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'integrationDisposableAutoCreatedBeans' of type [org.springframework.integration.config.annotation.Disposables] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)
+2021-04-24 12:55:26:735 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler - Initializing ExecutorService 'taskScheduler'
+2021-04-24 12:55:26:846 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {logging-channel-adapter:_org.springframework.integration.errorLogger} as a subscriber to the 'errorChannel' channel
+2021-04-24 12:55:26:847 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.integration.channel.PublishSubscribeChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@b1f9496.errorChannel' has 1 subscriber(s).
+2021-04-24 12:55:26:848 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean '_org.springframework.integration.errorLogger'
+2021-04-24 12:55:26:848 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {service-activator:checkUserHandler2.checkUser.serviceActivator} as a subscriber to the 'inChannel' channel
+2021-04-24 12:55:26:849 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@b1f9496.inChannel' has 1 subscriber(s).
+2021-04-24 12:55:26:850 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'checkUserHandler2.checkUser.serviceActivator'
+2021-04-24 12:55:26:850 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {service-activator:checkUserErrorHandler2.handleError.serviceActivator} as a subscriber to the 'errChannel' channel
+2021-04-24 12:55:26:851 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@b1f9496.errChannel' has 1 subscriber(s).
+2021-04-24 12:55:26:851 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'checkUserErrorHandler2.handleError.serviceActivator'
+2021-04-24 12:55:26:852 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean$MethodInvocationGateway - started bean 'gateway#checkUser(String)'
+2021-04-24 12:55:26:853 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean - started bean 'gateway'
+2021-04-24 12:55:26:865 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-04-24 12:55:26:868 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO com.polarsparc.si.p2.CheckUserHandler2 - Check user = alice
+2021-04-24 12:55:26:870 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO com.polarsparc.si.p2.CheckUserMainConfig - CheckUser for alice: true with Config
+2021-04-24 12:55:26:871 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO com.polarsparc.si.p2.CheckUserHandler2 - Check user = john
+2021-04-24 12:55:26:878 [com.polarsparc.si.p2.CheckUserMainConfig.main()] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-04-24 12:55:26:879 [com.polarsparc.si.p2.CheckUserMainConfig.main()] ERROR com.polarsparc.si.p2.CheckUserErrorHandler2 - Exception message = ErrorMessage [payload=org.springframework.messaging.MessageHandlingException: error occurred during processing message in 'MethodInvokingMessageProcessor' [org.springframework.integration.handler.MethodInvokingMessageProcessor@1ee88cfc]; nested exception is java.lang.RuntimeException: User john is invalid, failedMessage=GenericMessage [payload=john, headers={replyChannel=org.springframework.messaging.core.GenericMessagingTemplate$TemporaryReplyChannel@183d1409, errorChannel=org.springframework.messaging.core.GenericMessagingTemplate$TemporaryReplyChannel@183d1409, id=b174d92e-3559-9d82-7ff6-b75a2c389034, timestamp=1619283326871}], headers={replyChannel=org.springframework.messaging.core.GenericMessagingTemplate$TemporaryReplyChannel@6d477d5a, errorChannel=org.springframework.messaging.core.GenericMessagingTemplate$TemporaryReplyChannel@6d477d5a, id=9317d5f2-87f8-5add-bb8a-533050d57d32, timestamp=1619283326878}]
+--- CTRL-C ---</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be inferred from the <span class="bold">Output.9</span> and <span class="bold">Output.10</span> above, <span class="bold">
+        Spring Integration</span> is wrapping the generated exception into <span class="bold">MessageHandlingException</span> and
+        routing it to our exception handler.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://polarsparc.github.io/SpringIntegration/SpringIntegration-01.html"><span class="bold">Spring Integration Notes :: Part - 1</span></a></p>
+      <p><a href="https://docs.spring.io/spring-integration/reference/html/error-handling.html" target="_blank"><span class="bold">Integration - Error Handling</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

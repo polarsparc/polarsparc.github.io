@@ -1,0 +1,1296 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Spring Integration Notes :: Part - 6">
+    <meta name="subject" content="Spring Integration Notes :: Part - 6">
+    <meta name="keywords" content="eip, java, spring">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Spring Integration Notes :: Part - 6</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Spring Integration Notes :: Part - 6</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">05/22/2021 (<span class="hi-yellow">UPDATED</span>)</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <span class="bold"><a target="_blank" href="https://polarsparc.github.io/SpringIntegration/SpringIntegration-05.html">
+        Part-5</a></span>, we covered basic examples of <span class="bold">Spring Integration</span> relating to the AMQP (using
+        RabbitMQ) and Apache Kafka <span class="bold">channel adapter</span>s.</p>
+      <p>We will continue our journey by exploring some basic examples relating to the following concepts in <span class="bold">Spring
+        Integration</span>:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>Chaining Endpoints</p>
+        </li>
+        <li>
+          <p>Header Enrichment</p>
+        </li>
+      </ul>
+    </div>
+    <div id="section-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the demonstrations in this part, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringIntegration</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/si/p6</p>
+      <p>$ mkdir -p src/main/resources/p6</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the listing for the updated <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span>
+        to add the dependencies for the stream and <span class="hi-yellow"><a target="_blank" href="https://projectlombok.org/">
+        Lombok</a></span> support:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;groupId&gt;com.polarsparc.si&lt;/groupId&gt;
+    &lt;artifactId&gt;SpringIntegration&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+    &lt;name&gt;SpringIntegration&lt;/name&gt;
+    &lt;description&gt;Spring Integration Examples&lt;/description&gt;
+
+    &lt;properties&gt;
+        &lt;maven.compiler.source&gt;11&lt;/maven.compiler.source&gt;
+        &lt;maven.compiler.target&gt;11&lt;/maven.compiler.target&gt;
+    &lt;/properties&gt;
+
+    &lt;build&gt;
+        &lt;pluginManagement&gt;
+            &lt;plugins&gt;
+                &lt;plugin&gt;
+                    &lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
+                    &lt;artifactId&gt;maven-compiler-plugin&lt;/artifactId&gt;
+                    &lt;version&gt;3.8.1&lt;/version&gt;
+                    &lt;configuration&gt;
+                        &lt;fork&gt;true&lt;/fork&gt;
+                        &lt;meminitial&gt;128m&lt;/meminitial&gt;
+                        &lt;maxmem&gt;512m&lt;/maxmem&gt;
+                        &lt;source&gt;11&lt;/source&gt;
+                        &lt;target&gt;11&lt;/target&gt;
+                    &lt;/configuration&gt;
+                &lt;/plugin&gt;
+            &lt;/plugins&gt;
+        &lt;/pluginManagement&gt;
+    &lt;/build&gt;
+
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;javax.annotation&lt;/groupId&gt;
+            &lt;artifactId&gt;javax.annotation-api&lt;/artifactId&gt;
+            &lt;version&gt;1.3.2&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-core&lt;/artifactId&gt;
+            &lt;version&gt;5.3.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-context&lt;/artifactId&gt;
+            &lt;version&gt;5.3.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-beans&lt;/artifactId&gt;
+            &lt;version&gt;5.3.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.integration&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-integration-core&lt;/artifactId&gt;
+            &lt;version&gt;5.4.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.integration&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-integration-file&lt;/artifactId&gt;
+            &lt;version&gt;5.4.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.integration&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-integration-sftp&lt;/artifactId&gt;
+            &lt;version&gt;5.4.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.integration&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-integration-jdbc&lt;/artifactId&gt;
+            &lt;version&gt;5.4.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.integration&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-integration-http&lt;/artifactId&gt;
+            &lt;version&gt;5.4.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.integration&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-integration-amqp&lt;/artifactId&gt;
+            &lt;version&gt;5.4.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.integration&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-integration-kafka&lt;/artifactId&gt;
+            &lt;version&gt;5.4.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.integration&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-integration-stream&lt;/artifactId&gt;
+            &lt;version&gt;5.4.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.amqp&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-rabbit&lt;/artifactId&gt;
+            &lt;version&gt;2.3.6&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;slf4j-api&lt;/artifactId&gt;
+            &lt;version&gt;1.7.30&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;log4j-over-slf4j&lt;/artifactId&gt;
+            &lt;version&gt;1.7.30&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;slf4j-simple&lt;/artifactId&gt;
+            &lt;version&gt;1.7.30&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.postgresql&lt;/groupId&gt;
+            &lt;artifactId&gt;postgresql&lt;/artifactId&gt;
+            &lt;version&gt;42.2.19&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.projectlombok&lt;/groupId&gt;
+            &lt;artifactId&gt;lombok&lt;/artifactId&gt;
+            &lt;version&gt;1.18.20&lt;/version&gt;
+            &lt;scope&gt;provided&lt;/scope&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on Spring Integration</p>
+    </div>
+    <div id="para-div">
+      <p>We will consider a hypothetical car service use-case to demonstrate the various concepts in this part.</p>
+    </div>
+    <div id="step-div">
+      <p>Chaining Endpoints</p>
+    </div>
+    <div id="para-div">
+      <p>In this hypothetical example, as cars come in for servicing, we want to assign each car, a reference number on arrival,
+        and then based on the current miles on the car, assign recommended services.</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">XML based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The following is the <span class="hi-yellow">Car</span> POJO that encapsulates the car make, the current miles, the reference
+        number, and a <span class="bold">java.util.Map</span> of services:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.73</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Car
+ * Author: Bhaskar S
+ * Date:   05/22/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p6;
+
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+
+import java.util.Map;
+import java.util.TreeMap;
+
+@Getter
+@Setter
+@ToString
+public class Car {
+    private String ref;
+    private String make;
+
+    private long miles;
+
+    private Map&lt;String, Float&gt; services = new TreeMap&lt;&gt;();
+
+    public Car(String make, long miles) {
+        this.make = make;
+        this.miles = miles;
+    }
+
+    public static Car makeClone(Car car) {
+      return new Car(car.make, car.miles);
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following handler is a Java POJO that assigns a reference number to an arriving <span class="bold">Car</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.74</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   RefNoHandler
+ * Author: Bhaskar S
+ * Date:   05/22/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p6;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.messaging.Message;
+
+public class RefNoHandler {
+    private static final Logger LOGGER = LoggerFactory.getLogger(RefNoHandler.class);
+
+    private static int nextNo = 1;
+
+    private static String REF_NO_FMT = "%s-%05d";
+
+    public Message&lt;Car&gt; assignRefNo(Message&lt;Car&gt; input) {
+        input.getPayload().setRef(String.format(REF_NO_FMT, input.getPayload().getMake().substring(0, 1), nextNo++));
+
+        LOGGER.info("Input: {} (in Xml)", input.toString());
+
+        return input;
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following handler is a Java POJO that assigns the recommended services for an arriving <span class="bold">Car</span>
+        based on the current miles:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.75</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CarServiceHandler
+ * Author: Bhaskar S
+ * Date:   05/22/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p6;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.messaging.Message;
+
+public class CarServiceHandler {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CarServiceHandler.class);
+
+    private static String OIL_CHANGE = "OIL_CHANGE";
+    private static String AIR_FILTER = "AIR_FILTER";
+    private static String WHEEL_BALANCE = "WHEEL_BALANCE";
+
+    public Message&lt;?&gt; recommendedServices(Message&lt;Car&gt; input) {
+        input.getPayload().getServices().put(OIL_CHANGE, (float) 29.95);
+        input.getPayload().getServices().put(AIR_FILTER, (float) 19.95);
+
+        if (input.getPayload().getMiles() % 15000 == 0) {
+            input.getPayload().getServices().put(WHEEL_BALANCE, (float) 69.95);
+        }
+
+        LOGGER.info("Input: {} (in Xml)", input.toString());
+
+        return input;
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is a simple interface to service a <span class="bold">Car</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.76</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CarServiceGateway
+ * Author: Bhaskar S
+ * Date:   05/22/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p6;
+
+public interface CarServiceGateway {
+    public void serviceCar(Car car);
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the <span class="bold">XML</span> based <span class="bold">Spring Integration</span> configuration that
+        wires up the <span class="bold">channels</span> and the <span class="bold">endpoint</span>s as a <span class="bold">chain</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.77</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;beans xmlns="http://www.springframework.org/schema/beans"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:int="http://www.springframework.org/schema/integration"
+        xmlns:stream="http://www.springframework.org/schema/integration/stream"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans
+                            http://www.springframework.org/schema/beans/spring-beans.xsd
+                            http://www.springframework.org/schema/integration
+                            http://www.springframework.org/schema/integration/spring-integration.xsd
+                            http://www.springframework.org/schema/integration/stream
+                            http://www.springframework.org/schema/integration/stream/spring-integration-stream.xsd"&gt;
+
+    &lt;bean id="refNoHandler" class="com.polarsparc.si.p6.RefNoHandler" /&gt;
+    &lt;bean id="carServiceHandler" class="com.polarsparc.si.p6.CarServiceHandler" /&gt;
+
+    &lt;int:channel id="inChannel" /&gt;
+    &lt;int:channel id="outChannel" /&gt;
+
+    &lt;int:gateway id="gateway"
+                  service-interface="com.polarsparc.si.p6.CarServiceGateway"
+                  default-request-channel="inChannel" /&gt;
+
+    &lt;int:chain input-channel="inChannel" output-channel="outChannel"&gt;
+        &lt;int:service-activator ref="refNoHandler"
+                                method="assignRefNo" /&gt;
+
+        &lt;int:service-activator ref="carServiceHandler"
+                                method="recommendedServices" /&gt;
+    &lt;/int:chain&gt;
+
+    &lt;stream:stdout-channel-adapter channel="outChannel"
+                                    append-newline="true" /&gt;
+&lt;/beans&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">Listing.77</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>The element <span class="hi-green">chain</span> defines a single logical <span class="bold">endpoint</span>, which
+            under-the-hood actually delegates to a chain of <span class="bold">endpoint</span>s. Internally, the <span class="bold">
+            chain</span> creates a linear list of the specified <span class="bold">endpoint</span>s connected by direct
+            <span class="bold">channel</span>s. Under-the-hood it uses the <span class="bold">Spring Framework</span> class
+            <span class="hi-yellow">org.springframework.integration.handler.MessageHandlerChain</span> to implement the chain</p>
+        </li>
+        <li>
+          <p>The stream <span class="hi-green">stdout-channel-adapter</span> element allows one to stream the <span class="bold">
+            message</span> payload to the standard output (<span class="bold">stdout</span>).</p>
+          <p>Under-the-hood, <span class="bold">Spring Integration</span> uses
+            <span class="hi-yellow">org.springframework.integration.stream.CharacterStreamWritingMessageHandler</span> to stream
+            the <span class="bold">message</span> payload.</p>
+          <p>For application POJOs in the <span class="bold">message</span> payload, ensure that the <span class="bold">toString()
+            </span> method is implemented</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is our main application to test the hypothetical car service:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.78</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CarServiceMainXml
+ * Author: Bhaskar S
+ * Date:   05/22/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p6;
+
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+public class CarServiceMainXml {
+    public static void main(String[] args) {
+        ApplicationContext context = new ClassPathXmlApplicationContext(args[0]);
+
+        CarServiceGateway gateway = (CarServiceGateway) context.getBean("gateway");
+
+        gateway.serviceCar(new Car("Toyota", 30000));
+        gateway.serviceCar(new Car("Honda", 5000));
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.78</span> with the argument from <span class="bold">Listing.77</span>,
+        open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringIntegration</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.si.p6.CarServiceMainXml" -Dexec.args="p6/CarService.xml"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.35</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------&lt; com.polarsparc.si:SpringIntegration &gt;-----------------
+[INFO] Building SpringIntegration 1.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec-maven-plugin:3.0.0:java (default-cli) @ SpringIntegration ---
+2021-05-22 14:01:38:134 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.config.xml.ChainParser - It is useful to provide an explicit 'id' attribute on 'chain' elements to simplify the identification of child elements in logs etc.
+2021-05-22 14:01:38:211 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'errorChannel' has been explicitly defined. Therefore, a default PublishSubscribeChannel will be created.
+2021-05-22 14:01:38:214 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'taskScheduler' has been explicitly defined. Therefore, a default ThreadPoolTaskScheduler will be created.
+2021-05-22 14:01:38:222 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'integrationHeaderChannelRegistry' has been explicitly defined. Therefore, a default DefaultHeaderChannelRegistry will be created.
+2021-05-22 14:01:38:411 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler - Initializing ExecutorService 'taskScheduler'
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.springframework.util.ReflectionUtils (file:/home/bswamina/.m2/repository/org/springframework/spring-core/5.3.5/spring-core-5.3.5.jar) to constructor java.lang.invoke.MethodHandles$Lookup(java.lang.Class)
+WARNING: Please consider reporting this to the maintainers of org.springframework.util.ReflectionUtils
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+2021-05-22 14:01:38:623 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.handler.MessageHandlerChain - started bean 'org.springframework.integration.handler.MessageHandlerChain#0'; defined in: 'class path resource [p6/CarService.xml]'; from source: ''int:chain''
+2021-05-22 14:01:38:624 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {chain} as a subscriber to the 'inChannel' channel
+2021-05-22 14:01:38:625 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@346f8b44.inChannel' has 1 subscriber(s).
+2021-05-22 14:01:38:626 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'org.springframework.integration.config.ConsumerEndpointFactoryBean#0'
+2021-05-22 14:01:38:626 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {stream:outbound-channel-adapter(character)} as a subscriber to the 'outChannel' channel
+2021-05-22 14:01:38:627 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@346f8b44.outChannel' has 1 subscriber(s).
+2021-05-22 14:01:38:628 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'org.springframework.integration.config.ConsumerEndpointFactoryBean#1'; defined in: 'class path resource [p6/CarService.xml]'; from source: ''stream:stdout-channel-adapter''
+2021-05-22 14:01:38:628 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {logging-channel-adapter:_org.springframework.integration.errorLogger} as a subscriber to the 'errorChannel' channel
+2021-05-22 14:01:38:629 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.channel.PublishSubscribeChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@346f8b44.errorChannel' has 1 subscriber(s).
+2021-05-22 14:01:38:630 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean '_org.springframework.integration.errorLogger'
+2021-05-22 14:01:38:631 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean$MethodInvocationGateway - started bean 'gateway#serviceCar(Car)'
+2021-05-22 14:01:38:631 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean - started bean 'gateway'
+2021-05-22 14:01:38:643 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-05-22 14:01:38:654 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO com.polarsparc.si.p6.RefNoHandler - Input: GenericMessage [payload=Car(ref=T-00001, make=Toyota, miles=30000, services={}), headers={replyChannel=nullChannel, id=25ea080f-0449-8eb3-5a08-e42712779f76, timestamp=1621706498643}] (in Xml)
+2021-05-22 14:01:38:656 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-05-22 14:01:38:657 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO com.polarsparc.si.p6.CarServiceHandler - Input: GenericMessage [payload=Car(ref=T-00001, make=Toyota, miles=30000, services={AIR_FILTER=19.95, OIL_CHANGE=29.95, WHEEL_BALANCE=69.95}), headers={replyChannel=nullChannel, id=25ea080f-0449-8eb3-5a08-e42712779f76, timestamp=1621706498643}] (in Xml)
+Car(ref=T-00001, make=Toyota, miles=30000, services={AIR_FILTER=19.95, OIL_CHANGE=29.95, WHEEL_BALANCE=69.95})
+2021-05-22 14:01:38:660 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO com.polarsparc.si.p6.RefNoHandler - Input: GenericMessage [payload=Car(ref=H-00002, make=Honda, miles=5000, services={}), headers={replyChannel=nullChannel, id=9b7c4304-639a-4189-2596-2152694af8e2, timestamp=1621706498659}] (in Xml)
+2021-05-22 14:01:38:661 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO com.polarsparc.si.p6.CarServiceHandler - Input: GenericMessage [payload=Car(ref=H-00002, make=Honda, miles=5000, services={AIR_FILTER=19.95, OIL_CHANGE=29.95}), headers={replyChannel=nullChannel, id=9b7c4304-639a-4189-2596-2152694af8e2, timestamp=1621706498659}] (in Xml)
+Car(ref=H-00002, make=Honda, miles=5000, services={AIR_FILTER=19.95, OIL_CHANGE=29.95})
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.429 s
+[INFO] Finished at: 2021-05-22T14:01:38-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Java Config based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The following is the Java Config based POJO handler that assigns a reference number to an arriving <span class="bold">Car</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.79</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   RefNoHandler2
+ * Author: Bhaskar S
+ * Date:   05/22/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p6;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.integration.config.EnableIntegration;
+import org.springframework.messaging.Message;
+
+@Configuration
+@EnableIntegration
+public class RefNoHandler2 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(RefNoHandler2.class);
+
+    private static int nextNo = 1;
+
+    private static String REF_NO_FMT = "%s-%05d";
+
+    @ServiceActivator
+    public Message&lt;Car&gt; assignRefNo(Message&lt;Car&gt; input) {
+        input.getPayload().setRef(String.format(REF_NO_FMT, input.getPayload().getMake().substring(0, 1), nextNo++));
+
+        LOGGER.info("Input: {} (in Config)", input.toString());
+
+        return input;
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java Config based POJO handler that assigns the recommended services for an arriving <span class="bold">
+        Car</span> based on the current miles:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.80</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CarServiceHandler2
+ * Author: Bhaskar S
+ * Date:   05/22/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p6;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.integration.config.EnableIntegration;
+import org.springframework.messaging.Message;
+
+@Configuration
+@EnableIntegration
+public class CarServiceHandler2 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CarServiceHandler2.class);
+
+    private static String OIL_CHANGE = "OIL_CHANGE";
+    private static String AIR_FILTER = "AIR_FILTER";
+    private static String WHEEL_BALANCE = "WHEEL_BALANCE";
+
+    @ServiceActivator
+    public Message&lt;?&gt; recommendedServices(Message&lt;Car&gt; input) {
+        input.getPayload().getServices().put(OIL_CHANGE, (float) 29.95);
+        input.getPayload().getServices().put(AIR_FILTER, (float) 19.95);
+
+        if (input.getPayload().getMiles() % 15000 == 0) {
+            input.getPayload().getServices().put(WHEEL_BALANCE, (float) 69.95);
+        }
+
+        LOGGER.info("Input: {} (in Config)", input.toString());
+
+        return input;
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java Config based simple interface to service a <span class="bold">Car</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.81</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CarServiceGateway2
+ * Author: Bhaskar S
+ * Date:   05/22/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p6;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.annotation.IntegrationComponentScan;
+import org.springframework.integration.annotation.MessagingGateway;
+import org.springframework.integration.config.EnableIntegration;
+
+@Configuration
+@EnableIntegration
+@IntegrationComponentScan
+@MessagingGateway(name = "gateway", defaultRequestChannel = "inChannel")
+public interface CarServiceGateway2 {
+    public void serviceCar(Car car);
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java Config based POJO that defines the <span class="bold">channels</span> and the <span class="bold">
+        endpoint</span>s as a <span class="bold">chain</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.82</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CarServiceConfig
+ * Author: Bhaskar S
+ * Date:   05/22/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p6;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.integration.channel.DirectChannel;
+import org.springframework.integration.config.EnableIntegration;
+import org.springframework.integration.handler.MessageHandlerChain;
+import org.springframework.integration.handler.MethodInvokingMessageProcessor;
+import org.springframework.integration.handler.ServiceActivatingHandler;
+import org.springframework.integration.stream.CharacterStreamWritingMessageHandler;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageHandler;
+
+import java.util.Arrays;
+
+@Configuration
+@EnableIntegration
+public class CarServiceConfig {
+    private RefNoHandler2 refNoHandler2;
+    private CarServiceHandler2 carServiceHandler2;
+
+    @Autowired
+    public void setRefNoHandler2(RefNoHandler2 refNoHandler2) {
+        this.refNoHandler2 = refNoHandler2;
+    }
+
+    @Autowired
+    public void setCarServiceHandler2(CarServiceHandler2 carServiceHandler2) {
+        this.carServiceHandler2 = carServiceHandler2;
+    }
+
+    @Bean
+    public MessageChannel inChannel() {
+        return new DirectChannel();
+    }
+
+    @Bean
+    public MessageChannel outChannel() {
+        return new DirectChannel();
+    }
+
+    /* --- BEGIN: For RefNoHandler2 --- */
+    @Bean
+    public MethodInvokingMessageProcessor&lt;?&gt; refNoMessageHandler2() {
+        return new MethodInvokingMessageProcessor&lt;&gt;(refNoHandler2, "assignRefNo");
+    }
+
+    @Bean
+    public MessageHandler refNoEndpoint2() {
+        return new ServiceActivatingHandler(refNoMessageHandler2());
+    }
+    /* --- END: For RefNoHandler2 --- */
+
+    /* --- BEGIN: For CarServiceHandler2 --- */
+    @Bean
+    public MethodInvokingMessageProcessor&lt;?&gt; carServiceMessageHandler2() {
+        return new MethodInvokingMessageProcessor&lt;&gt;(carServiceHandler2, "recommendedServices");
+    }
+
+    @Bean
+    public MessageHandler carServiceEndpoint2() {
+        return new ServiceActivatingHandler(carServiceMessageHandler2());
+    }
+    /* --- END: For CarServiceHandler2 --- */
+
+    @Bean
+    @ServiceActivator(inputChannel = "inChannel")
+    public MessageHandler chainEndpoints() {
+        MessageHandlerChain chain = new MessageHandlerChain();
+        chain.setHandlers(Arrays.asList(refNoEndpoint2(),
+                carServiceEndpoint2()));
+        chain.setOutputChannel(outChannel());
+        return chain;
+    }
+
+    @Bean
+    @ServiceActivator(inputChannel = "outChannel")
+    public MessageHandler stdoutAdapter() {
+        CharacterStreamWritingMessageHandler handler = CharacterStreamWritingMessageHandler.stdout();
+        handler.setShouldAppendNewLine(true);
+        return handler;
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">Listing.82</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>The class <span class="hi-yellow">org.springframework.integration.handler.MessageHandlerChain</span> is a composite
+            <span class="bold">endpoint</span> that invokes a chain of the specified <span class="bold">endpoint</span>s in the
+            order. This is equivalent to the <span class="bold">chain</span> from the <span class="bold">XML</span> configuration
+            from <span class="bold">Listing.77</span> above</p>
+        </li>
+        <li>
+          <p>The class <span class="hi-yellow">org.springframework.integration.handler.MethodInvokingMessageProcessor</span> is an
+            implementation of a <span class="bold">message</span> processor that invokes a method on the specified target Object</p>
+        </li>
+        <li>
+          <p>The class <span class="hi-yellow">org.springframework.integration.handler.ServiceActivatingHandler</span> wraps and
+            exposes a <span class="bold">message</span> processor as an <span class="bold">endpoint</span></p>
+        </li>
+        <li>
+          <p>The class <span class="hi-yellow">org.springframework.integration.stream.CharacterStreamWritingMessageHandler</span>
+            is an implementation of a <span class="bold">message</span> handler that writes the character stream to a
+            <span class="bold">java.io.Writer</span>. The static method <span class="hi-blue">stdout()</span> is a factory method
+            that creates an instance of this class to write to the standard output</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>And finally, the following is the main application that uses the POJOs from <span class="bold">Listing.79</span>,
+        <span class="bold">Listing.80</span>, <span class="bold">Listing.81</span>, and <span class="bold">Listing.82</span> to test
+        the hypothetical car service:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.83</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CarServiceMainConfig
+ * Author: Bhaskar S
+ * Date:   05/22/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p6;
+
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+public class CarServiceMainConfig {
+    public static void main(String[] args) {
+        ApplicationContext context = new AnnotationConfigApplicationContext(RefNoHandler2.class,
+                CarServiceHandler2.class,
+                CarServiceGateway2.class,
+                CarServiceConfig.class);
+
+        CarServiceGateway2 gateway = (CarServiceGateway2) context.getBean("gateway");
+
+        gateway.serviceCar(new Car("Toyota", 30000));
+        gateway.serviceCar(new Car("Honda", 5000));
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.83</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringIntegration</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.si.p6.CarServiceMainConfig"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.36</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------&lt; com.polarsparc.si:SpringIntegration &gt;-----------------
+[INFO] Building SpringIntegration 1.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec-maven-plugin:3.0.0:java (default-cli) @ SpringIntegration ---
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.springframework.cglib.core.ReflectUtils (file:/home/bswamina/.m2/repository/org/springframework/spring-core/5.3.5/spring-core-5.3.5.jar) to method java.lang.ClassLoader.defineClass(java.lang.String,byte[],int,int,java.security.ProtectionDomain)
+WARNING: Please consider reporting this to the maintainers of org.springframework.cglib.core.ReflectUtils
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+2021-05-22 14:10:06:603 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'errorChannel' has been explicitly defined. Therefore, a default PublishSubscribeChannel will be created.
+2021-05-22 14:10:06:609 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'taskScheduler' has been explicitly defined. Therefore, a default ThreadPoolTaskScheduler will be created.
+2021-05-22 14:10:06:618 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'integrationHeaderChannelRegistry' has been explicitly defined. Therefore, a default DefaultHeaderChannelRegistry will be created.
+2021-05-22 14:10:06:674 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'integrationChannelResolver' of type [org.springframework.integration.support.channel.BeanFactoryChannelResolver] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)
+2021-05-22 14:10:06:690 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'integrationDisposableAutoCreatedBeans' of type [org.springframework.integration.config.annotation.Disposables] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)
+2021-05-22 14:10:06:824 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler - Initializing ExecutorService 'taskScheduler'
+2021-05-22 14:10:07:063 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {logging-channel-adapter:_org.springframework.integration.errorLogger} as a subscriber to the 'errorChannel' channel
+2021-05-22 14:10:07:064 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.integration.channel.PublishSubscribeChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@23c0f7ba.errorChannel' has 1 subscriber(s).
+2021-05-22 14:10:07:065 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean '_org.springframework.integration.errorLogger'
+2021-05-22 14:10:07:066 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {message-handler:carServiceConfig.chainEndpoints.serviceActivator} as a subscriber to the 'inChannel' channel
+2021-05-22 14:10:07:067 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@23c0f7ba.inChannel' has 1 subscriber(s).
+2021-05-22 14:10:07:068 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.integration.handler.MessageHandlerChain - started bean 'chainEndpoints'; defined in: 'com.polarsparc.si.p6.CarServiceConfig'; from source: 'org.springframework.core.type.StandardMethodMetadata@6826ec1a'
+2021-05-22 14:10:07:069 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'carServiceConfig.chainEndpoints.serviceActivator'
+2021-05-22 14:10:07:070 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {message-handler:carServiceConfig.stdoutAdapter.serviceActivator} as a subscriber to the 'outChannel' channel
+2021-05-22 14:10:07:071 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@23c0f7ba.outChannel' has 1 subscriber(s).
+2021-05-22 14:10:07:071 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'carServiceConfig.stdoutAdapter.serviceActivator'
+2021-05-22 14:10:07:073 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean$MethodInvocationGateway - started bean 'gateway#serviceCar(Car)'
+2021-05-22 14:10:07:073 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean - started bean 'gateway'
+2021-05-22 14:10:07:088 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-05-22 14:10:07:107 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO com.polarsparc.si.p6.RefNoHandler2 - Input: GenericMessage [payload=Car(ref=T-00001, make=Toyota, miles=30000, services={}), headers={replyChannel=nullChannel, id=0db165fe-48ac-bbcb-a94b-d4a9f631b1b2, timestamp=1621707007088}] (in Config)
+2021-05-22 14:10:07:109 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-05-22 14:10:07:110 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO com.polarsparc.si.p6.CarServiceHandler2 - Input: GenericMessage [payload=Car(ref=T-00001, make=Toyota, miles=30000, services={AIR_FILTER=19.95, OIL_CHANGE=29.95, WHEEL_BALANCE=69.95}), headers={replyChannel=nullChannel, id=0db165fe-48ac-bbcb-a94b-d4a9f631b1b2, timestamp=1621707007088}] (in Config)
+Car(ref=T-00001, make=Toyota, miles=30000, services={AIR_FILTER=19.95, OIL_CHANGE=29.95, WHEEL_BALANCE=69.95})
+2021-05-22 14:10:07:112 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO com.polarsparc.si.p6.RefNoHandler2 - Input: GenericMessage [payload=Car(ref=H-00002, make=Honda, miles=5000, services={}), headers={replyChannel=nullChannel, id=e99e996f-22a4-023b-52cd-7516a8774c1a, timestamp=1621707007112}] (in Config)
+2021-05-22 14:10:07:113 [com.polarsparc.si.p6.CarServiceMainConfig.main()] INFO com.polarsparc.si.p6.CarServiceHandler2 - Input: GenericMessage [payload=Car(ref=H-00002, make=Honda, miles=5000, services={AIR_FILTER=19.95, OIL_CHANGE=29.95}), headers={replyChannel=nullChannel, id=e99e996f-22a4-023b-52cd-7516a8774c1a, timestamp=1621707007112}] (in Config)
+Car(ref=H-00002, make=Honda, miles=5000, services={AIR_FILTER=19.95, OIL_CHANGE=29.95})
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.363 s
+[INFO] Finished at: 2021-05-22T14:10:07-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <div id="step-div">
+      <p>Header Enrichment</p>
+    </div>
+    <div id="para-div">
+      <p>In this hypothetical car service example, we will add an additional header property to the incoming <span class="bold">
+        message</span>.</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">XML based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The following is the <span class="bold">XML</span> based <span class="bold">Spring Integration</span> configuration that
+        wires up the <span class="bold">channels</span> and the <span class="bold">endpoint</span>s along with header enrichment
+        (add a header property called <span class="bold">CAR_MAKE</span> with the value of the <span class="bold">Car</span> make
+        from the <span class="bold">message</span> payload) as a <span class="bold">chain</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.84</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;beans xmlns="http://www.springframework.org/schema/beans"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:int="http://www.springframework.org/schema/integration"
+        xmlns:stream="http://www.springframework.org/schema/integration/stream"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans
+                            http://www.springframework.org/schema/beans/spring-beans.xsd
+                            http://www.springframework.org/schema/integration
+                            http://www.springframework.org/schema/integration/spring-integration.xsd
+                            http://www.springframework.org/schema/integration/stream
+                            http://www.springframework.org/schema/integration/stream/spring-integration-stream.xsd"&gt;
+
+    &lt;bean id="refNoHandler" class="com.polarsparc.si.p6.RefNoHandler" /&gt;
+    &lt;bean id="carServiceHandler" class="com.polarsparc.si.p6.CarServiceHandler" /&gt;
+
+    &lt;int:channel id="inChannel" /&gt;
+    &lt;int:channel id="outChannel" /&gt;
+
+    &lt;int:gateway id="gateway"
+                  service-interface="com.polarsparc.si.p6.CarServiceGateway"
+                  default-request-channel="inChannel" /&gt;
+
+    &lt;int:chain input-channel="inChannel" output-channel="outChannel"&gt;
+        &lt;int:service-activator ref="refNoHandler" method="assignRefNo" /&gt;
+
+        &lt;int:header-enricher&gt;
+            &lt;int:header name="CAR_MAKE" expression="payload.getMake()"/&gt;
+        &lt;/int:header-enricher&gt;
+
+        &lt;int:service-activator ref="carServiceHandler" method="recommendedServices" /&gt;
+    &lt;/int:chain&gt;
+
+    &lt;stream:stdout-channel-adapter channel="outChannel"
+                                    append-newline="true" /&gt;
+&lt;/beans&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">Listing.84</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>The <span class="hi-green">header-enricher</span> element allows one to add additional headers properties to the incoming
+            <span class="bold">message</span>.</p>
+          <p>To add a header property, use the <span class="hi-green">header</span> sub-element under the <span class="bold">
+            header-enricher</span> element.</p>
+          <p>To add a header property with a name <span class="bold">SOME_HEADER</span> with a static value <span class="bold">
+            12345</span>, specify the following <span class="bold">header</span> sub-element:</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&lt;int:header name="SOME_HEADER" value="12345" /&gt;</p>
+          <p>To add a header property with a name <span class="bold">SOME_HEADER2</span> with a dynamic value by calling a method
+            <span class="bold">func()</span> on the <span class="bold">message</span> payload, specify the following <span class="bold">
+            header</span> sub-element:</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&lt;int:header name="SOME_HEADER2" expression="payload.func()" /&gt;</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.78</span> with the argument from <span class="bold">Listing.84</span>,
+        open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringIntegration</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.si.p6.CarServiceMainXml" -Dexec.args="p6/CarService2.xml"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.37</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------&lt; com.polarsparc.si:SpringIntegration &gt;-----------------
+[INFO] Building SpringIntegration 1.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec-maven-plugin:3.0.0:java (default-cli) @ SpringIntegration ---
+2021-05-22 14:11:53:956 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.config.xml.ChainParser - It is useful to provide an explicit 'id' attribute on 'chain' elements to simplify the identification of child elements in logs etc.
+2021-05-22 14:11:54:035 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'errorChannel' has been explicitly defined. Therefore, a default PublishSubscribeChannel will be created.
+2021-05-22 14:11:54:038 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'taskScheduler' has been explicitly defined. Therefore, a default ThreadPoolTaskScheduler will be created.
+2021-05-22 14:11:54:046 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'integrationHeaderChannelRegistry' has been explicitly defined. Therefore, a default DefaultHeaderChannelRegistry will be created.
+2021-05-22 14:11:54:240 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler - Initializing ExecutorService 'taskScheduler'
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.springframework.util.ReflectionUtils (file:/home/bswamina/.m2/repository/org/springframework/spring-core/5.3.5/spring-core-5.3.5.jar) to constructor java.lang.invoke.MethodHandles$Lookup(java.lang.Class)
+WARNING: Please consider reporting this to the maintainers of org.springframework.util.ReflectionUtils
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+2021-05-22 14:11:54:453 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.handler.MessageHandlerChain - started bean 'org.springframework.integration.handler.MessageHandlerChain#0'; defined in: 'class path resource [p6/CarService2.xml]'; from source: ''int:chain''
+2021-05-22 14:11:54:454 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {chain} as a subscriber to the 'inChannel' channel
+2021-05-22 14:11:54:454 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@7504efe4.inChannel' has 1 subscriber(s).
+2021-05-22 14:11:54:455 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'org.springframework.integration.config.ConsumerEndpointFactoryBean#0'
+2021-05-22 14:11:54:456 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {stream:outbound-channel-adapter(character)} as a subscriber to the 'outChannel' channel
+2021-05-22 14:11:54:456 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@7504efe4.outChannel' has 1 subscriber(s).
+2021-05-22 14:11:54:457 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'org.springframework.integration.config.ConsumerEndpointFactoryBean#1'; defined in: 'class path resource [p6/CarService2.xml]'; from source: ''stream:stdout-channel-adapter''
+2021-05-22 14:11:54:457 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {logging-channel-adapter:_org.springframework.integration.errorLogger} as a subscriber to the 'errorChannel' channel
+2021-05-22 14:11:54:458 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.channel.PublishSubscribeChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@7504efe4.errorChannel' has 1 subscriber(s).
+2021-05-22 14:11:54:459 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean '_org.springframework.integration.errorLogger'
+2021-05-22 14:11:54:460 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean$MethodInvocationGateway - started bean 'gateway#serviceCar(Car)'
+2021-05-22 14:11:54:460 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean - started bean 'gateway'
+2021-05-22 14:11:54:478 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-05-22 14:11:54:488 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO com.polarsparc.si.p6.RefNoHandler - Input: GenericMessage [payload=Car(ref=T-00001, make=Toyota, miles=30000, services={}), headers={replyChannel=nullChannel, id=ab6f3ea0-bcd1-f4e1-9057-2e64507766de, timestamp=1621707114477}] (in Xml)
+2021-05-22 14:11:54:490 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-05-22 14:11:54:492 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO com.polarsparc.si.p6.CarServiceHandler - Input: GenericMessage [payload=Car(ref=T-00001, make=Toyota, miles=30000, services={AIR_FILTER=19.95, OIL_CHANGE=29.95, WHEEL_BALANCE=69.95}), headers={replyChannel=nullChannel, id=2da4a1d9-a7b3-82af-c9c6-7b5d115cad0a, CAR_MAKE=Toyota, timestamp=1621707114490}] (in Xml)
+Car(ref=T-00001, make=Toyota, miles=30000, services={AIR_FILTER=19.95, OIL_CHANGE=29.95, WHEEL_BALANCE=69.95})
+2021-05-22 14:11:54:494 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO com.polarsparc.si.p6.RefNoHandler - Input: GenericMessage [payload=Car(ref=H-00002, make=Honda, miles=5000, services={}), headers={replyChannel=nullChannel, id=273bfdf0-3290-24ff-c604-fc4733ab13d2, timestamp=1621707114494}] (in Xml)
+2021-05-22 14:11:54:496 [com.polarsparc.si.p6.CarServiceMainXml.main()] INFO com.polarsparc.si.p6.CarServiceHandler - Input: GenericMessage [payload=Car(ref=H-00002, make=Honda, miles=5000, services={AIR_FILTER=19.95, OIL_CHANGE=29.95}), headers={replyChannel=nullChannel, id=80c35f67-1b02-c039-fb2b-20974bb5ae02, CAR_MAKE=Honda, timestamp=1621707114496}] (in Xml)
+Car(ref=H-00002, make=Honda, miles=5000, services={AIR_FILTER=19.95, OIL_CHANGE=29.95})
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.446 s
+[INFO] Finished at: 2021-05-22T14:11:54-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Java Config based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The following is the Java Config based POJO that defines the <span class="bold">channels</span> and the <span class="bold">
+        endpoint</span>s along with header enrichment (add a header property called <span class="bold">CAR_MAKE</span> with the value
+        of the <span class="bold">Car</span> make from the <span class="bold">message</span> payload) as a <span class="bold">chain</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.85</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CarServiceConfig2
+ * Author: Bhaskar S
+ * Date:   05/22/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p6;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.expression.Expression;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.integration.channel.DirectChannel;
+import org.springframework.integration.config.EnableIntegration;
+import org.springframework.integration.handler.MessageHandlerChain;
+import org.springframework.integration.handler.MethodInvokingMessageProcessor;
+import org.springframework.integration.handler.ServiceActivatingHandler;
+import org.springframework.integration.stream.CharacterStreamWritingMessageHandler;
+import org.springframework.integration.transformer.HeaderEnricher;
+import org.springframework.integration.transformer.MessageTransformingHandler;
+import org.springframework.integration.transformer.support.ExpressionEvaluatingHeaderValueMessageProcessor;
+import org.springframework.integration.transformer.support.HeaderValueMessageProcessor;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageHandler;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+
+@Configuration
+@EnableIntegration
+public class CarServiceConfig2 {
+    private RefNoHandler2 refNoHandler2;
+    private CarServiceHandler2 carServiceHandler2;
+
+    @Autowired
+    public void setRefNoHandler2(RefNoHandler2 refNoHandler2) {
+        this.refNoHandler2 = refNoHandler2;
+    }
+
+    @Autowired
+    public void setCarServiceHandler2(CarServiceHandler2 carServiceHandler2) {
+        this.carServiceHandler2 = carServiceHandler2;
+    }
+
+    @Bean
+    public MessageChannel inChannel() {
+        return new DirectChannel();
+    }
+
+    @Bean
+    public MessageChannel outChannel() {
+        return new DirectChannel();
+    }
+
+    /* --- BEGIN: For RefNoHandler2 --- */
+    @Bean
+    public MethodInvokingMessageProcessor&lt;?&gt; refNoMessageHandler2() {
+        return new MethodInvokingMessageProcessor&lt;&gt;(refNoHandler2, "assignRefNo");
+    }
+
+    @Bean
+    public MessageHandler refNoEndpoint2() {
+        return new ServiceActivatingHandler(refNoMessageHandler2());
+    }
+    /* --- END: For RefNoHandler2 --- */
+
+    /* --- BEGIN: For Header Enricher --- */
+    @Bean
+    public HeaderEnricher carMakeHeader() {
+        Map&lt;String, HeaderValueMessageProcessor&lt;?&gt;&gt; headers = new HashMap&lt;&gt;();
+        Expression expression = new SpelExpressionParser().parseExpression("payload.getMake()");
+        headers.put("CAR_MAKE", new ExpressionEvaluatingHeaderValueMessageProcessor&lt;&gt;(expression, String.class));
+        return new HeaderEnricher(headers);
+    }
+
+    @Bean
+    public MessageHandler carMakeTransformer() {
+        return new MessageTransformingHandler(carMakeHeader());
+    }
+    /* --- END: For Header Enricher --- */
+
+    /* --- BEGIN: For CarServiceHandler2 --- */
+    @Bean
+    public MethodInvokingMessageProcessor&lt;?&gt; carServiceMessageHandler2() {
+        return new MethodInvokingMessageProcessor&lt;&gt;(carServiceHandler2, "recommendedServices");
+    }
+
+    @Bean
+    public MessageHandler carServiceEndpoint2() {
+        return new ServiceActivatingHandler(carServiceMessageHandler2());
+    }
+    /* --- END: For CarServiceHandler2 --- */
+
+    @Bean
+    @ServiceActivator(inputChannel = "inChannel")
+    public MessageHandler chainEndpoints() {
+        MessageHandlerChain chain = new MessageHandlerChain();
+        chain.setHandlers(Arrays.asList(refNoEndpoint2(),
+                carMakeTransformer(),
+                carServiceEndpoint2()));
+        chain.setOutputChannel(outChannel());
+        return chain;
+    }
+
+    @Bean
+    @ServiceActivator(inputChannel = "outChannel")
+    public MessageHandler stdoutAdapter() {
+        CharacterStreamWritingMessageHandler handler = CharacterStreamWritingMessageHandler.stdout();
+        handler.setShouldAppendNewLine(true);
+        return handler;
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">Listing.85</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>The class <span class="hi-yellow">org.springframework.integration.transformer.support.ExpressionEvaluatingHeaderValueMessageProcessor</span>
+            allows one to create a header value processor for the given expression and the expected type of the expression evaluation
+            result</p>
+        </li>
+        <li>
+          <p>The class <span class="hi-yellow">org.springframework.integration.transformer.HeaderEnricher</span> implements a
+            transformer that adds statically configured header values to the <span class="bold">message</span> header. This is
+            equivalent to the <span class="bold">header-enricher</span> from the <span class="bold">XML</span> configuration
+            from <span class="bold">Listing.84</span> above</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>And finally, the following is the main application that uses the POJOs from <span class="bold">Listing.79</span>,
+        <span class="bold">Listing.80</span>, <span class="bold">Listing.81</span>, and <span class="bold">Listing.85</span> to test
+        the hypothetical car service:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.86</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   CarServiceMainConfig2
+ * Author: Bhaskar S
+ * Date:   05/22/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p6;
+
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+public class CarServiceMainConfig2 {
+    public static void main(String[] args) {
+        ApplicationContext context = new AnnotationConfigApplicationContext(RefNoHandler2.class,
+                CarServiceHandler2.class,
+                CarServiceGateway2.class,
+                CarServiceConfig2.class);
+
+        CarServiceGateway2 gateway = (CarServiceGateway2) context.getBean("gateway");
+
+        gateway.serviceCar(new Car("Toyota", 30000));
+        gateway.serviceCar(new Car("Honda", 5000));
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.86</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringIntegration</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.si.p6.CarServiceMainConfig2"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.38</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------&lt; com.polarsparc.si:SpringIntegration &gt;-----------------
+[INFO] Building SpringIntegration 1.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec-maven-plugin:3.0.0:java (default-cli) @ SpringIntegration ---
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.springframework.cglib.core.ReflectUtils (file:/home/bswamina/.m2/repository/org/springframework/spring-core/5.3.5/spring-core-5.3.5.jar) to method java.lang.ClassLoader.defineClass(java.lang.String,byte[],int,int,java.security.ProtectionDomain)
+WARNING: Please consider reporting this to the maintainers of org.springframework.cglib.core.ReflectUtils
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+2021-05-22 14:14:46:222 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'errorChannel' has been explicitly defined. Therefore, a default PublishSubscribeChannel will be created.
+2021-05-22 14:14:46:228 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'taskScheduler' has been explicitly defined. Therefore, a default ThreadPoolTaskScheduler will be created.
+2021-05-22 14:14:46:235 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'integrationHeaderChannelRegistry' has been explicitly defined. Therefore, a default DefaultHeaderChannelRegistry will be created.
+2021-05-22 14:14:46:285 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'integrationChannelResolver' of type [org.springframework.integration.support.channel.BeanFactoryChannelResolver] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)
+2021-05-22 14:14:46:302 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'integrationDisposableAutoCreatedBeans' of type [org.springframework.integration.config.annotation.Disposables] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)
+2021-05-22 14:14:46:437 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler - Initializing ExecutorService 'taskScheduler'
+2021-05-22 14:14:46:689 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {logging-channel-adapter:_org.springframework.integration.errorLogger} as a subscriber to the 'errorChannel' channel
+2021-05-22 14:14:46:690 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.integration.channel.PublishSubscribeChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@23c0f7ba.errorChannel' has 1 subscriber(s).
+2021-05-22 14:14:46:691 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean '_org.springframework.integration.errorLogger'
+2021-05-22 14:14:46:691 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {message-handler:carServiceConfig2.chainEndpoints.serviceActivator} as a subscriber to the 'inChannel' channel
+2021-05-22 14:14:46:692 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@23c0f7ba.inChannel' has 1 subscriber(s).
+2021-05-22 14:14:46:692 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.integration.handler.MessageHandlerChain - started bean 'chainEndpoints'; defined in: 'com.polarsparc.si.p6.CarServiceConfig2'; from source: 'org.springframework.core.type.StandardMethodMetadata@4d9800b2'
+2021-05-22 14:14:46:693 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'carServiceConfig2.chainEndpoints.serviceActivator'
+2021-05-22 14:14:46:694 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {message-handler:carServiceConfig2.stdoutAdapter.serviceActivator} as a subscriber to the 'outChannel' channel
+2021-05-22 14:14:46:694 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@23c0f7ba.outChannel' has 1 subscriber(s).
+2021-05-22 14:14:46:695 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'carServiceConfig2.stdoutAdapter.serviceActivator'
+2021-05-22 14:14:46:696 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean$MethodInvocationGateway - started bean 'gateway#serviceCar(Car)'
+2021-05-22 14:14:46:697 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean - started bean 'gateway'
+2021-05-22 14:14:46:709 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-05-22 14:14:46:729 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO com.polarsparc.si.p6.RefNoHandler2 - Input: GenericMessage [payload=Car(ref=T-00001, make=Toyota, miles=30000, services={}), headers={replyChannel=nullChannel, id=abf81eba-d821-6df1-29d2-0024f0f92e94, timestamp=1621707286709}] (in Config)
+2021-05-22 14:14:46:732 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-05-22 14:14:46:733 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO com.polarsparc.si.p6.CarServiceHandler2 - Input: GenericMessage [payload=Car(ref=T-00001, make=Toyota, miles=30000, services={AIR_FILTER=19.95, OIL_CHANGE=29.95, WHEEL_BALANCE=69.95}), headers={replyChannel=nullChannel, id=4660e666-25c1-abb7-b134-be652b126bd3, CAR_MAKE=Toyota, timestamp=1621707286732}] (in Config)
+Car(ref=T-00001, make=Toyota, miles=30000, services={AIR_FILTER=19.95, OIL_CHANGE=29.95, WHEEL_BALANCE=69.95})
+2021-05-22 14:14:46:734 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO com.polarsparc.si.p6.RefNoHandler2 - Input: GenericMessage [payload=Car(ref=H-00002, make=Honda, miles=5000, services={}), headers={replyChannel=nullChannel, id=ec7fefc1-0e62-2d3d-467a-16e3dc843dcf, timestamp=1621707286734}] (in Config)
+2021-05-22 14:14:46:736 [com.polarsparc.si.p6.CarServiceMainConfig2.main()] INFO com.polarsparc.si.p6.CarServiceHandler2 - Input: GenericMessage [payload=Car(ref=H-00002, make=Honda, miles=5000, services={AIR_FILTER=19.95, OIL_CHANGE=29.95}), headers={replyChannel=nullChannel, id=39f97081-c90a-2bf6-807f-29f9527a593c, CAR_MAKE=Honda, timestamp=1621707286735}] (in Config)
+Car(ref=H-00002, make=Honda, miles=5000, services={AIR_FILTER=19.95, OIL_CHANGE=29.95})
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.427 s
+[INFO] Finished at: 2021-05-22T14:14:46-04:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://polarsparc.github.io/SpringIntegration/SpringIntegration-05.html"><span class="bold">Spring Integration Notes :: Part - 5</span></a></p>
+      <p><a target="_blank" href="https://polarsparc.github.io/SpringIntegration/SpringIntegration-04.html"><span class="bold">Spring Integration Notes :: Part - 4</span></a></p>
+      <p><a target="_blank" href="https://polarsparc.github.io/SpringIntegration/SpringIntegration-03.html"><span class="bold">Spring Integration Notes :: Part - 3</span></a></p>
+      <p><a target="_blank" href="https://polarsparc.github.io/SpringIntegration/SpringIntegration-02.html"><span class="bold">Spring Integration Notes :: Part - 2</span></a></p>
+      <p><a target="_blank" href="https://polarsparc.github.io/SpringIntegration/SpringIntegration-01.html"><span class="bold">Spring Integration Notes :: Part - 1</span></a></p>
+      <p><a target="_blank" href="https://docs.spring.io/spring-integration/docs/current/reference/html/chain.html"><span class="bold">Spring Integration - Message Handler Chain</span></a></p>
+      <p><a target="_blank" href="https://docs.spring.io/spring-integration/reference/html/content-enrichment.html"><span class="bold">Spring Integration - Content Enricher</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

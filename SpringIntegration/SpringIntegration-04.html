@@ -1,0 +1,1209 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Spring Integration Notes :: Part - 4">
+    <meta name="subject" content="Spring Integration Notes :: Part - 4">
+    <meta name="keywords" content="eip, java, spring">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Spring Integration Notes :: Part - 4</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Spring Integration Notes :: Part - 4</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">05/08/2021 (<span class="hi-yellow">UPDATED</span>)</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <span class="bold"><a target="_blank" href="https://polarsparc.github.io/SpringIntegration/SpringIntegration-03.html">
+        Part-3</a></span>, we covered basic examples of <span class="bold">Spring Integration</span> relating to the File and SFTP
+        <span class="bold">channel adapter</span>s.</p>
+      <p>We will continue our journey on <span class="bold">channel adapter</span>s by exploring examples in <span class="bold">Spring
+        Integration</span> relating to the following:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>Polling a Database for Records</p>
+        </li>
+        <li>
+          <p>Invoking a REST Service using HTTP</p>
+        </li>
+      </ul>
+    </div>
+    <div id="section-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the demonstrations in this part, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringIntegration</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/si/p4</p>
+      <p>$ mkdir -p src/main/resources/p4</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the directory structure for the database server, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/Downloads/postgres</p>
+    </div>
+    <div id="para-div">
+      <p>To download the required <span class="bold">docker</span> image for the <span class="bold">PostgreSQL</span> database server,
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker pull postgres:13.2</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the listing for the updated <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span>
+        to support the jdbc and http <span class="bold">channel adapter</span>s:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;groupId&gt;com.polarsparc.si&lt;/groupId&gt;
+    &lt;artifactId&gt;SpringIntegration&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+    &lt;name&gt;SpringIntegration&lt;/name&gt;
+    &lt;description&gt;Spring Integration Examples&lt;/description&gt;
+
+    &lt;properties&gt;
+        &lt;maven.compiler.source&gt;11&lt;/maven.compiler.source&gt;
+        &lt;maven.compiler.target&gt;11&lt;/maven.compiler.target&gt;
+    &lt;/properties&gt;
+
+    &lt;build&gt;
+        &lt;pluginManagement&gt;
+            &lt;plugins&gt;
+                &lt;plugin&gt;
+                    &lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
+                    &lt;artifactId&gt;maven-compiler-plugin&lt;/artifactId&gt;
+                    &lt;version&gt;3.8.1&lt;/version&gt;
+                    &lt;configuration&gt;
+                        &lt;fork&gt;true&lt;/fork&gt;
+                        &lt;meminitial&gt;128m&lt;/meminitial&gt;
+                        &lt;maxmem&gt;512m&lt;/maxmem&gt;
+                        &lt;source&gt;11&lt;/source&gt;
+                        &lt;target&gt;11&lt;/target&gt;
+                    &lt;/configuration&gt;
+                &lt;/plugin&gt;
+            &lt;/plugins&gt;
+        &lt;/pluginManagement&gt;
+    &lt;/build&gt;
+
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;javax.annotation&lt;/groupId&gt;
+            &lt;artifactId&gt;javax.annotation-api&lt;/artifactId&gt;
+            &lt;version&gt;1.3.2&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-core&lt;/artifactId&gt;
+            &lt;version&gt;5.3.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-context&lt;/artifactId&gt;
+            &lt;version&gt;5.3.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-beans&lt;/artifactId&gt;
+            &lt;version&gt;5.3.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.integration&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-integration-core&lt;/artifactId&gt;
+            &lt;version&gt;5.4.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.integration&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-integration-file&lt;/artifactId&gt;
+            &lt;version&gt;5.4.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.integration&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-integration-sftp&lt;/artifactId&gt;
+            &lt;version&gt;5.4.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.integration&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-integration-jdbc&lt;/artifactId&gt;
+            &lt;version&gt;5.4.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.integration&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-integration-http&lt;/artifactId&gt;
+            &lt;version&gt;5.4.5&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;slf4j-api&lt;/artifactId&gt;
+            &lt;version&gt;1.7.30&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;log4j-over-slf4j&lt;/artifactId&gt;
+            &lt;version&gt;1.7.30&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;slf4j-simple&lt;/artifactId&gt;
+            &lt;version&gt;1.7.30&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.postgresql&lt;/groupId&gt;
+            &lt;artifactId&gt;postgresql&lt;/artifactId&gt;
+            &lt;version&gt;42.2.19&lt;/version&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on Spring Integration</p>
+    </div>
+    <div id="step-div">
+      <p>Polling a Database for Records</p>
+    </div>
+    <div id="para-div">
+      <p>For this example, one needs access to a relational database, hence we will start a <span class="bold">PostgreSQL</span>
+        database server on the <span class="bold">localhost</span> using <span class="bold">docker</span>. Open a terminal window
+        and execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -d --rm --name postgres-13.2 -e POSTGRES_USER=polarsparc -e POSTGRES_PASSWORD=polarsparc\$123 -p 5432:5432 -v $HOME/Downloads/DATA/postgres:/var/lib/postgresql/data postgres:13.2</p>
+    </div>
+    <div id="para-div">
+      <p>To create a database called <span class="bold">my_test_db</span>, execute the following command in the terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker exec -it postgres-13.2 sh</p>
+    </div>
+    <div id="para-div">
+      <p>The prompt changes to <span class="bold">#</span> and continue to execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p># psql -U polarsparc</p>
+    </div>
+    <div id="para-div">
+      <p>The prompt changes to <span class="bold">polarsparc=#</span> and continue to execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>polarsparc=# CREATE DATABASE my_test_db;</p>
+      <p>polarsparc=# GRANT ALL PRIVILEGES ON DATABASE my_test_db TO polarsparc;</p>
+      <p>polarsparc=# \q</p>
+    </div>
+    <div id="para-div">
+      <p>The prompt changes to <span class="bold">#</span> and continue to execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p># psql my_test_db -U polarsparc</p>
+    </div>
+    <div id="para-div">
+      <p>The prompt changes to <span class="bold">my_test_db=&gt;</span> and continue to execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>my_test_db=&gt; CREATE TABLE ORDERS_TBL (ORDER_NO VARCHAR(10) NOT NULL, ITEM VARCHAR(100) NOT NULL, SHIPPED CHAR(1) DEFAULT 'N', PRIMARY KEY (ORDER_NO));</p>
+      <p>my_test_db=&gt; \q</p>
+    </div>
+    <div id="para-div">
+      <p>The prompt changes to <span class="bold">#</span> and continue to execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p># exit</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the properties file <span class="bold">jdbc.properties</span> located in the <span class="bold">resources/p4
+        </span> directory:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.44</div>
+      <div class="src-body-1">
+<pre>#
+# Properties for jdbc processing
+#
+
+jdbc.driver.class=org.postgresql.Driver
+jdbc.url=jdbc:postgresql://localhost:5432/my_test_db
+jdbc.username=polarsparc
+jdbc.password=polarsparc$123
+
+query.orders=SELECT * FROM ORDERS_TBL WHERE SHIPPED = 'N'
+update.orders=UPDATE ORDERS_TBL SET SHIPPED = 'Y' WHERE ORDER_NO IN (:ORDER_NO)</pre>
+      </div>
+    </div>
+    <br/>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">XML based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The following is the database handler POJO that displays the rows retrieved from the database:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.45</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   DbProcessHandler
+ * Author: Bhaskar S
+ * Date:   05/08/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p4;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.Map;
+
+public class DbProcessHandler {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DbProcessHandler.class);
+
+    private final static String ORDER_NO = "ORDER_NO";
+    private final static String ITEM = "ITEM";
+
+    public void handler(List&lt;Map&lt;String, Object&gt;&gt; list) {
+        LOGGER.info("No of records to process: {}", list.size());
+
+        for (Map&lt;String, Object&gt; rec : list) {
+            LOGGER.info("Processed order {} for item {}", rec.get(ORDER_NO), rec.get(ITEM));
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the <span class="bold">XML</span> based <span class="bold">Spring Integration</span> configuration that
+        wires up the <span class="bold">channels</span>, the jdbc <span class="bold">channel adapter</span>, and the
+        <span class="bold">endpoint</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.46</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;beans xmlns="http://www.springframework.org/schema/beans"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:context="http://www.springframework.org/schema/context"
+        xmlns:int="http://www.springframework.org/schema/integration"
+        xmlns:jdbc="http://www.springframework.org/schema/integration/jdbc"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans
+                            http://www.springframework.org/schema/beans/spring-beans.xsd
+                            http://www.springframework.org/schema/context
+                            http://www.springframework.org/schema/context/spring-context.xsd
+                            http://www.springframework.org/schema/integration
+                            http://www.springframework.org/schema/integration/spring-integration.xsd
+                            http://www.springframework.org/schema/integration/jdbc
+                            http://www.springframework.org/schema/integration/jdbc/spring-integration-jdbc.xsd"&gt;
+
+    &lt;context:property-placeholder location="classpath:p4/jdbc.properties" /&gt;
+
+    &lt;bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource"&gt;
+        &lt;property name="driverClassName" value="${jdbc.driver.class}" /&gt;
+        &lt;property name="url" value="${jdbc.url}" /&gt;
+        &lt;property name="username" value="${jdbc.username}" /&gt;
+        &lt;property name="password" value="${jdbc.password}" /&gt;
+    &lt;/bean&gt;
+
+    &lt;bean id="inDbHandler" class="com.polarsparc.si.p4.DbProcessHandler" /&gt;
+
+    &lt;jdbc:inbound-channel-adapter channel="inChannel"
+                                  data-source="dataSource"
+                                  query="${query.orders}"
+                                  update="${update.orders}"
+                                  max-rows-per-poll="5"&gt;
+        &lt;int:poller id="poller" fixed-delay="10000" /&gt;
+    &lt;/jdbc:inbound-channel-adapter&gt;
+
+
+    &lt;int:service-activator input-channel="inChannel"
+                            ref="inDbHandler"
+                            method="handler" /&gt;
+
+&lt;/beans&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">Listing.46</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>The <span class="bold">Spring Framework</span> class
+            <span class="hi-yellow">org.springframework.jdbc.datasource.DriverManagerDataSource</span> defines a JDBC data source and
+            under-the-hood it establishes a connection with the specified database</p>
+        </li>
+        <li>
+          <p>The jdbc <span class="hi-yellow">inbound-channel-adapter</span> element uses the data source as specified by the attribute
+            <span class="hi-green">data-source</span> to execute the SELECT statement as specified by the attribute
+            <span class="hi-green">query</span>.</p>
+          <p>The result set from the SELECT query is converted into a <span class="bold">message</span> that has a payload of Java
+            <span class="bold">java.util.List</span> (for list of rows). By default, each row from the SELECT query is mapped to a
+            Java <span class="bold">Map&lt;String, Object&gt;</span>.</p>
+          <p>The attribute <span class="hi-green">update</span> specifies an UPDATE statement that will be used to mark the rows as
+            processed, so that they will not appear in the next poll. The UPDATE statement can be parameterized using the naming
+            convention <span class="hi-yellow">:column-name</span>.</p>
+          <p>The attribute <span class="hi-green">max-rows-per-poll</span> specifies the number of rows that can be returned on each
+            poll</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is our main application to test the jdbc <span class="bold">channel adapter</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.47</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   JdbcProcessMainXml
+ * Author: Bhaskar S
+ * Date:   05/08/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p4;
+
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+public class JdbcProcessMainXml {
+    public static void main(String[] args) {
+        new ClassPathXmlApplicationContext("p4/JdbcProcess.xml");
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.47</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringIntegration</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.si.p4.JdbcProcessMainXml"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.19</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------&lt; com.polarsparc.si:SpringIntegration &gt;-----------------
+[INFO] Building SpringIntegration 1.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec-maven-plugin:3.0.0:java (default-cli) @ SpringIntegration ---
+2021-05-08 14:58:16:681 [com.polarsparc.si.p4.JdbcProcessMainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'errorChannel' has been explicitly defined. Therefore, a default PublishSubscribeChannel will be created.
+2021-05-08 14:58:16:686 [com.polarsparc.si.p4.JdbcProcessMainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'taskScheduler' has been explicitly defined. Therefore, a default ThreadPoolTaskScheduler will be created.
+2021-05-08 14:58:16:690 [com.polarsparc.si.p4.JdbcProcessMainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'integrationHeaderChannelRegistry' has been explicitly defined. Therefore, a default DefaultHeaderChannelRegistry will be created.
+2021-05-08 14:58:16:885 [com.polarsparc.si.p4.JdbcProcessMainXml.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler - Initializing ExecutorService 'taskScheduler'
+2021-05-08 14:58:16:910 [com.polarsparc.si.p4.JdbcProcessMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {service-activator} as a subscriber to the 'inChannel' channel
+2021-05-08 14:58:16:910 [com.polarsparc.si.p4.JdbcProcessMainXml.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@3b71ca90.inChannel' has 1 subscriber(s).
+2021-05-08 14:58:16:911 [com.polarsparc.si.p4.JdbcProcessMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'org.springframework.integration.config.ConsumerEndpointFactoryBean#0'
+2021-05-08 14:58:16:912 [com.polarsparc.si.p4.JdbcProcessMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {logging-channel-adapter:_org.springframework.integration.errorLogger} as a subscriber to the 'errorChannel' channel
+2021-05-08 14:58:16:913 [com.polarsparc.si.p4.JdbcProcessMainXml.main()] INFO org.springframework.integration.channel.PublishSubscribeChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@3b71ca90.errorChannel' has 1 subscriber(s).
+2021-05-08 14:58:16:913 [com.polarsparc.si.p4.JdbcProcessMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean '_org.springframework.integration.errorLogger'
+2021-05-08 14:58:16:916 [com.polarsparc.si.p4.JdbcProcessMainXml.main()] INFO org.springframework.integration.endpoint.SourcePollingChannelAdapter - started bean 'org.springframework.integration.config.SourcePollingChannelAdapterFactoryBean#0'; defined in: 'class path resource [p4/JdbcProcess.xml]'; from source: ''jdbc:inbound-channel-adapter''</pre>
+    </div>
+    <div id="para-div">
+      <p>Execute the following <span class="bold">SQL</span> commands using a database client such as <a target="_blank"
+        href="https://dbeaver.io/"><span class="hi-yellow">DBeaver</span></a>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>INSERT INTO ORDERS_TBL (ORDER_NO, ITEM, SHIPPED) VALUES('1', 'iPad Air 128G WiFi', 'N');</p>
+      <p>INSERT INTO ORDERS_TBL (ORDER_NO, ITEM, SHIPPED) VALUES('2', 'Roku Express 4K+', 'N');</p>
+      <p>INSERT INTO ORDERS_TBL (ORDER_NO, ITEM, SHIPPED) VALUES('3', '128GB MicroSD Card', 'N');</p>
+    </div>
+    <div id="para-div">
+      <p>We will see the following update in the terminal output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.20</h4>
+      <pre>2021-05-08 14:59:47:113 [task-scheduler-3] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-05-08 14:59:47:118 [task-scheduler-3] INFO com.polarsparc.si.p4.DbProcessHandler - No of records to process: 3
+2021-05-08 14:59:47:118 [task-scheduler-3] INFO com.polarsparc.si.p4.DbProcessHandler - Processed order 1 for item iPad Air 128G WiFi
+2021-05-08 14:59:47:119 [task-scheduler-3] INFO com.polarsparc.si.p4.DbProcessHandler - Processed order 2 for item Roku Express 4K+
+2021-05-08 14:59:47:119 [task-scheduler-3] INFO com.polarsparc.si.p4.DbProcessHandler - Processed order 3 for item 128GB MicroSD Card</pre>
+    </div>
+    <div id="para-div">
+      <p>The rows in the database are automatically updated (the column <span class="bold">SHIPPED</span>) is set to 'Y'.</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Java Config based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The following is the Java Config based POJO that defines the handler to display the rows retrieved from the database:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.48</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   DbProcessHandler2
+ * Author: Bhaskar S
+ * Date:   05/08/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p4;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.integration.config.EnableIntegration;
+
+import java.util.List;
+import java.util.Map;
+
+@Configuration
+@EnableIntegration
+public class DbProcessHandler2 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DbProcessHandler2.class);
+
+    private final static String ORDER_NO = "ORDER_NO";
+    private final static String ITEM = "ITEM";
+
+    @ServiceActivator(inputChannel = "inChannel")
+    public void handler(List&lt;Map&lt;String, Object&gt;&gt; list) {
+        LOGGER.info("No of records to process: {}", list.size());
+
+        for (Map&lt;String, Object&gt; rec : list) {
+            LOGGER.info("Processed order {} for item {}", rec.get(ORDER_NO), rec.get(ITEM));
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java Config based POJO that refers to the external <span class="bold">jdbc.properties</span> file and
+        defines the jdbc data source and the input jdbc <span class="bold">channel adapter</span> similar to the way defined in the
+        <span class="bold">XML</span> configuration file of <span class="bold">Listing.46</span> above:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.49</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   JdbcProcessConfig
+ * Author: Bhaskar S
+ * Date:   05/08/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p4;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.integration.annotation.InboundChannelAdapter;
+import org.springframework.integration.annotation.Poller;
+import org.springframework.integration.config.EnableIntegration;
+import org.springframework.integration.core.MessageSource;
+import org.springframework.integration.jdbc.JdbcPollingChannelAdapter;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+
+import javax.sql.DataSource;
+
+@Configuration
+@EnableIntegration
+@PropertySource("classpath:p4/jdbc.properties")
+public class JdbcProcessConfig {
+    @Value("${jdbc.driver.class}")
+    private String jdbcDriver;
+
+    @Value("${jdbc.url}")
+    private String jdbcUrl;
+
+    @Value("${jdbc.username}")
+    private String jdbcUser;
+
+    @Value("${jdbc.password}")
+    private String jdbcPassword;
+
+    @Value("${query.orders}")
+    private String selectOrders;
+
+    @Value("${update.orders}")
+    private String updateOrders;
+
+    @Bean
+    public DataSource jdbcDataSource() {
+        DriverManagerDataSource source = new DriverManagerDataSource();
+        source.setDriverClassName(jdbcDriver);
+        source.setUrl(jdbcUrl);
+        source.setUsername(jdbcUser);
+        source.setPassword(jdbcPassword);
+        return source;
+    }
+
+    @Bean
+    @InboundChannelAdapter(channel = "inChannel", poller = @Poller(fixedDelay = "10000"))
+    public MessageSource&lt;Object&gt; jdbcChannelAdapter() {
+        JdbcPollingChannelAdapter adapter = new JdbcPollingChannelAdapter(jdbcDataSource(), selectOrders);
+        adapter.setUpdateSql(updateOrders);
+        adapter.setMaxRows(5);
+        return adapter;
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">Listing.49</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>The class <span class="hi-yellow">org.springframework.jdbc.datasource.DriverManagerDataSource</span> provides a simple
+            implementation of the jdbc based data source using the provided jdbc properties such as the driver manager, the database
+            url, connection credentials, etc</p>
+        </li>
+        <li>
+          <p>The class <span class="hi-yellow">org.springframework.integration.jdbc.JdbcPollingChannelAdapter</span> implements a
+            a polling database <span class="bold">channel adapter</span> (using jdbc) that creates <span class="bold">message</span>s
+            by querying the underlying database using the specified <span class="bold">SELECT</span> query. After querying for the
+            specified number of rows, it executes the specified <span class="bold">UPDATE</span> statement</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>And finally, the following is the main application that uses the POJOs from <span class="bold">Listing.48</span> and
+        <span class="bold">Listing.49</span> to test the jdbc <span class="bold">channel adapter</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.50</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   JdbcProcessMainConfig
+ * Author: Bhaskar S
+ * Date:   05/08/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p4;
+
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+public class JdbcProcessMainConfig {
+    public static void main(String[] args) {
+        new AnnotationConfigApplicationContext(DbProcessHandler2.class, JdbcProcessConfig.class);
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.50</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringIntegration</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.si.p4.JdbcProcessMainConfig"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.21</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------&lt; com.polarsparc.si:SpringIntegration &gt;-----------------
+[INFO] Building SpringIntegration 1.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec-maven-plugin:3.0.0:java (default-cli) @ SpringIntegration ---
+2021-05-08 15:45:03:965 [com.polarsparc.si.p4.JdbcProcessMainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'errorChannel' has been explicitly defined. Therefore, a default PublishSubscribeChannel will be created.
+2021-05-08 15:45:03:970 [com.polarsparc.si.p4.JdbcProcessMainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'taskScheduler' has been explicitly defined. Therefore, a default ThreadPoolTaskScheduler will be created.
+2021-05-08 15:45:03:975 [com.polarsparc.si.p4.JdbcProcessMainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'integrationHeaderChannelRegistry' has been explicitly defined. Therefore, a default DefaultHeaderChannelRegistry will be created.
+2021-05-08 15:45:04:014 [com.polarsparc.si.p4.JdbcProcessMainConfig.main()] INFO org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'integrationChannelResolver' of type [org.springframework.integration.support.channel.BeanFactoryChannelResolver] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)
+2021-05-08 15:45:04:019 [com.polarsparc.si.p4.JdbcProcessMainConfig.main()] INFO org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'integrationDisposableAutoCreatedBeans' of type [org.springframework.integration.config.annotation.Disposables] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)
+2021-05-08 15:45:04:235 [com.polarsparc.si.p4.JdbcProcessMainConfig.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler - Initializing ExecutorService 'taskScheduler'
+2021-05-08 15:45:04:313 [com.polarsparc.si.p4.JdbcProcessMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {logging-channel-adapter:_org.springframework.integration.errorLogger} as a subscriber to the 'errorChannel' channel
+2021-05-08 15:45:04:314 [com.polarsparc.si.p4.JdbcProcessMainConfig.main()] INFO org.springframework.integration.channel.PublishSubscribeChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@4c4f6598.errorChannel' has 1 subscriber(s).
+2021-05-08 15:45:04:315 [com.polarsparc.si.p4.JdbcProcessMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean '_org.springframework.integration.errorLogger'
+2021-05-08 15:45:04:315 [com.polarsparc.si.p4.JdbcProcessMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {service-activator:dbProcessHandler2.handler.serviceActivator} as a subscriber to the 'inChannel' channel
+2021-05-08 15:45:04:316 [com.polarsparc.si.p4.JdbcProcessMainConfig.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@4c4f6598.inChannel' has 1 subscriber(s).
+2021-05-08 15:45:04:317 [com.polarsparc.si.p4.JdbcProcessMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'dbProcessHandler2.handler.serviceActivator'
+2021-05-08 15:45:04:320 [com.polarsparc.si.p4.JdbcProcessMainConfig.main()] INFO org.springframework.integration.endpoint.SourcePollingChannelAdapter - started bean 'jdbcProcessConfig.jdbcChannelAdapter.inboundChannelAdapter'</pre>
+    </div>
+    <div id="para-div">
+      <p>Execute the following <span class="bold">SQL</span> commands using a database client such as <a target="_blank"
+        href="https://dbeaver.io/"><span class="hi-yellow">DBeaver</span></a>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>DELETE FROM ORDERS_TBL;</p>
+      <p>INSERT INTO ORDERS_TBL (ORDER_NO, ITEM, SHIPPED) VALUES('1', 'iPad Air 128G WiFi', 'N');</p>
+      <p>INSERT INTO ORDERS_TBL (ORDER_NO, ITEM, SHIPPED) VALUES('2', 'Roku Express 4K+', 'N');</p>
+      <p>INSERT INTO ORDERS_TBL (ORDER_NO, ITEM, SHIPPED) VALUES('3', '128GB MicroSD Card', 'N');</p>
+    </div>
+    <div id="para-div">
+      <p>We will see the following update in the terminal output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.22</h4>
+      <pre>2021-05-08 15:46:24:516 [task-scheduler-5] INFO org.springframework.integration.handler.support.MessagingMethodInvokerHelper - Overriding default instance of MessageHandlerMethodFactory with provided one.
+2021-05-08 15:46:24:519 [task-scheduler-5] INFO com.polarsparc.si.p4.DbProcessHandler2 - No of records to process: 3
+2021-05-08 15:46:24:520 [task-scheduler-5] INFO com.polarsparc.si.p4.DbProcessHandler2 - Processed order 1 for item iPad Air 128G WiFi
+2021-05-08 15:46:24:520 [task-scheduler-5] INFO com.polarsparc.si.p4.DbProcessHandler2 - Processed order 2 for item Roku Express 4K+
+2021-05-08 15:46:24:521 [task-scheduler-5] INFO com.polarsparc.si.p4.DbProcessHandler2 - Processed order 3 for item 128GB MicroSD Card</pre>
+    </div>
+    <div id="para-div">
+      <p>The rows in the database are automatically updated (the column <span class="bold">SHIPPED</span>) is set to 'Y'.</p>
+    </div>
+    <div id="para-div">
+      <p>As can be inferred from the <span class="bold">Output.20</span> and <span class="bold">Output.22</span> above,
+        <span class="bold">Spring Integration</span> successfully processed the rows from the database.</p>
+    </div>
+    <div id="step-div">
+      <p>Invoking a REST Service using HTTP</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">XML based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>For this example, we will invoke a free external web-service to get the spot prices on precious metals in a JSON format. The
+        web-service endpoint to invoke is <span class="bold"><a href="http://services.packetizer.com/spotprices/?f=json" target="_blank">
+        Spot Prices on Precious Metals</a></span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is a simple interface to fetch the spot prices on precious metals:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.51</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   SpotPricesGateway
+ * Author: Bhaskar S
+ * Date:   05/08/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p4;
+
+public interface SpotPricesGateway {
+    public String preciousMetalPrices(String type);
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the <span class="bold">XML</span> based <span class="bold">Spring Integration</span> configuration that
+        wires up the <span class="bold">channels</span>, the http <span class="bold">channel adapter</span>, and the
+        <span class="bold">endpoint</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.52</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;beans xmlns="http://www.springframework.org/schema/beans"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:int="http://www.springframework.org/schema/integration"
+        xmlns:http="http://www.springframework.org/schema/integration/http"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans
+                            http://www.springframework.org/schema/beans/spring-beans.xsd
+                            http://www.springframework.org/schema/integration
+                            http://www.springframework.org/schema/integration/spring-integration.xsd
+                            http://www.springframework.org/schema/integration/http
+                            http://www.springframework.org/schema/integration/http/spring-integration-http.xsd"&gt;
+
+    &lt;int:logging-channel-adapter id="logger" level="INFO" log-full-message="true" /&gt;
+
+    &lt;int:channel id="inChannel"&gt;
+        &lt;int:interceptors&gt;
+            &lt;int:wire-tap channel="logger" /&gt;
+        &lt;/int:interceptors&gt;
+    &lt;/int:channel&gt;
+
+    &lt;int:channel id="outChannel"&gt;
+        &lt;int:queue capacity="5" /&gt;
+    &lt;/int:channel&gt;
+
+    &lt;int:gateway id="gateway"
+                  service-interface="com.polarsparc.si.p4.SpotPricesGateway"&gt;
+        &lt;int:method name="preciousMetalPrices"
+                    request-channel="inChannel"
+                    reply-channel="outChannel"&gt;
+            &lt;int:header name="f" expression="#args[0]" /&gt;
+            &lt;int:header name="Content-Type" value="application/json" /&gt;
+        &lt;/int:method&gt;
+    &lt;/int:gateway&gt;
+
+    &lt;http:outbound-gateway id="httpGateway"
+                            request-channel="inChannel"
+                            url="http://services.packetizer.com/spotprices/?f={f}"
+                            http-method="GET"
+                            expected-response-type="java.lang.String"
+                            reply-timeout="10000"
+                            reply-channel="outChannel"&gt;
+        &lt;http:uri-variable name="f" expression="headers.f" /&gt;
+    &lt;/http:outbound-gateway&gt;
+
+&lt;/beans&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">Listing.52</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>We have learnt about the <span class="bold">gateway</span> element in <a target="_blank" href="./SpringIntegration-01.html">
+            <span class="bold">Part-1</span></a>. It also allows one to specify one or more <span class="hi-green">method</span>
+            sub-elements.</p>
+          <p>A <span class="bold">method</span> sub-element allows one to configure the behavior (such as adding name-value pairs to the
+            <span class="bold">message</span> header) when the specified method is invoked.</p>
+          <p>To add a name-value pair to the <span class="bold">message</span> header, use the <span class="hi-green">header</span>
+            sub-element under the <span class="bold">method</span> sub-element.</p>
+          <p>The <span class="bold">header</span> sub-element uses the <span class="hi-green">name</span> attribute to specify the header
+            name.</p>
+          <p>The <span class="bold">header</span> sub-element uses the <span class="hi-green">value</span> attribute to specify a static
+            header value.</p>
+          <p>The <span class="bold">header</span> sub-element uses the <span class="hi-green">expression</span> attribute to specify a
+            dynamic header value. In the above, the expression <span class="hi-yellow">#args[0]</span> stands for the first parameter of
+            the specified method</p>
+        </li>
+        <li>
+          <p>The http <span class="hi-yellow">outbound-gateway</span> element allows one to invoke the specified URL endpoint.</p>
+          <p>If the specified URL uses a query parameter (as in our case), one should use the <span class="hi-green">uri-variable</span>
+            sub-element.</p>
+          <p>In our case, we have one <span class="bold">uri-variable</span> sub-element for the query parameter <span class="bold">f</span>
+            which gets its value from the <span class="bold">message</span> header. The expression <span class="hi-yellow">headers.f</span>
+            gets the value of the <span class="bold">message</span> header property with name <span class="bold">f</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is our main application to test the http <span class="bold">channel adapter</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.53</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   SpotPricesMainXml
+ * Author: Bhaskar S
+ * Date:   05/08/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p4;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+public class SpotPricesMainXml {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SpotPricesMainXml.class);
+
+    public static void main(String[] args) {
+        ApplicationContext context = new ClassPathXmlApplicationContext("p4/SpotPrices.xml");
+
+        SpotPricesGateway gateway = (SpotPricesGateway) context.getBean("gateway");
+
+        LOGGER.info("Precious Metal Prices = {}", gateway.preciousMetalPrices("json"));
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.53</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringIntegration</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.si.p4.SpotPricesMainXml"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.23</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------&lt; com.polarsparc.si:SpringIntegration &gt;-----------------
+[INFO] Building SpringIntegration 1.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec-maven-plugin:3.0.0:java (default-cli) @ SpringIntegration ---
+2021-05-08 16:26:37:579 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'errorChannel' has been explicitly defined. Therefore, a default PublishSubscribeChannel will be created.
+2021-05-08 16:26:37:582 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'taskScheduler' has been explicitly defined. Therefore, a default ThreadPoolTaskScheduler will be created.
+2021-05-08 16:26:37:588 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'integrationHeaderChannelRegistry' has been explicitly defined. Therefore, a default DefaultHeaderChannelRegistry will be created.
+2021-05-08 16:26:37:807 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler - Initializing ExecutorService 'taskScheduler'
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.springframework.util.ReflectionUtils (file:/home/bswamina/.m2/repository/org/springframework/spring-core/5.3.5/spring-core-5.3.5.jar) to constructor java.lang.invoke.MethodHandles$Lookup(java.lang.Class)
+WARNING: Please consider reporting this to the maintainers of org.springframework.util.ReflectionUtils
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+2021-05-08 16:26:37:909 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {logging-channel-adapter:logger.adapter} as a subscriber to the 'logger' channel
+2021-05-08 16:26:37:909 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@761cb475.logger' has 1 subscriber(s).
+2021-05-08 16:26:37:910 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'logger.adapter'; defined in: 'class path resource [p4/SpotPrices.xml]'; from source: ''int:logging-channel-adapter' with id='logger''
+2021-05-08 16:26:37:911 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {http:outbound-gateway:httpGateway} as a subscriber to the 'inChannel' channel
+2021-05-08 16:26:37:911 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@761cb475.inChannel' has 1 subscriber(s).
+2021-05-08 16:26:37:912 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'httpGateway'
+2021-05-08 16:26:37:913 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {logging-channel-adapter:_org.springframework.integration.errorLogger} as a subscriber to the 'errorChannel' channel
+2021-05-08 16:26:37:913 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO org.springframework.integration.channel.PublishSubscribeChannel - Channel 'org.springframework.context.support.ClassPathXmlApplicationContext@761cb475.errorChannel' has 1 subscriber(s).
+2021-05-08 16:26:37:914 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean '_org.springframework.integration.errorLogger'
+2021-05-08 16:26:37:915 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean$MethodInvocationGateway - started bean 'gateway#preciousMetalPrices(String)'
+2021-05-08 16:26:37:915 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean - started bean 'gateway'
+2021-05-08 16:26:37:926 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO org.springframework.integration.endpoint.PollingConsumer - started org.springframework.integration.endpoint.PollingConsumer@3ccf0884
+2021-05-08 16:26:37:933 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO org.springframework.integration.handler.LoggingHandler - GenericMessage [payload=json, headers={replyChannel=org.springframework.messaging.core.GenericMessagingTemplate$TemporaryReplyChannel@4b153b1d, errorChannel=org.springframework.messaging.core.GenericMessagingTemplate$TemporaryReplyChannel@4b153b1d, id=2a42c117-1c9c-0b9a-0745-83dcc71aff6e, f=json, Content-Type=application/json, timestamp=1620505597932}]
+2021-05-08 16:26:38:075 [com.polarsparc.si.p4.SpotPricesMainXml.main()] INFO com.polarsparc.si.p4.SpotPricesMainXml - Precious Metal Prices = {
+    "date" : "2021-05-07",
+    "gold" : "1831.10",
+    "silver" : "27.46",
+    "platinum" : "1256.75"
+}
+--- CTRL-C ---</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Java Config based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The following is the Java Config based POJO that defines the <span class="bold">gateway</span> similar to the one defined
+        in the <span class="bold">XML</span> configuration file of <span class="bold">Listing.52</span> above:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.54</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   SpotPricesGateway2
+ * Author: Bhaskar S
+ * Date:   05/08/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p4;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.integration.annotation.Gateway;
+import org.springframework.integration.annotation.GatewayHeader;
+import org.springframework.integration.annotation.IntegrationComponentScan;
+import org.springframework.integration.annotation.MessagingGateway;
+import org.springframework.integration.config.EnableIntegration;
+
+@Configuration
+@EnableIntegration
+@IntegrationComponentScan
+@MessagingGateway(name = "gateway", defaultRequestChannel = "inChannel", defaultReplyChannel = "outChannel")
+public interface SpotPricesGateway2 {
+    @Gateway(requestChannel = "inChannel", replyChannel = "outChannel",
+            headers = { @GatewayHeader(name = "f", expression = "#args[0]"),
+                    @GatewayHeader(name = "Content-Type", value = "application/json") })
+    public String preciousMetalPrices(String type);
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">Listing.54</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>The annotation class <span class="hi-yellow">org.springframework.integration.annotation.GatewayHeader</span> allows one
+            to set a message header name with a value or an expression (thats dynamically resolves to a value)</p>
+        </li>
+        <li>
+          <p>The method annotation class <span class="hi-yellow">org.springframework.integration.annotation.Gateway</span> allows
+            for the mapping of the method parameter(s) to <span class="bold">message</span> header(s) via the
+            <span class="hi-green">headers</span> attribute. Notice we have specified a list of two <span class="bold">
+            GatewayHeader</span> annotations that is the equivalent of the <span class="hi-green">int:header</span> elements from
+            the <span class="bold">XML</span> configuration file of <span class="bold">Listing.52</span> above</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the Java Config based POJO that defines the input and output <span class="bold">channel</span>s, a logging
+        <span class="bold">wiretap</span>, and the out bound http <span class="bold">channel adapter</span> similar to the way defined
+        in the <span class="bold">XML</span> configuration file of <span class="bold">Listing.52</span> above:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.55</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   SpotPricesConfig
+ * Author: Bhaskar S
+ * Date:   05/08/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p4;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.expression.Expression;
+import org.springframework.expression.ExpressionParser;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.http.HttpMethod;
+import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.integration.channel.AbstractMessageChannel;
+import org.springframework.integration.channel.DirectChannel;
+import org.springframework.integration.channel.QueueChannel;
+import org.springframework.integration.channel.interceptor.WireTap;
+import org.springframework.integration.config.EnableIntegration;
+import org.springframework.integration.handler.LoggingHandler;
+import org.springframework.integration.http.outbound.HttpRequestExecutingMessageHandler;
+import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.MessageHandler;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Configuration
+@EnableIntegration
+public class SpotPricesConfig {
+    @Bean
+    @ServiceActivator(inputChannel = "logger")
+    public LoggingHandler logHandler() {
+        LoggingHandler logger = new LoggingHandler(LoggingHandler.Level.INFO);
+        logger.setShouldLogFullMessage(true);
+        return logger;
+    }
+
+    @Bean
+    public MessageChannel inChannel() {
+        AbstractMessageChannel channel = new DirectChannel();
+        channel.addInterceptor(wireTap());
+        return channel;
+    }
+
+    @Bean
+    public WireTap wireTap() {
+        return new WireTap("logger");
+    }
+
+    @Bean
+    public MessageChannel outChannel() {
+        return new QueueChannel(5);
+    }
+
+    @Bean
+    @ServiceActivator(inputChannel = "inChannel")
+    public MessageHandler httpGateway() {
+        HttpRequestExecutingMessageHandler handler =
+                new HttpRequestExecutingMessageHandler("http://services.packetizer.com/spotprices/?f={f}");
+        handler.setHttpMethod(HttpMethod.GET);
+        handler.setExpectedResponseType(String.class);
+        handler.setSendTimeout(10000);
+        handler.setOutputChannel(outChannel());
+
+        ExpressionParser parser = new SpelExpressionParser();
+        Map&lt;String, Expression&gt; variables = new HashMap&lt;&gt;();
+        variables.put("f", parser.parseExpression("headers.f"));
+
+        handler.setUriVariableExpressions(variables);
+        return handler;
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">Listing.55</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>The class <span class="hi-yellow">org.springframework.integration.http.outbound.HttpRequestExecutingMessageHandler</span>
+            implements the outbound http <span class="bold">channel adapter</span> which makes http requests to the specified url.
+            Under the hood it uses an instance of the class <span class="hi-yellow">org.springframework.web.client.RestTemplate</span>
+            to make the outgoing http requests</p>
+        </li>
+        <li>
+          <p>The class <span class="hi-yellow">org.springframework.integration.jdbc.JdbcPollingChannelAdapter</span> implements a
+            a polling database <span class="bold">channel adapter</span> (using jdbc) that creates <span class="bold">message</span>s
+            by querying the underlying database using the specified <span class="bold">SELECT</span> query. After querying for the
+            specified number of rows, it executes the specified <span class="bold">UPDATE</span> statement</p>
+        </li>
+        <li>
+          <p>The interface <span class="hi-yellow">org.springframework.expression.Expression</span> provides a common abstraction for
+            expression evaluation</p>
+        </li>
+        <li>
+          <p>The interface <span class="hi-yellow">org.springframework.expression.ExpressionParser</span> provides an abstraction for
+            parsing expression strings into compiled <span class="bold">Expression</span> instances that can be later evaluated</p>
+        </li>
+        <li>
+          <p>The class <span class="hi-yellow">org.springframework.expression.spel.standard.SpelExpressionParser</span> is a concrete
+            implementation of an <span class="bold">ExpressionParser</span> that supports the <span class="bold">Spring Expression
+            Language</span> syntax</p>
+        </li>
+        <li>
+          <p>The method call <span class="hi-blue">handler.setUriVariableExpressions(variables)</span> on the instance of the
+            <span class="bold">HttpRequestExecutingMessageHandler</span> is used to provide a table of mapping between a uri variable
+            and an instance of <span class="bold">Expression</span> that needs to be resolved prior to making the http request. This
+            is the equivalent of the element <span class="hi-green">http:uri-variable</span> from the <span class="bold">XML</span>
+            configuration file of <span class="bold">Listing.52</span> above</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>And finally, the following is the main application that uses the POJOs from <span class="bold">Listing.54</span> and
+        <span class="bold">Listing.55</span> to test the http <span class="bold">channel adapter</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.56</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   SpotPricesMainConfig
+ * Author: Bhaskar S
+ * Date:   05/08/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.si.p4;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+public class SpotPricesMainConfig {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SpotPricesMainConfig.class);
+
+    public static void main(String[] args) {
+        ApplicationContext context = new AnnotationConfigApplicationContext(SpotPricesGateway2.class,
+                SpotPricesConfig.class);
+
+        SpotPricesGateway2 gateway = (SpotPricesGateway2) context.getBean("gateway");
+
+        LOGGER.info("Precious Metal Prices with Config = {}", gateway.preciousMetalPrices("json"));
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the code from <span class="bold">Listing.56</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/SpringIntegration</p>
+      <p>$ mvn exec:java -Dexec.mainClass="com.polarsparc.si.p4.SpotPricesMainConfig"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.24</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------&lt; com.polarsparc.si:SpringIntegration &gt;-----------------
+[INFO] Building SpringIntegration 1.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec-maven-plugin:3.0.0:java (default-cli) @ SpringIntegration ---
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by org.springframework.cglib.core.ReflectUtils (file:/home/bswamina/.m2/repository/org/springframework/spring-core/5.3.5/spring-core-5.3.5.jar) to method java.lang.ClassLoader.defineClass(java.lang.String,byte[],int,int,java.security.ProtectionDomain)
+WARNING: Please consider reporting this to the maintainers of org.springframework.cglib.core.ReflectUtils
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+2021-05-08 20:09:11:006 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'errorChannel' has been explicitly defined. Therefore, a default PublishSubscribeChannel will be created.
+2021-05-08 20:09:11:010 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'taskScheduler' has been explicitly defined. Therefore, a default ThreadPoolTaskScheduler will be created.
+2021-05-08 20:09:11:014 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.integration.config.DefaultConfiguringBeanFactoryPostProcessor - No bean named 'integrationHeaderChannelRegistry' has been explicitly defined. Therefore, a default DefaultHeaderChannelRegistry will be created.
+2021-05-08 20:09:11:048 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'integrationChannelResolver' of type [org.springframework.integration.support.channel.BeanFactoryChannelResolver] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)
+2021-05-08 20:09:11:081 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.context.support.PostProcessorRegistrationDelegate$BeanPostProcessorChecker - Bean 'integrationDisposableAutoCreatedBeans' of type [org.springframework.integration.config.annotation.Disposables] is not eligible for getting processed by all BeanPostProcessors (for example: not eligible for auto-proxying)
+2021-05-08 20:09:11:211 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler - Initializing ExecutorService 'taskScheduler'
+2021-05-08 20:09:11:383 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {logging-channel-adapter:_org.springframework.integration.errorLogger} as a subscriber to the 'errorChannel' channel
+2021-05-08 20:09:11:384 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.integration.channel.PublishSubscribeChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@7bb01ac9.errorChannel' has 1 subscriber(s).
+2021-05-08 20:09:11:385 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean '_org.springframework.integration.errorLogger'
+2021-05-08 20:09:11:385 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {message-handler:spotPricesConfig.logHandler.serviceActivator} as a subscriber to the 'logger' channel
+2021-05-08 20:09:11:386 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@7bb01ac9.logger' has 1 subscriber(s).
+2021-05-08 20:09:11:387 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'spotPricesConfig.logHandler.serviceActivator'
+2021-05-08 20:09:11:387 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - Adding {http:outbound-gateway:spotPricesConfig.httpGateway.serviceActivator} as a subscriber to the 'inChannel' channel
+2021-05-08 20:09:11:388 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.integration.channel.DirectChannel - Channel 'org.springframework.context.annotation.AnnotationConfigApplicationContext@7bb01ac9.inChannel' has 1 subscriber(s).
+2021-05-08 20:09:11:389 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.integration.endpoint.EventDrivenConsumer - started bean 'spotPricesConfig.httpGateway.serviceActivator'
+2021-05-08 20:09:11:390 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean$MethodInvocationGateway - started bean 'gateway#preciousMetalPrices(String)'
+2021-05-08 20:09:11:390 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.integration.gateway.GatewayProxyFactoryBean - started bean 'gateway'
+2021-05-08 20:09:11:403 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.integration.endpoint.PollingConsumer - started org.springframework.integration.endpoint.PollingConsumer@3d38adba
+2021-05-08 20:09:11:410 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO org.springframework.integration.handler.LoggingHandler - GenericMessage [payload=json, headers={replyChannel=org.springframework.messaging.core.GenericMessagingTemplate$TemporaryReplyChannel@bcdb17b, errorChannel=org.springframework.messaging.core.GenericMessagingTemplate$TemporaryReplyChannel@bcdb17b, id=22abb0b7-fccc-d9cd-649e-7f1741c4eaa7, f=json, Content-Type=application/json, timestamp=1620565391409}]
+2021-05-08 20:09:11:564 [com.polarsparc.si.p4.SpotPricesMainConfig.main()] INFO com.polarsparc.si.p4.SpotPricesMainConfig - Precious Metal Prices with Config = {
+    "date" : "2021-05-07",
+    "gold" : "1831.10",
+    "silver" : "27.46",
+    "platinum" : "1256.75"
+}
+--- CTRL-C ---</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be inferred from the <span class="bold">Output.23</span> and <span class="bold">Output.24</span> above,
+        <span class="bold">Spring Integration</span> successfully invoked the web-service and fetched the current spot
+        prices of precious metals.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://polarsparc.github.io/SpringIntegration/SpringIntegration-03.html"><span class="bold">Spring Integration Notes :: Part - 3</span></a></p>
+      <p><a target="_blank" href="https://polarsparc.github.io/SpringIntegration/SpringIntegration-02.html"><span class="bold">Spring Integration Notes :: Part - 2</span></a></p>
+      <p><a target="_blank" href="https://polarsparc.github.io/SpringIntegration/SpringIntegration-01.html"><span class="bold">Spring Integration Notes :: Part - 1</span></a></p>
+      <p><a target="_blank" href="https://docs.spring.io/spring-integration/docs/current/reference/html/jdbc.html"><span class="bold">Spring Integration - JDBC Support</span></a></p>
+      <p><a target="_blank" href="https://docs.spring.io/spring-integration/docs/current/reference/html/http.html"><span class="bold">Spring Integration - HTTP Support</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
