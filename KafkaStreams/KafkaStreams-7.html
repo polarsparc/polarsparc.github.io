@@ -1,0 +1,805 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Exploring Kafka Streams :: Part 7">
+    <meta name="subject" content="Exploring Kafka Streams :: Part 7">
+    <meta name="keywords" content="java, kafka">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Exploring Kafka Streams :: Part 7</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Exploring Kafka Streams :: Part 7</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">12/17/2021</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a target="_blank" href="https://polarsparc.github.io/KafkaStreams/KafkaStreams-6.html"><span class="hi-yellow">Part
+        6</span></a> of this series, we demonstrated how to extract the data event (or Kafka message) timestamp and use an in-memory
+        state store in <span class="bold">Kafka Streams</span> applications.</p>
+      <p>In this part of the series, we will demonstrate the different <span class="hi-yellow">Join</span> operations between two
+        streams of data events.</p>
+    </div>
+    <div id="section-div">
+      <p>Kafka Streams Concepts</p>
+    </div>
+    <div id="step-div">
+      <p>Joins</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Kafka Streams</span> allows one to join two streams, be it a <span class="bold">KStream</span> or a
+        <span class="bold">KTable</span>. From <a target="_blank" href="https://polarsparc.github.io/KafkaStreams/KafkaStreams-1.html">
+        <span class="bold">Part 1</span></a>, we know that a <span class="bold">KStream</span> is an unbounded stream of events that
+        represents an append-only semantics, while <span class="bold">KTable</span> represents an update semantics similar to a
+        database table.</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Kafka Streams</span> supports the following three <span class="hi-yellow">Join</span> types:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-blue">Inner Join</span> :: this type of a join represents an intersection of the two streams. In other
+          words, when the events from the two streams match on keys, they are selected by the join.</p>
+          <p>The following illustration depicts an inner join:</p>
+          <br/>
+          <div id="img-outer-div">
+            <img class="img-cls" src="./images/kstreams-08.png" alt="Inner Join" />
+            <div class="img-cap">Figure.1</div>
+          </div>
+          <br/>
+        </li>
+        <li><p><span class="hi-blue">Left Join</span> :: this type of a join includes all the events from the stream that is logically
+          on the left of the join. In other words, the events with no match (on keys) from the other stream (logically to the right),
+          get a null value, while those that match get the corresponding values.</p>
+          <p>The following illustration depicts an left join:</p>
+          <br/>
+          <div id="img-outer-div">
+            <img class="img-cls" src="./images/kstreams-09.png" alt="Left Join" />
+            <div class="img-cap">Figure.2</div>
+          </div>
+          <br/>
+        </li>
+        <li><p><span class="hi-blue">Outer Join</span> :: this type of a join includes all the events from both the streams. In other
+          words, the events with no match (on keys) from either stream, get a null value, while those that match get the corresponding
+          values.</p>
+          <p>The following illustration depicts an outer join:</p>
+          <br/>
+          <div id="img-outer-div">
+            <img class="img-cls" src="./images/kstreams-10.png" alt="Outer Join" />
+            <div class="img-cap">Figure.3</div>
+          </div>
+          <br/>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>A <span class="bold">KStream</span> can be joined with another <span class="bold">KStream</span> only with windowing
+        enabled, which makes sense as a <span class="bold">KStream</span> is unbounded stream and hence needs to be bounded using
+        a time window. Windowing is not needed when a <span class="bold">KTable</span> is involved as it represents a database
+        table semantics.</p>
+      <p>The following table illustrates the stream types and their supported join types:</p>
+      <br/>
+      <div id="img-outer-div">
+        <img class="img-cls" src="./images/kstreams-11.png" alt="Stream Options" />
+        <div class="img-cap">Figure.4</div>
+      </div>
+      <br/>
+    </div>
+    <div id="para-div">
+      <p>In order for the joins to work in <span class="bold">Kafka Streams</span>, the following important criteria, referred to as
+        the <span class="hi-yellow">Co-Partitioning</span> rules, have to be met:</p>
+      <ul id="blue-sqr-ul">
+        <li><p>Data events from the two streams involved in the join <span class="underbold">MUST</span> be keyed and partitioned
+          by the same key field</p></li>
+        <li><p>Source topics for the two streams involved in the join <span class="underbold">MUST</span> have the same number of
+          partitions and use the same partition strategy</p></li>
+      </ul>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Kafka Streams</p>
+    </div>
+    <div id="step-div">
+      <p>Sixth Application</p>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">Sixth</span> module, we will simulate a data event stream, where each event contains a fictitious
+        product key (as a string) and how many quantities were sold (as an integer) as value. We will demonstrate a STATEFUL
+        <span class="bold">Kafka Streams</span> application that will consume the stream of data events from the specified Kafka topic
+        and aggregate the total quantity of product sold using the three windowing techniques - tumbling, hopping, and sliding.</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the Sixth application, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/KafkaStreams</p>
+      <p>$ mkdir -p $HOME/java/KafkaStreams/Sixth</p>
+      <p>$ mkdir -p Sixth/src/main/java Sixth/src/main/resources Sixth/target</p>
+      <p>$ mkdir -p Sixth/src/main/java/com/polarsparc/kstreams</p>
+      <p>$ cd $HOME/java/KafkaStreams/Sixth</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;parent&gt;
+        &lt;artifactId&gt;KafkaStreams&lt;/artifactId&gt;
+        &lt;groupId&gt;com.polarsparc.kstreams&lt;/groupId&gt;
+        &lt;version&gt;1.0&lt;/version&gt;
+    &lt;/parent&gt;
+
+    &lt;artifactId&gt;Sixth&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;artifactId&gt;Common&lt;/artifactId&gt;
+            &lt;groupId&gt;com.polarsparc.kstreams&lt;/groupId&gt;
+            &lt;version&gt;1.0&lt;/version&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We need to modify the <span class="hi-grey">&lt;modules&gt;</span> section in the parent <span class="bold">pom.xml</span>
+        to include the <span class="bold">Sixth</span> module as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml (parent)</div>
+      <div class="src-body-1">
+<pre>&lt;modules&gt;
+  &lt;module&gt;Common&lt;/module&gt;
+  &lt;module&gt;First&lt;/module&gt;
+  &lt;module&gt;Second&lt;/module&gt;
+  &lt;module&gt;Third&lt;/module&gt;
+  &lt;module&gt;Fourth&lt;/module&gt;
+  &lt;module&gt;Fifth&lt;/module&gt;
+  &lt;module&gt;Sixth&lt;/module&gt;
+&lt;/modules&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will need a Kafka producer that will generate the stream of data events on two Kafka topics. The following is the Java
+        Kafka publisher that uses two threads (one for each Kafka topic) to publish events:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.1</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Stream Data Event Generator for 2 Topics
+ * Author: Bhaskar S
+ * Date:   12/11/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.kstreams;
+
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.IntegerSerializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.Properties;
+import java.util.Random;
+
+public class TwoMetricsGenerator {
+    private static final Logger log = LoggerFactory.getLogger(TwoMetricsGenerator.class.getName());
+
+    private final static List&lt;String&gt; keysList = Arrays.asList("A", "M", "S", "B", "N", "T");
+
+    private final static Random random = new Random(1001);
+
+    private static KafkaProducer&lt;String, Integer&gt; createMetricsProducer() {
+        Properties config = new Properties();
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:20001");
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class.getName());
+        return new KafkaProducer&lt;&gt;(config);
+    }
+
+    private static void generateMetricEvent(boolean flag, int type, String topic, Producer&lt;String, Integer&gt; producer) {
+        int ki = random.nextInt(keysList.size());
+
+        String key = keysList.get(ki);
+
+        int value;
+        if (type == 1) {
+            value = random.nextInt(101);
+        } else {
+            value = random.nextInt(4, 32);
+        }
+
+        log.info(String.format("---&gt; [%d] Topic: %s, Key: %s, Value: %d", type, topic, key, value));
+
+        if (!flag) {
+            try {
+                producer.send(new ProducerRecord&lt;&gt;(topic, key, value)).get();
+            }
+            catch (Exception ex) {
+                log.error(ex.getMessage());
+            }
+        }
+
+        try {
+            Thread.sleep(500);
+        }
+        catch (Exception ignore)  {
+        }
+    }
+
+    public static void main(String[] args) {
+        if (args.length &lt; 2) {
+            System.out.printf("Usage: java %s &lt;topic-1&gt; &lt;topic-2&gt; [--dry-run]\n", TwoMetricsGenerator.class.getName());
+            System.exit(1);
+        }
+
+        boolean dryRun = args.length == 3 && args[2].equalsIgnoreCase("--dry-run");
+
+        Producer&lt;String, Integer&gt; producer = null;
+        if (!dryRun) {
+            producer = createMetricsProducer();
+        }
+
+        class TaskOne extends Thread {
+            final Producer&lt;String, Integer&gt; kp;
+
+            TaskOne(Producer&lt;String, Integer&gt; kp) {
+                this.kp = kp;
+            }
+
+            @Override
+            public void run() {
+                for (int i = 1; i &lt;= 10; i++) {
+                    generateMetricEvent(dryRun, 1, args[0], kp);
+                }
+            }
+        }
+
+        class TaskTwo extends Thread {
+            final Producer&lt;String, Integer&gt; kp;
+
+            TaskTwo(Producer&lt;String, Integer&gt; kp) {
+                this.kp = kp;
+            }
+
+            @Override
+            public void run() {
+                for (int i = 1; i &lt;= 10; i++) {
+                    generateMetricEvent(dryRun, 2, args[1], kp);
+                }
+            }
+        }
+
+        TaskOne t1 = new TaskOne(producer);
+        TaskTwo t2 = new TaskTwo(producer);
+
+        t1.start();
+        t2.start();
+
+        try {
+            t1.join();
+        }
+        catch (Exception ex) {
+            // Ignore
+        }
+
+        try {
+            t2.join();
+        }
+        catch (Exception ex) {
+            // Ignore
+        }
+
+        if (!dryRun) {
+            producer.close();
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java based <span class="bold">Kafka Streams</span> application that builds two streams, each consuming
+        events (Kafka messages) from the specified Kafka topics and joining the two streams based on the third argument (that controls
+        the type of streams/join to use):</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.2</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Two Data Streams Joiner
+ * Author: Bhaskar S
+ * Date:   12/11/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.kstreams;
+
+import org.apache.kafka.common.serialization.Serde;
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.kstream.JoinWindows;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.KTable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.Duration;
+
+public class StreamsJoiner {
+    private static void usage() {
+        System.out.printf("Usage: java %s &lt;topic-1&gt; &lt;topic-2&gt; &lt;SSI | STL | TTO&gt;\n", StreamsJoiner.class.getName());
+        System.exit(1);
+    }
+
+    public static void main(String[] args) {
+        if (args.length != 3) {
+            usage();
+        }
+
+        Logger log = LoggerFactory.getLogger(StreamsJoiner.class.getName());
+
+        StreamsConfig config = new StreamsConfig(KafkaConsumerConfig.kafkaConfigurationFour(
+                String.format("%s-%s", args[0], args[1]), 1, Serdes.Integer()));
+
+        Serde&lt;String&gt; stringSerde = Serdes.String();
+        Serde&lt;Integer&gt; integerSerde = Serdes.Integer();
+
+        // Window duration - 3 secs
+        Duration windowSz = Duration.ofSeconds(3);
+
+        StreamsBuilder builder = new StreamsBuilder();
+
+        KStream&lt;String, Integer&gt; streamOne = builder.stream(args[0], Consumed.with(stringSerde, integerSerde))
+                .peek((key, metric) -&gt; log.info(String.format(".S1&gt; Key: %s, Metrics-1: %d", key, metric)));
+
+        KStream&lt;String, Integer&gt; streamTwo = builder.stream(args[1], Consumed.with(stringSerde, integerSerde))
+                .peek((key, metric) -&gt; log.info(String.format(".S2&gt; Key: %s, Metrics-2: %d", key, metric)));
+
+        switch (args[2]) {
+            case "SSI" -&gt; { // KStream-KStream Inner Join
+                log.info("------&gt; KStream-KStream Inner Join");
+
+                streamOne.join(streamTwo,
+                                (oneVal, twoVal) -&gt; String.format("Metrics-1: %d, Metrics-2: %d", oneVal, twoVal),
+                                JoinWindows.of(windowSz))
+                        .peek((key, value) -&gt; log.info(String.format("SSI&gt; Key: %s, Value: %s", key, value)));
+            }
+            case "STL" -&gt; { // KStream-KTable Left Join
+                log.info("------&gt; KStream-KTable Left Join");
+
+                KTable&lt;String, Integer&gt; tableTwo = streamTwo.toTable();
+                tableTwo.toStream()
+                        .peek((key, metric) -&gt; log.info(String.format(".T2&gt; Key: %s, Metrics-2: %d", key, metric)));
+
+                streamOne.leftJoin(tableTwo,
+                                (oneVal, twoVal) -&gt; String.format("Metrics-1: %d, Metrics-2: %d", oneVal, twoVal))
+                        .peek((key, value) -&gt; log.info(String.format("STL&gt; Key: %s, Value: %s", key, value)));
+            }
+            case "TTO" -&gt; { // KTable-KTable Outer Join
+                log.info("------&gt; KTable-KTable Outer Join");
+
+                KTable&lt;String, Integer&gt; tableOne = streamOne.toTable();
+                tableOne.toStream()
+                        .peek((key, metric) -&gt; log.info(String.format(".T1&gt; Key: %s, Metrics-1: %d", key, metric)));
+
+                KTable&lt;String, Integer&gt; tableTwo = streamTwo.toTable();
+                tableTwo.toStream()
+                        .peek((key, metric) -&gt; log.info(String.format(".T2&gt; Key: %s, Metrics-2: %d", key, metric)));
+
+                KTable&lt;String, String&gt; joined = tableOne.outerJoin(tableTwo,
+                        (oneVal, twoVal) -&gt; String.format("Metrics-1: %d, Metrics-2: %d", oneVal, twoVal));
+                joined.toStream()
+                        .peek((key, value) -&gt; log.info(String.format("TTO&gt; Key: %s, Value: %s", key, value)));
+            }
+        }
+
+        Topology topology = builder.build();
+
+        log.info(String.format("---&gt; %s", topology.describe().toString()));
+
+        KafkaStreams streams = new KafkaStreams(topology, config);
+        streams.start();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The code from <span class="bold">Listing.2</span> above needs some explanation:</p>
+      <p>The method <span class="hi-blue">KSTREAM-1.join(KSTREAM-2, VALUE-JOINER, JOIN-WINDOW)</span> performs an inner join on the
+        events from KSTREAM-1 with the events from KSTREAM-2, that lie within the specified time window period JOIN-WINDOW, using the
+        specified joiner operator VALUE-JOINER. The two streams use the default key and value serde to extract the events from the
+        resp[ective streams.</p>
+      <p>The method <span class="hi-blue">KSTREAM.leftJoin(KTABLE, VALUE-JOINER)</span> performs a left join on the events from
+        KSTREAM with the current state of events in KTABLE, using the specified joiner operator VALUE-JOINER. The two streams use the
+        default key and value serde to extract the events from the resp[ective streams.</p>
+      <p>The method <span class="hi-blue">KTABLE-1.outerJoin(KTABLE-2, VALUE-JOINER)</span> performs an outer join on the the current
+        state of events in KTABLE-1 with the current state of events in KTABLE-2, using the specified joiner operator VALUE-JOINER.
+        The two streams use the default key and value serde to extract the events from the resp[ective streams.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, we need to create the two Kafka topics <span class="bold">events-one</span> and <span class="bold">events-two</span>
+        corresponding to the two sources of events. To do that, execute the following commands: </p>
+    </div>
+    <div id="cmd-div">
+      <p>docker run --rm --net=host confluentinc/cp-kafka:7.0.0 kafka-topics --create --topic events-one --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server localhost:20001</p>
+      <p>docker run --rm --net=host confluentinc/cp-kafka:7.0.0 kafka-topics --create --topic events-two --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server localhost:20001</p>
+    </div>
+    <div id="para-div">
+      <p>Now is time to compile the code for module <span class="bold">Sixth</span>. To do that, open a terminal window and execute
+        the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ $HOME/java/KafkaStreams/Sixth</p>
+      <p>$ mvn clean compile</p>
+    </div>
+    <div id="para-div">
+      <p>To run the code from <span class="bold">Listing.2</span> to demonstrate KStream-KStream inner join, open a terminal window
+        and execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ $HOME/java/KafkaStreams/Sixth</p>
+      <p>$ mvn exec:java -Dexec.mainClass=com.polarsparc.kstreams.StreamsJoiner -Dexec.args="events-one events-two SSI"</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>... SNIP ...
+[com.polarsparc.kstreams.StreamsJoiner.main()] INFO com.polarsparc.kstreams.StreamsJoiner - ------> KStream-KStream Inner Join
+[com.polarsparc.kstreams.StreamsJoiner.main()] INFO com.polarsparc.kstreams.StreamsJoiner - ---> Topologies:
+    Sub-topology: 0
+    Source: KSTREAM-SOURCE-0000000000 (topics: [events-one])
+      --> KSTREAM-PEEK-0000000001
+    Source: KSTREAM-SOURCE-0000000002 (topics: [events-two])
+      --> KSTREAM-PEEK-0000000003
+    Processor: KSTREAM-PEEK-0000000001 (stores: [])
+      --> KSTREAM-WINDOWED-0000000004
+      &lt;-- KSTREAM-SOURCE-0000000000
+    Processor: KSTREAM-PEEK-0000000003 (stores: [])
+      --> KSTREAM-WINDOWED-0000000005
+      &lt;-- KSTREAM-SOURCE-0000000002
+    Processor: KSTREAM-WINDOWED-0000000004 (stores: [KSTREAM-JOINTHIS-0000000006-store])
+      --> KSTREAM-JOINTHIS-0000000006
+      &lt;-- KSTREAM-PEEK-0000000001
+    Processor: KSTREAM-WINDOWED-0000000005 (stores: [KSTREAM-JOINOTHER-0000000007-store])
+      --> KSTREAM-JOINOTHER-0000000007
+      &lt;-- KSTREAM-PEEK-0000000003
+    Processor: KSTREAM-JOINOTHER-0000000007 (stores: [KSTREAM-JOINTHIS-0000000006-store])
+      --> KSTREAM-MERGE-0000000008
+      &lt;-- KSTREAM-WINDOWED-0000000005
+    Processor: KSTREAM-JOINTHIS-0000000006 (stores: [KSTREAM-JOINOTHER-0000000007-store])
+      --> KSTREAM-MERGE-0000000008
+      &lt;-- KSTREAM-WINDOWED-0000000004
+    Processor: KSTREAM-MERGE-0000000008 (stores: [])
+      --> KSTREAM-PEEK-0000000009
+      &lt;-- KSTREAM-JOINTHIS-0000000006, KSTREAM-JOINOTHER-0000000007
+    Processor: KSTREAM-PEEK-0000000009 (stores: [])
+      --> none
+      &lt;-- KSTREAM-MERGE-0000000008
+... SNIP ...
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO org.apache.kafka.streams.KafkaStreams - stream-client [events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4] State transition from REBALANCING to RUNNING
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO org.apache.kafka.clients.consumer.KafkaConsumer - [Consumer clientId=events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1-consumer, groupId=events-one-events-two] Requesting the log end offset for events-one-0 in order to compute lag</pre>
+    </div>
+    <div id="para-div">
+      <p>To run the events producer code from <span class="bold">Listing.1</span> to publish a stream of events to the two Kafka
+        topics <span class="bold">events-one</span> and <span class="bold">events-two</span> respectively, open a terminal window
+        and execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ $HOME/java/KafkaStreams/Sixth</p>
+      <p>$ mvn exec:java -Dexec.mainClass=com.polarsparc.kstreams.TwoMetricsGenerator -Dexec.args="events-one events-two"</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>... SNIP ...
+[com.polarsparc.kstreams.TwoMetricsGenerator.main()] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka version: 3.0.0
+[com.polarsparc.kstreams.TwoMetricsGenerator.main()] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka commitId: 8cb0a5e9d3441962
+[com.polarsparc.kstreams.TwoMetricsGenerator.main()] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka startTimeMs: 1639337443497
+[Thread-1] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [1] Topic: events-one, Key: T, Value: 33
+[Thread-2] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [2] Topic: events-two, Key: A, Value: 30
+[kafka-producer-network-thread | producer-1] INFO org.apache.kafka.clients.Metadata - [Producer clientId=producer-1] Cluster ID: T2SYasm_Twu9z2CH1tITkQ
+[Thread-1] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [1] Topic: events-one, Key: B, Value: 32
+[Thread-2] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [2] Topic: events-two, Key: A, Value: 14
+[Thread-1] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [1] Topic: events-one, Key: N, Value: 84
+[Thread-2] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [2] Topic: events-two, Key: T, Value: 14
+[Thread-1] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [1] Topic: events-one, Key: B, Value: 74
+[Thread-2] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [2] Topic: events-two, Key: M, Value: 9
+[Thread-1] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [1] Topic: events-one, Key: M, Value: 45
+[Thread-2] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [2] Topic: events-two, Key: B, Value: 14
+[Thread-1] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [1] Topic: events-one, Key: M, Value: 27
+[Thread-2] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [2] Topic: events-two, Key: A, Value: 10
+[Thread-1] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [1] Topic: events-one, Key: T, Value: 74
+[Thread-2] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [2] Topic: events-two, Key: M, Value: 21
+[Thread-1] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [1] Topic: events-one, Key: A, Value: 50
+[Thread-2] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [2] Topic: events-two, Key: S, Value: 5
+[Thread-1] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [1] Topic: events-one, Key: T, Value: 83
+[Thread-2] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [2] Topic: events-two, Key: T, Value: 24
+[Thread-1] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [1] Topic: events-one, Key: S, Value: 82
+[Thread-2] INFO com.polarsparc.kstreams.TwoMetricsGenerator - ---> [2] Topic: events-two, Key: A, Value: 30
+[com.polarsparc.kstreams.TwoMetricsGenerator.main()] INFO org.apache.kafka.clients.producer.KafkaProducer - [Producer clientId=producer-1] Closing the Kafka producer with timeoutMillis = 9223372036854775807 ms.
+[com.polarsparc.kstreams.TwoMetricsGenerator.main()] INFO org.apache.kafka.common.metrics.Metrics - Metrics scheduler closed
+[com.polarsparc.kstreams.TwoMetricsGenerator.main()] INFO org.apache.kafka.common.metrics.Metrics - Closing reporter org.apache.kafka.common.metrics.JmxReporter
+[com.polarsparc.kstreams.TwoMetricsGenerator.main()] INFO org.apache.kafka.common.metrics.Metrics - Metrics reporters closed
+[com.polarsparc.kstreams.TwoMetricsGenerator.main()] INFO org.apache.kafka.common.utils.AppInfoParser - App info kafka.producer for producer-1 unregistered</pre>
+    </div>
+    <div id="para-div">
+      <p>The following would be the additional output in the terminal running the application from Listing.2 above:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: T, Metrics-1: 33
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: A, Metrics-2: 30
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: B, Metrics-1: 32
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: A, Metrics-2: 14
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: N, Metrics-1: 84
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: T, Metrics-2: 14
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - SSI> Key: T, Value: Metrics-1: 33, Metrics-2: 14
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: B, Metrics-1: 74
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: M, Metrics-2: 9
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: M, Metrics-1: 45
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - SSI> Key: M, Value: Metrics-1: 45, Metrics-2: 9
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: B, Metrics-2: 14
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - SSI> Key: B, Value: Metrics-1: 32, Metrics-2: 14
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - SSI> Key: B, Value: Metrics-1: 74, Metrics-2: 14
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: M, Metrics-1: 27
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - SSI> Key: M, Value: Metrics-1: 27, Metrics-2: 9
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: A, Metrics-2: 10
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: T, Metrics-1: 74
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - SSI> Key: T, Value: Metrics-1: 74, Metrics-2: 14
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: M, Metrics-2: 21
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - SSI> Key: M, Value: Metrics-1: 45, Metrics-2: 21
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - SSI> Key: M, Value: Metrics-1: 27, Metrics-2: 21
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: A, Metrics-1: 50
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - SSI> Key: A, Value: Metrics-1: 50, Metrics-2: 10
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: S, Metrics-2: 5
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: T, Metrics-1: 83
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: T, Metrics-2: 24
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - SSI> Key: T, Value: Metrics-1: 74, Metrics-2: 24
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - SSI> Key: T, Value: Metrics-1: 83, Metrics-2: 24
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: S, Metrics-1: 82
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - SSI> Key: S, Value: Metrics-1: 82, Metrics-2: 5
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: A, Metrics-2: 30
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - SSI> Key: A, Value: Metrics-1: 50, Metrics-2: 30</pre>
+    </div>
+    <div id="para-div">
+      <p>Analyzing the lines from the Output.3 above we can see the inner join working as expected.</p>
+    </div>
+    <div id="para-div">
+      <p>We need to reset the two Kafka topics <span class="bold">events-one</span> and <span class="bold">events-one</span> for the
+        next demonstration. To do that, execute the following commands: </p>
+    </div>
+    <div id="cmd-div">
+      <p>docker run --rm --net=host confluentinc/cp-kafka:7.0.0 kafka-topics --delete --topic events-one --bootstrap-server localhost:20001</p>
+      <p>docker run --rm --net=host confluentinc/cp-kafka:7.0.0 kafka-topics --create --topic events-one --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server localhost:20001</p>
+      <p>docker run --rm --net=host confluentinc/cp-kafka:7.0.0 kafka-topics --delete --topic events-two --bootstrap-server localhost:20001</p>
+      <p>docker run --rm --net=host confluentinc/cp-kafka:7.0.0 kafka-topics --create --topic events-two --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server localhost:20001</p>
+    </div>
+    <div id="para-div">
+      <p>Next, to run the code from <span class="bold">Listing.2</span> to demonstrate KStream-KTable left join, open a terminal window
+        and execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ $HOME/java/KafkaStreams/Sixth</p>
+      <p>$ mvn exec:java -Dexec.mainClass=com.polarsparc.kstreams.StreamsJoiner -Dexec.args="events-one events-two STL"</p>
+    </div>
+    <div id="para-div">
+      <p>We will not show the output as it will be similar in nature to Output.1 above (except will indicate KStream-KTable Left Join).</p>
+    </div>
+    <div id="para-div">
+      <p>Now, re-run the producer code from <span class="bold">Listing.1</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the additional output in the terminal running the application from Listing.2 above (for the KStream-KTable
+        left join):</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: T, Metrics-1: 33
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - STL> Key: T, Value: Metrics-1: 33, Metrics-2: null
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: A, Metrics-2: 30
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: B, Metrics-1: 32
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - STL> Key: B, Value: Metrics-1: 32, Metrics-2: null
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: A, Metrics-2: 14
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: A, Metrics-2: 14
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: N, Metrics-1: 84
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - STL> Key: N, Value: Metrics-1: 84, Metrics-2: null
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: T, Metrics-2: 14
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: B, Metrics-1: 74
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - STL> Key: B, Value: Metrics-1: 74, Metrics-2: null
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: M, Metrics-2: 9
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: T, Metrics-2: 14
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: M, Metrics-2: 9
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: M, Metrics-1: 45
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - STL> Key: M, Value: Metrics-1: 45, Metrics-2: 9
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: B, Metrics-2: 14
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: M, Metrics-1: 27
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - STL> Key: M, Value: Metrics-1: 27, Metrics-2: 9
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: A, Metrics-2: 10
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: B, Metrics-2: 14
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: A, Metrics-2: 10
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: T, Metrics-1: 74
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - STL> Key: T, Value: Metrics-1: 74, Metrics-2: 14
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: M, Metrics-2: 21
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: A, Metrics-1: 50
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - STL> Key: A, Value: Metrics-1: 50, Metrics-2: 10
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: S, Metrics-2: 5
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: M, Metrics-2: 21
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: S, Metrics-2: 5
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: T, Metrics-1: 83
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - STL> Key: T, Value: Metrics-1: 83, Metrics-2: 14
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: T, Metrics-2: 24
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: S, Metrics-1: 82
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - STL> Key: S, Value: Metrics-1: 82, Metrics-2: 5
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: A, Metrics-2: 30
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: T, Metrics-2: 24
+[events-one-events-two-895a43fe-51a7-4f20-af66-3f08b81ff9b4-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: A, Metrics-2: 30</pre>
+    </div>
+    <div id="para-div">
+      <p>Analyzing the lines from the Output.4 above we can see the left join working as expected.</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, we need to reset the two Kafka topics <span class="bold">events-one</span> and <span class="bold">events-one</span>
+        for the final demonstration. To do that, execute the following commands: </p>
+    </div>
+    <div id="cmd-div">
+      <p>docker run --rm --net=host confluentinc/cp-kafka:7.0.0 kafka-topics --delete --topic events-one --bootstrap-server localhost:20001</p>
+      <p>docker run --rm --net=host confluentinc/cp-kafka:7.0.0 kafka-topics --create --topic events-one --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server localhost:20001</p>
+      <p>docker run --rm --net=host confluentinc/cp-kafka:7.0.0 kafka-topics --delete --topic events-two --bootstrap-server localhost:20001</p>
+      <p>docker run --rm --net=host confluentinc/cp-kafka:7.0.0 kafka-topics --create --topic events-two --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server localhost:20001</p>
+    </div>
+    <div id="para-div">
+      <p>Finally, to run the code from <span class="bold">Listing.2</span> to demonstrate KTable-KTable outer join, open a terminal
+        window and execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ $HOME/java/KafkaStreams/Sixth</p>
+      <p>$ mvn exec:java -Dexec.mainClass=com.polarsparc.kstreams.StreamsJoiner -Dexec.args="events-one events-two TTO"</p>
+    </div>
+    <div id="para-div">
+      <p>We will not show the output as it will be similar in nature to Output.1 above (except will indicate KTable-KTable Outer Join).</p>
+    </div>
+    <div id="para-div">
+      <p>Now, re-run the producer code from <span class="bold">Listing.1</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the additional output in the terminal running the application from Listing.2 above (for the KTable-KTable
+        outer join):</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: T, Metrics-1: 33
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: A, Metrics-2: 30
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: B, Metrics-1: 32
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: A, Metrics-2: 14
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T1> Key: T, Metrics-1: 33
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: T, Value: Metrics-1: 33, Metrics-2: null
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T1> Key: B, Metrics-1: 32
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: B, Value: Metrics-1: 32, Metrics-2: null
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: A, Metrics-2: 14
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: A, Value: Metrics-1: 30, Metrics-2: 14
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: N, Metrics-1: 84
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: T, Metrics-2: 14
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: B, Metrics-1: 74
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: M, Metrics-2: 9
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T1> Key: N, Metrics-1: 84
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: N, Value: Metrics-1: 84, Metrics-2: null
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T1> Key: B, Metrics-1: 74
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: B, Value: Metrics-1: 74, Metrics-2: null
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: T, Metrics-2: 14
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: T, Value: Metrics-1: 33, Metrics-2: 14
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: M, Metrics-2: 9
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: M, Value: Metrics-1: 21, Metrics-2: 9
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: M, Metrics-1: 45
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: B, Metrics-2: 14
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: M, Metrics-1: 27
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: A, Metrics-2: 10
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T1> Key: M, Metrics-1: 27
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: M, Value: Metrics-1: 27, Metrics-2: 9
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: B, Metrics-2: 14
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: B, Value: Metrics-1: 74, Metrics-2: 14
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: A, Metrics-2: 10
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: A, Value: Metrics-1: 30, Metrics-2: 10
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: T, Metrics-1: 74
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: M, Metrics-2: 21
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: A, Metrics-1: 50
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: S, Metrics-2: 5
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T1> Key: T, Metrics-1: 74
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: T, Value: Metrics-1: 74, Metrics-2: 14
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T1> Key: A, Metrics-1: 50
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: A, Value: Metrics-1: 50, Metrics-2: 10
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: M, Metrics-2: 21
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: M, Value: Metrics-1: 27, Metrics-2: 21
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: S, Metrics-2: 5
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: S, Value: Metrics-1: 5, Metrics-2: 5
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: T, Metrics-1: 83
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: T, Metrics-2: 24
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S1> Key: S, Metrics-1: 82
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .S2> Key: A, Metrics-2: 30
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T1> Key: T, Metrics-1: 83
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: T, Value: Metrics-1: 83, Metrics-2: 24
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T1> Key: S, Metrics-1: 82
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: S, Value: Metrics-1: 82, Metrics-2: 5
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: T, Metrics-2: 24
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: T, Value: Metrics-1: 83, Metrics-2: 24
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - .T2> Key: A, Metrics-2: 30
+[events-one-events-two-68441114-279c-4c52-89f8-8a6e5da1a57c-StreamThread-1] INFO com.polarsparc.kstreams.StreamsJoiner - TTO> Key: A, Value: Metrics-1: 50, Metrics-2: 30</pre>
+    </div>
+    <div id="para-div">
+      <p>Analyzing the lines from the Output.5 above we can see the outer join working as expected.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://github.com/bhaskars-repo/KafkaStreams"><span class="bold">GitHub :: Source Code</span></a></p>
+      <p><a target="_blank" href="https://polarsparc.github.io/KafkaStreams/KafkaStreams-6.html"><span class="bold">Exploring Kafka Streams :: Part 6</span></a></p>
+      <p><a target="_blank" href="https://polarsparc.github.io/KafkaStreams/KafkaStreams-5.html"><span class="bold">Exploring Kafka Streams :: Part 5</span></a></p>
+      <p><a target="_blank" href="https://polarsparc.github.io/KafkaStreams/KafkaStreams-4.html"><span class="bold">Exploring Kafka Streams :: Part 4</span></a></p>
+      <p><a target="_blank" href="https://polarsparc.github.io/KafkaStreams/KafkaStreams-3.html"><span class="bold">Exploring Kafka Streams :: Part 3</span></a></p>
+      <p><a target="_blank" href="https://polarsparc.github.io/KafkaStreams/KafkaStreams-2.html"><span class="bold">Exploring Kafka Streams :: Part 2</span></a></p>
+      <p><a target="_blank" href="https://polarsparc.github.io/KafkaStreams/KafkaStreams-1.html"><span class="bold">Exploring Kafka Streams :: Part 1</span></a></p>
+      <p><a target="_blank" href="https://docs.confluent.io/platform/current/streams/developer-guide/index.html#streams-developer-guide"><span class="bold">Kafka Streams Developer Guide</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

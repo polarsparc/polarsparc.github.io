@@ -1,0 +1,696 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Introduction to Apache Parquet">
+    <meta name="subject" content="Introduction to Apache Parquet">
+    <meta name="keywords" content="python, parquet">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Introduction to Apache Parquet</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Introduction to Apache Parquet</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">10/07/2022</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>Data collected over a period of time (in any domain and referred to as a data set) is often used to perform data analysis
+        for gaining insights and for future predictions. One can store the data set in CSV files for future consumption.</p>
+      <p>Data analysis typically focuses on a limited set of columns from the rows of a data set. This implies reading all the rows
+        from the CSV file before pruning unwanted columns from the data set. What if the data set contains millions (or billions)
+        of rows ???</p>
+      <p>Is there a better and efficient way to store large data sets for future data processing ???</p>
+      <p>Please welcome the honorable storage format - the Apache <a href="https://parquet.apache.org/" target="_blank">
+        <span class="hi-yellow">Parquet</span></a> !!!</p>
+    </div>
+    <div id="para-div">
+      <p>Apache Parquet is an open-source data storage format that uses an hybrid of row-column oriented storage for efficient
+        storage and retrieval of data AND work with any choice of data processing framework, data model, or programming language.</p>
+      <p>Given a data set (of rows and columns), there are two common data processing patterns:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">Online Transaction Processing</span> (or OLTP for short) is a type of data processing, where a
+            large number of business transactions (inserts, updates, deletes) on different rows of the data set, are executing
+            concurrently in realtime</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Online Analytical Processing</span> (or OLAP for short) is a type of data processing, where data
+            aggregated from various OLTP sources is stored centrally to query and perform analysis on the data from different points
+            of view (roll-up, slicing, dicing, pivoting)</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To get a better understanding, let us consider the following sample data set of rows (R1, R2, R3) and columns (C1, C2, C3):</p>
+    </div>
+    <br/>
+    <div id="img-outer-div">
+      <img src="./images/parquet-1.png" class="img-cls" alt="Rows and Columns" />
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Since OLTP processing works on a row at a time (inserts, updates, deletes), it is more efficient to store the data set in
+        a row oriented format as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div">
+      <img src="./images/parquet-2.png" class="img-cls" alt="Row Oriented" />
+      <div class="img-cap">Figure-2</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>On the other hand, OLAP processing works by performing selections (queries with criteria) on few columns from the rows and
+        hence, it is more efficient to store the data set in a column oriented format as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div">
+      <img src="./images/parquet-3.png" class="img-cls" alt="Column Oriented" />
+      <div class="img-cap">Figure-3</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The Parquet format is a hybrid of the row oriented and the column oriented storage, where columns for a chunk of rows (with
+        metadata) is stored together as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div">
+      <img src="./images/parquet-4.png" class="img-cls" alt="Parquet Format" />
+      <div class="img-cap">Figure-4</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The hybrid storage format not only enables for efficient data storage but also for efficient data retrieval using selection
+        criteria.</p>
+    </div>
+    <div id="section-div">
+      <p>Parquet Format Internals</p>
+    </div>
+    <div id="para-div">
+      <p>In order to better understand the Parquet file format, we will use the storage layout as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div">
+      <img src="./images/parquet-5.png" class="img-cls" alt="Parquet Format Layout" />
+      <div class="img-cap">Figure-5</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>A Parquet file starts with a file header, followed by one or more <span class="hi-yellow">Row Groups</span>, and ending
+        with a file footer (referred to as the <span class="hi-yellow">FileMetaData</span>). A Row Group in turn consists of a data
+        chunk for every column in the row of the data set (often referred to as the <span class="hi-yellow">Column Chunk</span>).
+        The Column Chunk in turn is made up of one or more data <span class="hi-yellow">Pages</span> which contains the actual
+        column data along with some metadata.</p>
+    </div>
+    <div id="para-div">
+      <p>The Parquet file format described above is visually shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div">
+      <img src="./images/parquet-6.png" class="img-cls" alt="Parquet Format Visual" />
+      <div class="img-cap">Figure-6</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are some of the core parts of the file storage format:</p>
+    </div>
+    <ul id="blue-sqr-ul">
+      <li>
+        <p><span class="hi-yellow">Page</span> is an indivisible chunk of data values for a specific column from the rows of the
+          data set with a specific size (default 1 MB). In addition, every Page consists of a page header that includes some metadata
+          information such as the number of data values in the page, the maximum and the minimum value of the column data values in
+          the page, etc. Given that a Page only contains data for a single column of the data set, one can enable data compression
+          such as the <span class="hi-grey">Dictionary Encoding</span> or <span class="hi-grey">Run Length Encoding</span></p>
+        <p>With Dictionary Encoding, repeating text values can be encoded using integer values to conserve space. For example, if
+          we take the three species of Penguins - Adelie, Chinstrap, and Gentoo, they can be assigned integer values of 1, 2, and
+          3 respectively. So, instead of storing the text for the Penguin species, we can store their associated integer values. This
+          approach results in significant storage space.</p>
+        <p>With Run Length Encoding, a sequence of repeating numbers can be replaced by the count of their occurence followed by the
+          actual number value. For example, if we had the sequence 2007, 2007, 2007, 2008, 2008, 2007, and 2007. They could be
+          encoded as (3, 2007), (2, 2008), and (2, 2007) respectively, where the encoding format is of the form (count, value).</p>
+        <p>The following visual depicts the Dictionary and Run Length Encoding with an example:</p>
+        <br/>
+        <div id="img-outer-div">
+          <img src="./images/parquet-7.png" class="img-cls" alt="Encoding Formats" />
+          <div class="img-cap">Figure-7</div>
+        </div>
+        <br/>
+      </li>
+      <li>
+        <p><span class="hi-yellow">Column Chunk</span> represents a chunk of data for a particular column from the rows of the data
+          set</p>
+      </li>
+      <li>
+        <p><span class="hi-yellow">Row Group</span> is a logical partitioning of the rows of a data set into a block of specific
+          size (default of 128MB). It consists of a Column Chunk for every column from the rows of the data set</p>
+      </li>
+      <li>
+        <p><span class="hi-yellow">FileMetaData</span> includes metadata information such as the schema of the data set, the various
+          Column Chunks and their starting offsets in the file.</p>
+        <p>The following illustration shows the structure of the FileMetaData:</p>
+        <br/>
+        <div id="img-outer-div">
+          <img src="./images/parquet-8.png" class="img-cls" alt="Metadata Structure" />
+          <div class="img-cap">Figure-8</div>
+        </div>
+        <br/>
+      </li>
+    </ul>
+    <div id="para-div">
+      <p>The metadata in the parquet file allows for fast traversal (with minimal I/O) to the desired columns (using FileMetaData) and
+        the within the columns to filter out values that do not match the criteria (using the Page statistics).</p>
+    </div>
+    <div id="section-div">
+      <p>Installation and Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The installation is on a <span class="bold">Ubuntu 22.04 LTS</span> based Linux desktop.</p>
+      <p>We need to install the following python packages - <span class="hi-yellow">pandas</span>, <span class="hi-yellow">pyarrow</span>,
+        and <span class="hi-yellow">parquet-cli</span> from the Ubuntu repository.</p>
+    </div>
+    <div id="para-div">
+      <p>To install the mentioned packages, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt update</p>
+      <p>$ sudo apt install pandas pyarrow parquet-cli -y</p>
+    </div>
+    <div id="para-div">
+      <p>The package parquet-cli provides a basic command-line tool called <span class="hi-blue">parq</span> for exploring parquet
+        files.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Parquet</p>
+    </div>
+    <div id="para-div">
+      <p>For the demonstration, we will create a parquet file from the Palmer Penguins data set using pandas. The following is the
+        Python code to create three types of file formats - csv, uncompressed parquet, and compressed parquet files:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">sample-1.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   07 Oct 2022
+#
+
+import logging
+import pandas as pd
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+
+
+# Load the Palmer Penguins data set, clean missing values and return a dataframe to the data set
+def get_palmer_penguins():
+    logging.info('Ready to load the Palmer Penguins dataset...')
+    url = 'https://vincentarelbundock.github.io/Rdatasets/csv/palmerpenguins/penguins.csv'
+    df = pd.read_csv(url)
+    logging.info('Ready to cleanse the Palmer Penguins dataset...')
+    df = df.drop(df.columns[0], axis=1)
+    df = df.drop([3, 271], axis=0)
+    df.loc[[8, 10, 11], 'sex'] = 'female'
+    df.at[9, 'sex'] = 'male'
+    df.at[47, 'sex'] = 'female'
+    df.loc[[178, 218, 256, 268], 'sex'] = 'female'
+    logging.info('Completed cleansing the Palmer Penguins dataset...')
+    return df
+
+
+# Create an uncompressed csv file
+def write_uncompressed_csv(path, df):
+    logging.info('Ready to write the Palmer Penguins dataset as csv...')
+    df.to_csv(path, compression=None, index=False)
+    logging.info('Completed writing the Palmer Penguins dataset as csv...')
+
+
+# Create an uncompressed parquet file
+def write_uncompressed_parquet(path, df):
+    logging.info('Ready to write the Palmer Penguins dataset as Uncompressed Parquet...')
+    df.to_parquet(path, compression=None, index=False)
+    logging.info('Completed writing the Palmer Penguins dataset as Uncompressed Parquet...')
+
+
+# Create a compressed parquet file
+def write_compressed_parquet(path, df):
+    logging.info('Ready to write the Palmer Penguins dataset as Compressed Parquet...')
+    df.to_parquet(path, compression='snappy', index=False)
+    logging.info('Completed writing the Palmer Penguins dataset as Compressed Parquet...')
+
+
+def main():
+    penguins_df = get_palmer_penguins()
+    write_uncompressed_csv('./data/unc_pp.csv', penguins_df)
+    write_uncompressed_parquet('./data/unc_pp.parquet', penguins_df)
+    write_compressed_parquet('./data/com_pp.parquet', penguins_df)
+
+
+if __name__ == '__main__':
+    main()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above Python program <span class="bold">sample-1.py</span> will generate the three files in the subdirectory
+        <span class="bold">data</span>. The following output shows the listing of the three files:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>-rw-rw-r-- 1 polarsparc polarsparc  8761 Oct  7 19:37 com_pp.parquet
+-rw-rw-r-- 1 polarsparc polarsparc 16736 Oct  7 19:37 unc_pp.csv
+-rw-rw-r-- 1 polarsparc polarsparc 10234 Oct  7 19:37 unc_pp.parquet</pre>
+    </div>
+    <div id="para-div">
+      <p>Notice the file sizes of the three files. The compressed parquet file is the most compact.</p>
+    </div>
+    <div id="para-div">
+      <p>We will now examine the compressed parquet file using the command-line tool <span class="bold">parq</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the metadata information, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ parq ./data/com_pp.parquet</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre># Metadata 
+&lt;pyarrow._parquet.FileMetaData object at 0x7f5fdc6de660&gt;
+  created_by: parquet-cpp-arrow version 9.0.0
+  num_columns: 8
+  num_rows: 342
+  num_row_groups: 1
+  format_version: 2.6
+  serialized_size: 4302</pre>
+    </div>
+    <div id="para-div">
+      <p>To display the schema information, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ parq ./data/com_pp.parquet --schema</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre># Schema 
+&lt;pyarrow._parquet.ParquetSchema object at 0x7f9748cc2cc0&gt;
+required group field_id=-1 schema {
+  optional binary field_id=-1 species (String);
+  optional binary field_id=-1 island (String);
+  optional double field_id=-1 bill_length_mm;
+  optional double field_id=-1 bill_depth_mm;
+  optional double field_id=-1 flipper_length_mm;
+  optional double field_id=-1 body_mass_g;
+  optional binary field_id=-1 sex (String);
+  optional int64 field_id=-1 year;
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>To display the first 5 rows from the data set, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ parq ./data/com_pp.parquet --head 5</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>  species     island  bill_length_mm  bill_depth_mm  flipper_length_mm  \
+0  Adelie  Torgersen            39.1           18.7              181.0   
+1  Adelie  Torgersen            39.5           17.4              186.0   
+2  Adelie  Torgersen            40.3           18.0              195.0   
+3  Adelie  Torgersen            36.7           19.3              193.0   
+4  Adelie  Torgersen            39.3           20.6              190.0   
+
+    body_mass_g     sex  year  
+0       3750.0    male  2007  
+1       3800.0  female  2007  
+2       3250.0  female  2007  
+3       3450.0  female  2007  
+4       3650.0    male  2007</pre>
+    </div>
+    <div id="para-div">
+      <p>To display the last 5 rows from the data set, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ parq ./data/com_pp.parquet --tail 5</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>       species island  bill_length_mm  bill_depth_mm  flipper_length_mm  \
+337  Chinstrap  Dream            55.8           19.8              207.0   
+338  Chinstrap  Dream            43.5           18.1              202.0   
+339  Chinstrap  Dream            49.6           18.2              193.0   
+340  Chinstrap  Dream            50.8           19.0              210.0   
+341  Chinstrap  Dream            50.2           18.7              198.0   
+
+      body_mass_g     sex  year  
+337       4000.0    male  2009  
+338       3400.0  female  2009  
+339       3775.0    male  2009  
+340       4100.0    male  2009  
+341       3775.0  female  2009</pre>
+    </div>
+    <div id="para-div">
+      <p>The following is the Python code to programmatically display information (using <span class="bold">pyarrow</span>) about the
+        two parquet files (uncompressed and compressed):</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">sample-2.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   07 Oct 2022
+#
+
+import logging
+import pyarrow.parquet as pq
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+
+
+def read_uncompressed_parquet(path):
+    logging.info('Ready to read the Palmer Penguins dataset from Uncompressed Parquet...\n')
+    pq_unc = pq.ParquetFile(path)
+    logging.info('Schema -> %s', pq_unc.schema)
+    logging.info('No. of Row Groups -> %d\n', pq_unc.num_row_groups)
+    logging.info('Metadata -> %s\n', pq_unc.metadata)
+    logging.info('First Row Group (Metadata) -> %s\n', pq_unc.metadata.row_group(0))
+    logging.info('First Row Group (Content) -> %s\n', pq_unc.read_row_group(0))
+    logging.info('First Row Group, Second Column Chunk (Metadata) -> %s', pq_unc.metadata.row_group(0).column(1))
+    logging.info('Completed reading the Palmer Penguins dataset from Uncompressed Parquet...')
+
+
+def read_compressed_parquet(path):
+    logging.info('Ready to read the Palmer Penguins dataset from Compressed Parquet...\n')
+    pq_com = pq.ParquetFile(path)
+    logging.info('Schema -> %s', pq_com.schema)
+    logging.info('No. of Row Groups -> %d\n', pq_com.num_row_groups)
+    logging.info('Metadata -> %s\n', pq_com.metadata)
+    logging.info('First Row Group (Metadata) -> %s\n', pq_com.metadata.row_group(0))
+    logging.info('First Row Group (Content) -> %s\n', pq_com.read_row_group(0))
+    logging.info('First Row Group, Second Column Chunk (Metadata) -> %s', pq_com.metadata.row_group(0).column(1))
+    logging.info('Completed reading the Palmer Penguins dataset from Compressed Parquet...')
+
+
+def main():
+    read_uncompressed_parquet('./data/unc_pp.parquet')
+    logging.info('\n')
+    logging.info('--------------------------------------------------\n')
+    read_compressed_parquet('./data/com_pp.parquet')
+
+
+if __name__ == '__main__':
+    main()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above Python program <span class="bold">sample-2.py</span> will produce the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>INFO 2022-10-07 19:39:23,799 - Ready to read the Palmer Penguins dataset from Uncompressed Parquet...
+
+INFO 2022-10-07 19:39:23,800 - Schema -&gt; &lt;pyarrow._parquet.ParquetSchema object at 0x7f2d64991e80&gt;
+required group field_id=-1 schema {
+  optional binary field_id=-1 species (String);
+  optional binary field_id=-1 island (String);
+  optional double field_id=-1 bill_length_mm;
+  optional double field_id=-1 bill_depth_mm;
+  optional double field_id=-1 flipper_length_mm;
+  optional double field_id=-1 body_mass_g;
+  optional binary field_id=-1 sex (String);
+  optional int64 field_id=-1 year;
+}
+
+INFO 2022-10-07 19:39:23,800 - No. of Row Groups -&gt; 1
+
+INFO 2022-10-07 19:39:23,800 - Metadata -&gt; &lt;pyarrow._parquet.FileMetaData object at 0x7f2d60181210&gt;
+  created_by: parquet-cpp-arrow version 9.0.0
+  num_columns: 8
+  num_rows: 342
+  num_row_groups: 1
+  format_version: 2.6
+  serialized_size: 4302
+
+INFO 2022-10-07 19:39:23,800 - First Row Group (Metadata) -&gt; &lt;pyarrow._parquet.RowGroupMetaData object at 0x7f2d5bf46bb0&gt;
+  num_columns: 8
+  num_rows: 342
+  total_byte_size: 5174
+
+INFO 2022-10-07 19:39:23,824 - First Row Group (Content) -&gt; pyarrow.Table
+species: string
+island: string
+bill_length_mm: double
+bill_depth_mm: double
+flipper_length_mm: double
+body_mass_g: double
+sex: string
+year: int64
+----
+species: [["Adelie","Adelie","Adelie","Adelie","Adelie",...,"Chinstrap","Chinstrap","Chinstrap","Chinstrap","Chinstrap"]]
+island: [["Torgersen","Torgersen","Torgersen","Torgersen","Torgersen",...,"Dream","Dream","Dream","Dream","Dream"]]
+bill_length_mm: [[39.1,39.5,40.3,36.7,39.3,...,55.8,43.5,49.6,50.8,50.2]]
+bill_depth_mm: [[18.7,17.4,18,19.3,20.6,...,19.8,18.1,18.2,19,18.7]]
+flipper_length_mm: [[181,186,195,193,190,...,207,202,193,210,198]]
+body_mass_g: [[3750,3800,3250,3450,3650,...,4000,3400,3775,4100,3775]]
+sex: [["male","female","female","female","male",...,"male","female","male","male","female"]]
+year: [[2007,2007,2007,2007,2007,...,2009,2009,2009,2009,2009]]
+
+INFO 2022-10-07 19:39:23,824 - First Row Group, Second Column Chunk (Metadata) -&gt; &lt;pyarrow._parquet.ColumnChunkMetaData object at 0x7f2d601d72e0&gt;
+  file_offset: 299
+  file_path: 
+  physical_type: BYTE_ARRAY
+  num_values: 342
+  path_in_schema: island
+  is_stats_set: True
+  statistics:
+    &lt;pyarrow._parquet.Statistics object at 0x7f2d5bf6a750&gt;
+      has_min_max: True
+      min: Biscoe
+      max: Torgersen
+      null_count: 0
+      distinct_count: 0
+      num_values: 342
+      physical_type: BYTE_ARRAY
+      logical_type: String
+      converted_type (legacy): UTF8
+  compression: UNCOMPRESSED
+  encodings: ('RLE_DICTIONARY', 'PLAIN', 'RLE')
+  has_dictionary_page: True
+  dictionary_page_offset: 180
+  data_page_offset: 226
+  total_compressed_size: 119
+  total_uncompressed_size: 119
+INFO 2022-10-07 19:39:23,824 - Completed reading the Palmer Penguins dataset from Uncompressed Parquet...
+INFO 2022-10-07 19:39:23,824 - 
+
+INFO 2022-10-07 19:39:23,824 - --------------------------------------------------
+
+INFO 2022-10-07 19:39:23,825 - Ready to read the Palmer Penguins dataset from Compressed Parquet...
+
+INFO 2022-10-07 19:39:23,825 - Schema -&gt; &lt;pyarrow._parquet.ParquetSchema object at 0x7f2d64e9c0c0&gt;
+required group field_id=-1 schema {
+  optional binary field_id=-1 species (String);
+  optional binary field_id=-1 island (String);
+  optional double field_id=-1 bill_length_mm;
+  optional double field_id=-1 bill_depth_mm;
+  optional double field_id=-1 flipper_length_mm;
+  optional double field_id=-1 body_mass_g;
+  optional binary field_id=-1 sex (String);
+  optional int64 field_id=-1 year;
+}
+
+INFO 2022-10-07 19:39:23,825 - No. of Row Groups -&gt; 1
+
+INFO 2022-10-07 19:39:23,825 - Metadata -&gt; &lt;pyarrow._parquet.FileMetaData object at 0x7f2d601d74c0&gt;
+  created_by: parquet-cpp-arrow version 9.0.0
+  num_columns: 8
+  num_rows: 342
+  num_row_groups: 1
+  format_version: 2.6
+  serialized_size: 4302
+
+INFO 2022-10-07 19:39:23,825 - First Row Group (Metadata) -&gt; &lt;pyarrow._parquet.RowGroupMetaData object at 0x7f2d5bf46bb0&gt;
+  num_columns: 8
+  num_rows: 342
+  total_byte_size: 5174
+
+INFO 2022-10-07 19:39:23,825 - First Row Group (Content) -&gt; pyarrow.Table
+species: string
+island: string
+bill_length_mm: double
+bill_depth_mm: double
+flipper_length_mm: double
+body_mass_g: double
+sex: string
+year: int64
+----
+species: [["Adelie","Adelie","Adelie","Adelie","Adelie",...,"Chinstrap","Chinstrap","Chinstrap","Chinstrap","Chinstrap"]]
+island: [["Torgersen","Torgersen","Torgersen","Torgersen","Torgersen",...,"Dream","Dream","Dream","Dream","Dream"]]
+bill_length_mm: [[39.1,39.5,40.3,36.7,39.3,...,55.8,43.5,49.6,50.8,50.2]]
+bill_depth_mm: [[18.7,17.4,18,19.3,20.6,...,19.8,18.1,18.2,19,18.7]]
+flipper_length_mm: [[181,186,195,193,190,...,207,202,193,210,198]]
+body_mass_g: [[3750,3800,3250,3450,3650,...,4000,3400,3775,4100,3775]]
+sex: [["male","female","female","female","male",...,"male","female","male","male","female"]]
+year: [[2007,2007,2007,2007,2007,...,2009,2009,2009,2009,2009]]
+
+INFO 2022-10-07 19:39:23,826 - First Row Group, Second Column Chunk (Metadata) -&gt; &lt;pyarrow._parquet.ColumnChunkMetaData object at 0x7f2d5bf6b240&gt;
+  file_offset: 306
+  file_path: 
+  physical_type: BYTE_ARRAY
+  num_values: 342
+  path_in_schema: island
+  is_stats_set: True
+  statistics:
+    &lt;pyarrow._parquet.Statistics object at 0x7f2d5bf6b290&gt;
+      has_min_max: True
+      min: Biscoe
+      max: Torgersen
+      null_count: 0
+      distinct_count: 0
+      num_values: 342
+      physical_type: BYTE_ARRAY
+      logical_type: String
+      converted_type (legacy): UTF8
+  compression: SNAPPY
+  encodings: ('RLE_DICTIONARY', 'PLAIN', 'RLE')
+  has_dictionary_page: True
+  dictionary_page_offset: 183
+  data_page_offset: 231
+  total_compressed_size: 123
+  total_uncompressed_size: 119
+INFO 2022-10-07 19:39:23,826 - Completed reading the Palmer Penguins dataset from Compressed Parquet...</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Python code to programmatically (using <span class="bold">pyarrow</span>) select specific columns
+        (species and body_mass_g) from the parquet file and filter rows using a criteria (body_mass_g > 4500):</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">sample-3.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   07 Oct 2022
+#
+
+import logging
+import pyarrow.parquet as pq
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+
+
+def select_parquet_columns(file):
+    return pq.read_table(file, columns=['species', 'body_mass_g'])
+
+
+def filter_parquet_columns(file):
+    return pq.read_table(file, columns=['species', 'body_mass_g'], filters=[('body_mass_g', '>', 4500)])
+
+
+def main():
+    logging.info('Reading columns species and body_mass_g from the Palmer Penguins dataset from Parquet...')
+    df = select_parquet_columns('./data/com_pp.parquet').to_pandas()
+    logging.info('Displaying top 5 rows from the data set...\n')
+    logging.info(df.head(5))
+    logging.info('--------------------------------------------------\n')
+    logging.info('Filtering column body_mass_g > 4500 from the Palmer Penguins dataset from Parquet...')
+    df = filter_parquet_columns('./data/com_pp.parquet').to_pandas()
+    logging.info('Displaying top 5 rows from the filtered data set...\n')
+    logging.info(df.head(5))
+
+
+if __name__ == '__main__':
+    main()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above Python program <span class="bold">sample-3.py</span> will produce the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>INFO 2022-10-07 19:41:28,135 - Reading columns species and body_mass_g from the Palmer Penguins dataset from Parquet...
+INFO 2022-10-07 19:41:28,344 - Displaying top 5 rows from the data set...
+
+INFO 2022-10-07 19:41:28,345 -   species  body_mass_g
+0  Adelie       3750.0
+1  Adelie       3800.0
+2  Adelie       3250.0
+3  Adelie       3450.0
+4  Adelie       3650.0
+INFO 2022-10-07 19:41:28,348 - --------------------------------------------------
+
+INFO 2022-10-07 19:41:28,348 - Filtering column body_mass_g > 4500 from the Palmer Penguins dataset from Parquet...
+INFO 2022-10-07 19:41:28,351 - Displaying top 5 rows from the filtered data set...
+
+INFO 2022-10-07 19:41:28,351 -   species  body_mass_g
+0  Adelie       4675.0
+1  Adelie       4650.0
+2  Adelie       4600.0
+3  Adelie       4700.0
+4  Adelie       4725.0</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the link to the <span class="bold">Github Repo</span> that provides the data files (csv, and parquet) as
+        well as the Python code used in this article:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><a href="https://github.com/bhaskars-repo/Parquet" target="_blank"><span class="bold">Code &amp; Data</span></a></p></li>
+      </ul>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://parquet.apache.org" target="_blank"><span class="bold">Apache Parquet</span></a></p>
+      <p><a href="https://arrow.apache.org/docs/python/parquet.html" target="_blank"><span class="bold">Reading and Writing the Apache Parquet</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

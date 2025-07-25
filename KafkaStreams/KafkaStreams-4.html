@@ -1,0 +1,732 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Exploring Kafka Streams :: Part 4">
+    <meta name="subject" content="Exploring Kafka Streams :: Part 4">
+    <meta name="keywords" content="java, kafka">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Exploring Kafka Streams :: Part 4</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Exploring Kafka Streams :: Part 4</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">11/26/2021</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a target="_blank" href="https://polarsparc.github.io/KafkaStreams/KafkaStreams-3.html"><span class="hi-yellow">Part
+        3</span></a> of this series, we continued to dig in a little deeper into <span class="hi-yellow">Kafka Streams</span> and
+        explored the concepts around state store and record cache.</p>
+      <p>In this part of the series, we will shift gears to explore serialization and deserialization of custom data objects with
+        <span class="bold">Kafka Streams</span>.</p>
+    </div>
+    <div id="section-div">
+      <p>Kafka Streams Concepts</p>
+    </div>
+    <div id="step-div">
+      <p>Data Serialization and Deserialization</p>
+    </div>
+    <div id="para-div">
+      <p>As we have seen thus far, every <span class="bold">Kafka Streams</span> application must specify the appropriate serializer
+        and deserializer (<span class="hi-yellow">serde</span>) class for both the key as well as the data value. Until now, we only
+        used primitive data types, such as String, Long, etc., for the Kafka keys as well as the data event values. Typical Enterprise
+        applications involve the use of custom data objects. In those cases, one needs to be able to convert an instance of the custom
+        object to an array of bytes and from an array of bytes back to an instance of the custom object. This process of converting
+        an object instance to an array of bytes is called <span class="hi-yellow">Serialization</span> and the process of creating an
+        instance of the custom object from an array of bytes is called <span class="hi-yellow">Deserialization</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>In order to support a custom data object (or Java POJO), one must perform the following steps:</p>
+      <ul id="blue-sqr-ul">
+        <li><p>Create a serializer class for the custom Java POJO by implementing the interface <span class="hi-vanila">org.apache.kafka.common.serialization.Serializer</span></p></li>
+        <li><p>Create a deserializer class for the custom Java POJO by implementing the interface <span class="hi-vanila">org.apache.kafka.common.serialization.Deserializer</span></p></li>
+      </ul>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Kafka Streams</p>
+    </div>
+    <div id="step-div">
+      <p>Third Application</p>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">Third</span> module, we will simulate the price functuation of a handful of fictitious crypto coins.
+        The price alerts of these fictitious crypto coins will be encapsulated in a Java POJO and a JSON representation of the POJO will
+        be published to the Kafka topic <span class="hi-grey">crypto-price-alerts</span>. We will demonstrate a STATEFUL <span class="bold">
+        Kafka Streams</span> application that will consume the JSON data events from the Kafka topic, filter only those events whose price
+        change has DECREASED greater than 25% and collect the lowest price event for the various fictitious crypto coins.</p>
+    </div>
+    <div id="para-div">
+      <p>We will make some changes to the <span class="hi-bold">Common</span> module located in the directory
+        <span class="bold">$HOME/java/KafkaStreams/Common</span> to include the custom serializer, deserializer, and a utility class.</p>
+    </div>
+    <div id="para-div">
+      <p>To add an additional Java directory to the Common module, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/KafkaStreams</p>
+      <p>$ mkdir -p $HOME/java/KafkaStreams/Common</p>
+      <p>$ mkdir -p Common/src/main/java/com/polarsparc/kstreams/serde</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the updated <span class="bold">Maven</span> project file <span class="bold">pom.xml</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml (Common)</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;parent&gt;
+        &lt;artifactId&gt;KafkaStreams&lt;/artifactId&gt;
+        &lt;groupId&gt;com.polarsparc.kstreams&lt;/groupId&gt;
+        &lt;version&gt;1.0&lt;/version&gt;
+    &lt;/parent&gt;
+
+    &lt;artifactId&gt;Common&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;com.fasterxml.jackson.core&lt;/groupId&gt;
+            &lt;artifactId&gt;jackson-databind&lt;/artifactId&gt;
+            &lt;version&gt;2.13.0&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;com.fasterxml.jackson.datatype&lt;/groupId&gt;
+            &lt;artifactId&gt;jackson-datatype-jsr310&lt;/artifactId&gt;
+            &lt;version&gt;2.13.0&lt;/version&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java utility class related to the fictitious crypto coins:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.1</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Common Utilities
+ * Author: Bhaskar S
+ * Date:   11/25/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.kstreams;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
+public interface KafkaStreamsUtils {
+    static ObjectMapper getObjectMapper() {
+        final ObjectMapper mapper = new ObjectMapper();
+
+        // Very important for handling LocalDateTime
+        {
+            mapper.registerModule(new JavaTimeModule());
+            mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        }
+
+        return mapper;
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>### ATTENTION ###</h4>
+      <pre>Not registering the JavaTimeModule with the ObjectMapper will result in the following error when trying to convert the CryptoAlert class to JSON:<br/>Java 8 date/time type `java.time.LocalDateTime` not supported by default: add Module "com.fasterxml.jackson.datatype:jackson-datatype-jsr310" to enable handling</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the custom Java serializer class that will serialize any Java object to JSON:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.2</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   JSON Serializer
+ * Author: Bhaskar S
+ * Date:   11/25/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.kstreams.serde;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.polarsparc.kstreams.common.Crypto;
+import org.apache.kafka.common.errors.SerializationException;
+import org.apache.kafka.common.serialization.Serializer;
+
+public class JsonSerializer&lt;T&gt; implements Serializer&lt;T&gt; {
+    private final ObjectMapper mapper = Crypto.getObjectMapper();
+
+    @Override
+    public byte[] serialize(String s, T data) {
+        if (data == null) {
+            return null;
+        }
+        try {
+            return mapper.writeValueAsBytes(data);
+        }
+        catch (Exception ex) {
+            throw new SerializationException(ex.getMessage());
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the custom Java deserializer class that will deserialize JSON to the specified Java class object:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.3</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   JSON Deserializer
+ * Author: Bhaskar S
+ * Date:   11/25/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.kstreams.serde;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.polarsparc.kstreams.common.Crypto;
+import org.apache.kafka.common.errors.SerializationException;
+import org.apache.kafka.common.serialization.Deserializer;
+
+public class JsonDeserializer&lt;T&gt; implements Deserializer&lt;T&gt; {
+    private final ObjectMapper mapper = Crypto.getObjectMapper();
+
+    private final Class&lt;T&gt; clazz;
+
+    public JsonDeserializer(Class&lt;T&gt; clazz) {
+        this.clazz = clazz;
+    }
+
+    @Override
+    public T deserialize(String s, byte[] bytes) {
+        if (bytes == null) {
+            return null;
+        }
+
+        T data;
+        try {
+            data = mapper.readValue(bytes, clazz);
+        }
+        catch (Exception ex) {
+            throw new SerializationException(ex.getMessage());
+        }
+
+        return data;
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now, it is time to setup the Java directory structure for the Third application. To do that, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/KafkaStreams</p>
+      <p>$ mkdir -p $HOME/java/KafkaStreams/Third</p>
+      <p>$ mkdir -p Third/src/main/java Third/src/main/resources Third/target</p>
+      <p>$ mkdir -p Third/src/main/java/com/polarsparc/kstreams</p>
+      <p>$ mkdir -p Third/src/main/java/com/polarsparc/kstreams/common</p>
+      <p>$ mkdir -p Third/src/main/java/com/polarsparc/kstreams/model</p>
+      <p>$ mkdir -p Third/src/main/java/com/polarsparc/kstreams/publisher</p>
+      <p>$ cd $HOME/java/KafkaStreams/Third</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;parent&gt;
+        &lt;artifactId&gt;KafkaStreams&lt;/artifactId&gt;
+        &lt;groupId&gt;com.polarsparc.kstreams&lt;/groupId&gt;
+        &lt;version&gt;1.0&lt;/version&gt;
+    &lt;/parent&gt;
+
+    &lt;artifactId&gt;Third&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;artifactId&gt;Common&lt;/artifactId&gt;
+            &lt;groupId&gt;com.polarsparc.kstreams&lt;/groupId&gt;
+            &lt;version&gt;1.0&lt;/version&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We need to modify the <span class="hi-grey">&lt;modules&gt;</span> section in the parent <span class="bold">pom.xml</span>
+        to include the <span class="bold">Third</span> module as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml (parent)</div>
+      <div class="src-body-1">
+<pre>&lt;modules&gt;
+  &lt;module&gt;Common&lt;/module&gt;
+  &lt;module&gt;First&lt;/module&gt;
+  &lt;module&gt;Second&lt;/module&gt;
+  &lt;module&gt;Third&lt;/module&gt;
+&lt;/modules&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java POJO that encapsulates a price alert of the fictitious crypto coins:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.4</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Crypto Alert
+ * Author: Bhaskar S
+ * Date:   11/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.kstreams.model;
+
+import java.time.LocalDateTime;
+
+public record CryptoAlert(String name, int change, boolean up, double price, LocalDateTime timestamp) {}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice that the POJO has been defined as a Java <span class="hi-yellow">record</span>, which is a special immutable class
+        that encapsulates a fixed set of data fields. Under-the-hood this generates a class with all the data fields marked as final,
+        with accessor methods that match the field name, an all arguments constructor, and the methods toString(), equals(), and
+        hashCode().</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Java utility class related to the fictitious crypto coins:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.5</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Crypto Utility
+ * Author: Bhaskar S
+ * Date:   11/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.kstreams.common;
+
+import com.polarsparc.kstreams.model.CryptoAlert;
+
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
+
+public interface Crypto {
+    String CRYPTO_ALERTS_TOPIC = "crypto-price-alerts";
+
+    List&lt;String&gt; CRYPTO_LIST = Arrays.asList("ANT", "BEE", "CAT", "DOG", "EEL");
+    List&lt;Double&gt; CRYPTO_PRICE_LIST = Arrays.asList(10.50, 9.75, 12.25, 11.50, 8.00);
+    List&lt;Integer&gt; PERCENT_LIST = Arrays.asList(5, 10, 15, 20, 25, 30, 35, 40, 45, 50);
+
+    Random random = new Random(System.currentTimeMillis());
+
+    static CryptoAlert generateNextCryptoAlert() {
+        int cp = random.nextInt(Crypto.CRYPTO_LIST.size());
+        int pp = random.nextInt(Crypto.PERCENT_LIST.size());
+
+        double offset = Crypto.CRYPTO_PRICE_LIST.get(cp) * Crypto.PERCENT_LIST.get(pp) / 100;
+
+        boolean up = true;
+        double price = Crypto.CRYPTO_PRICE_LIST.get(cp);
+        if (random.nextInt(100) % 2 != 0) {
+            up = false;
+            price -= offset;
+        } else {
+            price += offset;
+        }
+
+        return new CryptoAlert(Crypto.CRYPTO_LIST.get(cp),
+                Crypto.PERCENT_LIST.get(pp),
+                up,
+                price,
+                LocalDateTime.now());
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will need a Kafka producer that will generate random about 10 price alerts for the fictitious crypto coins. The following
+        is the Java Kafka publisher:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.6</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Crypto Alerts Publisher
+ * Author: Bhaskar S
+ * Date:   11/24/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.kstreams.publisher;
+
+import com.polarsparc.kstreams.common.Crypto;
+import com.polarsparc.kstreams.model.CryptoAlert;
+import com.polarsparc.kstreams.serde.JsonSerializer;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Properties;
+
+public class CryptoAlertsPublisher {
+    private static final Logger log = LoggerFactory.getLogger(CryptoAlertsPublisher.class.getName());
+
+    private static KafkaProducer&lt;String, CryptoAlert&gt; createCryptoAlertsProducer() {
+        Properties config = new Properties();
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:20001");
+        config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class.getName());
+        return new KafkaProducer&lt;&gt;(config);
+    }
+
+    public static void main(String[] args) {
+        Producer&lt;String, CryptoAlert&gt; producer = createCryptoAlertsProducer();
+
+        for (int i = 1; i &lt;= 10; i++) {
+            CryptoAlert alert = Crypto.generateNextCryptoAlert();
+            try {
+                log.info(String.format("---&gt; [%02d] Crypto alert: %s", i, alert));
+
+                ProducerRecord&lt;String, CryptoAlert&gt; record = new ProducerRecord&lt;&gt;(Crypto.CRYPTO_ALERTS_TOPIC,
+                        alert.name(),
+                        alert);
+
+                producer.send(record).get();
+            }
+            catch (Exception ex) {
+                log.error(ex.getMessage());
+            }
+        }
+
+        producer.close();
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java based STATEFUL <span class="bold">Kafka Streams</span> application that consumes and processes
+        events from the Kafka topic <span class="bold">crypto-price-alerts</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.7</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Crypto Alerts Watcher (Stateful)
+ * Author: Bhaskar S
+ * Date:   11/25/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.kstreams;
+
+import com.polarsparc.kstreams.common.Crypto;
+import com.polarsparc.kstreams.model.CryptoAlert;
+import com.polarsparc.kstreams.serde.JsonDeserializer;
+import com.polarsparc.kstreams.serde.JsonSerializer;
+import org.apache.kafka.common.serialization.Serde;
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.*;
+import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.Materialized;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class CryptoAlertStateful {
+    public static void main(String[] args) {
+        Logger log = LoggerFactory.getLogger(CryptoAlertStateful.class.getName());
+
+        StreamsConfig config = new StreamsConfig(KafkaConsumerConfig.kafkaConfigurationTwo(
+                "crypto-alerts-watcher", 1));
+
+        StreamsBuilder builder = new StreamsBuilder();
+
+        JsonSerializer&lt;CryptoAlert&gt; cryptoAlertSer = new JsonSerializer&lt;&gt;();
+        JsonDeserializer&lt;CryptoAlert&gt; cryptoAlertDe = new JsonDeserializer&lt;&gt;(CryptoAlert.class);
+
+        Serde&lt;String&gt; stringSerde = Serdes.String();
+        Serde&lt;CryptoAlert&gt; cryptoAlertSerde = Serdes.serdeFrom(cryptoAlertSer, cryptoAlertDe);
+
+        KStream&lt;String, CryptoAlert&gt; stream = builder.stream(Crypto.CRYPTO_ALERTS_TOPIC,
+                Consumed.with(stringSerde, cryptoAlertSerde));
+
+        stream.peek((symbol, alert) -&gt; log.info(String.format("---&gt; [Start] Symbol: %s, Alert: %s",
+                        symbol, alert.toString())))
+                .filter((symbol, alert) -&gt; !alert.up() && alert.change() &gt; 25) // crypto is down greater that 25%
+                .groupByKey()
+                .aggregate(
+                        () -&gt; null, // Initializer
+                        (symbol, alert, agg) -&gt; {
+                            CryptoAlert last = agg;
+                            if (last == null) {
+                                last = alert;
+                            } else {
+                                if (alert.change() &gt;= last.change()) {
+                                    last = alert;
+                                }
+                            }
+                            return last;
+                        }, // Aggregator
+                        Materialized.with(stringSerde, cryptoAlertSerde) // Store
+                )
+                .toStream()
+                .peek((symbol, alert) -&gt; log.info(String.format("---&gt; [Final] Symbol: %s, Alert: %s",
+                        symbol, alert.toString())));
+
+        Topology topology = builder.build();
+
+        log.info(String.format("---&gt; %s", topology.describe().toString()));
+
+        KafkaStreams streams = new KafkaStreams(topology, config);
+        streams.start();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The code from <span class="bold">Listing.7</span> above needs some explanation:</p>
+      <p>The class <span class="hi-yellow">org.apache.kafka.common.serialization.Serdes</span> is a factory class for creating the
+        appropriate serializers and deserializers.</p>
+      <p>The method <span class="hi-blue">Serdes.serdeFrom(serializer, deserializer)</span> allows one to create an instance of a
+        <span class="hi-yellow">org.apache.kafka.common.serialization.Serde</span> from the specified instances of the serializers
+        and deserializers.</p>
+      <p>The DSL method <span class="hi-yellow">groupByKey()</span> actually returns an instance of the class
+        <span class="hi-yellow">org.apache.kafka.streams.kstream.KGroupedStream&lt;K, V&gt;</span>, which is an abstraction of a
+        grouped data event stream of the key-value pairs. It is basically an intermediate representation of a KStream that can used
+        for performing aggregation operations, such as, count(), aggregate(), reduce(), etc.</p>
+      <p>The DSL method <span class="hi-yellow">aggregate(INITIALIZER, AGGREGATOR, STORE)</span> allows one to perform generic
+        aggregation operation on each incoming data events that are grouped together by a key. Data events with either a NULL key
+        or NULL value are <span class="underbold">IGNORED</span>. The specified INITIALIZER function is applied just
+        <span class="underbold">ONCE</span> before the first data event is processed. The specified AGGREGATOR function is applied
+        for each of the incoming data events. The specified local STORE is used for persisting the results of the aggregation
+        operation.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, we need to create the Kafka topic <span class="bold">crypto-price-alerts</span> with a single partition using docker
+        by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>docker run --rm --net=host confluentinc/cp-kafka:7.0.0 kafka-topics --create --topic crypto-price-alerts --partitions 1 --replication-factor 1 --if-not-exists --bootstrap-server localhost:20001</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Created topic crypto-price-alerts.</pre>
+    </div>
+    <div id="para-div">
+      <p>Now is time to compile the code from <span class="bold">Listing.6</span> and <span class="bold">Listing.7</span>. To do that,
+        open a terminal window and execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ $HOME/java/KafkaStreams/Third</p>
+      <p>$ mvn clean compile</p>
+    </div>
+    <div id="para-div">
+      <p>Now, it is time to test the code from <span class="bold">Listing.7</span>. To do that, open a terminal window and execute
+        the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ $HOME/java/KafkaStreams/Third</p>
+      <p>$ mvn exec:java -Dexec.mainClass=com.polarsparc.kstreams.CryptoAlertStateful</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>[com.polarsparc.kstreams.CryptoAlertStateful.main()] INFO org.apache.kafka.streams.StreamsConfig - StreamsConfig values: 
+  application.id = crypto-alerts-watcher
+    ... SNIP ...
+  commit.interval.ms = 1000
+    ... SNIP ...
+  state.dir = /home/polarsparc/kafka/state
+    ... SNIP ...
+[com.polarsparc.kstreams.CryptoAlertStateful.main()] INFO com.polarsparc.kstreams.CryptoAlertStateful - ---> Topologies:
+    Sub-topology: 0
+    Source: KSTREAM-SOURCE-0000000000 (topics: [crypto-price-alerts])
+      --> KSTREAM-PEEK-0000000001
+    Processor: KSTREAM-PEEK-0000000001 (stores: [])
+      --> KSTREAM-FILTER-0000000002
+      &lt;-- KSTREAM-SOURCE-0000000000
+    Processor: KSTREAM-FILTER-0000000002 (stores: [])
+      --> KSTREAM-AGGREGATE-0000000004
+      &lt;-- KSTREAM-PEEK-0000000001
+    Processor: KSTREAM-AGGREGATE-0000000004 (stores: [KSTREAM-AGGREGATE-STATE-STORE-0000000003])
+      --> KTABLE-TOSTREAM-0000000005
+      &lt;-- KSTREAM-FILTER-0000000002
+    Processor: KTABLE-TOSTREAM-0000000005 (stores: [])
+      --> KSTREAM-PEEK-0000000006
+      &lt;-- KSTREAM-AGGREGATE-0000000004
+    Processor: KSTREAM-PEEK-0000000006 (stores: [])
+      --> none
+      &lt;-- KTABLE-TOSTREAM-0000000005
+... SNIP ...
+[com.polarsparc.kstreams.CryptoAlertStateful.main()] INFO org.apache.kafka.streams.KafkaStreams - stream-client [crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324] State transition from CREATED to REBALANCING
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] Starting
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] State transition from CREATED to STARTING
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO org.apache.kafka.clients.consumer.KafkaConsumer - [Consumer clientId=crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1-consumer, groupId=crypto-alerts-watcher] Subscribed to topic(s): crypto-price-alerts
+... SNIP ...
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1-consumer, groupId=crypto-alerts-watcher] Updating assignment with
+  Assigned partitions:                       [crypto-price-alerts-0]
+  Current owned partitions:                  []
+  Added partitions (assigned - owned):       [crypto-price-alerts-0]
+  Revoked partitions (owned - assigned):     []
+... SNIP ...
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.TaskManager - stream-thread [crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] Handle new assignment with:
+  New active tasks: [0_0]
+  New standby tasks: []
+  Existing active tasks: []
+  Existing standby tasks: []
+... SNIP ...
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO org.apache.kafka.streams.state.internals.RocksDBTimestampedStore - Opening store KSTREAM-AGGREGATE-STATE-STORE-0000000003 in regular mode
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.ProcessorStateManager - stream-thread [crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] task [0_0] State store KSTREAM-AGGREGATE-STATE-STORE-0000000003 did not find checkpoint offset, hence would default to the 
+... SNIP ...
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO org.apache.kafka.streams.KafkaStreams - stream-client [crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324] State transition from REBALANCING to RUNNING</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, it is time to run the price alerts publisher code from <span class="bold">Listing.6</span>. To do that, open a terminal
+        window and execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ $HOME/java/KafkaStreams/Third</p>
+      <p>$ mvn exec:java -Dexec.mainClass=com.polarsparc.kstreams.publisher.CryptoAlertsPublisher</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>... SNIP ...
+[com.polarsparc.kstreams.publisher.CryptoAlertsPublisher.main()] INFO com.polarsparc.kstreams.publisher.CryptoAlertsPublisher - ---> [02] Crypto alert: {"name":"BEE","change":35,"up":false,"price":6.3375,"timestamp":"2021-11-25T20:37:21.241126208"}
+[com.polarsparc.kstreams.publisher.CryptoAlertsPublisher.main()] INFO com.polarsparc.kstreams.publisher.CryptoAlertsPublisher - ---> [03] Crypto alert: {"name":"DOG","change":45,"up":true,"price":16.675,"timestamp":"2021-11-25T20:37:21.246422576"}
+[com.polarsparc.kstreams.publisher.CryptoAlertsPublisher.main()] INFO com.polarsparc.kstreams.publisher.CryptoAlertsPublisher - ---> [04] Crypto alert: {"name":"EEL","change":40,"up":false,"price":4.8,"timestamp":"2021-11-25T20:37:21.251814042"}
+[com.polarsparc.kstreams.publisher.CryptoAlertsPublisher.main()] INFO com.polarsparc.kstreams.publisher.CryptoAlertsPublisher - ---> [05] Crypto alert: {"name":"ANT","change":40,"up":false,"price":6.3,"timestamp":"2021-11-25T20:37:21.257238922"}
+[com.polarsparc.kstreams.publisher.CryptoAlertsPublisher.main()] INFO com.polarsparc.kstreams.publisher.CryptoAlertsPublisher - ---> [06] Crypto alert: {"name":"EEL","change":5,"up":false,"price":7.6,"timestamp":"2021-11-25T20:37:21.262220395"}
+[com.polarsparc.kstreams.publisher.CryptoAlertsPublisher.main()] INFO com.polarsparc.kstreams.publisher.CryptoAlertsPublisher - ---> [07] Crypto alert: {"name":"ANT","change":20,"up":true,"price":12.6,"timestamp":"2021-11-25T20:37:21.266043975"}
+[com.polarsparc.kstreams.publisher.CryptoAlertsPublisher.main()] INFO com.polarsparc.kstreams.publisher.CryptoAlertsPublisher - ---> [08] Crypto alert: {"name":"CAT","change":35,"up":false,"price":7.9625,"timestamp":"2021-11-25T20:37:21.272748338"}
+[com.polarsparc.kstreams.publisher.CryptoAlertsPublisher.main()] INFO com.polarsparc.kstreams.publisher.CryptoAlertsPublisher - ---> [09] Crypto alert: {"name":"EEL","change":40,"up":false,"price":4.8,"timestamp":"2021-11-25T20:37:21.278127632"}
+[com.polarsparc.kstreams.publisher.CryptoAlertsPublisher.main()] INFO com.polarsparc.kstreams.publisher.CryptoAlertsPublisher - ---> [10] Crypto alert: {"name":"BEE","change":15,"up":true,"price":11.2125,"timestamp":"2021-11-25T20:37:21.282620234"}
+[com.polarsparc.kstreams.publisher.CryptoAlertsPublisher.main()] INFO org.apache.kafka.clients.producer.KafkaProducer - [Producer clientId=producer-1] Closing the Kafka producer with timeoutMillis = 9223372036854775807 ms.
+... SNIP ...</pre>
+    </div>
+    <div id="para-div">
+      <p>The following would be the additional output in the terminal running the application from Listing.7 above:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO com.polarsparc.kstreams.CryptoAlertStateful - ---> [Start] Symbol: CAT, Alert: CryptoAlert[name=CAT, change=40, up=true, price=17.15, timestamp=2021-11-25T20:37:20.902646034]
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO com.polarsparc.kstreams.CryptoAlertStateful - ---> [Start] Symbol: BEE, Alert: CryptoAlert[name=BEE, change=35, up=false, price=6.3375, timestamp=2021-11-25T20:37:21.241126208]
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO com.polarsparc.kstreams.CryptoAlertStateful - ---> [Start] Symbol: DOG, Alert: CryptoAlert[name=DOG, change=45, up=true, price=16.675, timestamp=2021-11-25T20:37:21.246422576]
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO com.polarsparc.kstreams.CryptoAlertStateful - ---> [Start] Symbol: EEL, Alert: CryptoAlert[name=EEL, change=40, up=false, price=4.8, timestamp=2021-11-25T20:37:21.251814042]
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO com.polarsparc.kstreams.CryptoAlertStateful - ---> [Start] Symbol: ANT, Alert: CryptoAlert[name=ANT, change=40, up=false, price=6.3, timestamp=2021-11-25T20:37:21.257238922]
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO com.polarsparc.kstreams.CryptoAlertStateful - ---> [Start] Symbol: EEL, Alert: CryptoAlert[name=EEL, change=5, up=false, price=7.6, timestamp=2021-11-25T20:37:21.262220395]
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO com.polarsparc.kstreams.CryptoAlertStateful - ---> [Start] Symbol: ANT, Alert: CryptoAlert[name=ANT, change=20, up=true, price=12.6, timestamp=2021-11-25T20:37:21.266043975]
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO com.polarsparc.kstreams.CryptoAlertStateful - ---> [Start] Symbol: CAT, Alert: CryptoAlert[name=CAT, change=35, up=false, price=7.9625, timestamp=2021-11-25T20:37:21.272748338]
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO com.polarsparc.kstreams.CryptoAlertStateful - ---> [Start] Symbol: EEL, Alert: CryptoAlert[name=EEL, change=40, up=false, price=4.8, timestamp=2021-11-25T20:37:21.278127632]
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO com.polarsparc.kstreams.CryptoAlertStateful - ---> [Start] Symbol: BEE, Alert: CryptoAlert[name=BEE, change=15, up=true, price=11.2125, timestamp=2021-11-25T20:37:21.282620234]
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO com.polarsparc.kstreams.CryptoAlertStateful - ---> [Final] Symbol: BEE, Alert: CryptoAlert[name=BEE, change=35, up=false, price=6.3375, timestamp=2021-11-25T20:37:21.241126208]
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO com.polarsparc.kstreams.CryptoAlertStateful - ---> [Final] Symbol: ANT, Alert: CryptoAlert[name=ANT, change=40, up=false, price=6.3, timestamp=2021-11-25T20:37:21.257238922]
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO com.polarsparc.kstreams.CryptoAlertStateful - ---> [Final] Symbol: CAT, Alert: CryptoAlert[name=CAT, change=35, up=false, price=7.9625, timestamp=2021-11-25T20:37:21.272748338]
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO com.polarsparc.kstreams.CryptoAlertStateful - ---> [Final] Symbol: EEL, Alert: CryptoAlert[name=EEL, change=40, up=false, price=4.8, timestamp=2021-11-25T20:37:21.278127632]
+[crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [crypto-alerts-watcher-9b28dd20-d38e-4503-825d-80794e027324-StreamThread-1] Processed 10 total records, ran 0 punctuators, and committed 1 total tasks since the last update</pre>
+    </div>
+    <div id="para-div">
+      <p>The lines in the Output.4 above with <span class="bold">"---&gt; [Final]"</span> are the result of the aggregate() operation.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://polarsparc.github.io/KafkaStreams/KafkaStreams-3.html"><span class="bold">Exploring Kafka Streams :: Part 3</span></a></p>
+      <p><a target="_blank" href="https://polarsparc.github.io/KafkaStreams/KafkaStreams-2.html"><span class="bold">Exploring Kafka Streams :: Part 2</span></a></p>
+      <p><a target="_blank" href="https://polarsparc.github.io/KafkaStreams/KafkaStreams-1.html"><span class="bold">Exploring Kafka Streams :: Part 1</span></a></p>
+      <p><a target="_blank" href="https://docs.confluent.io/platform/current/streams/developer-guide/index.html#streams-developer-guide"><span class="bold">Kafka Streams Developer Guide</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

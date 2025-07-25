@@ -1,0 +1,501 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Understanding Model Quantization">
+    <meta name="subject" content="Understanding Model Quantization">
+    <meta name="keywords" content="ipfs">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Understanding Model Quantization</title>
+    <link rel="stylesheet" type="text/css" href="../css/polarsparc-v2.4.css"/>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+      MathJax = {
+        tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+      };
+    </script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.0.5/es5/tex-chtml.js"></script>
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Understanding Model Quantization</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">07/27/2024</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>A <span class="bold">Large Language Model</span> (or <span class="bold">LLM</span> for short) is a complex multi-layer deep
+        neural network with millions of <span class="bold">perceptron</span>s. This means that an <span class="bold">LLM</span> has
+        a large number of parameters (weights and biases). In other words, an <span class="bold">LLM</span> demands a large amount
+        of computational resources (typically CPU/GPU memory). The <span class="bold">LLM</span> model parameters are usually of
+        type <span class="bold">double</span> of size 64 bits in memory.</p>
+      <p>There is an increasing demand and interest in running the LLM models in a resource constrained platforms like the mobile
+        devices. So, how can one satisfy that demand ??? Enter <span class="hi-yellow">Quantization</span> !!!</p>
+      <p><span class="hi-yellow">Quantization</span> is the process of compressing the model parameters of a pre-trained <span class
+        ="bold">LLM</span> model from a <span class="bold">double</span> (64 bits) OR <span class="bold">float</span> (32 bits) to a
+        <span class="bold">int8</span> (8 bits) or less, with minimal loss of information.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Floating Point Basics</p>
+    </div>
+    <div id="para-div">
+      <p>In order to better understand the process of <span class="bold">Quantization</span>, one needs to have a good grasp of how
+        the <span class="hi-green">Floating Point</span> numbers are represented in a computer.</p>
+      <p>This section will serve as a refresher on floating point number representation and is not intended to go deep and exhaustive.</p>
+      <p>Let us consider the following <span class="bold">Base 10</span> (or <span class="bold">decimal</span>) floating point number
+        as an example for this discussion:</p>
+      <br/>
+      <div id="img-outer-div"> <img src="./images/quantization-01.png" class="img-cls" alt="Decimal Float" />
+        <div class="img-cap">Figure.1</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+        <p>The floating point number consists of the following parts:</p>
+      <ul id="blue-sqr-ul">
+        <li><p>An <span class="hi-blue">integral</span> part</p></li>
+        <li><p>A <span class="hi-red">radix</span> (or <span class="bold">decimal</span>) point</p></li>
+        <li><p>A <span class="hi-orange">fractional</span> part</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Note that the computers deal with numbers in a <span class="bold">Base 2</span> (or <span class="bold">binary</span>) format.
+      The same floating point number above can be approximately represented (up to 3 digits to the right of the radix point) in <span
+      class="bold">Base 2</span> as follows:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/quantization-02.png" class="img-cls" alt="Binary Float" />
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Given that a binary floating point has <span class="bold">3</span> parts, how is it actually stored in computer's memory ?</p>
+      <p>This is where the <span class="hi-yellow">IEEE-754</span> standards come into play.</p>
+    </div>
+    <div id="para-div">
+      <p>The first step is to <span class="hi-yellow">normalize</span> the binary floating point number to a scientific notation. This
+        means re-writing the given binary floating point number, such that there is a single non-zero digit to the left of the radix
+        point, followed by the fractional part and the whole thing multiplied by an exponent part (a power of the base).</p>
+      <p>For example, the binary floating point number $\color{red}{111.101}$ can be re-written as $\color{red}{1.11101 \times 2^2}$.</p>
+      <p>Let us look at another example. What about the binary floating point number $\color{red}{0.00101}$ ???</p>
+      <p>The the binary floating point number $\color{red}{0.00101}$ can be re-written as $\color{red}{1.10100 \times 2^{-3}}$.</p>
+      <p>The above two examples have been re-written in the normalized binary scientific notation.</p>
+    </div>
+    <div id="para-div">
+      <p>From the two examples of the normalized binary floating point number $\color{red}{1.11101 \times 2^2}$ and $\color{red}{1.10100
+        \times 2^{-3}}$, we can infer that the exponent over the base (2 for binary) can be <span class="bold">positive</span> or <span
+        class="bold">negative</span>. To simplify the logic of comparing two numbers and not deal with negative numbers, one could
+        add a constant value (referred to as the <span class="hi-yellow">bias</span>) to the power of the base, making it an unsigned
+        biased power.</p>
+    </div>
+    <div id="para-div">
+      <p>With the concept of normalization and bias under our belts, now it becomes easy to layout the IEEE-754 standards for storing
+        floating point numbers.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration depicts the layout of a <span class="bold">Single Precision</span> (32 bits) floating point number:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/quantization-03.png" class="img-cls" alt="Single Precision" />
+      <div class="img-cap">Figure.3</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The first bit to the left is the <span class="hi-red">Sign</span> bit with a <span class="bold">0</span> for positive and a
+        <span class="bold">1</span> for positive. The next <span class="bold">8</span> bits are used for the <span class="hi-orange">
+        Exponent</span> (power + bias), and the final set of <span class="bold">23</span> bits are used for the fractional digits to
+        the right of the radix point (also referred to as the <span class="hi-blue">Mantissa</span>). The <span class="bold">bias</span>
+        value is <span class="hi-orange">127</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration depicts the layout of a <span class="bold">Double Precision</span> (64 bits) floating point number:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/quantization-04.png" class="img-cls" alt="Double Precision" />
+      <div class="img-cap">Figure.4</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Just the number of bits for the exponent and mantissa are wider. Also, the <span class="bold">bias</span> value is <span
+        class="hi-orange">1023</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>For the illustration purposes, we will only use single precision floating point representation.</p>
+      <p>Let us represent the normalized binary floating point number $\color{red}{1.11101 \times 2^2}$ using single precision floating
+        point representation. We know the <span class="bold">bias</span> value is <span class="bold">127</span>. The <span class="bold">
+        power</span> value is $\color{red}{2}$. Therefore, the <span class="bold">exponent</span> is $\color{red}{127 + 2} = {129}$.
+        The binary value for $\color{red}{129}$ is $\color{red}{10000001}$. This is the exponent part in 8 bits. The mantissa part in
+        23 bits would be the binary value $\color{red}{11101000000000000000000}$.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration depicts the memory layout of the normalized binary floating point number $\color{red}{1.11101 \times
+        2^2}$:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/quantization-05.png" class="img-cls" alt="Single Precision" />
+      <div class="img-cap">Figure.5</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The <span class="bold">sign</span> bit is a <span class="bold">0</span> to represent a positive number.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are some facts about the single precision floating point number:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>If the <span class="bold">exponent</span> is all <span class="bold">0</span>s (or $\color{red}{00000000}$) and the
+            <span class="bold">mantissa</span> is all <span class="bold">0</span>s (or $\color{red}{00000000000000000000000}$),
+            then the single precision floating point value is a <span class="bold">0</span></p>
+        </li>
+        <li>
+          <p>If the <span class="bold">exponent</span> is all <span class="bold">0</span>s (or $\color{red}{11111111}$) and the
+            <span class="bold">mantissa</span> is all <span class="bold">0</span>s (or $\color{red}{00000000000000000000000}$),
+            then the single precision floating point value is an $\pm\infty$ based on the <span class="bold">sign</span> bit</p>
+        </li>
+        <li>
+          <p>If the <span class="bold">exponent</span> is all <span class="bold">0</span>s (or $\color{red}{11111111}$) and the
+            <span class="bold">mantissa</span> is NOT <span class="bold">0</span>s, then the single precision floating point value
+            is an <span class="bold">$\textbf{NAN}$</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Given a single precision floating point value in the IEEE-754 format, the formula to determine the binary floating point
+        value is $\color{red}{(-1)^S \times 1.M \times 2^{Exponent-127}}$.</p>
+    </div>
+    <div id="para-div">
+      <p>With this we wrap the refresher section on floating point number representation in a computer's memory !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Quantization Basics</p>
+    </div>
+    <div id="para-div">
+      <p>As indicated earlier, <span class="bold">quantization</span> is the process of reducing the memory size of the model parameters
+        of a pre-trained <span class="bold">LLM</span> model from a higher memory representation format to a lower memory representation
+        format with minimal loss of information.</p>
+      <p>The <span class="bold">LLM</span> model parameters are typically of type single precision floating point (32 bits). The goal
+        of <span class="bold">quantization</span> is to scale the model parameters to an 8-bit <span class="bold">integer</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>There are two forms of <span class="bold">quantization</span> - the first is <span class="hi-yellow">linear</span> that maps
+        the input values to output values using a <span class="bold">linear</span> function and the second is <span class="hi-yellow">
+        non-linear</span> which maps input values to output values using a <span class="bold">non-linear</span> function.</p>
+      <p>For the quantization of the LLM model parameters, one typically uses a <span class="bold">linear</span> quantization techniques,
+        which involves a <span class="hi-blue">Scaling</span> and <span class="hi-blue">Rounding</span> operation.</p>
+    </div>
+    <div id="para-div">
+      <p>The below are some symbols that will be used in the following section(s):</p>
+      <ul id="blue-sqr-ul">
+        <li><p>$\color{red}{r_{min}}$ :: the minimum value of a model parameter (32-bit real number)</p></li>
+        <li><p>$\color{red}{r_{max}}$ :: the maximum value of a model parameter (32-bit real number)</p></li>
+        <li><p>$\color{red}{S}$ :: the scaling factor used to map a model parameter from a 32-bit number system to another $\color
+          {red}{b}$ bits number system</p></li>
+        <li><p>$\color{red}{Z}$ :: the zero value (0.0) of the model parameter from a 32-bit number system to another $\color{red}
+          {b}$ bits number system</p></li>
+        <li><p>$\color{red}{X}$ :: the model parameter value (32-bit real value)</p></li>
+        <li><p>$\color{red}{X_q}$ :: the quantized value of a model parameter from a 32-bit value to a b-bit value</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the two types of linear quantization techniques:</p>
+    </div>
+    <div id="step-div">
+      <p>Absmax Quantization</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The <span class="hi-yellow">absmax</span> quantization technique scales a model parameter from a 32-bit floating point (or
+        real number) to an 8-bit integer in the range $\color{red}{[-127, 127]}$ and maps the zero value on the 32-bit real number
+        scale $\color{red}{0.0}$ to the $\color{red}{0}$ on the 8-bit integer scale.</p>
+      <p>In other words:</p>
+      <p>$\color{red}{S = \Large{\frac{2^{b-1} - 1}{max(abs(r_{min}, r_{max}))}}}$ $\color{red}{= \Large{\frac{127}{abs(max(r_{min},
+        r_{max}))}}}$ where $\color{red}{b = 8}$</p>
+      <p>and</p>
+      <p>$\color{red}{Z = 0}$</p>
+      <p>and</p>
+      <p>$\color{red}{X_q = round(S \times X + Z) = round(S \times X)}$</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration demonstrates this quantization technique for a set of 32-bit numbers to 8-bit numbers:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/quantization-06.png" class="img-cls" alt="Absmax Quantization" />
+      <div class="img-cap">Figure.6</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that <span class="hi-grey">np</span> in the above illustration refers to <span class="hi-grey">numpy</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration depicts the visual for this quantization technique:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/quantization-07.png" class="img-cls" alt="Absmax Visualization" />
+      <div class="img-cap">Figure.7</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This quantization technique is sometimes is also referred to as <span class="hi-yellow">Symmetric</span> quantization.</p>
+    </div>
+    <div id="step-div">
+      <p>Zeropoint Quantization</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The <span class="hi-yellow">zeropoint</span> quantization technique scales a model parameter from a 32-bit floating point
+        (or real number) to an 8-bit integer in the range $\color{red}{[-128, 127]}$ and maps the zero value on the 32-bit floating
+        point number scale $\color{red}{0.0}$ to a <span class="underbold">non-zero</span> value on the 8-bit integer scale.</p>
+      <p>In other words:</p>
+      <p>$\color{red}{S = \Large{\frac{2^b - 1}{max(r_{min}, r_{max}) - min(r_{min}, r_{max})}}}$ $\color{red}{= \Large{\frac{255}
+        {{max(r_{min}, r_{max}) - min(r_{min}, r_{max})}}}}$ where $\color{red}{b = 8}$</p>
+      <p>and</p>
+      <p>$\color{red}{Z = round(-S \times min(r_{min}, r_{max}) - 2^b)}$</p>
+      <p>and</p>
+      <p>$\color{red}{X_q = clip(round(S \times X + Z), -2^b, 2^b-1)}$</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration demonstrates this quantization technique for a set of 32-bit numbers to 8-bit numbers:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/quantization-08.png" class="img-cls" alt="Zeropoint Quantization" />
+      <div class="img-cap">Figure.8</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that <span class="hi-grey">np</span> in the above illustration refers to <span class="hi-grey">numpy</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration depicts the visual for this quantization technique:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/quantization-09.png" class="img-cls" alt="Zeropoint Visualization" />
+      <div class="img-cap">Figure.9</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This quantization technique is sometimes is also referred to as <span class="hi-yellow">Asymmetric</span> quantization.</p>
+    </div>
+    <br/>    
+    <div id="section-div">
+      <p>Hands-on Quantization</p>
+    </div>
+    <div id="para-div">
+      <p>The setup will be on a <span class="bold">Ubuntu 22.04 LTS</span> based Linux desktop. Ensure that the <span class="bold">
+        Python 3.x</span> programming language as well as the <span class="bold">Jupyter Notebook</span> packages are installed.</p>
+    </div>
+    <div id="para-div">
+      <p>To install the necessary <span class="bold">Python</span> packages for this section, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ pip install bitsandbytes torch transformers</p>
+    </div>
+    <div id="para-div">
+      <p>To initialize an instance of the tokenizer, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from transformers import AutoTokenizer
+
+model_name = 'microsoft/Phi-3-mini-4k-instruct'
+
+llm_tokenizer = AutoTokenizer.from_pretrained(model_name)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To initialize an instance of the LLM model, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from transformers import AutoModelForCausalLM
+
+model_name = 'microsoft/Phi-3-mini-4k-instruct'
+
+llm_model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype='auto', trust_remote_code=True)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To determine the amount of memory comsumed by the LLM model, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>print(f'Memory Usage: {round(llm_model.get_memory_footprint()/1024/1024/1024, 2)} GB')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Memory Usage: 7.12 GB</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To test the LLM model for text generation, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from transformers import pipeline
+
+prompts = [
+  {'role': 'user', 'content': 'Describe what model quantization is all about in a sentence'}
+]
+
+pipe = pipeline('text-generation', model=llm_model, tokenizer=llm_tokenizer)
+
+generation_args = {
+  'max_new_tokens': 150,
+  'return_full_text': False,
+  'temperature': 0.0,
+  'do_sample': False
+}
+
+llm_output = pipe(prompts, **generation_args)
+llm_output</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>[{'generated_text': " Model quantization is the process of reducing the precision of a machine learning model's parameters to decrease its size and computational requirements, while maintaining its performance."}]</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This LLM model took about <span class="hi-red">1 min, 18 secs</span> to execute.</p>
+    </div>
+    <div id="para-div">
+      <p>To save the tokenizer as well as the LLM model to a local directory, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>model_dir = '/tmp/model'
+
+llm_tokenizer.save_pretrained(model_dir)
+llm_model.save_pretrained(model_dir)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To load a quantized instance of the LLM model using 8 bits for the model parameters, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from transformers import BitsAndBytesConfig, AutoModelForCausalLM
+
+model_dir = '/tmp/model'
+
+quantization_config = BitsAndBytesConfig(load_in_8bit=True)
+
+llm_8bit_model = AutoModelForCausalLM.from_pretrained(pretrained_model_name_or_path=model_dir, torch_dtype='auto', quantization_config=quantization_config, trust_remote_code=True)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To determine the amount of memory comsumed by the quantized LLM model, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>print(f'Memory Usage: {round(llm_8bit_model.get_memory_footprint()/1024/1024/1024, 2)} GB')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>Memory Usage: 3.74 GB</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice the significant reduction in the memory usage !!!</p>
+    </div>
+    <div id="para-div">
+      <p>To test the quantized LLM model for text generation, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from transformers import pipeline
+
+prompts = [
+  {'role': 'user', 'content': 'Describe what model quantization is all about in a sentence'}
+]
+
+pipe2 = pipeline('text-generation', model=llm_8bit_model, tokenizer=llm_tokenizer)
+
+generation_args = {
+    'max_new_tokens': 150,
+    'return_full_text': False,
+    'temperature': 0.0,
+    'do_sample': False
+}
+
+llm_output2 = pipe2(prompts, **generation_args)
+llm_output2</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>[{'generated_text': " Model quantization is the process of reducing the precision of a machine learning model's parameters to decrease its memory footprint and computational requirements, often at the cost of some accuracy."}]</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This quantized LLM model took about <span class="hi-green">3 secs</span> to execute and the response was close enough !!!</p>
+    </div>
+    <br/>    
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/GenAI/HuggingFace.html" target="_blank"><span class="bold">Quick Primer on Hugging Face</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

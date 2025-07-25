@@ -1,0 +1,652 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Using Python APScheduler">
+    <meta name="subject" content="Using Python APScheduler">
+    <meta name="keywords" content="python, apscheduler">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Using Python APScheduler</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Using Python APScheduler</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">09/04/2022</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="section-div">
+      <p>Introduction</p>
+    </div>
+    <div id="para-div">
+      <p>Often times, there is a need for an application to fetch some data from a source (be internal or external) on a regular
+        interval (say daily at around 7.00 AM EST). This is where the Python <span class="hi-yellow">APScheduler</span> comes in
+        handy.</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">APScheduler</span> (or <span class="hi-yellow">Advanced Python Scheduler</span> for long) is an open
+        source Python library that allows one to schedule jobs (or tasks), which can be executed on a regular periodic basis (such
+        as hourly, daily, weekly, etc).</p>
+    </div>
+    <div id="para-div">
+      <p>By default, a scheduled job's data in APScheduler is serialized and stored in-memory. This implies that the scheduled job
+        does <span class="underbold">NOT</span> survive a system crash or a system restart. To ensure a scheduled job survives a
+        system crash or a system restart, APScheduler can be configured to use a database so that the data related to the scheduled
+        jobs can be persisted to disk (in a database).</p>
+    </div>
+    <div id="para-div">
+      <p>The APScheduler library comprises of the following core components:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-yellow">Job</span> :: Encapsulates a Python function (with function arguments) that will be executed
+          by the scheduler</p></li>
+        <li><p><span class="hi-yellow">Jobstore</span> :: A repository where a scheduled job's data and state are saved. By default,
+          APScheduler uses an in-memory store. One can specify a disk based persistence (such as a database) to be used as the
+          jobstore</p></li>
+        <li><p><span class="hi-yellow">Executor</span> :: Runs the scheduled job in a thread or a process from a pool</p></li>
+        <li>
+          <p><span class="hi-yellow">Trigger</span> :: Encapsulates the plan on when the job should be executed. Each job has its
+            own scheduling trigger.</p>
+          <p>The following are two commonly used triggers supported by the framework:</p>
+          <ul id="blue-sqr-ul">
+            <li><p><span class="hi-blue">interval</span> :: Used when a job needs to periodically execute on scheduled intervals.
+              One can specify the weeks, days, hours, minutes, and seconds as options</p></li>
+            <li><p><span class="hi-blue">cron</span> :: Mimics the capabilities of the Cron utility found in most Linux systems.
+              One can specify a year, month, day, week, day_of_week, hour, minute, and second as options</p></li>
+          </ul>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Scheduler</span> :: The core engine that schedules, tracks, and executes jobs. It provides
+            the necessary API for configuring the executor, the jobstore, etc., and for adding jobs (at runtime) to be executed.</p>
+          <p>The most commonly used scheduler is the <span class="hi-blue">BackgroundScheduler</span>, which runs as a background
+            daemon thread in the application</p>
+        </li>
+      </ul>
+    </div>
+    <div id="section-div">
+      <p>Installation and Setup</p>
+    </div>
+    <div id="para-div">
+      <p>Installation and setup will be on a Linux desktop running Ubuntu 22.04 LTS. Note that the stable Python version on Ubuntu
+        is <span class="bold">3.10</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>For our demonstration, we will create a directory called <span class="bold">APScheduler</span> under the users home directory
+        by executing the following command in a terminal window:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/APScheduler</p>
+    </div>
+    <div id="para-div">
+      <p>Next, we will create a project specific Python virtual environment using the <span class="hi-yellow">venv</span> module. In
+        order to do that, we first need to install the package for <span class="bold">venv</span> by executing the following command
+        in a terminal window:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt install -y python3.10-venv</p>
+    </div>
+    <div id="para-div">
+      <p>The Python <span class="bold">venv</span> module allows one to create a lightweight virtual environments, each with its own
+        directory structure, that are isolated from the system specific directory structure. To create a Python virtual environment,
+        execute the following command(s) in the terminal window:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/APScheduler</p>
+      <p>$ python3 -m venv venv</p>
+    </div>
+    <div id="para-div">
+      <p>This will create a directory called <span class="bold">venv</span> under the current directory. On needs to activate the
+        newly created virtual environment by executing the following command in the terminal window:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ source venv/bin/activate</p>
+    </div>
+    <div id="para-div">
+      <p>On successful virtual environment activation, the prompt will be prefixed with <span class="hi-grey">(venv)</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>We will now install the following Python modules:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-yellow">apscheduler</span> :: the advanced python scheduler</p></li>
+        <li><p><span class="hi-yellow">sqlalchemy</span> :: the popular SQL database abstraction layer</p></li>
+      </ul>
+      <p>Execute the following command(s) in the terminal window (with venv activated):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ pip install apscheduler sqlalchemy</p>
+    </div>
+    <div id="para-div">
+      <p>Next, we will install a small, fast, self-contained, highly-reliable, full-featured, open-source SQL database engine called
+        <span class="hi-yellow">sqlite</span> by executing the following command in a terminal window:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt install -y sqlite3 sqlitebrowser</p>
+    </div>
+    <div id="para-div">
+      <p>For storing the sqlite database file, we will create a <span class="bold">data</span> directory under the directory
+        <span class="bold">APScheduler</span> by executing the following command in the terminal window:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/APScheduler/data</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on Python APScheduler</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Python script called <span class="hi-yellow">sample-1.py</span> that demonstrates a simple scheduling
+        application:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">sample-1.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   04 Sep 2022
+#
+
+import logging
+import time
+from apscheduler.schedulers.background import BackgroundScheduler
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+
+logger = logging.getLogger('sample-1')
+
+
+def task():
+    logger.info('Started sample-1 task...')
+    time.sleep(1)
+    logger.info('Completed sample-1 task !!!')
+
+
+def main():
+    scheduler = BackgroundScheduler(daemon=True)
+    scheduler.add_job(task, trigger='interval', seconds=60, misfire_grace_time=5*60)
+    scheduler.start()
+    try:
+        while True:
+            time.sleep(5)
+    except KeyboardInterrupt:
+        scheduler.shutdown()
+
+
+if __name__ == '__main__':
+    main()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">sample-1.py</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">BackgroundScheduler</span> :: a scheduler that runs in the background and execute a given task
+            at geven schedule trigger</p>
+        </li>
+        <li><p><span class="hi-yellow">add_job()</span> :: is the method that adds the specified job to a job list for execution. The
+          first argument is the scheduled job (a callable function). The option <span class="hi-blue">trigger='interval'</span>
+          specifies the interval trigger that will execute every 60 seconds (<span class="hi-blue">seconds=60</span>). The option
+          <span class="hi-blue">misfire_grace_time=5*60</span> allows a grace period of jobs that have failed to execute at the
+          scheduled trigger due to various reasons (no executor thread in the pool, job in the persistent store and the scheduler
+          restarted, etc)</p></li>
+        <li><p><span class="hi-yellow">start()</span> :: is the method that starts the scheduler thread in the background</p></li>
+      </ul>
+      <p>The <span class="bold">try-except</span> block with the sleep in a loop is important as it will keep the background thread
+        running. Else the program will terminate and nothing will happen.</p>
+    </div>
+    <div id="para-div">
+      <p>To test our the Python scheduler application, execute the following command in the venv terminal window and wait for about
+        3 minutes before interrupting by pressing CTRL-C:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ python3 sample-1.py</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>INFO 2022-09-04 14:14:18,803 - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO 2022-09-04 14:14:18,803 - Added job "task" to job store "default"
+INFO 2022-09-04 14:14:18,803 - Scheduler started
+INFO 2022-09-04 14:15:18,803 - Running job "task (trigger: interval[0:01:00], next run at: 2022-09-04 14:15:18 EDT)" (scheduled at 2022-09-04 14:15:18.803045-04:00)
+INFO 2022-09-04 14:15:18,803 - Started sample-1 task...
+INFO 2022-09-04 14:15:19,805 - Completed sample-1 task !!!
+INFO 2022-09-04 14:15:19,805 - Job "task (trigger: interval[0:01:00], next run at: 2022-09-04 14:16:18 EDT)" executed successfully
+INFO 2022-09-04 14:16:18,804 - Running job "task (trigger: interval[0:01:00], next run at: 2022-09-04 14:17:18 EDT)" (scheduled at 2022-09-04 14:16:18.803045-04:00)
+INFO 2022-09-04 14:16:18,804 - Started sample-1 task...
+INFO 2022-09-04 14:16:19,805 - Completed sample-1 task !!!
+INFO 2022-09-04 14:16:19,805 - Job "task (trigger: interval[0:01:00], next run at: 2022-09-04 14:17:18 EDT)" executed successfully
+&lt;CTRL-C&gt;
+INFO 2022-09-04 14:16:23,814 - Scheduler has been shut down</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>As was indicated in the introduction, the default jobstore used by APScheduler is memory. So, if sample-1.py crashes and
+        restarts, it will appear as though its a fresh start.</p>
+      <p>For the next demostration, we will configure the sqlite database as the jobstore.</p>
+      <p>The following is the Python script <span class="bold">sample-2.py</span> that is functionally the same as the previous case,
+        except that it uses a persistent jobstore:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">sample-2.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   04 Sep 2022
+#
+
+import logging
+import time
+from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+from apscheduler.schedulers.background import BackgroundScheduler
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+
+logger = logging.getLogger('sample-2')
+
+jobstores = {
+    'default': SQLAlchemyJobStore(url='sqlite:////home/alice/APScheduler/data/jobs.db')
+}
+
+def task():
+    logger.info('Started sample-2 task...')
+    time.sleep(2)
+    logger.info('Completed sample-2 task !!!')
+
+
+def main():
+    job_id = 'sample-2'
+    scheduler = BackgroundScheduler(jobstores=jobstores, daemon=True)
+    scheduler.add_job(task, id=job_id, trigger='interval', seconds=60, misfire_grace_time=5*60)
+    scheduler.start()
+    try:
+        while True:
+            scheduler.print_jobs(jobstore="default")
+            time.sleep(15)
+    except KeyboardInterrupt:
+        scheduler.remove_job(job_id)
+        scheduler.shutdown()
+
+
+if __name__ == '__main__':
+    main()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">sample-2.py</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">SQLAlchemyJobStore</span> :: allows one to configure a persistent jobstore in a database table
+            using Python SQLAlchemy framework. The job table will be created if it does not exist in the database</p>
+        </li>
+        <li><p><span class="hi-yellow">add_job()</span> :: notice that one can associate a job ID (<span class="hi-blue">id=job_id</span>)
+          when a job is scheduled and later use it to identify this same job</p></li>
+        <li><p><span class="hi-yellow">print_jobs()</span> :: is the method that lists all the currently scheduled jobs from the
+          specified jobstore (<span class="hi-blue">jobstore='default'</span>)</p></li>
+        <li><p><span class="hi-yellow">remove_job()</span> :: is the method that is used to remove a scheduled job given its ID</p></li>
+      </ul>
+      <p>Notice how the jobstore is configured during the instantiation of the <span class="bold">BackgroundScheduler</span> using
+        the option <span class="hi-green">jobstores</span>, which takes in a Python dictionary.</p>
+    </div>
+    <div id="para-div">
+      <p>To test our the Python scheduler application, execute the following command in the venv terminal window and wait for about
+        3 minutes before interrupting by pressing CTRL-C:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ python3 sample-2.py</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>INFO 2022-09-04 19:55:36,543 - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO 2022-09-04 19:55:36,554 - Added job "task" to job store "default"
+INFO 2022-09-04 19:55:36,554 - Scheduler started
+Jobstore default:
+    task (trigger: interval[0:01:00], next run at: 2022-09-04 19:56:36 EDT)
+Jobstore default:
+    task (trigger: interval[0:01:00], next run at: 2022-09-04 19:56:36 EDT)
+Jobstore default:
+    task (trigger: interval[0:01:00], next run at: 2022-09-04 19:56:36 EDT)
+Jobstore default:
+    task (trigger: interval[0:01:00], next run at: 2022-09-04 19:56:36 EDT)
+INFO 2022-09-04 19:56:36,551 - Running job "task (trigger: interval[0:01:00], next run at: 2022-09-04 19:56:36 EDT)" (scheduled at 2022-09-04 19:56:36.543060-04:00)
+INFO 2022-09-04 19:56:36,551 - Started sample-2 task...
+Jobstore default:
+    task (trigger: interval[0:01:00], next run at: 2022-09-04 19:57:36 EDT)
+INFO 2022-09-04 19:56:38,555 - Completed sample-2 task !!!
+INFO 2022-09-04 19:56:38,555 - Job "task (trigger: interval[0:01:00], next run at: 2022-09-04 19:57:36 EDT)" executed successfully
+Jobstore default:
+    task (trigger: interval[0:01:00], next run at: 2022-09-04 19:57:36 EDT)
+&lt;CTRL-C&gt;
+INFO 2022-09-04 19:56:52,103 - Removed job sample-2
+INFO 2022-09-04 19:56:52,103 - Scheduler has been shut down</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Launch the sqlite browser and access the database <span class="bold">/home/alice/APScheduler/data/jobs.db</span> (before
+        pressing CTRL-C). The following illustration shows the row from the job table:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="SQLite Browser" src="./images/apscheduler-1.png" class="img-cls" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>What if we want to be notified of either the success or the failure of a job ??? This is where the job event listener comes 
+        to the rescue.</p>
+      <p>For the next demostration, we will specify a job event listener, which will get invoked post a job execution.</p>
+      <p>The following is the Python script <span class="bold">sample-3.py</span> that is functionally the same as the previous case,
+        except that it uses a job status listener:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">sample-3.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   04 Sep 2022
+#
+
+import logging
+import time
+from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+
+logger = logging.getLogger('sample-3')
+
+jobstores = {
+    'default': SQLAlchemyJobStore(url='sqlite:////home/alice/APScheduler/data/jobs.db')
+}
+
+
+def task():
+    logger.info('Started sample-3 task...')
+    time.sleep(3)
+    logger.info('Completed sample-3 task !!!')
+
+
+def job_status_listener(event):
+    if event.exception:
+        logger.error('The job [%s] encountered exception ...' % event.job_id)
+    else:
+        logger.info('The job [%s] succeed !!!' % event.job_id)
+
+
+def main():
+    job_id = 'sample-3'
+    scheduler = BackgroundScheduler(jobstores=jobstores, daemon=True)
+    scheduler.add_job(task, id=job_id, trigger='interval', seconds=60, misfire_grace_time=5 * 60)
+    scheduler.add_listener(job_status_listener, EVENT_JOB_ERROR | EVENT_JOB_EXECUTED)
+    scheduler.start()
+    try:
+        while True:
+            scheduler.print_jobs(jobstore="default")
+            time.sleep(30)
+    except KeyboardInterrupt:
+        scheduler.remove_job(job_id)
+        scheduler.shutdown()
+
+
+if __name__ == '__main__':
+    main()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">sample-3.py</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">job_status_listener(event)</span> :: is the user defined Python function that is invoked post
+            a job execution. The event parameter indicates the type code, the job id, and a flag to indicate an exception occurred</p>
+        </li>
+        <li><p><span class="hi-yellow">add_listener()</span> :: is the method that registers the specified listerner function (first
+          parameter) as the callback for the specified type of event mask (EVENT_JOB_ERROR | EVENT_JOB_EXECUTED). In this example,
+          we are only interested if the job succeeds (VENT_JOB_EXECUTED) or fails (EVENT_JOB_ERROR)</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To test our the Python scheduler application, execute the following command in the venv terminal window and wait for about
+        3 minutes before interrupting by pressing CTRL-C:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ python3 sample-3.py</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>INFO 2022-09-04 20:24:59,910 - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO 2022-09-04 20:24:59,915 - Added job "task" to job store "default"
+INFO 2022-09-04 20:24:59,915 - Scheduler started
+Jobstore default:
+    task (trigger: interval[0:01:00], next run at: 2022-09-04 20:25:59 EDT)
+Jobstore default:
+    task (trigger: interval[0:01:00], next run at: 2022-09-04 20:25:59 EDT)
+INFO 2022-09-04 20:25:59,918 - Running job "task (trigger: interval[0:01:00], next run at: 2022-09-04 20:25:59 EDT)" (scheduled at 2022-09-04 20:25:59.909965-04:00)
+INFO 2022-09-04 20:25:59,919 - Started sample-3 task...
+Jobstore default:
+    task (trigger: interval[0:01:00], next run at: 2022-09-04 20:26:59 EDT)
+INFO 2022-09-04 20:26:02,920 - Completed sample-3 task !!!
+INFO 2022-09-04 20:26:02,920 - Job "task (trigger: interval[0:01:00], next run at: 2022-09-04 20:26:59 EDT)" executed successfully
+INFO 2022-09-04 20:26:02,920 - The job [sample-3] succeed !!!
+Jobstore default:
+    task (trigger: interval[0:01:00], next run at: 2022-09-04 20:26:59 EDT)
+&lt;CTRL-C&gt;
+INFO 2022-09-04 20:26:31,947 - Removed job sample-3
+INFO 2022-09-04 20:26:31,947 - Scheduler has been shut down</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now that we have a basic understanding and working knowledge of the core parts of APScheduler, it is time to tackle a real
+        use-case. Typically, a job (or a task) needs some input parameters (arguments to the task function). For example, the job may
+        be to process a daily feed from a particular location in the filesystem. Also, let us assume that the daily feed arrives at
+        around 7 AM EST. In reality, it is possible that the feed may be delayed a little bit. In such cases, one may have to adjust
+        the job's schedule to retry again after a fixed interval till the feed is successfully processed. This use-case of our next
+        demonstration.</p>
+      <p>The following is the Python script <span class="bold">sample-4.py</span> that will look for a file (dummy.dat in this case)
+        in a specific folder (/tmp in this case) and adjust the job's schedule on exception to run more frequently:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">sample-4.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   04 Sep 2022
+#
+
+import logging
+import time
+import os
+import zoneinfo
+from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+
+logger = logging.getLogger('sample-4')
+
+jobstores = {
+    'default': SQLAlchemyJobStore(url='sqlite:////home/bswamina/MyProjects/Python/APScheduler/data/jobs.db')
+}
+
+tz_NYC = zoneinfo.ZoneInfo('America/New_York')
+scheduler = BackgroundScheduler(jobstores=jobstores, misfire_grace_time=5*60, daemon=True)
+
+
+def task(jid, root, file):
+    logger.info('Started [%s] task...' % jid)
+    time.sleep(2)
+    if not os.path.exists(os.path.join(root, file)):
+        raise FileNotFoundError
+    logger.info('Completed [%s] task !!!' % jid)
+
+
+def job_status_listener(event):
+    if event.exception:
+        logger.error('*** The job [%s] encountered exception !!!' % event.job_id)
+        # Failure - reschedule for sooner
+        scheduler.reschedule_job(event.job_id, trigger='interval', seconds=15)
+    else:
+        logger.info('The job [%s] succeed.' % event.job_id)
+        # Success - Back to default
+        scheduler.reschedule_job(event.job_id, trigger='cron', day_of_week='mon-fri', minute='*/1', timezone=tz_NYC)
+
+
+def main():
+    job_id = 'sample-4'
+    root = '/tmp'
+    file = 'dummy.dat'
+    scheduler.add_job(task, id=job_id, args=[job_id, root, file], trigger='cron', day_of_week='mon-fri',
+                      minute='*/1', timezone=tz_NYC)
+    scheduler.add_listener(job_status_listener, EVENT_JOB_ERROR | EVENT_JOB_EXECUTED)
+    scheduler.start()
+    try:
+        while True:
+            scheduler.print_jobs(jobstore="default")
+            time.sleep(30)
+    except KeyboardInterrupt:
+        scheduler.remove_job(job_id)
+        scheduler.shutdown()
+
+
+if __name__ == '__main__':
+    main()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">sample-4.py</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">BackgroundScheduler(...)</span> :: an instance of the background scheduler that is configured
+            to use a sqlite jobstore and with a default <span class="hi-blue">misfire_grace_time=5*60</span> that applies to all
+            jobs handled by this scheduler</p>
+        </li>
+        <li><p><span class="hi-yellow">task(jid, root, file)</span> :: is the job function that will executed on a scheduled job
+          trigger. The function takes 3 input parameters - a job ID, a root directory and a file name</p></li>
+        <li><p><span class="hi-yellow">reschedule_job(...)</span> :: is the method that updates the job trigger for the specified
+          job ID. When the file is not found, the job trigger is adjusted to be run more frequent, while on success reverts to the
+          original schedule</p></li>
+        <li><p><span class="hi-yellow">add_job(...)</span> :: is the method that adds the specified job to a job list for execution.
+          Notice that it uses a cron job trigger (<span class="hi-blue">trigger='cron'</span>) which will execute all weekdays
+          (<span class="hi-blue">day_of_week='mon-fri'</span>) at every minute (<span class="hi-blue">minute='*/1'</span>) in the
+          EST timezone</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To test our the Python scheduler application, execute the following command in the venv terminal window and wait for about
+        a minute or so:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ python3 sample-4.py</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>INFO 2022-09-04 20:32:41,726 - Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO 2022-09-04 20:32:41,733 - Added job "task" to job store "default"
+INFO 2022-09-04 20:32:41,733 - Scheduler started
+Jobstore default:
+    task (trigger: cron[day_of_week='mon-fri', minute='*/1'], next run at: 2022-09-04 20:33:00 EDT)
+INFO 2022-09-04 20:33:00,008 - Running job "task (trigger: cron[day_of_week='mon-fri', minute='*/1'], next run at: 2022-09-04 20:33:00 EDT)" (scheduled at 2022-09-04 20:33:00-04:00)
+INFO 2022-09-04 20:33:00,009 - Started [sample-4] task...
+ERROR 2022-09-04 20:33:02,011 - Job "task (trigger: cron[day_of_week='mon-fri', minute='*/1'], next run at: 2022-09-04 20:34:00 EDT)" raised an exception
+Traceback (most recent call last):
+  File "/home/alice/APScheduler/venv/lib/python3.10/site-packages/apscheduler/executors/base.py", line 125, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "/home/alice/APScheduler/sample-4.py", line 31, in task
+    raise FileNotFoundError
+FileNotFoundError
+ERROR 2022-09-04 20:33:02,012 - *** The job [sample-4] encountered exception !!!
+Jobstore default:
+    task (trigger: interval[0:00:15], next run at: 2022-09-04 20:33:17 EDT)
+INFO 2022-09-04 20:33:17,017 - Running job "task (trigger: interval[0:00:15], next run at: 2022-09-04 20:33:32 EDT)" (scheduled at 2022-09-04 20:33:17.013184-04:00)
+INFO 2022-09-04 20:33:17,018 - Started [sample-4] task...
+ERROR 2022-09-04 20:33:19,020 - Job "task (trigger: interval[0:00:15], next run at: 2022-09-04 20:33:32 EDT)" raised an exception
+Traceback (most recent call last):
+  File "/home/alice/APScheduler/venv/lib/python3.10/site-packages/apscheduler/executors/base.py", line 125, in run_job
+    retval = job.func(*job.args, **job.kwargs)
+  File "/home/alice/APScheduler/sample-4.py", line 31, in task
+    raise FileNotFoundError
+FileNotFoundError
+ERROR 2022-09-04 20:33:19,021 - *** The job [sample-4] encountered exception !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>Open another terminal window and execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd /tmp</p>
+      <p>$ &gt; dummy.dat</p>
+    </div>
+    <div id="para-div">
+      <p>Wait for a few seconds and then press CTRL-C on the terminal running sample-4.py and we will observe the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>INFO 2022-09-04 20:33:34,025 - Running job "task (trigger: interval[0:00:15], next run at: 2022-09-04 20:33:49 EDT)" (scheduled at 2022-09-04 20:33:34.021253-04:00)
+INFO 2022-09-04 20:33:34,026 - Started [sample-4] task...
+INFO 2022-09-04 20:33:36,028 - Completed [sample-4] task !!!
+INFO 2022-09-04 20:33:36,028 - Job "task (trigger: interval[0:00:15], next run at: 2022-09-04 20:33:49 EDT)" executed successfully
+INFO 2022-09-04 20:33:36,028 - The job [sample-4] succeed.
+Jobstore default:
+    task (trigger: cron[day_of_week='mon-fri', minute='*/1'], next run at: 2022-09-04 20:34:00 EDT)
+&lt;CTRL-C&gt;
+INFO 2022-09-04 20:33:46,254 - Removed job sample-4
+INFO 2022-09-04 20:33:46,254 - Scheduler has been shut down</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the link to the <span class="bold">Github Repo</span> that provides all the code samples from this article:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><a href="https://github.com/bhaskars-repo/APScheduler" target="_blank"><span class="bold">APScheduler</span></a></p></li>
+      </ul>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://apscheduler.readthedocs.io/en/3.x/" target="_blank"><span class="bold">Advanced Python Scheduler Documentation</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

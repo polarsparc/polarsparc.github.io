@@ -1,0 +1,641 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Exploring Kafka Streams :: Part 2">
+    <meta name="subject" content="Exploring Kafka Streams :: Part 2">
+    <meta name="keywords" content="java, kafka">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Exploring Kafka Streams :: Part 2</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Exploring Kafka Streams :: Part 2</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">11/21/2021</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a target="_blank" href="https://polarsparc.github.io/KafkaStreams/KafkaStreams-1.html"><span class="hi-yellow">Part
+        1</span></a>, we setup the <span class="bold">Kafka Streams</span> environment and dipped our toes to explore two simple
+        examples in Java.</p>
+      <p>In this part of the series, we will start to dig in a little deeper into <span class="bold">Kafka Streams</span>.</p>
+    </div>
+    <div id="section-div">
+      <p>Kafka Streams Concepts</p>
+    </div>
+    <div id="step-div">
+      <p>Stream Tasks and Threads</p>
+    </div>
+    <div id="para-div">
+      <p>A <span class="bold">Kafka Streams</span> topology is nothing more than a directed acyclic graph (DAG) with a Source
+        processor, a set of Stream processors (that perform the various data transformations), and a terminal Sink processor.</p>
+      <p>Each data event consumed from a Kafka topic partition is processed by a <span class="hi-yellow">Stream Task</span>. Each
+        stream task is actually executed by a <span class="hi-yellow">Stream Thread</span>.</p>
+      <p>A stream task is the smallest atomic unit of work in a <span class="bold">Kafka Streams</span> application that processes
+        the topology. The number of partitions in a Kafka topic controls the number of stream tasks. For example, if a Kafka topic
+        has 2 partitions, the <span class="bold">Kafka Streams</span> application will have 2 stream tasks.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration depicts the concept of partitions, tasks, and threads in a <span class="bold">Kafka Streams</span>
+        application:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div">
+      <img class="img-cls" src="./images/kstreams-03.png" alt="Tasks and Threads" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In other words, the maximum parallelism in a <span class="bold">Kafka Streams</span> application depends on the number of
+        partitions in the source topic(s) the source processor is consuming from. The number partitions in the source topic(s)
+        in-turn determines the number of stream tasks.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are 3 ways to maximize throughput of a <span class="bold">Kafka Streams</span> application consuming data
+        events from N partitions:</p>
+      <ul id="blue-sqr-ul">
+        <li><p>Run N instances of the application each with a single stream thread</p></li>
+        <li><p>Run a single instance of the application with N stream threads</p></li>
+        <li><p>Run m (when m &lt; N) instances of the application, each with p = (N - m)/m stream threads</p></li>
+      </ul>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Kafka Streams</p>
+    </div>
+    <div id="para-div">
+      <p>We will update the Java utility class <span class="bold">KafkaConsumerConfig</span> from the <span class="hi-bold">Common</span>
+        module located in the directory <span class="hi-bold">$HOME/java/KafkaStreams/Common</span> to add a new convenience method
+        as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.1</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Kafka Consumer Configuration
+ * Author: Bhaskar S
+ * Date:   11/10/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.kstreams;
+
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.StreamsConfig;
+
+import java.util.Properties;
+
+public final class KafkaConsumerConfig {
+    public static Properties kafkaConfigurationOne(String appId) {
+        Properties config = new Properties();
+
+        config.put(StreamsConfig.APPLICATION_ID_CONFIG, appId);
+        config.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:20001");
+        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        config.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+        config.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+
+        return config;
+    }
+
+    public static Properties kafkaConfigurationTwo(String appId, int numThr) {
+        Properties config = kafkaConfigurationOne(appId);
+
+        config.put(StreamsConfig.NUM_STREAM_THREADS_CONFIG, numThr);
+
+        return config;
+    }
+
+    private KafkaConsumerConfig() {}
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The property <span class="hi-blue">StreamsConfig.NUM_STREAM_THREADS_CONFIG</span> allows one to configure the number of
+        threads used for processing the data events from the different partitions of the input Kafka topic.</p>
+    </div>
+    <div id="para-div">
+      <p>Since we modified the Common module, we need to once again compile and deploy the Common module so that the other Java
+        modules can use it. To do that, open a terminal window and run the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ $HOME/java/KafkaStreams/Common</p>
+      <p>$ mvn clean install</p>
+    </div>
+    <div id="step-div">
+      <p>Second Application</p>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">Second</span> module, we will demonstrate a STATELESS <span class="bold">Kafka Streams</span>
+        application to consume data events from the multi-partition Kafka topic <span class="bold">coffee-flavors</span> to demonstrate
+        the concept of stream tasks and stream threads. Each event will be in the form <span class="hi-grey">user:flavor</span>, where
+        'user' is the key and 'flavor' is the value.</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the Second application, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/KafkaStreams</p>
+      <p>$ mkdir -p $HOME/java/KafkaStreams/Second</p>
+      <p>$ mkdir -p Second/src/main/java Second/src/main/resources Second/target</p>
+      <p>$ mkdir -p Second/src/main/java/com/polarsparc/kstreams</p>
+      <p>$ cd $HOME/java/KafkaStreams/Second</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span> that
+        will be used:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;parent&gt;
+        &lt;artifactId&gt;KafkaStreams&lt;/artifactId&gt;
+        &lt;groupId&gt;com.polarsparc.kstreams&lt;/groupId&gt;
+        &lt;version&gt;1.0&lt;/version&gt;
+    &lt;/parent&gt;
+
+    &lt;artifactId&gt;Second&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;artifactId&gt;Common&lt;/artifactId&gt;
+            &lt;groupId&gt;com.polarsparc.kstreams&lt;/groupId&gt;
+            &lt;version&gt;1.0&lt;/version&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We need to modify the <span class="hi-grey">&lt;modules&gt;</span> section in the parent <span class="bold">pom.xml</span>
+        to include the <span class="bold">Second</span> module as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml (parent)</div>
+      <div class="src-body-1">
+<pre>&lt;modules&gt;
+  &lt;module&gt;Common&lt;/module&gt;
+  &lt;module&gt;First&lt;/module&gt;
+  &lt;module&gt;Second&lt;/module&gt;
+&lt;/modules&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Java based STATELESS <span class="bold">Kafka Streams</span> application that consumes and processes
+        events from the Kafka topic <span class="bold">coffee-flavors</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.2</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Coffee Flavors (Stateless)
+ * Author: Bhaskar S
+ * Date:   11/20/2021
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.kstreams;
+
+import org.apache.kafka.common.serialization.Serde;
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.kstream.KStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+import java.util.Set;
+
+public class CoffeeFlavorsStateless {
+    private static final String COFFEE_FLAVORS = "coffee-flavors";
+
+    public static void main(String[] args) {
+        if (args.length != 1) {
+            System.out.printf("Usage: java %s &lt;1 or 2&gt;\n", CoffeeFlavorsStateless.class.getName());
+            System.exit(1);
+        }
+
+        int numThreads = 1;
+        if (args[0].equals("2")) {
+            numThreads = 2;
+        }
+
+        Logger log = LoggerFactory.getLogger(CoffeeFlavorsStateless.class.getName());
+
+        Set&lt;String&gt; flavorSet = Set.copyOf(Arrays.asList("caramel", "hazelnut", "mocha", "peppermint"));
+
+        log.info(String.format("---> Num of stream threads: %d", numThreads));
+
+        StreamsConfig config = new StreamsConfig(KafkaConsumerConfig.kafkaConfigurationTwo(
+                "coffee-flavor-1", numThreads));
+
+        Serde&lt;String&gt; stringSerde = Serdes.String();
+
+        StreamsBuilder builder = new StreamsBuilder();
+
+        KStream&lt;String, String&gt; stream = builder.stream(COFFEE_FLAVORS, Consumed.with(stringSerde, stringSerde));
+
+        stream.peek((user, flavor) -> log.info(String.format("---> [Start] User: %s, Flavor: %s", user, flavor)))
+                .map((user, flavor) -> KeyValue.pair(user.toLowerCase(), flavor.toLowerCase()))
+                .filter((user, flavor) -> flavorSet.contains(flavor))
+                .map((user, flavor) -> KeyValue.pair(flavor, user))
+                .foreach((flavor, user) -> log.info(String.format("---> [Final] %s - %s", flavor, user)));
+
+        KafkaStreams streams = new KafkaStreams(builder.build(), config);
+        streams.start();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(streams::close));
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The code from <span class="bold">Listing.2</span> above needs some explanation:</p>
+      <p>The class <span class="hi-yellow">org.apache.kafka.streams.StreamsConfig</span> allows one to encapsulate the various
+        configuration options for the <span class="bold">Kafka Streams</span> application.</p>
+      <p>The interface <span class="hi-yellow">org.apache.kafka.common.serialization.Serde&lt;T&gt;</span> is an abstraction for
+        the serialization and the deserialization of an object of type T.</p>
+      <p>The class <span class="hi-yellow">org.apache.kafka.streams.kstream.Consumed</span> allows one to configure parameters
+        related to <span class="bold">Kafka Streams</span> such as the key and value serdes.</p>
+      <p>The DSL method <span class="hi-yellow">peek(ACTOR)</span> allows one to apply the given ACTOR function on each of the
+        incoming data events.</p>
+    </div>
+    <div id="para-div">
+      <p>Before we proceed further, let us take a peek at the current state of Kafka data directory. Open a terminal window and
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>ls -l $HOME/kafka/data/</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>-rw-r--r-- 1 polarsparc polarsparc    0 Nov 14 14:39 cleaner-offset-checkpoint
+-rw-r--r-- 1 polarsparc polarsparc    4 Nov 14 14:41 log-start-offset-checkpoint
+-rw-r--r-- 1 polarsparc polarsparc   88 Nov 14 14:39 meta.properties
+-rw-r--r-- 1 polarsparc polarsparc    4 Nov 14 14:41 recovery-point-offset-checkpoint
+-rw-r--r-- 1 polarsparc polarsparc   21 Nov 14 14:41 replication-offset-checkpoint
+drwxr-xr-x 2 polarsparc polarsparc 4096 Nov 14 14:41 survey-event-0</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, we need to create the Kafka topic <span class="bold">coffee-flavors</span> with 2 partitions using docker by executing
+        the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>docker run --rm --net=host confluentinc/cp-kafka:7.0.0 kafka-topics --create --topic coffee-flavors --partitions 2 --replication-factor 1 --if-not-exists --bootstrap-server localhost:20001</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Created topic coffee-flavors.</pre>
+    </div>
+    <div id="para-div">
+      <p>Once again, let us take a peek at the current state of Kafka data directory by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>ls -l $HOME/kafka/data/</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>-rw-r--r-- 1 polarsparc polarsparc    0 Nov 20 15:21 cleaner-offset-checkpoint
+drwxr-xr-x 2 polarsparc polarsparc 4096 Nov 20 14:48 coffee-flavors-0
+drwxr-xr-x 2 polarsparc polarsparc 4096 Nov 20 14:48 coffee-flavors-1
+-rw-r--r-- 1 polarsparc polarsparc    4 Nov 20 14:48 log-start-offset-checkpoint
+-rw-r--r-- 1 polarsparc polarsparc   88 Nov 20 14:39 meta.properties
+-rw-r--r-- 1 polarsparc polarsparc   59 Nov 20 14:48 recovery-point-offset-checkpoint
+-rw-r--r-- 1 polarsparc polarsparc   59 Nov 20 14:48 replication-offset-checkpoint
+drwxr-xr-x 2 polarsparc polarsparc 4096 Nov 14 14:39 survey-event-0</pre>
+    </div>
+    <div id="para-div">
+      <p>Notice the creation of 2 new sub-directories - <span class="hi-grey">coffee-flavors-0</span> and <span class="hi-grey">
+        coffee-flavors-1</span>.</p>
+      <p>Each Kafka topic (along with the specified number of partitions) will map to a sub-directory under the specified Kafka data
+        directory. In our example, we specified 2 partitions for the Kafka topic <span class="bold">coffee-flavors</span> and hence
+        the 2 sub-directories. Each sub-directory will have the format: <span class="hi-grey">[topic_name]-[partition_number]</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the details of the Kafka topic <span class="bold">coffee-flavors</span> using docker, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>docker run --rm --net=host confluentinc/cp-kafka:7.0.0 kafka-topics --bootstrap-server localhost:20001 --describe --topic coffee-flavors</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>Topic: coffee-flavors	TopicId: lnu40VHKQcCLkAVU_jYgTQ	PartitionCount: 2	ReplicationFactor: 1	Configs: 
+        Topic: coffee-flavors	Partition: 0	Leader: 1	Replicas: 1	Isr: 1
+        Topic: coffee-flavors	Partition: 1	Leader: 1	Replicas: 1	Isr: 1</pre>
+    </div>
+    <div id="para-div">
+      <p>Now is time to test the code from <span class="bold">Listing.2</span>. To do that, open a terminal window and execute the
+        following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ $HOME/java/KafkaStreams/Second</p>
+      <p>$ mvn clean compile</p>
+      <p>$ mvn exec:java -Dexec.mainClass=com.polarsparc.kstreams.CoffeeFlavorsStateless -Dexec.args="1"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>[com.polarsparc.kstreams.CoffeeFlavorsStateless.main()] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> Num of stream threads: 1
+[com.polarsparc.kstreams.CoffeeFlavorsStateless.main()] INFO org.apache.kafka.streams.StreamsConfig - StreamsConfig values: 
+  acceptable.recovery.lag = 10000
+  application.id = coffee-flavor-1
+  application.server = 
+  bootstrap.servers = [localhost:20001]
+  buffered.records.per.partition = 1000
+  built.in.metrics.version = latest
+  cache.max.bytes.buffering = 10485760
+  client.id = 
+  commit.interval.ms = 1000
+... SNIP ...
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] Starting
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] State transition from CREATED to STARTING
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.clients.consumer.KafkaConsumer - [Consumer clientId=coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1-consumer, groupId=coffee-flavor-1] Subscribed to topic(s): coffee-flavors
+[kafka-producer-network-thread | coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1-producer] INFO org.apache.kafka.clients.Metadata - [Producer clientId=coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1-producer] Cluster ID: l1aQqd95S_eYrvs07bW0MQ
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] Processed 0 total records, ran 0 punctuators, and committed 0 total tasks since the last update
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1-consumer, groupId=coffee-flavor-1] Cluster ID: l1aQqd95S_eYrvs07bW0MQ
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1-consumer, groupId=coffee-flavor-1] Discovered group coordinator localhost:20001 (id: 2147483646 rack: null)
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1-consumer, groupId=coffee-flavor-1] (Re-)joining group
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1-consumer, groupId=coffee-flavor-1] Request joining group due to: need to re-join with the given member-id
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1-consumer, groupId=coffee-flavor-1] (Re-)joining group
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1-consumer, groupId=coffee-flavor-1] Successfully joined group with generation Generation{generationId=1, memberId='coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1-consumer-548ed399-6a56-46dd-a41d-c90471b94d1c', protocol='stream'}
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamsPartitionAssignor - stream-thread [coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1-consumer] All members participating in this rebalance: 
+b6dff517-c409-4e50-9da9-195debedc9e3: [coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1-consumer-548ed399-6a56-46dd-a41d-c90471b94d1c].
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.assignment.HighAvailabilityTaskAssignor - Decided on assignment: {b6dff517-c409-4e50-9da9-195debedc9e3=[activeTasks: ([0_0, 0_1]) standbyTasks: ([]) prevActiveTasks: ([]) prevStandbyTasks: ([]) changelogOffsetTotalsByTask: ([]) taskLagTotals: ([]) capacity: 1 assigned: 2]} with no followup probing rebalance.
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamsPartitionAssignor - stream-thread [coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1-consumer] Assigned tasks [0_1, 0_0] including stateful [] to clients as: 
+b6dff517-c409-4e50-9da9-195debedc9e3=[activeTasks: ([0_0, 0_1]) standbyTasks: ([])].
+... SNIP ...
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1-consumer, groupId=coffee-flavor-1] Updating assignment with
+  Assigned partitions:                       [coffee-flavors-0, coffee-flavors-1]
+  Current owned partitions:                  []
+  Added partitions (assigned - owned):       [coffee-flavors-0, coffee-flavors-1]
+  Revoked partitions (owned - assigned):     []
+... SNIP ...
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] Restoration took 51 ms for all tasks [0_0, 0_1]
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] State transition from PARTITIONS_ASSIGNED to RUNNING
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.streams.KafkaStreams - stream-client [coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3] State transition from REBALANCING to RUNNING
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.clients.consumer.KafkaConsumer - [Consumer clientId=coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1-consumer, groupId=coffee-flavor-1] Requesting the log end offset for coffee-flavors-0 in order to compute lag
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.clients.consumer.KafkaConsumer - [Consumer clientId=coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1-consumer, groupId=coffee-flavor-1] Requesting the log end offset for coffee-flavors-1 in order to compute lag
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] Processed 0 total records, ran 0 punctuators, and committed 0 total tasks since the last update</pre>
+    </div>
+    <div id="para-div">
+      <p>Notice the name of the thread in the log lines - they all end with the suffix <span class="hi-blue">StreamThread-1</span>
+        indicating there is one stream thread.</p>
+      <p>Next, look at the line that ends with <span class="hi-yellow">[activeTasks: ([0_0, 0_1]) standbyTasks: ([])]</span>. This
+        indicates there are 2 stream tasks (each corresponding to a topic partition) in the <span class="bold">Kafka Streams</span>
+        application, which matches what we indicated in the concepts section above.</p>
+      <p>Finally, look at the line with <span class="hi-yellow">Assigned partitions: [coffee-flavors-0, coffee-flavors-1]</span>.
+        This implies that the single stream thread is executing both the stream tasks that corresponds to the 2 topic partitions.</p>
+    </div>
+    <div id="para-div">
+      <p>We need to publish some events to the Kafka topic <span class="bold">coffee-flavors</span>. Open a terminal window and run
+        the Kafka console publisher using the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -it --rm --net=host confluentinc/cp-kafka:7.0.0 kafka-console-producer --bootstrap-server localhost:20001 --property key.separator=, --property parse.key=true --request-required-acks 1 --topic coffee-flavors</p>
+    </div>
+    <div id="para-div">
+      <p>The prompt will change to <span class="hi-red">&gt;</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Enter the following events:</p>
+    </div>
+    <div id="cmd-div">
+      <p>&gt;Alice,Caramel</p>
+      <p>&gt;Bob,Mocha</p>
+      <p>&gt;Charlie,Hazelnut</p>
+      <p>&gt;Eva,Peppermint</p>
+      <p>&gt;Frank,Mocha</p>
+      <p>&gt;George,Caramel</p>
+      <p>&gt;Harry,Mocha</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the additional output in the terminal running the application from Listing.2 above:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] Processed 0 total records, ran 0 punctuators, and committed 0 total tasks since the last update
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Start] User: Alice, Flavor: Caramel
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Final] caramel - alice
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Start] User: Bob, Flavor: Mocha
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Final] mocha - bob
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Start] User: Charlie, Flavor: Hazelnut
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Final] hazelnut - charlie
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Start] User: Eva, Flavor: Peppermint
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Final] peppermint - eva
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] Processed 4 total records, ran 0 punctuators, and committed 4 total tasks since the last update
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Start] User: Frank, Flavor: Mocha
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Final] mocha - frank
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Start] User: George, Flavor: Caramel
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Final] caramel - george
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Start] User: Harry, Flavor: Mocha
+[coffee-flavor-1-b6dff517-c409-4e50-9da9-195debedc9e3-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Final] mocha - harry</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, stop the application from Listing.2 above that is running in the terminal by pressing CTRL-C.</p>
+    </div>
+    <div id="para-div">
+      <p>Given that the recent run of our application from Listing.2 above consumed all the messages (data events) from the specific
+        Kafka topic, we need to reset the topic offset (corresponding to our application id) back to the beginning so thet we can
+        re-run our application and consume the same messages again. To do that using docker, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>docker run --rm --net=host confluentinc/cp-kafka:7.0.0 kafka-streams-application-reset --bootstrap-servers localhost:20001 --application-id coffee-flavor-1 --input-topics coffee-flavors --to-earliest</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>Reset-offsets for input topics [coffee-flavors]
+Following input topics offsets will be reset to (for consumer group coffee-flavor-1)
+Topic: coffee-flavors Partition: 0 Offset: 0
+Topic: coffee-flavors Partition: 1 Offset: 0
+Done.
+Deleting inferred internal topics []
+Done.</pre>
+    </div>
+    <div id="para-div">
+      <p>To re-run the code from <span class="bold">Listing.2</span>, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ $HOME/java/KafkaStreams/Second</p>
+      <p>$ mvn exec:java -Dexec.mainClass=com.polarsparc.kstreams.CoffeeFlavorsStateless -Dexec.args="2"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>[com.polarsparc.kstreams.CoffeeFlavorsStateless.main()] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> Num of stream threads: 2
+[com.polarsparc.kstreams.CoffeeFlavorsStateless.main()] INFO org.apache.kafka.streams.StreamsConfig - StreamsConfig values: 
+  acceptable.recovery.lag = 10000
+  application.id = coffee-flavor-1
+  application.server = 
+  bootstrap.servers = [localhost:20001]
+  buffered.records.per.partition = 1000
+  built.in.metrics.version = latest
+  cache.max.bytes.buffering = 10485760
+  client.id = 
+  commit.interval.ms = 1000
+... SNIP ...
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] Starting
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] Starting
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] State transition from CREATED to STARTING
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] State transition from CREATED to STARTING
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.clients.consumer.KafkaConsumer - [Consumer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1-consumer, groupId=coffee-flavor-1] Subscribed to topic(s): coffee-flavors
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO org.apache.kafka.clients.consumer.KafkaConsumer - [Consumer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2-consumer, groupId=coffee-flavor-1] Subscribed to topic(s): coffee-flavors
+[kafka-producer-network-thread | coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2-producer] INFO org.apache.kafka.clients.Metadata - [Producer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2-producer] Cluster ID: l1aQqd95S_eYrvs07bW0MQ
+[kafka-producer-network-thread | coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1-producer] INFO org.apache.kafka.clients.Metadata - [Producer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1-producer] Cluster ID: l1aQqd95S_eYrvs07bW0MQ
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1-consumer, groupId=coffee-flavor-1] Cluster ID: l1aQqd95S_eYrvs07bW0MQ
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2-consumer, groupId=coffee-flavor-1] Cluster ID: l1aQqd95S_eYrvs07bW0MQ
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1-consumer, groupId=coffee-flavor-1] Discovered group coordinator localhost:20001 (id: 2147483646 rack: null)
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2-consumer, groupId=coffee-flavor-1] Discovered group coordinator localhost:20001 (id: 2147483646 rack: null)
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2-consumer, groupId=coffee-flavor-1] (Re-)joining group
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1-consumer, groupId=coffee-flavor-1] (Re-)joining group
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] Processed 0 total records, ran 0 punctuators, and committed 0 total tasks since the last update
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] Processed 0 total records, ran 0 punctuators, and committed 0 total tasks since the last update
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1-consumer, groupId=coffee-flavor-1] Request joining group due to: need to re-join with the given member-id
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2-consumer, groupId=coffee-flavor-1] Request joining group due to: need to re-join with the given member-id
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1-consumer, groupId=coffee-flavor-1] (Re-)joining group
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2-consumer, groupId=coffee-flavor-1] (Re-)joining group
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1-consumer, groupId=coffee-flavor-1] Successfully joined group with generation Generation{generationId=8, memberId='coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1-consumer-1ebb54b4-89aa-450f-be82-a556601a0461', protocol='stream'}
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamsPartitionAssignor - stream-thread [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1-consumer] All members participating in this rebalance: 
+941a845d-b16e-4f2a-90f8-38868aaa16c8: [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1-consumer-1ebb54b4-89aa-450f-be82-a556601a0461].
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.assignment.HighAvailabilityTaskAssignor - Decided on assignment: {941a845d-b16e-4f2a-90f8-38868aaa16c8=[activeTasks: ([0_0, 0_1]) standbyTasks: ([]) prevActiveTasks: ([]) prevStandbyTasks: ([]) changelogOffsetTotalsByTask: ([]) taskLagTotals: ([]) capacity: 1 assigned: 2]} with no followup probing rebalance.
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamsPartitionAssignor - stream-thread [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1-consumer] Assigned tasks [0_1, 0_0] including stateful [] to clients as: 
+941a845d-b16e-4f2a-90f8-38868aaa16c8=[activeTasks: ([0_0, 0_1]) standbyTasks: ([])].
+... SNIP ...
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2-consumer, groupId=coffee-flavor-1] Updating assignment with
+  Assigned partitions:                       [coffee-flavors-1]
+  Current owned partitions:                  []
+  Added partitions (assigned - owned):       [coffee-flavors-1]
+  Revoked partitions (owned - assigned):     []
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1-consumer, groupId=coffee-flavor-1] Updating assignment with
+  Assigned partitions:                       [coffee-flavors-0]
+  Current owned partitions:                  []
+  Added partitions (assigned - owned):       [coffee-flavors-0]
+  Revoked partitions (owned - assigned):     []
+... SNIP ...
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO org.apache.kafka.streams.processor.internals.TaskManager - stream-thread [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] Handle new assignment with:
+  New active tasks: [0_1]
+  New standby tasks: []
+  Existing active tasks: []
+  Existing standby tasks: []
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.TaskManager - stream-thread [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] Handle new assignment with:
+  New active tasks: [0_0]
+  New standby tasks: []
+  Existing active tasks: []
+  Existing standby tasks: []
+... SNIP ...
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO org.apache.kafka.streams.processor.internals.StreamTask - stream-thread [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] task [0_1] Restored and ready to run
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamTask - stream-thread [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] task [0_0] Restored and ready to run
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] Restoration took 31 ms for all tasks [0_1]
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] Restoration took 31 ms for all tasks [0_0]
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] State transition from PARTITIONS_ASSIGNED to RUNNING
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.streams.processor.internals.StreamThread - stream-thread [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] State transition from PARTITIONS_ASSIGNED to RUNNING
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.streams.KafkaStreams - stream-client [coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8] State transition from REBALANCING to RUNNING
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO org.apache.kafka.clients.consumer.KafkaConsumer - [Consumer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2-consumer, groupId=coffee-flavor-1] Requesting the log end offset for coffee-flavors-1 in order to compute lag
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO org.apache.kafka.clients.consumer.KafkaConsumer - [Consumer clientId=coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1-consumer, groupId=coffee-flavor-1] Requesting the log end offset for coffee-flavors-0 in order to compute lag
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Start] User: Charlie, Flavor: Hazelnut
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Start] User: Alice, Flavor: Caramel
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Final] hazelnut - charlie
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Final] caramel - alice
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Start] User: Eva, Flavor: Peppermint
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Start] User: Bob, Flavor: Mocha
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Final] peppermint - eva
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Final] mocha - bob
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Start] User: George, Flavor: Caramel
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Start] User: Frank, Flavor: Mocha
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Final] caramel - george
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-2] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Final] mocha - frank
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Start] User: Harry, Flavor: Mocha
+[coffee-flavor-1-941a845d-b16e-4f2a-90f8-38868aaa16c8-StreamThread-1] INFO com.polarsparc.kstreams.CoffeeFlavorsStateless - ---> [Final] mocha - harry</pre>
+    </div>
+    <div id="para-div">
+      <p>Notice the name of the threads in the log lines - they all end with the suffix <span class="hi-blue">StreamThread-1</span>
+        and <span class="hi-blue">StreamThread-2</span> respectively, indicating there are two stream threads in the application.</p>
+      <p>Next, look at the line <span class="hi-yellow">Assigned partitions: [coffee-flavors-1]</span> - we see it assigned to the
+        stream thread <span class="bold">StreamThread-2</span>. Similarly, look at the line <span class="hi-yellow">Assigned partitions:
+        [coffee-flavors-0]</span> - it is assigned to the stream thread <span class="bold">StreamThread-1</span>. This is related to
+        the concept of <span class="hi-purple">Rebalancing</span>. The process of adding and/or removing topic partitions to the
+        application consumer(s) is called <span class="bold">Rebalancing</span>. The assignment of partitions to consumer(s) is dynamic
+        in nature. When consumer(s) are added to the same application id, some of the current partition assignments are taken from
+        currently active consumer(s) and redistributed to the newly added consumer(s).</p>
+      <p>Finally, look at the line with <span class="hi-yellow">task [0_1] Restored and ready to run</span> - we see the associated
+        task corresponding with the stream thread <span class="bold">StreamThread-2</span>. Similarly, look at the line with
+        <span class="hi-yellow">task [0_0] Restored and ready to run</span> - we see the associated task corresponding with the
+        stream thread <span class="bold">StreamThread-1</span>.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://polarsparc.github.io/KafkaStreams/KafkaStreams-1.html"><span class="bold">Exploring Kafka Streams :: Part 1</span></a></p>
+      <p><a target="_blank" href="https://docs.confluent.io/platform/current/streams/developer-guide/index.html#streams-developer-guide"><span class="bold">Kafka Streams Developer Guide</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
