@@ -1,0 +1,1476 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Hands-on MongoDB :: Part-3">
+    <meta name="subject" content="Hands-on MongoDB :: Part-3">
+    <meta name="keywords" content="mongodb, nosql, java, spring boot">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Hands-on MongoDB :: Part-3</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Hands-on MongoDB :: Part-3</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">02/06/2021 (<span class="hi-yellow">NEW</span>)</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Introduction</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/MongoDB/MongoDB-1.html" target="_blank"><span class="bold">Part-1</span></a>, we setup
+        the high-availability 3-node cluster using <span class="bold">Docker</span> and got our hands dirty with MongoDB by using the
+        <span class="bold">mongo</span> command-line interface.</p>
+      <p>In <a href="https://polarsparc.github.io/MongoDB/MongoDB-2.html" target="_blank"><span class="bold">Part-2</span></a>, we got to
+        demonstrate the same set of operations on MongoDB using the programming language drivers for <span class="bold">Java</span>
+        and <span class="bold">Python</span>.</p>
+      <p>Currently, a majority of Enterprise Java applications are developed using <span class="hi-yellow">Spring Boot</span>. In
+        this article, we will demonstrate the same set of operations on MongoDB using <span class="bold">Spring Boot</span> with
+        <span class="bold">Java</span>.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with MongoDB using Spring Boot</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the demonstrations, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME</p>
+      <p>$ mkdir -p java/springboot/mongodb</p>
+      <p>$ cd $HOME/java/springboot/mongodb</p>
+      <p>$ mkdir -p src/main/java src/main/resources target</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/mongodb</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/mongodb/dao src/main/java/com/polarsparc/mongodb/dao/impl</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/mongodb/model</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/mongodb/repository</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/mongodb/service src/main/java/com/polarsparc/mongodb/service/impl</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/mongodb/util</p>
+    </div>
+    <div id="para-div">
+      <p>For the Spring Boot based demonstration, we will leverage <span class="bold">Maven</span> to manage the build as well as the
+        package dependencies.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Maven <span class="hi-yellow">pom.xml</span> file located in the directory <span class="bold">
+        $HOME/java/mongodb</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;parent&gt;
+        &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+        &lt;artifactId&gt;spring-boot-starter-parent&lt;/artifactId&gt;
+        &lt;version&gt;2.4.2&lt;/version&gt;
+        &lt;relativePath/&gt; &lt;!-- lookup parent from repository --&gt;
+    &lt;/parent&gt;
+
+    &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+    &lt;artifactId&gt;mongodb&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+    &lt;name&gt;mongodb&lt;/name&gt;
+    &lt;description&gt;MongoDB with Spring Boot&lt;/description&gt;
+
+    &lt;properties&gt;
+        &lt;java.version&gt;11&lt;/java.version&gt;
+    &lt;/properties&gt;
+
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-boot-starter-data-mongodb&lt;/artifactId&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.projectlombok&lt;/groupId&gt;
+            &lt;artifactId&gt;lombok&lt;/artifactId&gt;
+            &lt;optional&gt;true&lt;/optional&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-boot-starter-test&lt;/artifactId&gt;
+            &lt;scope&gt;test&lt;/scope&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+
+    &lt;build&gt;
+        &lt;plugins&gt;
+            &lt;plugin&gt;
+                &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+                &lt;artifactId&gt;spring-boot-maven-plugin&lt;/artifactId&gt;
+            &lt;/plugin&gt;
+        &lt;/plugins&gt;
+    &lt;/build&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are the contents of the Spring Boot application properties file called
+        <span class="hi-blue">application.properties</span>, which defines the logging level and the MongoDB primary node url:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">application.properties</div>
+      <div class="src-body-1">
+      <pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   06 Feb 2021
+#
+
+logging.level.root=INFO
+
+spring.data.mongodb.uri=mongodb://192.168.1.53:5001/mydb</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>Each <span class="bold">contact</span> document has embedded within it an <span class="bold">email</span> sub-document and
+        a <span class="bold">mobile</span> sub-document. We will represent each of the sub-documents and the main document as Java
+        POJOs located in the directory <span class="bold">src/main/java/com/polarsparc/mongodb/model</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java POJO <span class="hi-blue">Email.java</span> that represents the <span class="bold">
+        email</span> sub-document:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Email.java</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   06 Feb 2021
+*/
+
+package com.polarsparc.mongodb.model;
+
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@ToString
+public class Email {
+    private String personal;
+    private String work;
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="info-div">
+      <h4>!!! NOTE !!!</h4>
+      <pre>We use the popular Java library from <a href="https://projectlombok.org/" target="_blank"><span class="bold">Project Lombok</span></a> to minimize the boilerplate code for constructors, getters, setters, and toString methods</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the annotations used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">@Getter</span> :: generates the accessor method(s) for all the member fields of the class</p>
+        </li>
+        <li>
+          <p><span class="bold">@Setter</span> :: generates the mutator method(s) for all the member fields of the class</p>
+        </li>
+        <li>
+          <p><span class="bold">@NoArgsConstructor</span> :: generates the default no-argumnent constructor for the class</p>
+        </li>
+        <li>
+          <p><span class="bold">@ToString</span> :: generates the toString() method for the class that includes all the member
+            fields of the class</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java POJO <span class="hi-blue">Mobile.java</span> that represents the <span class="bold">
+        mobile</span> sub-document:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Mobile.java</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   06 Feb 2021
+*/
+
+package com.polarsparc.mongodb.model;
+
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@ToString
+public class Mobile {
+    private String personal;
+    private String work;
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java POJO <span class="hi-blue">Contact.java</span> that represents the main document
+        <span class="bold">contact</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Contact.java</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   06 Feb 2021
+*/
+
+package com.polarsparc.mongodb.model;
+
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.mapping.Field;
+
+@Document(collection = "contacts")
+@Getter
+@Setter
+@NoArgsConstructor
+@ToString
+public class Contact {
+    @Id private String _id;
+
+    @Field("first")
+    private String firstName;
+    @Field("middle")
+    private String middleName;
+    @Field("last")
+    private String lastName;
+
+    private Email email;
+    private Mobile mobile;
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the annotations used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">@Document</span> :: indicates the class as being the representation for a document that is to be
+            persisted to the MongoDB collection called <span class="bold">contacts</span></p>
+        </li>
+        <li>
+          <p><span class="bold">@Id</span> :: indicates the field member in the class as a representation for the primary key
+            <span class="bold">_id</span> of the MongoDB document</p>
+        </li>
+        <li>
+          <p><span class="bold">@Field</span> :: indicates the name of a field to use when persisting the MongoDB document. If this
+            annotation is not used, then the field name in the MongoDB document will default to the name of class field member</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java utility class called <span class="hi-blue">ContactFactory.java</span> which allows
+        us to create instances of the Java POJOs <span class="bold">Mobile</span> and <span class="bold">Contact</span> and is located
+        in the directory <span class="bold">src/main/java/com/polarsparc/mongodb/util</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ContactFactory.java</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   06 Feb 2021
+*/
+
+package com.polarsparc.mongodb.util;
+
+import com.polarsparc.mongodb.model.Contact;
+import com.polarsparc.mongodb.model.Email;
+import com.polarsparc.mongodb.model.Mobile;
+
+public class ContactFactory {
+    public static Contact createAliceThompson() {
+        // db.contacts.insert({ first: "Alice", last: "Thompson",
+        //                      email: { personal: "alice.t@home.io", work: "alice.thompson@work.net" },
+        //                      mobile: { personal: "123 456 7890" } })
+
+        Email email = new Email();
+        email.setPersonal("alice.t@home.io");
+        email.setWork("alice.thompson@work.net");
+
+        Mobile mobile = new Mobile();
+        mobile.setPersonal("123 456 7890");
+
+        Contact contact = new Contact();
+        contact.setFirstName("Alice");
+        contact.setLastName("Thompson");
+        contact.setEmail(email);
+        contact.setMobile(mobile);
+
+        return contact;
+    }
+
+    public static Contact createBobJones() {
+        // db.contacts.insertOne({ first: "Bob", last: "Jones",
+        //                         email: { work: "bobj@doktor.net" },
+        //                         mobile: { work: "234 567 8901" } })
+
+        Email email = new Email();
+        email.setWork("bobj@doktor.net");
+
+        Mobile mobile = new Mobile();
+        mobile.setWork("234 567 8901");
+
+        Contact contact = new Contact();
+        contact.setFirstName("Bob");
+        contact.setLastName("Jones");
+        contact.setEmail(email);
+        contact.setMobile(mobile);
+
+        return contact;
+    }
+
+    public static Contact createCharlieLee() {
+        // db.contacts.insertOne({ first: "Charlie", last: "Lee",
+        //                         email: { personal: "cl3000@ranch.net" } })
+
+        Email email = new Email();
+        email.setPersonal("cl3000@ranch.net");
+
+        Contact contact = new Contact();
+        contact.setFirstName("Charlie");
+        contact.setLastName("Lee");
+        contact.setEmail(email);
+
+        return contact;
+    }
+
+    public static Mobile createCharlieMobile() {
+        Mobile mobile = new Mobile();
+        mobile.setPersonal("678 901 2345");
+
+        return mobile;
+    }
+
+    public static Contact createEveParker() {
+        // db.contacts.insert({ first: "Eve", middle: "Jo", last: "Parker",
+        //                      email: { work: "ej_parker@awesome.org" },
+        //                      mobile: { personal: "345 678 9012" } })
+
+        Email email = new Email();
+        email.setWork("ej_parker@awesome.org");
+
+        Mobile mobile = new Mobile();
+        mobile.setPersonal("345 678 9012");
+
+        Contact contact = new Contact();
+        contact.setFirstName("Eve");
+        contact.setMiddleName("Jo");
+        contact.setLastName("Parker");
+        contact.setEmail(email);
+        contact.setMobile(mobile);
+
+        return contact;
+    }
+
+    public static Contact createFrankSmith() {
+        // db.contacts.insert({ first: "Frank", last: "Smith",
+        //                      email: { personal: "frank45@root.org", work: "frank.smith@excellent.net" },
+        //                      mobile: { personal: "456 789 0123", work: "567 890 1234" } })
+
+        Email email = new Email();
+        email.setPersonal("frank45@root.org");
+        email.setWork("frank.smith@excellent.net");
+
+        Mobile mobile = new Mobile();
+        mobile.setPersonal("456 789 0123");
+        mobile.setWork("567 890 1234");
+
+        Contact contact = new Contact();
+        contact.setFirstName("Frank");
+        contact.setLastName("Smith");
+        contact.setEmail(email);
+        contact.setMobile(mobile);
+
+        return contact;
+    }
+
+    public static Contact createFrankCooper() {
+        // db.contacts.insertOne({ first: "Frank", last: "Cooper",
+        //                         email: { personal: "frankc@runner.org" } })
+
+        Email email = new Email();
+        email.setPersonal("frankc@runner.org");
+
+        Contact contact = new Contact();
+        contact.setFirstName("Frank");
+        contact.setLastName("Cooper");
+        contact.setEmail(email);
+
+        return contact;
+    }
+
+    public static Contact createGeorgeBaker() {
+        // db.contacts.update({ first: "George" }, { first: "George", last: "Baker",
+        //                      email: { work: "g_baker@crap.org" },
+        //                      mobile: { work: "789 012 3456" } })
+
+        Email email = new Email();
+        email.setWork("g_baker@crap.org");
+
+        Mobile mobile = new Mobile();
+        mobile.setWork("789 012 3456");
+
+        Contact contact = new Contact();
+        contact.setFirstName("George");
+        contact.setLastName("Baker");
+        contact.setEmail(email);
+        contact.setMobile(mobile);
+
+        return contact;
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java service interface called <span class="hi-blue">ContactsService.java</span> which
+        defines the different groups of CRUD operations on the MongoDB collection <span class="bold">contacts</span> and is located
+        in the directory <span class="bold">src/main/java/com/polarsparc/mongodb/service</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ContactsService.java</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   06 Feb 2021
+*/
+
+package com.polarsparc.mongodb.service;
+
+public interface ContactsService {
+    void insertContactAndCheck();
+    void insertFiveContacts();
+    void queryContacts();
+    void updateContacts();
+    void removeAndDropContacts();
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>There are two ways to interact with MongoDB database in Spring Boot which are as follows:</p>
+        <ul id="blue-ol">
+          <li>
+            <p><span class="hi-yellow">MongoTemplate</span> :: defined in <span class="bold">org.springframework.data.mongodb.core
+              </span>, it provides a bit more finer-grained and richer feature set for interacting with the database, especially
+              for executing complex queries. In particular, it implements methods that mimic those available on the MongoDB Java
+              driver</p>
+          </li>
+          <li>
+            <p><span class="hi-yellow">MongoRepository</span> :: defined in <span class="bold">org.springframework.data.mongodb.repository
+              </span>, it is a higher-level abstraction with the goal to significantly reduce the amount of boilerplate code required
+              to implement the various CRUD operations on the MongoDB database. In other words, it is more business domain focused
+              and does <span class="underbold">NOT</span> provide any lower database primitives</p>
+          </li>
+        </ul>
+    </div>
+    <div id="para-div">
+      <p>We will demonstrate the same set of operations on MongoDB using both the approaches.</p>
+    </div>
+    <div id="step-div">
+      <p>Using MongoTemplate</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java DAO interface called <span class="hi-blue">ContactsDAO.java</span> which defines
+        all the database CRUD operations on the MongoDB collection <span class="bold">contacts</span> and is located in the directory
+        <span class="bold">src/main/java/com/polarsparc/mongodb/dao</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ContactsDAO.java</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   06 Feb 2021
+*/
+
+package com.polarsparc.mongodb.dao;
+
+import com.polarsparc.mongodb.model.Contact;
+import com.polarsparc.mongodb.model.Mobile;
+
+import java.util.List;
+import java.util.Set;
+
+public interface ContactsDAO {
+    Set&lt;String&gt; getCollections();
+    long getDocumentsCount();
+    void addContact(Contact contact);
+    void addContacts(List&lt;Contact&gt; contacts);
+    List&lt;Contact&gt; findAll();
+    List&lt;Contact&gt; findByFirstName(String fn);
+    List&lt;Contact&gt; findByFirstAndLastName(String fn, String ln);
+    List&lt;Contact&gt; findByWorkEmail(String we);
+    List&lt;Contact&gt; findFirstLastPersonalMobile();
+    List&lt;Contact&gt; findFirstLastPersonalMobileWithLimits(int limit);
+    void updateContactMobile(String fn, Mobile mobile);
+    void upsertContact(Contact contact);
+    void removeByFirstName(String fn);
+    void removeAll();
+    void dropContacts();
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java DAO implementation called <span class="hi-blue">ContactsDAOImpl.java</span> that
+        uses <span class="bold">MongoTemplate</span> to implement all the methods on the interface <span class="bold">ContactsDAO</span>
+        and is located in the directory <span class="bold">src/main/java/com/polarsparc/mongodb/dao/impl</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ContactsDAOImpl.java</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   06 Feb 2021
+*/
+
+package com.polarsparc.mongodb.dao.impl;
+
+import java.util.List;
+import java.util.Set;
+
+import com.polarsparc.mongodb.model.Mobile;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.stereotype.Repository;
+
+import com.polarsparc.mongodb.dao.ContactsDAO;
+import com.polarsparc.mongodb.model.Contact;
+
+@Repository("ContactsDAO")
+public class ContactsDAOImpl implements ContactsDAO {
+    private MongoTemplate template;
+
+    @Autowired
+    public void setTemplate(MongoTemplate template) {
+        this.template = template;
+    }
+
+    @Override
+    public Set&lt;String&gt; getCollections() {
+        return template.getCollectionNames();
+    }
+
+    @Override
+    public long getDocumentsCount() {
+        return template.count(new Query(), "contacts");
+    }
+
+    @Override
+    public void addContact(Contact contact) {
+        template.insert(contact);
+    }
+
+    @Override
+    public void addContacts(List&lt;Contact&gt; contacts) {
+        template.insertAll(contacts);
+    }
+
+    @Override
+    public List&lt;Contact&gt; findAll() {
+        return template.findAll(Contact.class);
+    }
+
+    @Override
+    public List&lt;Contact&gt; findByFirstName(String fn) {
+        Query query = new Query();
+        query.addCriteria(Criteria.where("first").is(fn));
+        return template.find(query, Contact.class);
+    }
+
+    @Override
+    public List&lt;Contact&gt; findByFirstAndLastName(String fn, String ln) {
+        Query query = new Query();
+        query.addCriteria(new Criteria().andOperator(
+                Criteria.where("first").is(fn),
+                Criteria.where("last").is(ln)));
+        return template.find(query, Contact.class);
+    }
+
+    @Override
+    public List&lt;Contact&gt; findByWorkEmail(String we) {
+        Query query = new Query();
+        query.addCriteria(Criteria.where("email.work").is(we));
+        return template.find(query, Contact.class);
+    }
+
+    @Override
+    public List&lt;Contact&gt; findFirstLastPersonalMobile() {
+        Query query = new Query();
+        query.fields().include("first", "last", "mobile.personal");
+        return template.find(query, Contact.class);
+    }
+
+    @Override
+    public List&lt;Contact&gt; findFirstLastPersonalMobileWithLimits(int limit) {
+        Query query = new Query();
+        query.fields().include("first", "last", "mobile.personal");
+        query.limit(limit);
+        return template.find(query, Contact.class);
+    }
+
+    @Override
+    public void updateContactMobile(String fn, Mobile mobile) {
+        Query query = new Query();
+        query.addCriteria(Criteria.where("first").is(fn));
+        Contact res = template.findOne(query, Contact.class);
+        if (res != null) {
+            res.setMobile(mobile);
+            template.save(res);
+        }
+    }
+
+    @Override
+    public void upsertContact(Contact contact) {
+        template.save(contact);
+    }
+
+    @Override
+    public void removeByFirstName(String fn) {
+        Query query = new Query();
+        query.addCriteria(Criteria.where("first").is(fn));
+        template.remove(query, Contact.class);
+    }
+
+    @Override
+    public void removeAll() {
+        template.remove(new Query(), "contacts");
+    }
+
+    @Override
+    public void dropContacts() {
+        template.dropCollection("contacts");
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the annotation(s)/class(es)/method(s) used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">@Repository</span> :: a class level annotation which indicates the POJO as an application component
+            (or bean) that is used for database persistence. The argument in parenthesis is used to register this POJO under the
+            specified name in the Spring Boot container</p>
+        </li>
+        <li>
+          <p><span class="bold">@Autowired</span> :: a method level annotation which indicates to the Spring Boot container to
+            automatically inject (or auto wire) a reference to an instance of a bean of type that is similar to that of the method
+            parameter</p>
+        </li>
+        <li>
+          <p><span class="bold">getCollectionNames()</span> :: method on the MongoTemplate interface to get the list of all the
+            collections in the database</p>
+        </li>
+        <li>
+          <p><span class="bold">Query</span> :: defined in <span class="bold">org.springframework.data.mongodb.core.query</span>,
+            is used for defining the database query filter. An empty instance <span class="hi-grey">new Query()</span> matches all
+            the documents in the collection</p>
+        </li>
+        <li>
+          <p><span class="bold">count(filter, collection)</span> :: method on the MongoTemplate interface to return the count of
+            all the documents in the specified collection</p>
+        </li>
+        <li>
+          <p><span class="bold">insert(pojo)</span> :: method on the MongoTemplate interface to insert the specified instance of the
+            POJO as a document into the collection</p>
+        </li>
+        <li>
+          <p><span class="bold">insertAll(list-of-pojo)</span> :: method on the MongoTemplate interface to insert the specified list
+            of POJOs as documents into the collection</p>
+        </li>
+        <li>
+          <p><span class="bold">findAll(pojo-class)</span> :: method on the MongoTemplate interface that returns a collection of POJOs
+            (of the specified pojo-class type) which represents all the documents in the collection</p>
+        </li>
+        <li>
+          <p><span class="bold">Criteria</span> :: defined in <span class="bold">org.springframework.data.mongodb.core.query</span>,
+            provides various static factory methods for defining the database query filter criteria</p>
+        </li>
+        <li>
+          <p><span class="bold">Criteria.where(field-name).is(value)</span> :: creates a filter criteria that matches all documents
+            where the value of the specified field-name equals the specified value</p>
+        </li>
+        <li>
+          <p><span class="bold">addCriteria(list-of-criteria)</span> :: creates a filter that is a logical AND of the specified list
+            of filter criterias</p>
+        </li>
+        <li>
+          <p><span class="bold">fields()</span> :: creates a placeholder in the query filter for specifying the desired fields</p>
+        </li>
+        <li>
+          <p><span class="bold">include(list-of-fields)</span> :: adds the specified list of fields to be returned from the query
+            result</p>
+        </li>
+        <li>
+          <p><span class="bold">exclude(field-name)</span> :: indicates the specified field-name be excluded from the query result</p>
+        </li>
+        <li>
+          <p><span class="bold">limit(int)</span> :: method on the Query object to limit the number of documents returned from the
+            collection</p>
+        </li>
+        <li>
+          <p><span class="bold">find(query, pojo-class)</span> :: method on the MongoTemplate interface that returns a collection of
+            POJOs (of the specified pojo-class type) which matches the specified query criteria on all the documents in the collection</p>
+        </li>
+        <li>
+          <p><span class="bold">save(pojo)</span> :: method on the MongoTemplate interface that updates the document in the collection
+            corresponding to the specified POJO (if the document exists) or inserts a new document into the collection for the specified
+            POJO.. This is basically an upsert operation</p>
+        </li>
+        <li>
+          <p><span class="bold">remove(query, pojo-class)</span> :: method on the MongoTemplate interface that removes all the documents
+            from the collection (corresponding to the specified pojo-class type) which matches the specified query criteria</p>
+        </li>
+        <li>
+          <p><span class="bold">remove(query, collection)</span> :: method on the MongoTemplate interface that removes all the documents
+            from the specified collection which matches the specified query criteria</p>
+        </li>
+        <li>
+          <p><span class="bold">dropCollection(collection)</span> :: drops the specified collection from the database</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java class called <span class="hi-blue">ContactsServiceOneImpl.java</span> that uses
+        the Java DAO implementation <span class="bold">ContactsDAOImpl</span> (via auto-wired dependency injection), implements the
+        Java interface <span class="bold">ContactsService</span>, and is located in the directory <span class="bold">
+        src/main/java/com/polarsparc/mongodb/service/impl</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ContactsServiceOneImpl.java</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   06 Feb 2021
+*/
+
+package com.polarsparc.mongodb.service.impl;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+
+import com.polarsparc.mongodb.dao.ContactsDAO;
+import com.polarsparc.mongodb.model.Contact;
+import com.polarsparc.mongodb.util.ContactFactory;
+import com.polarsparc.mongodb.service.ContactsService;
+
+@Service("ContactsServiceOne")
+public class ContactsServiceOneImpl implements ContactsService {
+    private final static Logger LOGGER = LoggerFactory.getLogger(ContactsServiceOneImpl.class.getName());
+
+    private ContactsDAO DAO;
+
+    @Autowired
+    public void setDAO(@Qualifier("ContactsDAO") ContactsDAO dao) {
+        this.DAO = dao;
+    }
+
+    @Override
+    public void insertContactAndCheck() {
+        LOGGER.info(String.format("List all collections: %s", DAO.getCollections()));
+
+        LOGGER.info("Adding document for Alice");
+        DAO.addContact(ContactFactory.createAliceThompson());
+
+        LOGGER.info(String.format("List all collections: %s", DAO.getCollections()));
+        LOGGER.info(String.format("Count of documents: %d", DAO.getDocumentsCount()));
+
+        LOGGER.info("Querying all documents in contacts");
+        DAO.findAll().forEach(c -> LOGGER.info(c.toString()));
+    }
+
+    @Override
+    public void insertFiveContacts() {
+        LOGGER.info("Adding five new documents in contacts");
+
+        DAO.addContact(ContactFactory.createBobJones());
+        DAO.addContact(ContactFactory.createCharlieLee());
+
+        List&lt;Contact&gt; contacts = new ArrayList&lt;&gt;();
+        contacts.add(ContactFactory.createEveParker());
+        contacts.add(ContactFactory.createFrankSmith());
+        contacts.add(ContactFactory.createFrankCooper());
+
+        DAO.addContacts(contacts);
+
+        LOGGER.info(String.format("Count of documents: %d", DAO.getDocumentsCount()));
+    }
+
+    @Override
+    public void queryContacts() {
+        LOGGER.info("Querying all documents in contacts");
+        DAO.findAll().forEach(c -> LOGGER.info(c.toString()));
+
+        LOGGER.info("Querying documents by first: Bob");
+        DAO.findByFirstName("Bob").forEach(c -> LOGGER.info(c.toString()));
+
+        LOGGER.info("Querying documents by first: Charlie, last: Lee");
+        DAO.findByFirstAndLastName("Charlie", "Lee").forEach(c -> LOGGER.info(c.toString()));
+
+        LOGGER.info("Querying documents by first: Frank");
+        DAO.findByFirstName("Frank").forEach(c -> LOGGER.info(c.toString()));
+
+        LOGGER.info("Querying documents by email.work: bobj@doktor.net");
+        DAO.findByWorkEmail("bobj@doktor.net").forEach(c -> LOGGER.info(c.toString()));
+
+        LOGGER.info("Querying documents for first, last, mobile.personal");
+        DAO.findFirstLastPersonalMobile().forEach(c -> LOGGER.info(c.toString()));
+
+        LOGGER.info("Querying documents for first, last, mobile.personal (with limit of 3)");
+        DAO.findFirstLastPersonalMobileWithLimits(3).forEach(c -> LOGGER.info(c.toString()));
+    }
+
+    @Override
+    public void updateContacts() {
+        LOGGER.info("Updating document for Charlie [adding mobile]");
+        DAO.updateContactMobile("Charlie", ContactFactory.createCharlieMobile());
+
+        LOGGER.info("Document for Charlie [after update]");
+        DAO.findByFirstName("Charlie").forEach(c -> LOGGER.info(c.toString()));
+
+        LOGGER.info("Upsert document for George in the collection contacts");
+        DAO.upsertContact(ContactFactory.createGeorgeBaker());
+
+        LOGGER.info("Document for George [after upsert]");
+        DAO.findByFirstName("George").forEach(c -> LOGGER.info(c.toString()));
+    }
+
+    @Override
+    public void removeAndDropContacts() {
+        LOGGER.info("Removing document for Bob");
+        DAO.removeByFirstName("Bob");
+
+        LOGGER.info("Querying documents after delete of Bob");
+        DAO.findAll().forEach(c -> LOGGER.info(c.toString()));
+
+        LOGGER.info("Removing all documents in contacts");
+        DAO.removeAll();
+
+        LOGGER.info(String.format("Count of documents: %d", DAO.getDocumentsCount()));
+
+        LOGGER.info("Dropping contacts");
+        DAO.dropContacts();
+
+        LOGGER.info(String.format("List all collections: %s", DAO.getCollections()));
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the annotation(s) used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">@Service</span> :: a class level annotation which indicates the POJO as an application component
+            (or bean) that is used as a service layer component. The argument in parenthesis is used to register this POJO under
+            the specified name in the Spring Boot container</p>
+        </li>
+        <li>
+          <p><span class="bold">@Qualifier</span> :: indicates the name of the application component (or bean) from the Spring Boot
+            container that needs to be automatically injected (or auto wire) into this variable. The bean name here must match the
+            name from <span class="bold">@Repository</span> we defined earlier in <span class="bold">ContactsDAOImpl</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Spring Boot application program called <span class="hi-yellow">MongodbApplication.java
+        </span> that performs all the operations we executed through the command-line interface in
+        <a href="./MongoDB-1.html" target="_blank"><span class="bold">Part-1</span></a>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">MongodbApplication.java</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   06 Feb 2021
+*/
+
+package com.polarsparc.mongodb;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+import com.polarsparc.mongodb.service.ContactsService;
+
+@SpringBootApplication
+public class MongodbApplication implements CommandLineRunner {
+    private final static Logger LOGGER = LoggerFactory.getLogger(MongodbApplication.class.getName());
+
+    private ContactsService serviceOne;
+
+    @Autowired
+    public void setServiceOne(@Qualifier("ContactsServiceOne") ContactsService serviceOne) {
+        this.serviceOne = serviceOne;
+    }
+
+    @Value("${mongo.run.option}")
+    private String option;
+
+    public static void main(String[] args) {
+        SpringApplication.run(MongodbApplication.class, args);
+    }
+
+    @Override
+    public void run(String... strings) {
+        LOGGER.info(String.format("Value of option: %s", option));
+
+        if (option.equals("T")) {
+            runOptionOne();
+        }
+    }
+
+    void runOptionOne() {
+        LOGGER.info("---------- Running MongoDB operations using Template ----------");
+
+        serviceOne.insertContactAndCheck();
+        serviceOne.insertFiveContacts();
+        serviceOne.queryContacts();
+        serviceOne.updateContacts();
+        serviceOne.removeAndDropContacts();
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>Ensure the MongoDB cluster is up and running and <span class="bold">mongodb-n1</span> is the primary. Open a terminal window
+        and execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/springboot/mongodb</p>
+      <p>$ mvn spring-boot:run -Dspring-boot.run.arguments="--mongo.run.option=T"</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>2021-02-07 12:38:12.680  INFO 10966 --- [           main] c.polarsparc.mongodb.MongodbApplication  : Starting MongodbApplication using Java 15.0.2 on polarsparc with PID 10966 (/home/polarsparc/java/springboot/mongodb/target/classes started by polarsparc in /home/polarsparc/java/springboot/mongodb)
+2021-02-07 12:38:12.682  INFO 10966 --- [           main] c.polarsparc.mongodb.MongodbApplication  : No active profile set, falling back to default profiles: default
+2021-02-07 12:38:12.948  INFO 10966 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data MongoDB repositories in DEFAULT mode.
+2021-02-07 12:38:12.979  INFO 10966 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 28 ms. Found 1 MongoDB repository interfaces.
+2021-02-07 12:38:13.151  INFO 10966 --- [           main] org.mongodb.driver.cluster               : Cluster created with settings {hosts=[192.168.1.53:5001], mode=SINGLE, requiredClusterType=UNKNOWN, serverSelectionTimeout='30000 ms'}
+2021-02-07 12:38:13.196  INFO 10966 --- [2.168.1.53:5001] org.mongodb.driver.connection            : Opened connection [connectionId{localValue:2, serverValue:33}] to 192.168.1.53:5001
+2021-02-07 12:38:13.196  INFO 10966 --- [2.168.1.53:5001] org.mongodb.driver.connection            : Opened connection [connectionId{localValue:1, serverValue:34}] to 192.168.1.53:5001
+2021-02-07 12:38:13.199  INFO 10966 --- [2.168.1.53:5001] org.mongodb.driver.cluster               : Monitor thread successfully connected to server with description ServerDescription{address=192.168.1.53:5001, type=REPLICA_SET_PRIMARY, state=CONNECTED, ok=true, minWireVersion=0, maxWireVersion=9, maxDocumentSize=16777216, logicalSessionTimeoutMinutes=30, roundTripTimeNanos=13293551, setName='mongodb-rs', canonicalAddress=mongodb-n1:5001, hosts=[mongodb-n3:5003, mongodb-n1:5001, mongodb-n2:5002], passives=[], arbiters=[], primary='mongodb-n1:5001', tagSet=TagSet{[]}, electionId=7fffffff0000000000000018, setVersion=1, topologyVersion=TopologyVersion{processId=6020199741eeed4827b1b5e0, counter=6}, lastWriteDate=Sun Feb 07 12:38:10 EST 2021, lastUpdateTimeNanos=15072528441887}
+2021-02-07 12:38:13.440  INFO 10966 --- [           main] c.polarsparc.mongodb.MongodbApplication  : Started MongodbApplication in 1.024 seconds (JVM running for 1.272)
+2021-02-07 12:38:13.441  INFO 10966 --- [           main] c.polarsparc.mongodb.MongodbApplication  : Value of option: T
+2021-02-07 12:38:13.441  INFO 10966 --- [           main] c.polarsparc.mongodb.MongodbApplication  : ---------- Running MongoDB operations using Template ----------
+2021-02-07 12:38:13.471  INFO 10966 --- [           main] org.mongodb.driver.connection            : Opened connection [connectionId{localValue:3, serverValue:35}] to 192.168.1.53:5001
+2021-02-07 12:38:13.482  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : List all collections: []
+2021-02-07 12:38:13.482  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Adding document for Alice
+2021-02-07 12:38:13.538  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : List all collections: [contacts]
+2021-02-07 12:38:13.546  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Count of documents: 1
+2021-02-07 12:38:13.546  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Querying all documents in contacts
+2021-02-07 12:38:13.566  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd727, firstName=Alice, middleName=null, lastName=Thompson, email=Email(personal=alice.t@home.io, work=alice.thompson@work.net), mobile=Mobile(personal=123 456 7890, work=null))
+2021-02-07 12:38:13.566  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Adding five new documents in contacts
+2021-02-07 12:38:13.576  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Count of documents: 6
+2021-02-07 12:38:13.577  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Querying all documents in contacts
+2021-02-07 12:38:13.580  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd727, firstName=Alice, middleName=null, lastName=Thompson, email=Email(personal=alice.t@home.io, work=alice.thompson@work.net), mobile=Mobile(personal=123 456 7890, work=null))
+2021-02-07 12:38:13.580  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd728, firstName=Bob, middleName=null, lastName=Jones, email=Email(personal=null, work=bobj@doktor.net), mobile=Mobile(personal=null, work=234 567 8901))
+2021-02-07 12:38:13.580  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd729, firstName=Charlie, middleName=null, lastName=Lee, email=Email(personal=cl3000@ranch.net, work=null), mobile=null)
+2021-02-07 12:38:13.580  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd72a, firstName=Eve, middleName=Jo, lastName=Parker, email=Email(personal=null, work=ej_parker@awesome.org), mobile=Mobile(personal=345 678 9012, work=null))
+2021-02-07 12:38:13.580  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd72b, firstName=Frank, middleName=null, lastName=Smith, email=Email(personal=frank45@root.org, work=frank.smith@excellent.net), mobile=Mobile(personal=456 789 0123, work=567 890 1234))
+2021-02-07 12:38:13.580  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd72c, firstName=Frank, middleName=null, lastName=Cooper, email=Email(personal=frankc@runner.org, work=null), mobile=null)
+2021-02-07 12:38:13.580  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Querying documents by first: Bob
+2021-02-07 12:38:13.594  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd728, firstName=Bob, middleName=null, lastName=Jones, email=Email(personal=null, work=bobj@doktor.net), mobile=Mobile(personal=null, work=234 567 8901))
+2021-02-07 12:38:13.594  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Querying documents by first: Charlie, last: Lee
+2021-02-07 12:38:13.600  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd729, firstName=Charlie, middleName=null, lastName=Lee, email=Email(personal=cl3000@ranch.net, work=null), mobile=null)
+2021-02-07 12:38:13.600  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Querying documents by first: Frank
+2021-02-07 12:38:13.603  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd72b, firstName=Frank, middleName=null, lastName=Smith, email=Email(personal=frank45@root.org, work=frank.smith@excellent.net), mobile=Mobile(personal=456 789 0123, work=567 890 1234))
+2021-02-07 12:38:13.603  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd72c, firstName=Frank, middleName=null, lastName=Cooper, email=Email(personal=frankc@runner.org, work=null), mobile=null)
+2021-02-07 12:38:13.603  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Querying documents by email.work: bobj@doktor.net
+2021-02-07 12:38:13.608  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd728, firstName=Bob, middleName=null, lastName=Jones, email=Email(personal=null, work=bobj@doktor.net), mobile=Mobile(personal=null, work=234 567 8901))
+2021-02-07 12:38:13.608  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Querying documents for first, last, mobile.personal
+2021-02-07 12:38:13.612  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=null, firstName=Alice, middleName=null, lastName=Thompson, email=null, mobile=Mobile(personal=123 456 7890, work=null))
+2021-02-07 12:38:13.613  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=null, firstName=Bob, middleName=null, lastName=Jones, email=null, mobile=Mobile(personal=null, work=null))
+2021-02-07 12:38:13.613  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=null, firstName=Charlie, middleName=null, lastName=Lee, email=null, mobile=null)
+2021-02-07 12:38:13.613  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=null, firstName=Eve, middleName=null, lastName=Parker, email=null, mobile=Mobile(personal=345 678 9012, work=null))
+2021-02-07 12:38:13.613  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=null, firstName=Frank, middleName=null, lastName=Smith, email=null, mobile=Mobile(personal=456 789 0123, work=null))
+2021-02-07 12:38:13.613  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=null, firstName=Frank, middleName=null, lastName=Cooper, email=null, mobile=null)
+2021-02-07 12:38:13.613  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Querying documents for first, last, mobile.personal (with limit of 3)
+2021-02-07 12:38:13.616  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=null, firstName=Alice, middleName=null, lastName=Thompson, email=null, mobile=Mobile(personal=123 456 7890, work=null))
+2021-02-07 12:38:13.616  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=null, firstName=Bob, middleName=null, lastName=Jones, email=null, mobile=Mobile(personal=null, work=null))
+2021-02-07 12:38:13.616  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=null, firstName=Charlie, middleName=null, lastName=Lee, email=null, mobile=null)
+2021-02-07 12:38:13.616  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Updating document for Charlie [adding mobile]
+2021-02-07 12:38:13.623  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Document for Charlie [after update]
+2021-02-07 12:38:13.625  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd729, firstName=Charlie, middleName=null, lastName=Lee, email=Email(personal=cl3000@ranch.net, work=null), mobile=Mobile(personal=678 901 2345, work=null))
+2021-02-07 12:38:13.625  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Upsert document for George in the collection contacts
+2021-02-07 12:38:13.627  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Document for George [after upsert]
+2021-02-07 12:38:13.629  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd72d, firstName=George, middleName=null, lastName=Baker, email=Email(personal=null, work=g_baker@crap.org), mobile=Mobile(personal=null, work=789 012 3456))
+2021-02-07 12:38:13.629  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Removing document for Bob
+2021-02-07 12:38:13.635  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Querying documents after delete of Bob
+2021-02-07 12:38:13.638  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd727, firstName=Alice, middleName=null, lastName=Thompson, email=Email(personal=alice.t@home.io, work=alice.thompson@work.net), mobile=Mobile(personal=123 456 7890, work=null))
+2021-02-07 12:38:13.638  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd729, firstName=Charlie, middleName=null, lastName=Lee, email=Email(personal=cl3000@ranch.net, work=null), mobile=Mobile(personal=678 901 2345, work=null))
+2021-02-07 12:38:13.638  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd72a, firstName=Eve, middleName=Jo, lastName=Parker, email=Email(personal=null, work=ej_parker@awesome.org), mobile=Mobile(personal=345 678 9012, work=null))
+2021-02-07 12:38:13.638  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd72b, firstName=Frank, middleName=null, lastName=Smith, email=Email(personal=frank45@root.org, work=frank.smith@excellent.net), mobile=Mobile(personal=456 789 0123, work=567 890 1234))
+2021-02-07 12:38:13.638  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd72c, firstName=Frank, middleName=null, lastName=Cooper, email=Email(personal=frankc@runner.org, work=null), mobile=null)
+2021-02-07 12:38:13.638  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Contact(_id=60202585737c2c36fe2bd72d, firstName=George, middleName=null, lastName=Baker, email=Email(personal=null, work=g_baker@crap.org), mobile=Mobile(personal=null, work=789 012 3456))
+2021-02-07 12:38:13.639  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Removing all documents in contacts
+2021-02-07 12:38:13.642  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Count of documents: 0
+2021-02-07 12:38:13.642  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : Dropping contacts
+2021-02-07 12:38:13.646  INFO 10966 --- [           main] c.p.m.s.impl.ContactsServiceOneImpl      : List all collections: []
+2021-02-07 12:38:13.654  INFO 10966 --- [extShutdownHook] org.mongodb.driver.connection            : Closed connection [connectionId{localValue:3, serverValue:35}] to 192.168.1.53:5001 because the pool has been closed.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.299 s
+[INFO] Finished at: 2021-02-07T12:38:13-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">AWESOME</span> !!! We have successfully demonstrated the Spring Boot application using MongoTemplate
+        as the approach to interacting with the MongoDB database.</p>
+    </div>
+    <div id="step-div">
+      <p>Using MongoRepository</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java Repository interface called <span class="hi-blue">ContactsRepository.java</span>
+        which defines all the business domain level CRUD operations on the MongoDB collection <span class="bold">contacts</span> by
+        extending the interface <span class="hi-grey">MongoRepository&lt;Contact, String&gt;</span> and is located in the directory
+        <span class="bold">src/main/java/com/polarsparc/mongodb/repository</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ContactsRepository.java</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   06 Feb 2021
+*/
+
+package com.polarsparc.mongodb.repository;
+
+import java.util.List;
+
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
+
+import com.polarsparc.mongodb.model.Contact;
+
+public interface ContactsRepository extends MongoRepository&lt;Contact, String&gt; {
+    List&lt;Contact&gt; findByFirstName(String fn);
+
+    List&lt;Contact&gt; findByFirstNameAndLastName(String fn, String ln);
+
+    @Query("{ 'email.work' : ?0 }")
+    List&lt;Contact&gt; findByWorkEmail(String we);
+
+    @Query(value = "{}", fields = "{ 'first': 1, 'last': 1, 'mobile.personal': 1, '_id': 0 }")
+    List&lt;Contact&gt; findFirstLastPersonalMobile();
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the annotation(s)/class(es) used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">MongoRepository&lt;pojo, primary-key&gt;</span> :: a Spring provided interface (that is implemented
+            as a Java proxy at run-time) that defines all the basic CRUD operations to access the business domain entities stored in
+            the MongoDB database without implementing too much boilerplate code. It takes two generic type parameters - one for the
+            type of the POJO (business domain entity) and the other is the type of the primary key <span class="bold">_id</span></p>
+        </li>
+        <li>
+          <p><span class="bold">@Query</span> :: indicates how the database query needs to be constructed and what fields to include
+            in the query result</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the Java class called <span class="hi-blue">ContactsServiceTwoImpl.java</span> that uses
+        the Java repository interface <span class="bold">ContactsRepository</span> (via auto-wired dependency injection), implements
+        the Java interface <span class="bold">ContactsService</span>, and is located in the directory <span class="bold">
+        src/main/java/com/polarsparc/mongodb/service/impl</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ContactsServiceTwoImpl.java</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   06 Feb 2021
+*/
+
+package com.polarsparc.mongodb.service.impl;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.polarsparc.mongodb.model.Contact;
+import com.polarsparc.mongodb.util.ContactFactory;
+import com.polarsparc.mongodb.model.Mobile;
+import com.polarsparc.mongodb.repository.ContactsRepository;
+import com.polarsparc.mongodb.service.ContactsService;
+
+@Service("ContactsServiceTwo")
+public class ContactsServiceTwoImpl implements ContactsService  {
+    private final static Logger LOGGER = LoggerFactory.getLogger(ContactsServiceTwoImpl.class.getName());
+
+    private ContactsRepository repository;
+
+    @Autowired
+    public void setRepository(ContactsRepository repository) {
+        this.repository = repository;
+    }
+
+    @Override
+    public void insertContactAndCheck() {
+        LOGGER.info("Adding document for Alice");
+        repository.insert(ContactFactory.createAliceThompson());
+
+        LOGGER.info(String.format("Count of documents: %d", repository.count()));
+
+        LOGGER.info("Querying all documents in contacts");
+        repository.findAll().forEach(c -> LOGGER.info(c.toString()));
+    }
+
+    @Override
+    public void insertFiveContacts() {
+        LOGGER.info("Adding five new documents in contacts");
+
+        repository.insert(ContactFactory.createBobJones());
+        repository.insert(ContactFactory.createCharlieLee());
+
+        List&lt;Contact&gt; contacts = new ArrayList&lt;&gt;();
+        contacts.add(ContactFactory.createEveParker());
+        contacts.add(ContactFactory.createFrankSmith());
+        contacts.add(ContactFactory.createFrankCooper());
+
+        repository.insert(contacts);
+
+        LOGGER.info(String.format("Count of documents: %d", repository.count()));
+    }
+
+    @Override
+    public void queryContacts() {
+        LOGGER.info("Querying all documents in contacts");
+        repository.findAll().forEach(c -> LOGGER.info(c.toString()));
+
+        LOGGER.info("Querying documents by first: Bob");
+        repository.findByFirstName("Bob").forEach(c -> LOGGER.info(c.toString()));
+
+        LOGGER.info("Querying documents by first: Charlie, last: Lee");
+        repository.findByFirstNameAndLastName("Charlie", "Lee").forEach(c -> LOGGER.info(c.toString()));
+
+        LOGGER.info("Querying documents by first: Frank");
+        repository.findByFirstName("Frank").forEach(c -> LOGGER.info(c.toString()));
+
+        LOGGER.info("Querying documents by email.work: bobj@doktor.net");
+        repository.findByWorkEmail("bobj@doktor.net").forEach(c -> LOGGER.info(c.toString()));
+
+        LOGGER.info("Querying documents for first, last, mobile.personal");
+        repository.findFirstLastPersonalMobile().forEach(c -> LOGGER.info(c.toString()));
+    }
+
+    @Override
+    public void updateContacts() {
+        LOGGER.info("Updating document for Charlie [adding mobile]");
+
+        List&lt;Contact&gt; list = repository.findByFirstName("Charlie");
+        if (list != null && list.size() > 0) {
+            Mobile mobile = new Mobile();
+            mobile.setPersonal("678 901 2345");
+
+            Contact contact = list.get(0);
+            contact.setMobile(mobile);
+
+            repository.save(contact);
+        }
+
+        LOGGER.info("Querying documents by first: Charlie [after update]");
+        repository.findByFirstName("Charlie").forEach(c -> LOGGER.info(c.toString()));
+
+        LOGGER.info("Upsert document for George in the collection contacts");
+        repository.save(ContactFactory.createGeorgeBaker());
+
+        LOGGER.info("Document for George [after upsert]");
+        repository.findByFirstName("George").forEach(c -> LOGGER.info(c.toString()));
+    }
+
+    @Override
+    public void removeAndDropContacts() {
+        LOGGER.info("Removing document for Bob");
+        List&lt;Contact&gt; list = repository.findByFirstName("Bob");
+        if (list != null && list.size() > 0) {
+            repository.delete(list.get(0));
+        }
+
+        LOGGER.info("Querying documents after delete of first: Bob");
+        repository.findAll().forEach(c -> LOGGER.info(c.toString()));
+
+        LOGGER.info("Removing all documents in contacts");
+        repository.deleteAll();
+
+        LOGGER.info(String.format("Count of documents: %d", repository.count()));
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>As is evident from the code segment above, there are no low-level database primitives to list the collections of the
+        database or drop a collection, etc. It is more focused on the business domain level CRUD operations.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the enhanced version of the Spring Boot application program called
+        <span class="hi-yellow">MongodbApplication.java</span> that incorporates using both the MongoTemplate and the MongoReposity
+        based on the command-line option <span class="bold">mongo.run.option</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">MongodbApplication.java</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   06 Feb 2021
+*/
+
+package com.polarsparc.mongodb;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
+
+import com.polarsparc.mongodb.repository.ContactsRepository;
+import com.polarsparc.mongodb.service.ContactsService;
+
+@SpringBootApplication
+@EnableMongoRepositories(basePackageClasses = ContactsRepository.class)
+public class MongodbApplication implements CommandLineRunner {
+    private final static Logger LOGGER = LoggerFactory.getLogger(MongodbApplication.class.getName());
+
+    private ContactsService serviceOne;
+    private ContactsService serviceTwo;
+
+    @Autowired
+    public void setServiceOne(@Qualifier("ContactsServiceOne") ContactsService serviceOne) {
+        this.serviceOne = serviceOne;
+    }
+
+    @Autowired
+    public void setServiceTwo(@Qualifier("ContactsServiceTwo") ContactsService serviceTwo) {
+        this.serviceTwo = serviceTwo;
+    }
+
+    @Value("${mongo.run.option}")
+    private String option;
+
+    public static void main(String[] args) {
+        SpringApplication.run(MongodbApplication.class, args);
+    }
+
+    @Override
+    public void run(String... strings) {
+        LOGGER.info(String.format("Value of option: %s", option));
+
+        if (option.equals("T")) {
+            runOptionOne();
+        }
+
+        if (option.equals("R")) {
+            runOptionTwo();
+        }
+    }
+
+    void runOptionOne() {
+        LOGGER.info("---------- Running MongoDB operations using Template ----------");
+
+        serviceOne.insertContactAndCheck();
+        serviceOne.insertFiveContacts();
+        serviceOne.queryContacts();
+        serviceOne.updateContacts();
+        serviceOne.removeAndDropContacts();
+    }
+
+    void runOptionTwo() {
+        LOGGER.info("---------- Running MongoDB operations using Repository ----------");
+
+        serviceTwo.insertContactAndCheck();
+        serviceTwo.insertFiveContacts();
+        serviceTwo.queryContacts();
+        serviceTwo.updateContacts();
+        serviceTwo.removeAndDropContacts();
+    }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>Ensure the MongoDB cluster is up and running and <span class="bold">mongodb-n1</span> is the primary. Open a terminal window
+        and execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/springboot/mongodb</p>
+      <p>$ mvn spring-boot:run -Dspring-boot.run.arguments="--mongo.run.option=R"</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>2021-02-07 13:47:41.568  INFO 16379 --- [           main] c.polarsparc.mongodb.MongodbApplication  : Starting MongodbApplication using Java 15.0.2 on polarsparc with PID 16379 (/home/polarsparc/java/springboot/mongodb/target/classes started by polarsparc in /home/polarsparc/java/springboot/mongodb)
+2021-02-07 13:47:41.570  INFO 16379 --- [           main] c.polarsparc.mongodb.MongodbApplication  : No active profile set, falling back to default profiles: default
+2021-02-07 13:47:41.803  INFO 16379 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data MongoDB repositories in DEFAULT mode.
+2021-02-07 13:47:41.831  INFO 16379 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 25 ms. Found 1 MongoDB repository interfaces.
+2021-02-07 13:47:42.025  INFO 16379 --- [           main] org.mongodb.driver.cluster               : Cluster created with settings {hosts=[192.168.1.53:5001], mode=SINGLE, requiredClusterType=UNKNOWN, serverSelectionTimeout='30000 ms'}
+2021-02-07 13:47:42.073  INFO 16379 --- [2.168.1.53:5001] org.mongodb.driver.connection            : Opened connection [connectionId{localValue:2, serverValue:37}] to 192.168.1.53:5001
+2021-02-07 13:47:42.073  INFO 16379 --- [2.168.1.53:5001] org.mongodb.driver.connection            : Opened connection [connectionId{localValue:1, serverValue:38}] to 192.168.1.53:5001
+2021-02-07 13:47:42.076  INFO 16379 --- [2.168.1.53:5001] org.mongodb.driver.cluster               : Monitor thread successfully connected to server with description ServerDescription{address=192.168.1.53:5001, type=REPLICA_SET_PRIMARY, state=CONNECTED, ok=true, minWireVersion=0, maxWireVersion=9, maxDocumentSize=16777216, logicalSessionTimeoutMinutes=30, roundTripTimeNanos=13748908, setName='mongodb-rs', canonicalAddress=mongodb-n1:5001, hosts=[mongodb-n3:5003, mongodb-n1:5001, mongodb-n2:5002], passives=[], arbiters=[], primary='mongodb-n1:5001', tagSet=TagSet{[]}, electionId=7fffffff0000000000000018, setVersion=1, topologyVersion=TopologyVersion{processId=6020199741eeed4827b1b5e0, counter=6}, lastWriteDate=Sun Feb 07 13:47:40 EST 2021, lastUpdateTimeNanos=19241405552538}
+2021-02-07 13:47:42.312  INFO 16379 --- [           main] c.polarsparc.mongodb.MongodbApplication  : Started MongodbApplication in 1.018 seconds (JVM running for 1.28)
+2021-02-07 13:47:42.313  INFO 16379 --- [           main] c.polarsparc.mongodb.MongodbApplication  : Value of option: R
+2021-02-07 13:47:42.313  INFO 16379 --- [           main] c.polarsparc.mongodb.MongodbApplication  : ---------- Running MongoDB operations using Repository ----------
+2021-02-07 13:47:42.313  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Adding document for Alice
+2021-02-07 13:47:42.358  INFO 16379 --- [           main] org.mongodb.driver.connection            : Opened connection [connectionId{localValue:3, serverValue:39}] to 192.168.1.53:5001
+2021-02-07 13:47:42.400  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Count of documents: 1
+2021-02-07 13:47:42.400  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Querying all documents in contacts
+2021-02-07 13:47:42.422  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdba7, firstName=Alice, middleName=null, lastName=Thompson, email=Email(personal=alice.t@home.io, work=alice.thompson@work.net), mobile=Mobile(personal=123 456 7890, work=null))
+2021-02-07 13:47:42.422  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Adding five new documents in contacts
+2021-02-07 13:47:42.433  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Count of documents: 6
+2021-02-07 13:47:42.433  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Querying all documents in contacts
+2021-02-07 13:47:42.436  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdba7, firstName=Alice, middleName=null, lastName=Thompson, email=Email(personal=alice.t@home.io, work=alice.thompson@work.net), mobile=Mobile(personal=123 456 7890, work=null))
+2021-02-07 13:47:42.436  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdba8, firstName=Bob, middleName=null, lastName=Jones, email=Email(personal=null, work=bobj@doktor.net), mobile=Mobile(personal=null, work=234 567 8901))
+2021-02-07 13:47:42.437  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdba9, firstName=Charlie, middleName=null, lastName=Lee, email=Email(personal=cl3000@ranch.net, work=null), mobile=null)
+2021-02-07 13:47:42.437  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdbaa, firstName=Eve, middleName=Jo, lastName=Parker, email=Email(personal=null, work=ej_parker@awesome.org), mobile=Mobile(personal=345 678 9012, work=null))
+2021-02-07 13:47:42.437  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdbab, firstName=Frank, middleName=null, lastName=Smith, email=Email(personal=frank45@root.org, work=frank.smith@excellent.net), mobile=Mobile(personal=456 789 0123, work=567 890 1234))
+2021-02-07 13:47:42.437  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdbac, firstName=Frank, middleName=null, lastName=Cooper, email=Email(personal=frankc@runner.org, work=null), mobile=null)
+2021-02-07 13:47:42.437  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Querying documents by first: Bob
+2021-02-07 13:47:42.461  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdba8, firstName=Bob, middleName=null, lastName=Jones, email=Email(personal=null, work=bobj@doktor.net), mobile=Mobile(personal=null, work=234 567 8901))
+2021-02-07 13:47:42.461  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Querying documents by first: Charlie, last: Lee
+2021-02-07 13:47:42.464  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdba9, firstName=Charlie, middleName=null, lastName=Lee, email=Email(personal=cl3000@ranch.net, work=null), mobile=null)
+2021-02-07 13:47:42.464  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Querying documents by first: Frank
+2021-02-07 13:47:42.471  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdbab, firstName=Frank, middleName=null, lastName=Smith, email=Email(personal=frank45@root.org, work=frank.smith@excellent.net), mobile=Mobile(personal=456 789 0123, work=567 890 1234))
+2021-02-07 13:47:42.471  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdbac, firstName=Frank, middleName=null, lastName=Cooper, email=Email(personal=frankc@runner.org, work=null), mobile=null)
+2021-02-07 13:47:42.471  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Querying documents by email.work: bobj@doktor.net
+2021-02-07 13:47:42.485  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdba8, firstName=Bob, middleName=null, lastName=Jones, email=Email(personal=null, work=bobj@doktor.net), mobile=Mobile(personal=null, work=234 567 8901))
+2021-02-07 13:47:42.485  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Querying documents for first, last, mobile.personal
+2021-02-07 13:47:42.491  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=null, firstName=Alice, middleName=null, lastName=Thompson, email=null, mobile=Mobile(personal=123 456 7890, work=null))
+2021-02-07 13:47:42.491  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=null, firstName=Bob, middleName=null, lastName=Jones, email=null, mobile=Mobile(personal=null, work=null))
+2021-02-07 13:47:42.491  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=null, firstName=Charlie, middleName=null, lastName=Lee, email=null, mobile=null)
+2021-02-07 13:47:42.491  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=null, firstName=Eve, middleName=null, lastName=Parker, email=null, mobile=Mobile(personal=345 678 9012, work=null))
+2021-02-07 13:47:42.491  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=null, firstName=Frank, middleName=null, lastName=Smith, email=null, mobile=Mobile(personal=456 789 0123, work=null))
+2021-02-07 13:47:42.491  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=null, firstName=Frank, middleName=null, lastName=Cooper, email=null, mobile=null)
+2021-02-07 13:47:42.491  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Updating document for Charlie [adding mobile]
+2021-02-07 13:47:42.498  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Querying documents by first: Charlie [after update]
+2021-02-07 13:47:42.500  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdba9, firstName=Charlie, middleName=null, lastName=Lee, email=Email(personal=cl3000@ranch.net, work=null), mobile=Mobile(personal=678 901 2345, work=null))
+2021-02-07 13:47:42.500  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Upsert document for George in the collection contacts
+2021-02-07 13:47:42.502  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Document for George [after upsert]
+2021-02-07 13:47:42.504  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdbad, firstName=George, middleName=null, lastName=Baker, email=Email(personal=null, work=g_baker@crap.org), mobile=Mobile(personal=null, work=789 012 3456))
+2021-02-07 13:47:42.505  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Removing document for Bob
+2021-02-07 13:47:42.512  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Querying documents after delete of first: Bob
+2021-02-07 13:47:42.515  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdba7, firstName=Alice, middleName=null, lastName=Thompson, email=Email(personal=alice.t@home.io, work=alice.thompson@work.net), mobile=Mobile(personal=123 456 7890, work=null))
+2021-02-07 13:47:42.515  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdba9, firstName=Charlie, middleName=null, lastName=Lee, email=Email(personal=cl3000@ranch.net, work=null), mobile=Mobile(personal=678 901 2345, work=null))
+2021-02-07 13:47:42.516  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdbaa, firstName=Eve, middleName=Jo, lastName=Parker, email=Email(personal=null, work=ej_parker@awesome.org), mobile=Mobile(personal=345 678 9012, work=null))
+2021-02-07 13:47:42.516  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdbab, firstName=Frank, middleName=null, lastName=Smith, email=Email(personal=frank45@root.org, work=frank.smith@excellent.net), mobile=Mobile(personal=456 789 0123, work=567 890 1234))
+2021-02-07 13:47:42.516  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdbac, firstName=Frank, middleName=null, lastName=Cooper, email=Email(personal=frankc@runner.org, work=null), mobile=null)
+2021-02-07 13:47:42.516  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Contact(_id=602035cebdcc321c5affdbad, firstName=George, middleName=null, lastName=Baker, email=Email(personal=null, work=g_baker@crap.org), mobile=Mobile(personal=null, work=789 012 3456))
+2021-02-07 13:47:42.516  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Removing all documents in contacts
+2021-02-07 13:47:42.520  INFO 16379 --- [           main] c.p.m.s.impl.ContactsServiceTwoImpl      : Count of documents: 0
+2021-02-07 13:47:42.528  INFO 16379 --- [extShutdownHook] org.mongodb.driver.connection            : Closed connection [connectionId{localValue:3, serverValue:39}] to 192.168.1.53:5001 because the pool has been closed.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  4.253 s
+[INFO] Finished at: 2021-02-07T13:47:42-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">WALLA</span> !!! We have successfully demonstrated the Spring Boot application using MongoRepository
+        as the approach to interacting with the MongoDB database.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://docs.spring.io/spring-data/data-document/docs/current/reference/html/" target="_blank"><span class="bold">Spring Data MongoDB - Reference Documentation</span></a></p>
+      <p><a href="https://polarsparc.github.io/MongoDB/MongoDB-1.html" target="_blank"><span class="bold">Hands-on MongoDB :: Part-1</span></a></p>
+      <p><a href="https://polarsparc.github.io/MongoDB/MongoDB-2.html" target="_blank"><span class="bold">Hands-on MongoDB :: Part-2</span></a></p>
+      <p><a href="https://docs.mongodb.com/manual/" target="_blank"><span class="bold">MongoDB Manual</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/MongoDB">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

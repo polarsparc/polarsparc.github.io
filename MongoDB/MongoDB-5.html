@@ -1,0 +1,820 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Hands-on MongoDB :: Part-5">
+    <meta name="subject" content="Hands-on MongoDB :: Part-5">
+    <meta name="keywords" content="mongodb, nosql">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Hands-on MongoDB :: Part-5</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Hands-on MongoDB :: Part-5</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">02/19/2021 (<span class="hi-yellow">NEW</span>)</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Introduction</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/MongoDB/MongoDB-1.html" target="_blank"><span class="bold">Part-1</span></a>, we setup
+        the high-availability 3-node cluster using <span class="bold">Docker</span> and got our hands dirty with MongoDB by using the
+        <span class="bold">mongo</span> command-line interface.</p>
+      <p>In <a href="https://polarsparc.github.io/MongoDB/MongoDB-2.html" target="_blank"><span class="bold">Part-2</span></a>, we got to
+        demonstrate the same set of operations on MongoDB using the programming language drivers for <span class="bold">Java</span>
+        and <span class="bold">Python</span>.</p>
+      <p>In <a href="https://polarsparc.github.io/MongoDB/MongoDB-3.html" target="_blank"><span class="bold">Part-3</span></a>, we got to
+        demonstrate the same set of operations on MongoDB using <span class="bold">Spring Boot</span> with <span class="bold">Java
+        </span>.</p>
+      <p>In <a href="https://polarsparc.github.io/MongoDB/MongoDB-4.html" target="_blank"><span class="bold">Part-4</span></a>, we got to
+        explore the more advanced operators for querying and updating MongoDB using the <span class="bold">mongo</span> command-line
+        interface.</p>
+      <p>In this <span class="underbold">FINAL</span> part, we will explore some miscellaneous topics around replica set, schema
+        validation, bulk data import, using indexes, etc using the <span class="bold">mongo</span> command-line interface.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with MongoDB</p>
+    </div>
+    <div id="step-div">
+      <p>Replica Set</p>
+    </div>
+    <div id="para-div">
+      <p>Typical enterprise production deployments imply multiple replicas of the data on different server(s) (running in different
+        datacenters that are geographical dispersed) for fault-tolerance and resiliency purposes. In MongoDB, a replicated deployment
+        is achieved by using a <span class="hi-yellow">Replica Set</span>. In <a href="https://polarsparc.github.io/xhtml/MongoDB-1.html"
+        target="_blank"><span class="bold">Part-1</span></a> of this series, we setup a 3-node Replica Set using the official MongoDB
+        <span class="bold">docker</span> image.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the high-level view of the Replica Set (initial state of the nodes in the cluster):</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/mongo-rs-1.png" class="img-cls" alt="Initial Replica Set State" />
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <div id="para-div">
+      <p>The nodes in the Replica Set go through an election process to elect a leader (referred to as the <span class="hi-grey">
+        Primary</span>) which then replicates data <span class="bold">ASYNCHRONOUSLY</span> to the other follower nodes (referred
+        to as the <span class="hi-grey">Secondary</span> nodes) of the cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the high-level view of the Replica Set after the Primary election:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/mongo-rs-2.png" class="img-cls" alt="Replica Set Primary Election" />
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <div id="para-div">
+      <p>With a Replica Set is deployed, the writes have to always go through the Primary node as it is the one replicating to the
+        Secondary node(s) in the cluster. Also, by default, reads are prohibited on the Secondary nodes because there is a possibility
+        of the Secondary node(s) being behind due to network latencies. This is the reason why we encounter the error
+        <span class="hi-red">not master and slaveOk=false</span> when we tried to perform any operation via a Secondary node.</p>
+    </div>
+    <div id="para-div">
+      <p>Until now, we have always looked for and directly connected to the Primary node to perform operations. Given that there are
+        3-nodes in our Replica Set, is there a way to connect to the cluster so the interactive shell or the driver can automatically
+        connect to the Primary ???</p>
+      <p>The anwer is - <span class="underbold">YES</span> !!!</p>
+    </div>
+    <div id="para-div">
+      <p>To connect to our Replica Set <span class="hi-yellow">mongodb-rs</span> using the command-line interface <span class="bold">
+        mongo</span> (using docker), execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm -it mongo:4.4.3 mongo "mongodb://192.168.1.53:5001,192.168.1.53:5002,192.168.1.53:5003/mydb?replicaSet=mongodb-rs"</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>MongoDB shell version v4.4.3
+connecting to: mongodb://192.168.1.53:5001,192.168.1.53:5002,192.168.1.53:5003/mydb?compressors=disabled&gssapiServiceName=mongodb&replicaSet=mongodb-rs
+Implicit session: session { "id" : UUID("f7f9457d-9e61-4f66-8796-0a34c8e11ddb") }
+MongoDB server version: 4.4.3
+Welcome to the MongoDB shell.
+For interactive help, type "help".
+For more comprehensive documentation, see
+  https://docs.mongodb.com/
+Questions? Try the MongoDB Developer Community Forums
+  https://community.mongodb.com
+---
+The server generated these startup warnings when booting: 
+        2021-02-20T00:59:37.527+00:00: Using the XFS filesystem is strongly recommended with the WiredTiger storage engine. See http://dochub.mongodb.org/core/prodnotes-filesystem
+        2021-02-20T00:59:38.776+00:00: Access control is not enabled for the database. Read and write access to data and configuration is unrestricted
+        2021-02-20T00:59:38.776+00:00: You are running this process as the root user, which is not recommended
+---
+---
+        Enable MongoDB's free cloud-based monitoring service, which will then receive and display
+        metrics about your deployment (disk utilization, CPU, operation statistics, etc).
+
+        The monitoring data will be available on a MongoDB website with a unique URL accessible to you
+        and anyone you share the URL with. MongoDB may use this information to make product
+        improvements and to suggest MongoDB products and deployment options to you.
+
+        To enable free monitoring, run the following command: db.enableFreeMonitoring()
+        To permanently disable this reminder, run the following command: db.disableFreeMonitoring()
+---
+mongodb-rs:PRIMARY&gt; </pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">BINGO</span> !!! We have successfully connected to our Replica Set and by default connects to the
+        Primary node.</p>
+    </div>
+    <div id="step-div">
+      <p>Schema Validation</p>
+    </div>
+    <div id="para-div">
+      <p>By default, there is no schema enforcement or validation on any document being inserted or updated in a MongoDB collection.
+        What if we want to enforce some kind of a structure on the documents being inserted or updated into a MongoDB collection ???</p>
+      <p>This is where the MongoDB <span class="hi-yellow">Schema Validation</span> via the <span class="hi-blue">$jsonSchema</span>
+        operator comes in handy.</p>
+    </div>
+    <div id="para-div">
+      <p>We will <span class="underbold">explicitly</span> create a MongoDB collection called <span class="hi-yellow">contacts</span>
+        that will require the mandatory text fields <span class="hi-grey">first</span>, <span class="hi-grey">last</span>, and an
+        <span class="hi-grey">email</span> sub-document with the mandatory text field <span class="hi-grey">personal</span> and an
+        optional text field <span class="hi-grey">work</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Assuming the command-line interactive MongoDB shell is running, execute the following command to create the collection with
+        the schema validator:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.createCollection('contacts', { validator: {
+    $jsonSchema: {
+        bsonType: 'object',
+        required: [ 'first', 'last', 'email' ],
+        properties: {
+            first: { 
+                bsonType: 'string',
+                maxLength: 25,
+                description: 'required and must be a string'
+            },
+            last: { 
+                bsonType: 'string',
+                maxLength: 25,
+                description: 'required and must be a string'
+            },
+            email: { 
+                bsonType: 'object', 
+                required: [ 'personal' ],
+                properties: {
+                    personal: { 
+                        bsonType: 'string', 
+                        pattern: "^[A-Za-z0-9_]+\@[A-Za-z0-9]+\.[a-z]{2,3}$",
+                        maxLength: 50,
+                        description: 'required and must be a string'
+                    },
+                    work: { 
+                        bsonType: 'string',
+                        pattern: "^[A-Za-z0-9_]+\@[A-Za-z0-9]+\.[a-z]{2,3}$",
+                        maxLength: 50,
+                        description: 'optional and must be a string'
+                    }
+                }
+            }
+        }
+    }
+} })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>{
+  "ok" : 1,
+  "$clusterTime" : {
+    "clusterTime" : Timestamp(1613753308, 1),
+    "signature" : {
+      "hash" : BinData(0,"AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
+      "keyId" : NumberLong(0)
+    }
+  },
+  "operationTime" : Timestamp(1613692881, 1)
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the operator(s) used in the command above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">bsonType</span> :: specifies the type of the document, sub-document, or a field in the document.
+            The top level (the document) is of the type <span class="hi-blue">object</span>. The other fields in the document, such
+            as, first, last, personal, work are all of type <span class="hi-blue">string</span></p>
+        </li>
+        <li>
+          <p><span class="bold">required</span> :: specifies a array of mandatory field name(s) that *<span class="bold">MUST</span>*
+            be present in the document</p>
+        </li>
+        <li>
+          <p><span class="bold">properties</span> :: a JSON document that specifies the schema definition for each field in the Mongo
+            document</p>
+        </li>
+        <li>
+          <p><span class="bold">pattern</span> :: specifies a regular expression to validate a field in the document</p>
+        </li>
+        <li>
+          <p><span class="bold">maxLength</span> :: specifies the maximum length of the string value the field holds</p>
+        </li>
+        <li>
+          <p><span class="bold">description</span> :: specifies an optional string that describes the schema definition for a field</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Let us try to add a new invalid document to a collection by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.insert({ first: "Alice", last: "Thompson" })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>WriteResult({
+  "nInserted" : 0,
+  "writeError" : {
+    "code" : 121,
+    "errmsg" : "Document failed validation"
+  }
+})</pre>
+    </div>
+    <div id="para-div">
+      <p>Let us now try to add a new valid document to a collection by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.insert({ first: "Alice", last: "Thompson", email: { personal: 'alice_thompson@home.io' } })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>WriteResult({ "nInserted" : 1 })</pre>
+    </div>
+    <div id="para-div">
+      <p>We will now go ahead and drop the collection by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.drop()</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>true</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">AWESOME</span> !!! We have successfully demonstrated schema validation on MongoDB collections.</p>
+    </div>
+    <div id="step-div">
+      <p>Bulk Data Import</p>
+    </div>
+    <div id="para-div">
+      <p>There will be times when we desired to bulk load data into one or more MongoDB collections. How do we do that ??? This is
+        where the <span class="hi-yellow">mongoimport</span> comes in handy.</p>
+    </div>
+    <div id="para-div">
+      <p>We will use a sample dataset for the purposes of demonstration. The sample dataset will contain 100 randomly generated
+        contact details to be added to the collection called <span class="hi-grey">contacts</span>.</p>
+      <p>The sample dataset is stored in a file called <span class="bold">contacts.json</span> and contains an array of the contact
+        documents in the JSON format.</p>
+      <p>The following are the contents of the file <span class="hi-yellow">contacts.json</span> (which will be placed in the
+        directory <span class="bold">$HOME/Downloads/DATA/mongodb</span>):</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">contacts.json</div>
+      <div class="src-body-1">
+<pre>[{ '_id': 'charlie_ng', 'first': 'Charlie', 'last': 'Ng', 'email': { 'personal': 'charlie_ng@pear.us' }, 'zip': '50016' },
+{ '_id': 'frank_nelson', 'first': 'Frank', 'last': 'Nelson', 'email': { 'personal': 'frank_nelson@raspberry.us' }, 'zip': '50011' },
+{ '_id': 'bob_ng', 'first': 'Bob', 'last': 'Ng', 'email': { 'personal': 'bob_ng@granola.us' }, 'zip': '50020' },
+{ '_id': 'david_lee', 'first': 'David', 'last': 'Lee', 'email': { 'personal': 'david_lee@fig.org' }, 'zip': '50013' },
+{ '_id': 'charlie_davidson', 'first': 'Charlie', 'last': 'Davidson', 'email': { 'personal': 'charlie_davidson@fig.org', 'work': 'charlie.davidson@orange.io' },'zip': '50020' },
+{ '_id': 'george_johnson', 'first': 'George', 'last': 'Johnson', 'email': { 'personal': 'george_johnson@lemon.io', 'work': 'george.johnson@purple.us' },'zip': '50014' },
+{ '_id': 'george_davidson', 'first': 'George', 'last': 'Davidson', 'email': { 'personal': 'george_davidson@clove.net' }, 'zip': '50019' },
+{ '_id': 'alice_johnson', 'first': 'Alice', 'last': 'Johnson', 'email': { 'personal': 'alice_johnson@pear.us' }, 'zip': '50019' },
+{ '_id': 'jack_baker', 'first': 'Jack', 'last': 'Baker', 'email': { 'personal': 'jack_baker@watermelon.io', 'work': 'jack.baker@green.org' },'zip': '50019' },
+{ '_id': 'jack_jones', 'first': 'Jack', 'last': 'Jones', 'email': { 'personal': 'jack_jones@watermelon.io', 'work': 'jack.jones@orange.io' },'zip': '50020' },
+{ '_id': 'frank_norman', 'first': 'Frank', 'last': 'Norman', 'email': { 'personal': 'frank_norman@jam.org', 'work': 'frank.norman@purple.us' },'zip': '50010' },
+{ '_id': 'bob_jones', 'first': 'Bob', 'last': 'Jones', 'email': { 'personal': 'bob_jones@lemon.io' }, 'zip': '50016' },
+{ '_id': 'jack_ng', 'first': 'Jack', 'last': 'Ng', 'email': { 'personal': 'jack_ng@watermelon.io' }, 'zip': '50010' },
+{ '_id': 'kelly_lee', 'first': 'Kelly', 'last': 'Lee', 'email': { 'personal': 'kelly_lee@dates.io' }, 'zip': '50014' },
+{ '_id': 'bob_baker', 'first': 'Bob', 'last': 'Baker', 'email': { 'personal': 'bob_baker@watermelon.io', 'work': 'bob.baker@green.org' },'zip': '50018' },
+{ '_id': 'kelly_johnson', 'first': 'Kelly', 'last': 'Johnson', 'email': { 'personal': 'kelly_johnson@watermelon.io' }, 'zip': '50017' },
+{ '_id': 'alice_connor', 'first': 'Alice', 'last': 'Connor', 'email': { 'personal': 'alice_connor@pear.us', 'work': 'alice.connor@green.org' },'zip': '50011' },
+{ '_id': 'holly_davidson', 'first': 'Holly', 'last': 'Davidson', 'email': { 'personal': 'holly_davidson@banana.io' }, 'zip': '50010' },
+{ '_id': 'david_johnson', 'first': 'David', 'last': 'Johnson', 'email': { 'personal': 'david_johnson@dates.io' }, 'zip': '50012' },
+{ '_id': 'david_connor', 'first': 'David', 'last': 'Connor', 'email': { 'personal': 'david_connor@clove.net' }, 'zip': '50016' },
+{ '_id': 'alice_norman', 'first': 'Alice', 'last': 'Norman', 'email': { 'personal': 'alice_norman@lemon.io', 'work': 'alice.norman@purple.us' },'zip': '50015' },
+{ '_id': 'holly_norman', 'first': 'Holly', 'last': 'Norman', 'email': { 'personal': 'holly_norman@fig.org' }, 'zip': '50014' },
+{ '_id': 'eve_nelson', 'first': 'Eve', 'last': 'Nelson', 'email': { 'personal': 'eve_nelson@granola.us' }, 'zip': '50013' },
+{ '_id': 'alice_nelson', 'first': 'Alice', 'last': 'Nelson', 'email': { 'personal': 'alice_nelson@granola.us' }, 'zip': '50014' },
+{ '_id': 'alice_baker', 'first': 'Alice', 'last': 'Baker', 'email': { 'personal': 'alice_baker@raspberry.us', 'work': 'alice.baker@maroon.us' },'zip': '50016' },
+{ '_id': 'holly_baker', 'first': 'Holly', 'last': 'Baker', 'email': { 'personal': 'holly_baker@dates.io' }, 'zip': '50019' },
+{ '_id': 'alice_lee', 'first': 'Alice', 'last': 'Lee', 'email': { 'personal': 'alice_lee@raspberry.us' }, 'zip': '50016' },
+{ '_id': 'george_ng', 'first': 'George', 'last': 'Ng', 'email': { 'personal': 'george_ng@fig.org' }, 'zip': '50019' },
+{ '_id': 'kelly_norman', 'first': 'Kelly', 'last': 'Norman', 'email': { 'personal': 'kelly_norman@granola.us' }, 'zip': '50017' },
+{ '_id': 'charlie_nelson', 'first': 'Charlie', 'last': 'Nelson', 'email': { 'personal': 'charlie_nelson@watermelon.io' }, 'zip': '50011' },
+{ '_id': 'eve_davidson', 'first': 'Eve', 'last': 'Davidson', 'email': { 'personal': 'eve_davidson@clove.net' }, 'zip': '50013' },
+{ '_id': 'bob_connor', 'first': 'Bob', 'last': 'Connor', 'email': { 'personal': 'bob_connor@banana.io', 'work': 'bob.connor@purple.us' },'zip': '50010' },
+{ '_id': 'kelly_davidson', 'first': 'Kelly', 'last': 'Davidson', 'email': { 'personal': 'kelly_davidson@pear.us' }, 'zip': '50011' },
+{ '_id': 'eve_connor', 'first': 'Eve', 'last': 'Connor', 'email': { 'personal': 'eve_connor@raspberry.us' }, 'zip': '50012' },
+{ '_id': 'jack_thompson', 'first': 'Jack', 'last': 'Thompson', 'email': { 'personal': 'jack_thompson@dates.io', 'work': 'jack.thompson@cyan.net' },'zip': '50019' },
+{ '_id': 'george_connor', 'first': 'George', 'last': 'Connor', 'email': { 'personal': 'george_connor@pear.us' }, 'zip': '50020' },
+{ '_id': 'holly_jones', 'first': 'Holly', 'last': 'Jones', 'email': { 'personal': 'holly_jones@fig.org', 'work': 'holly.jones@orange.io' },'zip': '50010' },
+{ '_id': 'holly_johnson', 'first': 'Holly', 'last': 'Johnson', 'email': { 'personal': 'holly_johnson@pear.us', 'work': 'holly.johnson@blue.edu' },'zip': '50018' },
+{ '_id': 'kelly_jones', 'first': 'Kelly', 'last': 'Jones', 'email': { 'personal': 'kelly_jones@banana.io', 'work': 'kelly.jones@violet.io' },'zip': '50018' },
+{ '_id': 'bob_davidson', 'first': 'Bob', 'last': 'Davidson', 'email': { 'personal': 'bob_davidson@banana.io' }, 'zip': '50013' },
+{ '_id': 'kelly_thompson', 'first': 'Kelly', 'last': 'Thompson', 'email': { 'personal': 'kelly_thompson@dates.io', 'work': 'kelly.thompson@green.org' },'zip': '50016' },
+{ '_id': 'david_norman', 'first': 'David', 'last': 'Norman', 'email': { 'personal': 'david_norman@dates.io', 'work': 'david.norman@purple.us' },'zip': '50019' },
+{ '_id': 'eve_johnson', 'first': 'Eve', 'last': 'Johnson', 'email': { 'personal': 'eve_johnson@raspberry.us' }, 'zip': '50020' },
+{ '_id': 'holly_lee', 'first': 'Holly', 'last': 'Lee', 'email': { 'personal': 'holly_lee@fig.org' }, 'zip': '50016' },
+{ '_id': 'alice_ng', 'first': 'Alice', 'last': 'Ng', 'email': { 'personal': 'alice_ng@jam.org', 'work': 'alice.ng@blue.edu' },'zip': '50017' },
+{ '_id': 'kelly_baker', 'first': 'Kelly', 'last': 'Baker', 'email': { 'personal': 'kelly_baker@clove.net', 'work': 'kelly.baker@orange.io' },'zip': '50020' },
+{ '_id': 'eve_thompson', 'first': 'Eve', 'last': 'Thompson', 'email': { 'personal': 'eve_thompson@pear.us', 'work': 'eve.thompson@violet.io' },'zip': '50014' },
+{ '_id': 'jack_nelson', 'first': 'Jack', 'last': 'Nelson', 'email': { 'personal': 'jack_nelson@jam.org' }, 'zip': '50012' },
+{ '_id': 'charlie_lee', 'first': 'Charlie', 'last': 'Lee', 'email': { 'personal': 'charlie_lee@pear.us', 'work': 'charlie.lee@pink.com' },'zip': '50016' },
+{ '_id': 'david_ng', 'first': 'David', 'last': 'Ng', 'email': { 'personal': 'david_ng@clove.net', 'work': 'david.ng@red.net' },'zip': '50012' },
+{ '_id': 'bob_johnson', 'first': 'Bob', 'last': 'Johnson', 'email': { 'personal': 'bob_johnson@clove.net' }, 'zip': '50014' },
+{ '_id': 'bob_norman', 'first': 'Bob', 'last': 'Norman', 'email': { 'personal': 'bob_norman@granola.us', 'work': 'bob.norman@violet.io' },'zip': '50012' },
+{ '_id': 'frank_jones', 'first': 'Frank', 'last': 'Jones', 'email': { 'personal': 'frank_jones@fig.org', 'work': 'frank.jones@pink.com' },'zip': '50010' },
+{ '_id': 'alice_jones', 'first': 'Alice', 'last': 'Jones', 'email': { 'personal': 'alice_jones@clove.net' }, 'zip': '50011' },
+{ '_id': 'frank_thompson', 'first': 'Frank', 'last': 'Thompson', 'email': { 'personal': 'frank_thompson@dates.io' }, 'zip': '50010' },
+{ '_id': 'george_lee', 'first': 'George', 'last': 'Lee', 'email': { 'personal': 'george_lee@lemon.io' }, 'zip': '50016' },
+{ '_id': 'david_thompson', 'first': 'David', 'last': 'Thompson', 'email': { 'personal': 'david_thompson@clove.net', 'work': 'david.thompson@purple.us' },'zip': '50010' },
+{ '_id': 'george_baker', 'first': 'George', 'last': 'Baker', 'email': { 'personal': 'george_baker@banana.io' }, 'zip': '50020' },
+{ '_id': 'george_jones', 'first': 'George', 'last': 'Jones', 'email': { 'personal': 'george_jones@granola.us', 'work': 'george.jones@red.net' },'zip': '50016' },
+{ '_id': 'george_thompson', 'first': 'George', 'last': 'Thompson', 'email': { 'personal': 'george_thompson@pear.us', 'work': 'george.thompson@brown.io' },'zip': '50019' },
+{ '_id': 'charlie_baker', 'first': 'Charlie', 'last': 'Baker', 'email': { 'personal': 'charlie_baker@raspberry.us' }, 'zip': '50018' },
+{ '_id': 'george_nelson', 'first': 'George', 'last': 'Nelson', 'email': { 'personal': 'george_nelson@lemon.io' }, 'zip': '50011' },
+{ '_id': 'charlie_thompson', 'first': 'Charlie', 'last': 'Thompson', 'email': { 'personal': 'charlie_thompson@pear.us' }, 'zip': '50018' },
+{ '_id': 'frank_lee', 'first': 'Frank', 'last': 'Lee', 'email': { 'personal': 'frank_lee@jam.org', 'work': 'frank.lee@pink.com' },'zip': '50011' },
+{ '_id': 'david_davidson', 'first': 'David', 'last': 'Davidson', 'email': { 'personal': 'david_davidson@granola.us', 'work': 'david.davidson@blue.edu' },'zip': '50011' },
+{ '_id': 'holly_ng', 'first': 'Holly', 'last': 'Ng', 'email': { 'personal': 'holly_ng@dates.io', 'work': 'holly.ng@pink.com' },'zip': '50020' },
+{ '_id': 'charlie_johnson', 'first': 'Charlie', 'last': 'Johnson', 'email': { 'personal': 'charlie_johnson@watermelon.io', 'work': 'charlie.johnson@green.org' },'zip': '50014' },
+{ '_id': 'eve_ng', 'first': 'Eve', 'last': 'Ng', 'email': { 'personal': 'eve_ng@granola.us', 'work': 'eve.ng@red.net' },'zip': '50019' },
+{ '_id': 'george_norman', 'first': 'George', 'last': 'Norman', 'email': { 'personal': 'george_norman@lemon.io' }, 'zip': '50018' },
+{ '_id': 'bob_thompson', 'first': 'Bob', 'last': 'Thompson', 'email': { 'personal': 'bob_thompson@dates.io' }, 'zip': '50011' },
+{ '_id': 'jack_norman', 'first': 'Jack', 'last': 'Norman', 'email': { 'personal': 'jack_norman@pear.us' }, 'zip': '50020' },
+{ '_id': 'holly_thompson', 'first': 'Holly', 'last': 'Thompson', 'email': { 'personal': 'holly_thompson@clove.net' }, 'zip': '50019' },
+{ '_id': 'bob_lee', 'first': 'Bob', 'last': 'Lee', 'email': { 'personal': 'bob_lee@lemon.io', 'work': 'bob.lee@red.net' },'zip': '50014' },
+{ '_id': 'alice_thompson', 'first': 'Alice', 'last': 'Thompson', 'email': { 'personal': 'alice_thompson@jam.org' }, 'zip': '50012' },
+{ '_id': 'eve_norman', 'first': 'Eve', 'last': 'Norman', 'email': { 'personal': 'eve_norman@dates.io' }, 'zip': '50020' },
+{ '_id': 'holly_nelson', 'first': 'Holly', 'last': 'Nelson', 'email': { 'personal': 'holly_nelson@clove.net' }, 'zip': '50015' },
+{ '_id': 'charlie_connor', 'first': 'Charlie', 'last': 'Connor', 'email': { 'personal': 'charlie_connor@watermelon.io', 'work': 'charlie.connor@blue.edu' },'zip': '50018' },
+{ '_id': 'charlie_jones', 'first': 'Charlie', 'last': 'Jones', 'email': { 'personal': 'charlie_jones@fig.org' }, 'zip': '50014' },
+{ '_id': 'frank_davidson', 'first': 'Frank', 'last': 'Davidson', 'email': { 'personal': 'frank_davidson@raspberry.us', 'work': 'frank.davidson@brown.io' },'zip': '50015' },
+{ '_id': 'charlie_norman', 'first': 'Charlie', 'last': 'Norman', 'email': { 'personal': 'charlie_norman@dates.io' }, 'zip': '50013' },
+{ '_id': 'holly_connor', 'first': 'Holly', 'last': 'Connor', 'email': { 'personal': 'holly_connor@jam.org', 'work': 'holly.connor@green.org' },'zip': '50016' },
+{ '_id': 'jack_connor', 'first': 'Jack', 'last': 'Connor', 'email': { 'personal': 'jack_connor@dates.io' }, 'zip': '50020' },
+{ '_id': 'alice_davidson', 'first': 'Alice', 'last': 'Davidson', 'email': { 'personal': 'alice_davidson@raspberry.us', 'work': 'alice.davidson@red.net' },'zip': '50011' },
+{ '_id': 'jack_lee', 'first': 'Jack', 'last': 'Lee', 'email': { 'personal': 'jack_lee@clove.net' }, 'zip': '50013' },
+{ '_id': 'frank_connor', 'first': 'Frank', 'last': 'Connor', 'email': { 'personal': 'frank_connor@banana.io', 'work': 'frank.connor@maroon.us' },'zip': '50020' },
+{ '_id': 'kelly_connor', 'first': 'Kelly', 'last': 'Connor', 'email': { 'personal': 'kelly_connor@clove.net' }, 'zip': '50016' },
+{ '_id': 'david_baker', 'first': 'David', 'last': 'Baker', 'email': { 'personal': 'david_baker@pear.us', 'work': 'david.baker@blue.edu' },'zip': '50019' },
+{ '_id': 'david_nelson', 'first': 'David', 'last': 'Nelson', 'email': { 'personal': 'david_nelson@lemon.io', 'work': 'david.nelson@brown.io' },'zip': '50018' },
+{ '_id': 'bob_nelson', 'first': 'Bob', 'last': 'Nelson', 'email': { 'personal': 'bob_nelson@granola.us', 'work': 'bob.nelson@green.org' },'zip': '50011' },
+{ '_id': 'frank_baker', 'first': 'Frank', 'last': 'Baker', 'email': { 'personal': 'frank_baker@lemon.io', 'work': 'frank.baker@pink.com' },'zip': '50017' },
+{ '_id': 'eve_jones', 'first': 'Eve', 'last': 'Jones', 'email': { 'personal': 'eve_jones@lemon.io' }, 'zip': '50010' },
+{ '_id': 'david_jones', 'first': 'David', 'last': 'Jones', 'email': { 'personal': 'david_jones@watermelon.io', 'work': 'david.jones@red.net' },'zip': '50019' },
+{ '_id': 'jack_johnson', 'first': 'Jack', 'last': 'Johnson', 'email': { 'personal': 'jack_johnson@lemon.io' }, 'zip': '50012' },
+{ '_id': 'jack_davidson', 'first': 'Jack', 'last': 'Davidson', 'email': { 'personal': 'jack_davidson@granola.us', 'work': 'jack.davidson@violet.io' },'zip': '50013' },
+{ '_id': 'eve_lee', 'first': 'Eve', 'last': 'Lee', 'email': { 'personal': 'eve_lee@granola.us', 'work': 'eve.lee@brown.io' },'zip': '50012' },
+{ '_id': 'frank_johnson', 'first': 'Frank', 'last': 'Johnson', 'email': { 'personal': 'frank_johnson@clove.net', 'work': 'frank.johnson@red.net' },'zip': '50013' },
+{ '_id': 'kelly_ng', 'first': 'Kelly', 'last': 'Ng', 'email': { 'personal': 'kelly_ng@fig.org' }, 'zip': '50016' },
+{ '_id': 'kelly_nelson', 'first': 'Kelly', 'last': 'Nelson', 'email': { 'personal': 'kelly_nelson@lemon.io' }, 'zip': '50017' },
+{ '_id': 'eve_baker', 'first': 'Eve', 'last': 'Baker', 'email': { 'personal': 'eve_baker@jam.org' }, 'zip': '50010' },
+{ '_id': 'frank_ng', 'first': 'Frank', 'last': 'Ng', 'email': { 'personal': 'frank_ng@pear.us' }, 'zip': '50019' }]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To bulk load the sample documents into the collection <span class="bold">contacts</span>, execute the following command in
+        a Terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm -it -v $HOME/Downloads/DATA/mongodb/contacts.json:/data/contacts.json mongo:4.4.3 mongoimport --uri "mongodb://192.168.1.53:5001,192.168.1.53:5002,192.168.1.53:5003/mydb?replicaSet=mongodb-rs" --collection contacts --file /data/contacts.json --drop --jsonArray</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>2021-02-20T01:31:37.947+0000	connected to: mongodb://192.168.1.53:5001,192.168.1.53:5002,192.168.1.53:5003/mydb?replicaSet=mongodb-rs
+2021-02-20T01:31:37.948+0000	dropping: mydb.contacts
+2021-02-20T01:31:37.950+0000	Failed: invalid JSON input
+2021-02-20T01:31:37.950+0000	0 document(s) imported successfully. 0 document(s) failed to import.</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Hmm</span> !!! What happened here. Did check the contents and it is a valid JSON structure.</p>
+    </div>
+    <br/>
+    <div id="error-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>We are missing the <span class="underbold">--legacy</span> flag and hence the error</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Once again, let us try to bulk load the sample documents into the collection <span class="bold">contacts</span> by execute
+        the following command in the Terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm -it -v $HOME/Downloads/DATA/mongodb/contacts.json:/data/contacts.json mongo:4.4.3 mongoimport --uri "mongodb://192.168.1.53:5001,192.168.1.53:5002,192.168.1.53:5003/mydb?replicaSet=mongodb-rs" --collection contacts --file /data/contacts.json --drop --jsonArray --legacy</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>2021-02-20T01:34:08.751+0000	connected to: mongodb://192.168.1.53:5001,192.168.1.53:5002,192.168.1.53:5003/mydb?replicaSet=mongodb-rs
+2021-02-20T01:34:08.751+0000	dropping: mydb.contacts
+2021-02-20T01:34:08.784+0000	100 document(s) imported successfully. 0 document(s) failed to import.</pre>
+    </div>
+    <div id="para-div">
+      <p>To verify documents were loaded into the collection, execute the following command in the MongoDB interactive shell:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.count()</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>100</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">EXCELLENT</span> !!! We have successfully demonstrated the bulk data loading into a MongoDB collection.</p>
+    </div>
+    <div id="step-div">
+      <p>Using Indexes</p>
+    </div>
+    <div id="para-div">
+      <p>To query all the documents from the collection <span class="bold">contacts</span> where the <span class="bold">last</span>
+        field equals the value of <span class="bold">Thompson</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find({ last: 'Thompson' })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>{ "_id" : "jack_thompson", "first" : "Jack", "last" : "Thompson", "email" : { "personal" : "jack_thompson@dates.io", "work" : "jack.thompson@cyan.net" }, "zip" : "50019" }
+{ "_id" : "kelly_thompson", "first" : "Kelly", "last" : "Thompson", "email" : { "personal" : "kelly_thompson@dates.io", "work" : "kelly.thompson@green.org" }, "zip" : "50016" }
+{ "_id" : "eve_thompson", "first" : "Eve", "last" : "Thompson", "email" : { "personal" : "eve_thompson@pear.us", "work" : "eve.thompson@violet.io" }, "zip" : "50014" }
+{ "_id" : "frank_thompson", "first" : "Frank", "last" : "Thompson", "email" : { "personal" : "frank_thompson@dates.io" }, "zip" : "50010" }
+{ "_id" : "david_thompson", "first" : "David", "last" : "Thompson", "email" : { "personal" : "david_thompson@clove.net", "work" : "david.thompson@purple.us" }, "zip" : "50010" }
+{ "_id" : "george_thompson", "first" : "George", "last" : "Thompson", "email" : { "personal" : "george_thompson@pear.us", "work" : "george.thompson@brown.io" }, "zip" : "50019" }
+{ "_id" : "charlie_thompson", "first" : "Charlie", "last" : "Thompson", "email" : { "personal" : "charlie_thompson@pear.us" }, "zip" : "50018" }
+{ "_id" : "bob_thompson", "first" : "Bob", "last" : "Thompson", "email" : { "personal" : "bob_thompson@dates.io" }, "zip" : "50011" }
+{ "_id" : "alice_thompson", "first" : "Alice", "last" : "Thompson", "email" : { "personal" : "alice_thompson@jam.org" }, "zip" : "50012" }
+{ "_id" : "holly_thompson", "first" : "Holly", "last" : "Thompson", "email" : { "personal" : "holly_thompson@clove.net" }, "zip" : "50019" }</pre>
+    </div>
+    <div id="para-div">
+      <p>The results are returned instantly. How do we find how the query performed ??? This is where the <span class="hi-yellow">
+        explain()</span> method on the collection comes in handy.</p>
+    </div>
+    <div id="para-div">
+      <p>To run the <span class="bold">explain()</span> method on the query to fetch all the documents from the collection
+        <span class="bold">contacts</span> where the <span class="bold">last</span> field equals the value of <span class="bold">
+        Thompson</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find({ last: 'Thompson' }).explain()</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>{
+  "queryPlanner" : {
+    "plannerVersion" : 1,
+    "namespace" : "mydb.contacts",
+    "indexFilterSet" : false,
+    "parsedQuery" : {
+      "last" : {
+        "$eq" : "Thompson"
+      }
+    },
+    "queryHash" : "CB2688EC",
+    "planCacheKey" : "CB2688EC",
+    "winningPlan" : {
+      "stage" : "COLLSCAN",
+      "filter" : {
+        "last" : {
+          "$eq" : "Thompson"
+        }
+      },
+      "direction" : "forward"
+    },
+    "rejectedPlans" : [ ]
+  },
+  "serverInfo" : {
+    "host" : "c7ba1f94500a",
+    "port" : 5002,
+    "version" : "4.4.3",
+    "gitVersion" : "913d6b62acfbb344dde1b116f4161360acd8fd13"
+  },
+  "ok" : 1,
+  "$clusterTime" : {
+    "clusterTime" : Timestamp(1613782747, 1),
+    "signature" : {
+      "hash" : BinData(0,"AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
+      "keyId" : NumberLong(0)
+    }
+  },
+  "operationTime" : Timestamp(1613782747, 1)
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>The default behavior of the <span class="bold">explain()</span> method is to display the details of the winning plan
+        selected by the query optimizer. From the Output.10 above, we see the winning plan was <span class="hi-red">COLLSCAN</span>
+        which imples that it was a collection scan, meaning, all the documents from the collection were scanned for the criteria.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the query plan as well as the execution information from the <span class="bold">explain()</span> method, one can
+        specify <span class="hi-green">'executionStats'</span> as the argument to the method.</p>
+    </div>
+    <div id="para-div">
+      <p>To re-run the <span class="bold">explain()</span> method (with the <span class="bold">'executionStats'</span> argument) to
+        analyze the query from above, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find({ last: 'Thompson' }).explain('executionStats')</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>{
+  "queryPlanner" : {
+    "plannerVersion" : 1,
+    "namespace" : "mydb.contacts",
+    "indexFilterSet" : false,
+    "parsedQuery" : {
+      "last" : {
+        "$eq" : "Thompson"
+      }
+    },
+    "winningPlan" : {
+      "stage" : "COLLSCAN",
+      "filter" : {
+        "last" : {
+          "$eq" : "Thompson"
+        }
+      },
+      "direction" : "forward"
+    },
+    "rejectedPlans" : [ ]
+  },
+  "executionStats" : {
+    "executionSuccess" : true,
+    "nReturned" : 10,
+    "executionTimeMillis" : 0,
+    "totalKeysExamined" : 0,
+    "totalDocsExamined" : 100,
+    "executionStages" : {
+      "stage" : "COLLSCAN",
+      "filter" : {
+        "last" : {
+          "$eq" : "Thompson"
+        }
+      },
+      "nReturned" : 10,
+      "executionTimeMillisEstimate" : 0,
+      "works" : 102,
+      "advanced" : 10,
+      "needTime" : 91,
+      "needYield" : 0,
+      "saveState" : 0,
+      "restoreState" : 0,
+      "isEOF" : 1,
+      "direction" : "forward",
+      "docsExamined" : 100
+    }
+  },
+  "serverInfo" : {
+    "host" : "c7ba1f94500a",
+    "port" : 5002,
+    "version" : "4.4.3",
+    "gitVersion" : "913d6b62acfbb344dde1b116f4161360acd8fd13"
+  },
+  "ok" : 1,
+  "$clusterTime" : {
+    "clusterTime" : Timestamp(1613784227, 1),
+    "signature" : {
+      "hash" : BinData(0,"AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
+      "keyId" : NumberLong(0)
+    }
+  },
+  "operationTime" : Timestamp(1613784227, 1)
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.11 above, we get more insights on the execution under <span class="hi-yellow">"executionStats"</span>.
+        The total number of documents examined from the collection was <span class="underbold">100</span>, which is all the
+        documents in the collection. What if we had millions of documents in the collections ???</p>
+    </div>
+    <div id="para-div">
+      <p>To improve the performance, one can create an index on the desired field (the <span class="bold">last</span> field in our
+        case).</p>
+    </div>
+    <div id="para-div">
+      <p>To create an index on the <span class="bold">last</span> field (in an ascending order) for the collection <span class="bold">
+        contacts</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.createIndex({ last: 1 })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>{
+  "createdCollectionAutomatically" : false,
+  "numIndexesBefore" : 1,
+  "numIndexesAfter" : 2,
+  "commitQuorum" : "votingMembers",
+  "ok" : 1,
+  "$clusterTime" : {
+    "clusterTime" : Timestamp(1613784417, 7),
+    "signature" : {
+      "hash" : BinData(0,"AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
+      "keyId" : NumberLong(0)
+    }
+  },
+  "operationTime" : Timestamp(1613784417, 7)
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, re-run the <span class="bold">explain()</span> method (with the <span class="bold">'executionStats'</span> argument)
+        to analyze the query from above by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find({ last: 'Thompson' }).explain('executionStats')</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>{
+  "queryPlanner" : {
+    "plannerVersion" : 1,
+    "namespace" : "mydb.contacts",
+    "indexFilterSet" : false,
+    "parsedQuery" : {
+      "last" : {
+        "$eq" : "Thompson"
+      }
+    },
+    "winningPlan" : {
+      "stage" : "FETCH",
+      "inputStage" : {
+        "stage" : "IXSCAN",
+        "keyPattern" : {
+          "last" : 1
+        },
+        "indexName" : "last_1",
+        "isMultiKey" : false,
+        "multiKeyPaths" : {
+          "last" : [ ]
+        },
+        "isUnique" : false,
+        "isSparse" : false,
+        "isPartial" : false,
+        "indexVersion" : 2,
+        "direction" : "forward",
+        "indexBounds" : {
+          "last" : [
+            "[\"Thompson\", \"Thompson\"]"
+          ]
+        }
+      }
+    },
+    "rejectedPlans" : [ ]
+  },
+  "executionStats" : {
+    "executionSuccess" : true,
+    "nReturned" : 10,
+    "executionTimeMillis" : 1,
+    "totalKeysExamined" : 10,
+    "totalDocsExamined" : 10,
+    "executionStages" : {
+      "stage" : "FETCH",
+      "nReturned" : 10,
+      "executionTimeMillisEstimate" : 0,
+      "works" : 11,
+      "advanced" : 10,
+      "needTime" : 0,
+      "needYield" : 0,
+      "saveState" : 0,
+      "restoreState" : 0,
+      "isEOF" : 1,
+      "docsExamined" : 10,
+      "alreadyHasObj" : 0,
+      "inputStage" : {
+        "stage" : "IXSCAN",
+        "nReturned" : 10,
+        "executionTimeMillisEstimate" : 0,
+        "works" : 11,
+        "advanced" : 10,
+        "needTime" : 0,
+        "needYield" : 0,
+        "saveState" : 0,
+        "restoreState" : 0,
+        "isEOF" : 1,
+        "keyPattern" : {
+          "last" : 1
+        },
+        "indexName" : "last_1",
+        "isMultiKey" : false,
+        "multiKeyPaths" : {
+          "last" : [ ]
+        },
+        "isUnique" : false,
+        "isSparse" : false,
+        "isPartial" : false,
+        "indexVersion" : 2,
+        "direction" : "forward",
+        "indexBounds" : {
+          "last" : [
+            "[\"Thompson\", \"Thompson\"]"
+          ]
+        },
+        "keysExamined" : 10,
+        "seeks" : 1,
+        "dupsTested" : 0,
+        "dupsDropped" : 0
+      }
+    }
+  },
+  "serverInfo" : {
+    "host" : "c7ba1f94500a",
+    "port" : 5002,
+    "version" : "4.4.3",
+    "gitVersion" : "913d6b62acfbb344dde1b116f4161360acd8fd13"
+  },
+  "ok" : 1,
+  "$clusterTime" : {
+    "clusterTime" : Timestamp(1613784447, 1),
+    "signature" : {
+      "hash" : BinData(0,"AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
+      "keyId" : NumberLong(0)
+    }
+  },
+  "operationTime" : Timestamp(1613784447, 1)
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.13 above under <span class="hi-yellow">"executionStats"</span>, we observe the total number of documents
+        examined from the collection was only <span class="underbold">10</span> resulting in a better performance.</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">WALLA</span> !!! We have successfully demonstrated the use of indexes on a MongoDB collection.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/MongoDB/MongoDB-1.html" target="_blank"><span class="bold">Hands-on MongoDB :: Part-1</span></a></p>
+      <p><a href="https://polarsparc.github.io/MongoDB/MongoDB-2.html" target="_blank"><span class="bold">Hands-on MongoDB :: Part-2</span></a></p>
+      <p><a href="https://polarsparc.github.io/MongoDB/MongoDB-3.html" target="_blank"><span class="bold">Hands-on MongoDB :: Part-3</span></a></p>
+      <p><a href="https://polarsparc.github.io/MongoDB/MongoDB-4.html" target="_blank"><span class="bold">Hands-on MongoDB :: Part-4</span></a></p>
+      <p><a href="https://docs.mongodb.com/manual/" target="_blank"><span class="bold">MongoDB Manual</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,637 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Virtual Threads in Java 21">
+    <meta name="subject" content="Virtual Threads in Java 21">
+    <meta name="keywords" content="java-21, virtual-threads">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Virtual Threads in Java 21</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Virtual Threads in Java 21</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">11/18/2023</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="para-div">
+      <p>In a typical <span class="bold">Java</span> business application that involves multiple steps to be executed concurrently,
+        one could leverage the <span class="bold">Java</span> platform <span class="bold">Thread</span>s. These units of execution
+        are often referred to as the <span class="hi-yellow">Platform Thread</span>s. Under the hood, a <span class="bold">Platform
+        Thread</span> is implemented as a thin wrapper around an <span class="bold">OS</span> thread and is the smallest unit of
+        processing that can be scheduled by the <span class="bold">OS</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>As an example, consider a simple scenario of a business application executing two services to accomplish a business goal.</p>
+    </div>
+    <div id="para-div">
+      <p>For the demonstration, let the following <span class="bold">Java</span> class represents the first business service:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ServiceOne.java</div>
+      <div class="src-body-1">
+        <pre>/*
+ * Description: Service One
+ * Author:      Bhaskar S
+ * Date:        11/17/2023
+ * Blog:        https://polarsparc.github.io
+ */
+
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public final class ServiceOne {
+    private static Logger LOGGER = null;
+
+    static {
+        System.setProperty("java.util.logging.SimpleFormatter.format",
+                "%1$ta %1$tb %1$td %1$tH:%1$tM:%1$tS.%1$tL %1$tZ %1$tY [%4$s] &lt;%2$s&gt; - %5$s %n");
+        LOGGER = Logger.getLogger(ServiceOne.class.getName());
+        LOGGER.setLevel(Level.INFO);
+    }
+
+    private ServiceOne() {}
+
+    public static void getServiceOneDetails(String id) {
+        LOGGER.log(Level.INFO, "Ready to fetch details for -> " + id);
+
+        TimeUnit time = TimeUnit.MILLISECONDS;
+        try {
+            time.sleep(1000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        LOGGER.log(Level.INFO, "Done fetching details for -> " + id);
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the demonstration, let the following <span class="bold">Java</span> class represents the second business service:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ServiceTwo.java</div>
+      <div class="src-body-1">
+        <pre>/*
+ * Description: Service Two
+ * Author:      Bhaskar S
+ * Date:        11/17/2023
+ * Blog:        https://polarsparc.github.io
+ */
+
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public final class ServiceTwo {
+    private static Logger LOGGER = null;
+
+    static {
+        System.setProperty("java.util.logging.SimpleFormatter.format",
+                "%1$ta %1$tb %1$td %1$tH:%1$tM:%1$tS.%1$tL %1$tZ %1$tY [%4$s] &lt;%2$s&gt; - %5$s %n");
+        LOGGER = Logger.getLogger(ServiceOne.class.getName());
+        LOGGER.setLevel(Level.INFO);
+    }
+
+    private ServiceTwo() {}
+
+    public static void getServiceTwoDetails(String id, boolean flag) {
+        LOGGER.log(Level.INFO, "Ready to fetch details for -> " + id);
+
+        TimeUnit time = TimeUnit.MILLISECONDS;
+        try {
+            time.sleep(1250);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        if (flag) {
+            throw new RuntimeException("ServiceTwo timed out !!!");
+        }
+
+        LOGGER.log(Level.INFO, "Done fetching details for -> " + id);
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the first demonstration, the following <span class="bold">Java</span> class leverages two <span class="bold">Java</span>
+        <span class="bold">Platform Thread</span>s to concurrently execute the two business services:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Sample_1.java</div>
+      <div class="src-body-1">
+        <pre>/*
+ * Description: Sample One
+ * Author:      Bhaskar S
+ * Date:        11/17/2023
+ * Blog:        https://polarsparc.github.io
+ */
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class Sample_1 {
+    private static final Logger LOGGER;
+
+    static {
+        System.setProperty("java.util.logging.SimpleFormatter.format",
+                "%1$ta %1$tb %1$td %1$tH:%1$tM:%1$tS.%1$tL %1$tZ %1$tY [%4$s] &lt;%2$s&gt; - %5$s %n");
+        LOGGER = Logger.getLogger(Sample_1.class.getName());
+        LOGGER.setLevel(Level.INFO);
+    }
+
+    public static void main(String[] args) {
+        LOGGER.info(">>> Happy Path");
+
+        // Happy Path
+        Thread ts1 = new Thread(() -> ServiceOne.getServiceOneDetails("XYZ"));
+        Thread ts2 = new Thread(() -> ServiceTwo.getServiceTwoDetails("XYZ", false));
+
+        ts1.start();
+        ts2.start();
+
+        try {
+            ts1.join();
+            ts2.join();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        LOGGER.info(">>> Failure Path");
+
+        // Failure Path
+        Thread tsf1 = new Thread(() -> ServiceOne.getServiceOneDetails("XYZ"));
+        Thread tsf2 = new Thread(() -> ServiceTwo.getServiceTwoDetails("XYZ", true));
+
+        tsf1.start();
+        tsf2.start();
+
+        try {
+            tsf1.join();
+            tsf2.join();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above code will generate the following output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Fri Nov 17 20:34:26.431 EST 2023 [INFO] &lt;Sample_1 main&gt; - &gt;&gt;&gt; Happy Path 
+Fri Nov 17 20:34:26.462 EST 2023 [INFO] &lt;ServiceOne getServiceOneDetails&gt; - Ready to fetch details for -&gt; XYZ 
+Fri Nov 17 20:34:26.462 EST 2023 [INFO] &lt;ServiceTwo getServiceTwoDetails&gt; - Ready to fetch details for -&gt; XYZ 
+Fri Nov 17 20:34:27.462 EST 2023 [INFO] &lt;ServiceOne getServiceOneDetails&gt; - Done fetching details for -&gt; XYZ 
+Fri Nov 17 20:34:27.713 EST 2023 [INFO] &lt;ServiceTwo getServiceTwoDetails&gt; - Done fetching details for -&gt; XYZ 
+Fri Nov 17 20:34:27.714 EST 2023 [INFO] &lt;Sample_1 main&gt; - &gt;&gt;&gt; Failure Path 
+Fri Nov 17 20:34:27.715 EST 2023 [INFO] &lt;ServiceOne getServiceOneDetails&gt; - Ready to fetch details for -&gt; XYZ 
+Fri Nov 17 20:34:27.715 EST 2023 [INFO] &lt;ServiceTwo getServiceTwoDetails&gt; - Ready to fetch details for -&gt; XYZ 
+Fri Nov 17 20:34:28.716 EST 2023 [INFO] &lt;ServiceOne getServiceOneDetails&gt; - Done fetching details for -&gt; XYZ 
+Exception in thread "Thread-3" java.lang.RuntimeException: ServiceTwo timed out !!!
+  at ServiceTwo.getServiceTwoDetails(ServiceTwo.java:35)
+  at Sample_1.lambda$main$3(Sample_1.java:42)</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>When an application encounters failures, the <span class="bold">Platform Thread</span> does dump the <span class="bold">
+        Stack Trace</span> which typically points to the source of the fault.</p>
+      <p>Note that when a <span class="bold">Platform Thread</span> is created, it is bound to the underlying <span class="bold">OS
+        </span> thread for the lifetime of the <span class="bold">Platform Thread</span>. More importantly, there are only a limited
+        number of <span class="bold">OS</span> threads in a system. This implies we have to be careful and judicious when using the
+        <span class="bold">Platform Thread</span>s.</p>
+    </div>
+    <div id="para-div">
+      <p>Given that the <span class="bold">OS</span> threads are a scare resource in a system, is there a different way in building
+        applications that have a concurrency need ??? This leads one to use the <span class="underbold">Asynchronous</span> style of
+        programming using the <span class="hi-yellow">CompletableFuture</span> option in <span class="bold">Java</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>For the second demonstration, the following <span class="bold">Java</span> class leverages two <span class="bold">Java</span>
+        <span class="bold">CompletableFuture</span> instances to asynchronously (and concurrently) execute the two business services:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Sample_2.java</div>
+      <div class="src-body-1">
+        <pre>/*
+          * Description: Sample Two
+ * Author:      Bhaskar S
+ * Date:        11/17/2023
+ * Blog:        https://polarsparc.github.io
+ */
+
+import java.util.concurrent.CompletableFuture;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class Sample_2 {
+    private static final Logger LOGGER;
+
+    static {
+        System.setProperty("java.util.logging.SimpleFormatter.format",
+                "%1$ta %1$tb %1$td %1$tH:%1$tM:%1$tS.%1$tL %1$tZ %1$tY [%4$s] &lt;%2$s&gt; - %5$s %n");
+        LOGGER = Logger.getLogger(Sample_2.class.getName());
+        LOGGER.setLevel(Level.INFO);
+    }
+
+    public static void main(String[] args) {
+        LOGGER.info(">>> Happy Path");
+
+        // Happy Path
+        CompletableFuture&lt;Void&gt; cfs1 = CompletableFuture.runAsync(() ->
+                ServiceOne.getServiceOneDetails("XYZ"));
+
+        CompletableFuture&lt;Void&gt; cfs2 = CompletableFuture.runAsync(() ->
+                ServiceTwo.getServiceTwoDetails("XYZ", false));
+
+        CompletableFuture&lt;Void&gt; cf = CompletableFuture.allOf(cfs1, cfs2);
+
+        cf.join();
+
+        LOGGER.info(">>> Failure Path");
+
+        // Failure Path
+        CompletableFuture&lt;Void&gt; cfs3 = CompletableFuture.runAsync(() ->
+                ServiceOne.getServiceOneDetails("XYZ"));
+
+        CompletableFuture&lt;Void&gt; cfs4 = CompletableFuture.runAsync(() ->
+                ServiceTwo.getServiceTwoDetails("XYZ", true));
+
+        CompletableFuture&lt;Void&gt; cff = CompletableFuture.allOf(cfs3, cfs4);
+
+        cff.join();
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above code will generate the following output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Fri Nov 17 20:47:31.676 EST 2023 [INFO] &lt;Sample_2 main&gt; - &gt;&gt;&gt; Happy Path 
+Fri Nov 17 20:47:31.715 EST 2023 [INFO] &lt;ServiceOne getServiceOneDetails&gt; - Ready to fetch details for -&gt; XYZ 
+Fri Nov 17 20:47:31.715 EST 2023 [INFO] &lt;ServiceTwo getServiceTwoDetails&gt; - Ready to fetch details for -&gt; XYZ 
+Fri Nov 17 20:47:32.715 EST 2023 [INFO] &lt;ServiceOne getServiceOneDetails&gt; - Done fetching details for -&gt; XYZ 
+Fri Nov 17 20:47:32.966 EST 2023 [INFO] &lt;ServiceTwo getServiceTwoDetails&gt; - Done fetching details for -&gt; XYZ 
+Fri Nov 17 20:47:32.967 EST 2023 [INFO] &lt;Sample_2 main&gt; - &gt;&gt;&gt; Failure Path 
+Fri Nov 17 20:47:32.967 EST 2023 [INFO] &lt;ServiceOne getServiceOneDetails&gt; - Ready to fetch details for -&gt; XYZ 
+Fri Nov 17 20:47:32.968 EST 2023 [INFO] &lt;ServiceTwo getServiceTwoDetails&gt; - Ready to fetch details for -&gt; XYZ 
+Fri Nov 17 20:47:33.968 EST 2023 [INFO] &lt;ServiceOne getServiceOneDetails&gt; - Done fetching details for -&gt; XYZ 
+Exception in thread "main" java.util.concurrent.CompletionException: java.lang.RuntimeException: ServiceTwo timed out !!!
+  at java.base/java.util.concurrent.CompletableFuture.encodeThrowable(CompletableFuture.java:315)
+  at java.base/java.util.concurrent.CompletableFuture.completeThrowable(CompletableFuture.java:320)
+  at java.base/java.util.concurrent.CompletableFuture$AsyncRun.run(CompletableFuture.java:1807)
+  at java.base/java.util.concurrent.CompletableFuture$AsyncRun.exec(CompletableFuture.java:1796)
+  at java.base/java.util.concurrent.ForkJoinTask.doExec(ForkJoinTask.java:387)
+  at java.base/java.util.concurrent.ForkJoinPool$WorkQueue.topLevelExec(ForkJoinPool.java:1312)
+  at java.base/java.util.concurrent.ForkJoinPool.scan(ForkJoinPool.java:1843)
+  at java.base/java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1808)
+  at java.base/java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:188)</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>When an <span class="bold">asynchronous</span> code encounters failures, it becomes very challenging to reason with and
+        troubleshoot, since the concurrent services (tasks) are often scheduled on one <span class="bold">Platform Thread</span>
+        to start with, and when they block at some point later, may be resumed and executed on another <span class="bold">Platform
+        Thread</span>. Since every <span class="bold">Platform Thread</span> has its own stack, when an exception is thrown, the
+        <span class="bold">stacktrace</span> will not be able to capture everything that happened since the beginning, as it is on
+        a different <span class="bold">Platform Thread</span> than the one it started on originally.</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="bold">asynchronous</span> style of programming using <span class="bold">CompletableFuture</span> is sleek
+        and powerful, however hard to debug during failures. We like the use of the <span class="bold">Platform Thread</span>s since
+        they are easy to troubleshoot during failures, but a scarce resource. Is there any other option available for us ???</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">YES</span> there is !!! With the release of <span class="hi-yellow">Java 21</span>, we now have access
+        to <span class="hi-green">Virtual Thread</span>s.</p>
+    </div>
+    <div id="para-div">
+      <p>A <span class="bold">Virtual Thread</span> in <span class="bold">Java 21</span> is a very lightweight thread that helps
+        reduce the effort of creating, maintaining, and debugging any business application with concurrency needs.</p>
+    </div>
+    <div id="para-div">
+      <p>Note that both the <span class="bold">Platform Thread</span>s and the <span class="bold">Virtual Thread</span>s in <span
+        class="bold">Java 21</span> are instances of the same <span class="bold">Java</span> language class <span class="hi-green">
+        java.lang.Thread</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>For the third demonstration, the following <span class="bold">Java</span> class shows the basic creation and usage of both
+        the <span class="bold">Platform Thread</span> as well as the <span class="bold">Virtual Thread</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Sample_3.java</div>
+      <div class="src-body-1">
+        <pre>/*
+ * Description: Sample Three
+ * Author:      Bhaskar S
+ * Date:        11/17/2023
+ * Blog:        https://polarsparc.github.io
+ */
+
+import java.time.Duration;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class Sample_3 {
+    private static final Logger LOGGER;
+
+    static {
+        System.setProperty("java.util.logging.SimpleFormatter.format",
+                "%1$ta %1$tb %1$td %1$tH:%1$tM:%1$tS.%1$tL %1$tZ %1$tY [%4$s] &lt;%2$s&gt; - %5$s %n");
+        LOGGER = Logger.getLogger(Sample_3.class.getName());
+        LOGGER.setLevel(Level.INFO);
+    }
+
+    public static void main(String[] args) {
+        Thread.Builder pBuilder = Thread.ofPlatform().name("Platform Thread");
+        Thread.Builder vBuilder = Thread.ofVirtual().name("Virtual Thread");
+
+        Runnable task = () -&gt; {
+            try {
+                Thread.sleep(Duration.ofSeconds(1));
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            LOGGER.info(Thread.currentThread().getName() + " - Runnable Task");
+        };
+
+        // Run the task using the Platform Thread
+        Thread pt = pBuilder.start(task);
+
+        LOGGER.info("Thread name - " + pt.getName());
+
+        // Run the task using the Virtual Thread
+        Thread vt = vBuilder.start(task);
+
+        LOGGER.info("Thread name - " + vt.getName());
+
+        try {
+            pt.join();
+            vt.join();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above code will generate the following output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>Fri Now 17 21:03:25.034 EST 2023 [INFO] &lt;Sample_3 main&gt; - Thread name - Platform Thread 
+Fri Now 17 21:03:25.069 EST 2023 [INFO] &lt;Sample_3 main&gt; - Thread name - Virtual Thread 
+Fri Now 17 21:03:26.034 EST 2023 [INFO] &lt;Sample_3 lambda$main$0&gt; - Platform Thread - Runnable Task 
+Fri Now 17 21:03:26.070 EST 2023 [INFO] &lt;Sample_3 lambda$main$0&gt; - Virtual Thread - Runnable Task</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Just like a <span class="bold">Platform Thread</span>, a <span class="bold">Virtual Thread</span> also runs the application
+        code on a <span class="bold">OS</span> thread, however, when the <span class="bold">Virtual Thread</span> encounters any kind
+        of blocking operation, the <span class="bold">Java Runtime</span> suspends the <span class="bold">Virtual Thread</span> and
+        releases the <span class="bold">OS</span> thread, so that the other <span class="bold">Virtual Thread</span>s can use it.</p>
+      <p>The <span class="bold">Virtual Thread</span>s can be used for building high-throughput concurrent applications in which the
+        business services (or tasks) perform some kind of blocking operations.</p>
+      <p>Under the hood, the <span class="bold">Java Runtime</span> implements the <span class="bold">Virtual Thread</span>s using an
+        <span class="hi-green">M:N</span> scheduler, where a large number (M number) of <span class="bold">Virtual Thread</span>s can
+        be scheduled to run on a smaller number (N number) of <span class="bold">OS</span> threads.</p>
+      <p>Note that a <span class="bold">Platform Thread</span> consumes a <span class="underbold">LOT</span> of system resources in
+        the <span class="bold">Java Virtual Machine</span> as well as the <span class="bold">OS</span> kernel. This is the reason
+        why we have a limited number of <span class="bold">OS</span> threads in a system and consequently the <span class="bold">
+        Platform Thread</span>s. On the other hand, <span class="bold">Virtual Thread</span>s is very lightweight and hence one can
+        create a lot of them.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are a brief description for some of the <span class="bold">API</span>s in the demonstration code above:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-vanila">Thread.Builder</span> :: An instance of the builder class for creating either a <span class=
+            "bold">Platform Thread</span> or a <span class="bold">Virtual Thread</span></p>
+        </li>
+        <li>
+          <p><span class="hi-vanila">Thread.ofPlatform()</span> :: An instance of the builder class for creating a <span class="bold">
+            Platform Thread</span></p>
+        </li>
+        <li>
+          <p><span class="hi-vanila">Thread.ofVirtual()</span> :: An instance of the builder class for creating a <span class="bold">
+            Virtual Thread</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>For the fourth demonstration, the following <span class="bold">Java</span> class shows the lightfulness of the <span class
+        ="bold">Virtual Thread</span> by creating and executing <span class="underbold">100,000</span> <span class="bold">Virtual
+        Thread</span>s:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Sample_4.java</div>
+      <div class="src-body-1">
+        <pre>/*
+ * Description: Sample Four
+ * Author:      Bhaskar S
+ * Date:        11/17/2023
+ * Blog:        https://polarsparc.github.io
+ */
+
+import java.util.ArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.IntStream;
+
+public class Sample_4 {
+    private static final Logger LOGGER;
+
+    static {
+        System.setProperty("java.util.logging.SimpleFormatter.format",
+                "%1$ta %1$tb %1$td %1$tH:%1$tM:%1$tS.%1$tL %1$tZ %1$tY [%4$s] &lt;%2$s&gt; - %5$s %n");
+        LOGGER = Logger.getLogger(Sample_4.class.getName());
+        LOGGER.setLevel(Level.INFO);
+    }
+
+    public static void main(String[] args) {
+        Thread.Builder vBuilder = Thread.ofVirtual().name("vt_worker");
+
+        Runnable vt_task = () -&gt; LOGGER.info(System.nanoTime() + ": " +
+                Thread.currentThread().getName() + " - Runnable Virtual Task");
+
+        // Run the task using the Virtual Threads
+        int threadsCount = 100_000;
+        ArrayList&lt;Thread&gt; threadsList = new ArrayList&lt;&gt;(threadsCount);
+        IntStream.range(1, threadsCount+1).forEach(i -&gt; {
+            Thread vt = vBuilder.start(vt_task);
+            threadsList.add(vt);
+        });
+
+        // Wait for the Virtual Threads to finish
+        threadsList.forEach(vt -&gt; {
+            try {
+                vt.join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above code will generate the following trimmed output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>Fri Nov 17 21:24:44.974 EST 2023 [INFO] &lt;Sample_4 lambda$main$0&gt; - 19913304827143: vt_worker - Runnable Virtual Task 
+Fri Nov 17 21:24:44.974 EST 2023 [INFO] &lt;Sample_4 lambda$main$0&gt; - 19913304827343: vt_worker - Runnable Virtual Task 
+Fri Nov 17 21:24:44.974 EST 2023 [INFO] &lt;Sample_4 lambda$main$0&gt; - 19913304827703: vt_worker - Runnable Virtual Task 
+Fri Nov 17 21:24:44.974 EST 2023 [INFO] &lt;Sample_4 lambda$main$0&gt; - 19913304827943: vt_worker - Runnable Virtual Task 
+Fri Nov 17 21:24:44.974 EST 2023 [INFO] &lt;Sample_4 lambda$main$0&gt; - 19913304828013: vt_worker - Runnable Virtual Task 
+...SNIP...
+Fri Nov 17 21:24:44.982 EST 2023 [INFO] &lt;Sample_4 lambda$main$0&gt; - 19913312467256: vt_worker - Runnable Virtual Task 
+Fri Nov 17 21:24:44.982 EST 2023 [INFO] &lt;Sample_4 lambda$main$0&gt; - 19913312467276: vt_worker - Runnable Virtual Task 
+Fri Nov 17 21:24:44.982 EST 2023 [INFO] &lt;Sample_4 lambda$main$0&gt; - 19913312467576: vt_worker - Runnable Virtual Task 
+Fri Nov 17 21:24:44.982 EST 2023 [INFO] &lt;Sample_4 lambda$main$0&gt; - 19913312467896: vt_worker - Runnable Virtual Task 
+Fri Nov 17 21:24:44.982 EST 2023 [INFO] &lt;Sample_4 lambda$main$0&gt; - 19913312176879: vt_worker - Runnable Virtual Task</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the final demonstration, the following <span class="bold">Java</span> class leverages two <span class="bold">Virtual
+        Thread</span>s to concurrently execute the two business services:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Sample_5.java</div>
+      <div class="src-body-1">
+        <pre>/*
+ * Description: Sample Five
+ * Author:      Bhaskar S
+ * Date:        11/17/2023
+ * Blog:        https://polarsparc.github.io
+ */
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class Sample_5 {
+    private static final Logger LOGGER;
+
+    static {
+        System.setProperty("java.util.logging.SimpleFormatter.format",
+                "%1$ta %1$tb %1$td %1$tH:%1$tM:%1$tS.%1$tL %1$tZ %1$tY [%4$s] &lt;%2$s&gt; - %5$s %n");
+        LOGGER = Logger.getLogger(Sample_5.class.getName());
+        LOGGER.setLevel(Level.INFO);
+    }
+
+    public static void main(String[] args) {
+        LOGGER.info("&gt;&gt;&gt; Happy Path");
+
+        Thread.Builder vBuilder = Thread.ofVirtual().name("Virtual Threads");
+
+        // Happy Path
+        Thread vts1 = vBuilder.start(() -&gt; ServiceOne.getServiceOneDetails("XYZ"));
+        Thread vts2 = vBuilder.start(() -&gt; ServiceTwo.getServiceTwoDetails("XYZ", false));
+
+        try {
+            vts1.join();
+            vts2.join();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        LOGGER.info("&gt;&gt;&gt; Failure Path");
+
+        // Failure Path
+        Thread vts3 = vBuilder.start(() -&gt; ServiceOne.getServiceOneDetails("XYZ"));
+        Thread vts4 = vBuilder.start(() -&gt; ServiceTwo.getServiceTwoDetails("XYZ", true));
+
+        try {
+            vts3.join();
+            vts4.join();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above code will generate the following output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>Fri Nov 17 21:33:52.388 EST 2023 [INFO] &lt;ServiceOne getServiceOneDetails&gt; - Ready to fetch details for -&gt; XYZ 
+Fri Nov 17 21:33:52.388 EST 2023 [INFO] &lt;ServiceTwo getServiceTwoDetails&gt; - Ready to fetch details for -&gt; XYZ 
+Fri Nov 17 21:33:53.389 EST 2023 [INFO] &lt;ServiceOne getServiceOneDetails&gt; - Done fetching details for -&gt; XYZ 
+Fri Nov 17 21:33:53.639 EST 2023 [INFO] &lt;ServiceTwo getServiceTwoDetails&gt; - Done fetching details for -&gt; XYZ 
+Fri Nov 17 21:33:53.639 EST 2023 [INFO] &lt;Sample_5 main&gt; - &gt;&gt;&gt; Failure Path 
+Fri Nov 17 21:33:53.640 EST 2023 [INFO] &lt;ServiceOne getServiceOneDetails&gt; - Ready to fetch details for -&gt; XYZ 
+Fri Nov 17 21:33:53.640 EST 2023 [INFO] &lt;ServiceTwo getServiceTwoDetails&gt; - Ready to fetch details for -&gt; XYZ 
+Fri Nov 17 21:33:54.641 EST 2023 [INFO] &lt;ServiceOne getServiceOneDetails&gt; - Done fetching details for -&gt; XYZ 
+Exception in thread "Virtual Threads" java.lang.RuntimeException: ServiceTwo timed out !!!
+  at ServiceTwo.getServiceTwoDetails(ServiceTwo.java:35)
+  at Sample_5.lambda$main$3(Sample_5.java:41)
+  at java.base/java.lang.VirtualThread.run(VirtualThread.java:311)</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice that when the application encounters a failure, the <span class="bold">Virtual Thread</span> also dumps the <span
+        class="bold">Stack Trace</span> just like in the case of the <span class="bold">Platform Thread</span> and points to the
+        source of the fault.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://docs.oracle.com/en/java/javase/21/core/virtual-threads.html#GUID-DC4306FC-D6C1-4BCC-AECE-48C32C1A8DAA" target="_blank"><span class="bold">Java 21 Virtual Threads Documentation</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

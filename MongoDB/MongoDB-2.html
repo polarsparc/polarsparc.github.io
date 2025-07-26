@@ -1,0 +1,1702 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Hands-on MongoDB :: Part-2">
+    <meta name="subject" content="Hands-on MongoDB :: Part-2">
+    <meta name="keywords" content="mongodb, nosql, java, python">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Hands-on MongoDB :: Part-2</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Hands-on MongoDB :: Part-2<br />
+      </p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">01/30/2021 (<span class="hi-yellow">UPDATED</span>)</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Introduction</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/MongoDB/MongoDB-1.html" target="_blank"><span class="bold">Part-1</span></a>, we setup
+        the high-availability 3-node cluster using <span class="bold">Docker</span> got and our hands dirty with MongoDB by using the
+        <span class="bold">mongo</span> command-line interface.</p>
+      <p>In this article, we will demonstrate the same set of operations on MongoDB using the programming language drivers for
+        <span class="bold">Java</span> and <span class="bold">Python</span>.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Java MongoDB Driver</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Java directory structure for the demonstrations, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME</p>
+      <p>$ mkdir -p java/mongodb</p>
+      <p>$ cd $HOME/java/mongodb</p>
+      <p>$ mkdir -p src/main/java target</p>
+      <p>$ mkdir -p src/main/java/com/polarsparc/mongodb</p>
+    </div>
+    <div id="para-div">
+      <p>For the Java language, we will leverage <span class="bold">Maven</span> to manage the build as well as the package
+        dependencies.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Maven <span class="hi-yellow">pom.xml</span> file located in the directory <span class="bold">
+        $HOME/java/mongodb</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;groupId&gt;com.polarsparc.mongodb&lt;/groupId&gt;
+    &lt;artifactId&gt;Mongo_1&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+
+    &lt;properties&gt;
+        &lt;java.version&gt;11&lt;/java.version&gt;
+        &lt;mongo.driver.version&gt;4.2.0&lt;/mongo.driver.version&gt;
+        &lt;junit.jupiter.version&gt;5.7.0&lt;/junit.jupiter.version&gt;
+        &lt;maven.compiler.version&gt;3.8.1&lt;/maven.compiler.version&gt;
+        &lt;project.build.sourceEncoding&gt;UTF-8&lt;/project.build.sourceEncoding&gt;
+    &lt;/properties&gt;
+
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.mongodb&lt;/groupId&gt;
+            &lt;artifactId&gt;mongodb-driver-sync&lt;/artifactId&gt;
+            &lt;version&gt;${mongo.driver.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.junit.jupiter&lt;/groupId&gt;
+            &lt;artifactId&gt;junit-jupiter-engine&lt;/artifactId&gt;
+            &lt;version&gt;${junit.jupiter.version}&lt;/version&gt;
+            &lt;scope&gt;test&lt;/scope&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.junit.jupiter&lt;/groupId&gt;
+            &lt;artifactId&gt;junit-jupiter-params&lt;/artifactId&gt;
+            &lt;version&gt;${junit.jupiter.version}&lt;/version&gt;
+            &lt;scope&gt;test&lt;/scope&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+
+    &lt;build&gt;
+        &lt;plugins&gt;
+            &lt;plugin&gt;
+                &lt;groupId&gt;org.apache.maven.plugins&lt;/groupId&gt;
+                &lt;artifactId&gt;maven-compiler-plugin&lt;/artifactId&gt;
+                &lt;version&gt;${maven.compiler.version}&lt;/version&gt;
+                &lt;configuration&gt;
+                    &lt;source&gt;11&lt;/source&gt;
+                    &lt;target&gt;11&lt;/target&gt;
+                &lt;/configuration&gt;
+            &lt;/plugin&gt;
+        &lt;/plugins&gt;
+    &lt;/build&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will first explain the different sections of the Java program (called <span class="hi-yellow">Mongo_1.java</span>) by
+        their respective methods (before showing the whole program).</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Java method called <span class="hi-blue">connectToDB()</span> that connects to the MongoDB primary
+        node of the cluster:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">connectToDB()</div>
+      <div class="src-body-1">
+      <pre>// Open connection to MongoDB cluster
+static void connectToDB() {
+  String db_url = "mongodb://192.168.1.53:5001/mydb";
+
+  ConnectionString cs = new ConnectionString(db_url);
+
+  _client = MongoClients.create(cs);
+
+  LOGGER.info(String.format("Connected to MongoDB @ %s", db_url));
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the class(es)/method(s) used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">_client</span> :: an instance of type <span class="hi-grey">MongoClient</span> that represents a
+            connection to the MongoDB cluster</p>
+        </li>
+        <li>
+          <p><span class="bold">MongoClients</span> :: is the factory for creating instances of MongoClient</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the Java method called <span class="hi-blue">setupDbAndCollection()</span> gets a reference to the specified
+        MongoDB database and collection:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">setupDbAndCollection()</div>
+      <div class="src-body-1">
+      <pre>//  Setup the database and the collection
+static void setupDbAndCollection() {
+  // Get reference to MongoDB database mydb
+  _db = _client.getDatabase("mydb");
+
+  // Get reference to the collection contacts
+  _contacts = _db.getCollection("contacts");
+
+  // Display all the collections in the database mydb
+  LOGGER.info("List of collections:");
+  for (String name : _db.listCollectionNames()) {
+    LOGGER.info(name);
+  }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the class(es)/method(s) used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">_db</span> :: an instance of type <span class="hi-grey">MongoDatabase</span> that represents the
+            MongoDB database interface</p>
+        </li>
+        <li>
+          <p><span class="bold">getCollection()</span> :: method on the MongoDatabase interface to get the reference to the named
+            MongoDB database <span class="bold">mydb</span></p>
+        </li>
+        <li>
+          <p><span class="bold">_contacts</span> :: an instance of type <span class="hi-grey">MongoCollection</span> that represents
+            the MongoDB collection interface</p>
+        </li>
+        <li>
+          <p><span class="bold">getCollection()</span> :: method on the MongoDatabase interface to get the reference to the named
+            MongoDB collection <span class="bold">contacts</span></p>
+        </li>
+        <li>
+          <p><span class="bold">listCollectionNames()</span> :: method on the MongoDatabase interface to get the list of all the
+            MongoDB collections in the database <span class="bold">mydb</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the Java method called <span class="hi-blue">insertContactAndCheck()</span> inserts a document into the
+        collection, lists all the collections in the database, displays the count of documents in the collection, and displays all
+        the documents from the collection:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">insertContactAndCheck()</div>
+      <div class="src-body-1">
+      <pre>// Insert a document into the collection contacts
+static void insertContactAndCheck() {
+  // Insert a document into the collection contacts
+  // { first: "Alice", last: "Thompson",
+  //   email: { personal: "alice.t@home.io", work: "alice.thompson@work.net" },
+  //   mobile: { personal: "123 456 7890" } }
+  Document email = new Document("personal", "alice.t@home.io").append("work", "alice.thompson@work.net");
+  Document mobile = new Document("personal", "123 456 7890");
+  Document doc = new Document("first", "Alice")
+      .append("last", "Thompson")
+      .append("email", email)
+      .append("mobile", mobile);
+  _contacts.insertOne(doc);
+
+  // Display all the collections in the database mydb
+  LOGGER.info("List of collections:");
+  for (String name : _db.listCollectionNames()) {
+    LOGGER.info(name);
+  }
+
+  // Display the number of documents in the collection contacts
+  LOGGER.info(String.format("Number of documents in contacts: %d", _contacts.countDocuments()));
+
+  // Query and display all the documents in the collection contacts
+  for (Document d : _contacts.find()) {
+    LOGGER.info(d.toJson());
+  }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the class(es)/method(s) used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">Document</span> :: a representation of MongoDB document as a serializable Java <span class="bold">
+            Map&lt;String, Object&gt;</span></p>
+        </li>
+        <li>
+          <p><span class="bold">append(String key, Object value)</span> :: method on the Document to add the key-value pair into
+            the document. Note that the value object can be another Document. Returns the reference to the Document</p>
+        </li>
+        <li>
+          <p><span class="bold">insertOne(document)</span> :: method on the MongoCollection interface to insert the specified
+            Document</p>
+        </li>
+        <li>
+          <p><span class="bold">countDocuments()</span> :: method on the MongoCollection interface to return the count of all the
+            Documents in the collection</p>
+        </li>
+        <li>
+          <p><span class="bold">find()</span> :: method on the MongoCollection interface that returns an instance of type
+            <span class="hi-grey">FindIterable</span> which represents an iterator to all the Documents in the collection</p>
+        </li>
+        <li>
+          <p><span class="bold">toJson()</span> :: returns the document as a Java String in a JSON format</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the Java method called <span class="hi-blue">insertFiveContacts()</span> inserts five documents into the
+        collection:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">insertFiveContacts()</div>
+      <div class="src-body-1">
+      <pre>// Insert five more documents into the collection contacts
+static void insertFiveContacts() {
+  // Insert five more documents into the collection contacts
+
+  // { "first": "Bob", "last": "Jones",
+  //   "email": { "work": "bobj@doktor.net" },
+  //   "mobile": { "work": "234 567 8901" } }
+  Document email = new Document("work", "bobj@doktor.net");
+  Document mobile = new Document("work", "234 567 8901");
+  Document doc = new Document("first", "Bob")
+      .append("last", "Jones")
+      .append("email", email)
+      .append("mobile", mobile);
+  _contacts.insertOne(doc);
+
+  // { "first": "Charlie", "last": "Lee", "email": { "personal": "cl3000@ranch.net" }
+  email = new Document("personal", "cl3000@ranch.net");
+  doc = new Document("first", "Charlie")
+      .append("last", "Lee")
+      .append("email", email);
+  _contacts.insertOne(doc);
+
+  List&lt;Document&gt; documents = new ArrayList&lt;&gt;();
+
+  // { "first": "Eve", "middle": "Jo", "last": "Parker",
+  //   "email": { "work": "ej_parker@awesome.org" },
+  //   "mobile": { "personal": "345 678 9012" } }
+  email = new Document("work", "ej_parker@awesome.org");
+  mobile = new Document("personal", "345 678 9012");
+  doc = new Document("first", "Eve")
+      .append("middle", "Jo")
+      .append("last", "Parker")
+      .append("email", email)
+      .append("mobile", mobile);
+
+  documents.add(doc);
+
+  // { "first": "Frank", "last": "Smith",
+  //   "email": { "personal": "frank45@root.org", "work": "frank.smith@excellent.net" },
+  //   "mobile": { "personal": "456 789 0123", "work": "567 890 1234" } }
+  email = new Document("personal", "frank45@root.org").append("work", "frank.smith@excellent.net");
+  mobile = new Document("personal", "456 789 0123").append("work", "567 890 1234");
+  doc = new Document("first", "Frank")
+      .append("last", "Smith")
+      .append("email", email)
+      .append("mobile", mobile);
+
+  documents.add(doc);
+
+  // { "first": "Frank", "last": "Cooper", "email": { "personal": "frankc@runner.org" } }
+  email = new Document("personal", "frankc@runner.or" +
+      "");
+  doc = new Document("first", "Frank")
+      .append("last", "Cooper")
+      .append("email", email);
+
+  documents.add(doc);
+
+  _contacts.insertMany(documents);
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the class(es)/method(s) used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">insertMany(documents)</span> :: method on the MongoCollection interface to insert the specified list
+            of Documents</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the Java method called <span class="hi-blue">queryContacts()</span> queries documents from the collection
+        using various filters and selections:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">queryContacts()</div>
+      <div class="src-body-1">
+      <pre>// Perform various query operations
+static void queryContacts() {
+  // Query and display all the documents in the collection contacts
+  LOGGER.info("Documents in contacts:");
+  for (Document doc : _contacts.find()) {
+    LOGGER.info(doc.toJson());
+  }
+
+  // Query and display the document for first = "Bob" from the collection contacts
+  LOGGER.info("Document for Bob:");
+  Document doc = _contacts.find(eq("first", "Bob")).first();
+  if (doc != null) {
+    LOGGER.info(doc.toJson());
+  }
+
+  // Query and display the document for first = "Charlie" and last = "Lee" from the collection contacts
+  LOGGER.info("Document for Charlie Lee:");
+  doc = _contacts.find(
+      and(
+      eq("first", "Charlie"),
+      eq("last", "Lee")))
+      .first();
+  if (doc != null) {
+    LOGGER.info(doc.toJson());
+  }
+
+  // Query and display the document for email.work = "bobj@doktor.net" from the collection contacts
+  LOGGER.info("Document for bobj@doktor.net:");
+  doc = _contacts.find(eq("email.work", "bobj@doktor.net")).first();
+  if (doc != null) {
+    LOGGER.info(doc.toJson());
+  }
+
+  // Query and display only first and last for all the documents in the collection contacts
+  for (Document d : _contacts.find().projection(fields(
+      include("first", "last")))) {
+    LOGGER.info(d.toJson());
+  }
+
+  // Query and display only first and last (without _id) for all the documents in the collection contacts
+  for (Document d : _contacts.find().projection(fields(
+      include("first", "last"), excludeId()))) {
+    LOGGER.info(d.toJson());
+  }
+
+  // Query and display only first, last, and mobile.persona (without _id) for all the documents
+  // in the collection contacts
+  for (Document d : _contacts.find().projection(fields(
+      include("first", "last", "mobile.personal"), excludeId()))) {
+    LOGGER.info(d.toJson());
+  }
+
+  // Query and display only first and last (without _id) for 3 documents in the collection contacts
+  for (Document d : _contacts.find().projection(fields(
+      include("first", "last"), excludeId())).limit(3)) {
+    LOGGER.info(d.toJson());
+  }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the class(es)/method(s) used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">eq(field-name, value)</span> :: creates a filter that matches all documents where the value of the
+            specified field-name equals the specified value</p>
+        </li>
+        <li>
+          <p><span class="bold">first()</span> :: method on the FindIterable interface to return the first Document (if present)
+            or null</p>
+        </li>
+        <li>
+          <p><span class="bold">and(...)</span> :: creates a filter that is a logical AND of the specified list of filters</p>
+        </li>
+        <li>
+          <p><span class="bold">projection(...)</span> :: specifies the desired fields from the MongoDB Document</p>
+        </li>
+        <li>
+          <p><span class="bold">include(...)</span> :: creates a projection that includes the specified fields</p>
+        </li>
+        <li>
+          <p><span class="bold">fields(...)</span> :: creates a projection that combines the specified projection(s) into a single
+            projection</p>
+        </li>
+        <li>
+          <p><span class="bold">excludeId()</span> :: creates a projection that does not include the <span class="bold">_id</span>
+            field</p>
+        </li>
+        <li>
+          <p><span class="bold">limit(int)</span> :: method on the FindIterable interface to limit the number of Documents to the
+            specified number</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the Java method called <span class="hi-blue">updateContacts()</span> updates a document from the
+        collection that replaces all the information currently in the document (wrong way), then shows the correct way to replace
+        the field(s) in the document from the collection, and finally demonstrates how to upsert a document into the collection:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">updateContacts()</div>
+      <div class="src-body-1">
+      <pre>// Perform some update operations
+static void updateContacts() {
+  // Update the document for first = "Charlie" in the collection contacts
+  Document mobile = new Document("mobile", new Document("personal", "678 901 2345"));
+  _contacts.replaceOne(new Document("first", "Charlie"), mobile);
+
+  // Query and display the document for first = "Charlie" from the collection contacts
+  LOGGER.info("Document for Charlie [after update]:");
+  Document doc = _contacts.find(eq("first", "Charlie")).first();
+  if (doc != null) {
+    LOGGER.info(doc.toJson());
+  } else {
+    LOGGER.warning("No document for Charlie !!!");
+  }
+
+  // Query and display the document for mobile: { personal: "678 901 2345" } from the collection contacts
+  LOGGER.info("Document for Charlie [after update using mobile]:");
+  doc = _contacts.find(mobile).first();
+  if (doc != null) {
+    LOGGER.info(doc.toJson());
+  }
+
+  // Update the document for mobile: { personal: "678 901 2345" } (to restore Charlie) in the collection contacts
+  Document email = new Document("personal", "cl3000@ranch.net");
+  doc = new Document("first", "Charlie")
+      .append("last", "Lee")
+      .append("email", email)
+      .append("mobile", new Document("personal", "678 901 2345"));
+  _contacts.replaceOne(mobile, doc);
+
+  // Query and display the document for first = "Charlie" from the collection contacts (after fix)
+  LOGGER.info("Document for Charlie [after update fix]:");
+  doc = _contacts.find(eq("first", "Charlie")).first();
+  if (doc != null) {
+    LOGGER.info(doc.toJson());
+  }
+
+  // Upsert the document for first = "George" in the collection contacts
+  // db.contacts.update({ first: "George" }, { first: "George", last: "Baker",
+  //                      email: { work: "g_baker@crap.org" },
+  //                      mobile: { work: "789 012 3456" } },
+  //                      { upsert: true })
+  ReplaceOptions upsert = new ReplaceOptions().upsert(true);
+  doc = new Document("first", "George")
+      .append("last", "Baker")
+      .append("email", new Document("work", "g_baker@crap.org"))
+      .append("mobile", new Document("work", "789 012 3456"));
+  _contacts.replaceOne(eq("first", "George"), doc, upsert);
+
+  // Query and display the document for first: "George" from the collection contacts
+  LOGGER.info("Document for George [after upsert]:");
+  doc = _contacts.find(eq("first", "George")).first();
+  if (doc != null) {
+    LOGGER.info(doc.toJson());
+  }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the class(es)/method(s) used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">replaceOne(filter, document)</span> :: replace the document identified by the specified filter
+            with the specified document</p>
+        </li>
+        <li>
+          <p><span class="bold">ReplaceOptions</span> :: class that encapsulates options that are applied when replacing documents
+            in the collection</p>
+        </li>
+        <li>
+          <p><span class="bold">upsert(true)</span> :: sets the option to insert the specified document if not present else update</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the Java method called <span class="hi-blue">removeAndDropContacts()</span> removes a document from the
+        collection, displays the exisiting documents in the collection, removes the remaining documents from the collection, displays
+        the count of documents from the collection, drops the collection, and displays the list of collections in the database:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">removeAndDropContacts()</div>
+      <div class="src-body-1">
+      <pre>// Perform some delete operations
+static void removeAndDropContacts() {
+  // Delete the document for first = "Bob" from the collection contacts
+  _contacts.deleteOne(new Document("first", "Bob"));
+
+  // Query and display all the documents in the collection contacts
+  LOGGER.info("\"Documents in contacts [after removing Bob]:\"");
+  for (Document doc : _contacts.find()) {
+    LOGGER.info(doc.toJson());
+  }
+
+  // Delete all the remaining documents for the collection contacts
+  _contacts.deleteMany(new Document());
+
+  // Display the number of documents in the collection contacts
+  LOGGER.info(String.format("Number of documents in contacts: %d", _contacts.countDocuments()));
+
+  // Drop the collection contacts
+  _contacts.drop();
+
+  // Display all the collections in the database mydb
+  LOGGER.info("List of collections:");
+  for (String name : _db.listCollectionNames()) {
+    LOGGER.info(name);
+  }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the class(es)/method(s) used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">deleteOne(filter)</span> :: removes the document identified by the specified filter from the
+            collection</p>
+        </li>
+        <li>
+          <p><span class="bold">deleteMany(filter)</span> :: removes all the documents matching by the specified filter from the
+            collection. Note that the filter specified by the empty document <span class="hi-grey">new Document()</span> matches
+            all the documents in the collection</p>
+        </li>
+        <li>
+          <p><span class="bold">drop()</span> :: drops the collection from the database</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the full Java program called <span class="hi-yellow">Mongo_1.java</span> that performs all the operations
+        we executed through the command-line interface in <a href="./MongoDB-1.html" target="_blank"><span class="bold">Part-1</span>
+        </a>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Mongo_1.java</div>
+      <div class="src-body-1">
+      <pre>/*
+    @Author: Bhaskar S
+    @Blog:   https://polarsparc.github.io
+    @Date:   30 Jan 2021
+*/
+
+package com.polarsparc.mongodb;
+
+import com.mongodb.ConnectionString;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.MongoCollection;
+
+import org.bson.Document;
+
+import static com.mongodb.client.model.Filters.*;
+import static com.mongodb.client.model.Projections.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+public class Mongo_1 {
+  private final static Logger LOGGER = Logger.getLogger(Mongo_1.class.getName());
+
+  static {
+    LOGGER.setLevel(Level.INFO);
+    System.setProperty("java.util.logging.SimpleFormatter.format", "[%1$tF %1$tT] [%4$-7s] &lt;%2$s&gt; %5$s %n");
+  }
+
+  private static MongoClient _client = null;
+  private static MongoDatabase _db = null;
+  private static MongoCollection&lt;Document&gt; _contacts = null;
+
+  // Open connection to MongoDB cluster
+  static void connectToDB() {
+    String db_url = "mongodb://192.168.1.53:5001/mydb";
+
+    ConnectionString cs = new ConnectionString(db_url);
+
+    _client = MongoClients.create(cs);
+
+    LOGGER.info(String.format("Connected to MongoDB @ %s", db_url));
+  }
+
+  //  Setup the database and the collection
+  static void setupDbAndCollection() {
+    // Get reference to MongoDB database mydb
+    _db = _client.getDatabase("mydb");
+
+    // Get reference to the collection contacts
+    _contacts = _db.getCollection("contacts");
+
+    // Display all the collections in the database mydb
+    LOGGER.info("List of collections:");
+    for (String name : _db.listCollectionNames()) {
+      LOGGER.info(name);
+    }
+  }
+
+  // Insert a document into the collection contacts
+  static void insertContactAndCheck() {
+    // Insert a document into the collection contacts
+    // { first: "Alice", last: "Thompson",
+    //   email: { personal: "alice.t@home.io", work: "alice.thompson@work.net" },
+    //   mobile: { personal: "123 456 7890" } }
+    Document email = new Document("personal", "alice.t@home.io").append("work", "alice.thompson@work.net");
+    Document mobile = new Document("personal", "123 456 7890");
+    Document doc = new Document("first", "Alice")
+        .append("last", "Thompson")
+        .append("email", email)
+        .append("mobile", mobile);
+    _contacts.insertOne(doc);
+
+    // Display all the collections in the database mydb
+    LOGGER.info("List of collections:");
+    for (String name : _db.listCollectionNames()) {
+      LOGGER.info(name);
+    }
+
+    // Display the number of documents in the collection contacts
+    LOGGER.info(String.format("Number of documents in contacts: %d", _contacts.countDocuments()));
+
+    // Query and display all the documents in the collection contacts
+    for (Document d : _contacts.find()) {
+      LOGGER.info(d.toJson());
+    }
+  }
+
+  // Insert five more documents into the collection contacts
+  static void insertFiveContacts() {
+    // Insert five more documents into the collection contacts
+
+    // { "first": "Bob", "last": "Jones",
+    //   "email": { "work": "bobj@doktor.net" },
+    //   "mobile": { "work": "234 567 8901" } }
+    Document email = new Document("work", "bobj@doktor.net");
+    Document mobile = new Document("work", "234 567 8901");
+    Document doc = new Document("first", "Bob")
+        .append("last", "Jones")
+        .append("email", email)
+        .append("mobile", mobile);
+    _contacts.insertOne(doc);
+
+    // { "first": "Charlie", "last": "Lee", "email": { "personal": "cl3000@ranch.net" }
+    email = new Document("personal", "cl3000@ranch.net");
+    doc = new Document("first", "Charlie")
+        .append("last", "Lee")
+        .append("email", email);
+    _contacts.insertOne(doc);
+
+    List&lt;Document&gt; documents = new ArrayList&lt;&gt;();
+
+    // { "first": "Eve", "middle": "Jo", "last": "Parker",
+    //   "email": { "work": "ej_parker@awesome.org" },
+    //   "mobile": { "personal": "345 678 9012" } }
+    email = new Document("work", "ej_parker@awesome.org");
+    mobile = new Document("personal", "345 678 9012");
+    doc = new Document("first", "Eve")
+        .append("middle", "Jo")
+        .append("last", "Parker")
+        .append("email", email)
+        .append("mobile", mobile);
+
+    documents.add(doc);
+
+    // { "first": "Frank", "last": "Smith",
+    //   "email": { "personal": "frank45@root.org", "work": "frank.smith@excellent.net" },
+    //   "mobile": { "personal": "456 789 0123", "work": "567 890 1234" } }
+    email = new Document("personal", "frank45@root.org").append("work", "frank.smith@excellent.net");
+    mobile = new Document("personal", "456 789 0123").append("work", "567 890 1234");
+    doc = new Document("first", "Frank")
+        .append("last", "Smith")
+        .append("email", email)
+        .append("mobile", mobile);
+
+    documents.add(doc);
+
+    // { "first": "Frank", "last": "Cooper", "email": { "personal": "frankc@runner.org" } }
+    email = new Document("personal", "frankc@runner.or" +
+        "");
+    doc = new Document("first", "Frank")
+        .append("last", "Cooper")
+        .append("email", email);
+
+    documents.add(doc);
+
+    _contacts.insertMany(documents);
+  }
+
+  // Perform various query operations
+  static void queryContacts() {
+    // Query and display all the documents in the collection contacts
+    LOGGER.info("Documents in contacts:");
+    for (Document doc : _contacts.find()) {
+      LOGGER.info(doc.toJson());
+    }
+
+    // Query and display the document for first = "Bob" from the collection contacts
+    LOGGER.info("Document for Bob:");
+    Document doc = _contacts.find(eq("first", "Bob")).first();
+    if (doc != null) {
+      LOGGER.info(doc.toJson());
+    }
+
+    // Query and display the document for first = "Charlie" and last = "Lee" from the collection contacts
+    LOGGER.info("Document for Charlie Lee:");
+    doc = _contacts.find(
+        and(
+        eq("first", "Charlie"),
+        eq("last", "Lee")))
+        .first();
+    if (doc != null) {
+      LOGGER.info(doc.toJson());
+    }
+
+    // Query and display the document for email.work = "bobj@doktor.net" from the collection contacts
+    LOGGER.info("Document for bobj@doktor.net:");
+    doc = _contacts.find(eq("email.work", "bobj@doktor.net")).first();
+    if (doc != null) {
+      LOGGER.info(doc.toJson());
+    }
+
+    // Query and display only first and last for all the documents in the collection contacts
+    for (Document d : _contacts.find().projection(fields(
+        include("first", "last")))) {
+      LOGGER.info(d.toJson());
+    }
+
+    // Query and display only first and last (without _id) for all the documents in the collection contacts
+    for (Document d : _contacts.find().projection(fields(
+        include("first", "last"), excludeId()))) {
+      LOGGER.info(d.toJson());
+    }
+
+    // Query and display only first, last, and mobile.persona (without _id) for all the documents
+    // in the collection contacts
+    for (Document d : _contacts.find().projection(fields(
+        include("first", "last", "mobile.personal"), excludeId()))) {
+      LOGGER.info(d.toJson());
+    }
+
+    // Query and display only first and last (without _id) for 3 documents in the collection contacts
+    for (Document d : _contacts.find().projection(fields(
+        include("first", "last"), excludeId())).limit(3)) {
+      LOGGER.info(d.toJson());
+    }
+  }
+
+  // Perform some update operations
+  static void updateContacts() {
+    // Update the document for first = "Charlie" in the collection contacts
+    Document mobile = new Document("mobile", new Document("personal", "678 901 2345"));
+    _contacts.replaceOne(new Document("first", "Charlie"), mobile);
+
+    // Query and display the document for first = "Charlie" from the collection contacts
+    LOGGER.info("Document for Charlie [after update]:");
+    Document doc = _contacts.find(eq("first", "Charlie")).first();
+    if (doc != null) {
+      LOGGER.info(doc.toJson());
+    } else {
+      LOGGER.warning("No document for Charlie !!!");
+    }
+
+    // Query and display the document for mobile: { personal: "678 901 2345" } from the collection contacts
+    LOGGER.info("Document for Charlie [after update using mobile]:");
+    doc = _contacts.find(mobile).first();
+    if (doc != null) {
+      LOGGER.info(doc.toJson());
+    }
+
+    // Update the document for mobile: { personal: "678 901 2345" } (to restore Charlie) in the collection contacts
+    Document email = new Document("personal", "cl3000@ranch.net");
+    doc = new Document("first", "Charlie")
+        .append("last", "Lee")
+        .append("email", email)
+        .append("mobile", new Document("personal", "678 901 2345"));
+    _contacts.replaceOne(mobile, doc);
+
+    // Query and display the document for first = "Charlie" from the collection contacts (after fix)
+    LOGGER.info("Document for Charlie [after update fix]:");
+    doc = _contacts.find(eq("first", "Charlie")).first();
+    if (doc != null) {
+      LOGGER.info(doc.toJson());
+    }
+  
+    // Upsert the document for first = "George" in the collection contacts
+    // db.contacts.update({ first: "George" }, { first: "George", last: "Baker",
+    //                      email: { work: "g_baker@crap.org" },
+    //                      mobile: { work: "789 012 3456" } },
+    //                      { upsert: true })
+    ReplaceOptions upsert = new ReplaceOptions().upsert(true);
+    doc = new Document("first", "George")
+        .append("last", "Baker")
+        .append("email", new Document("work", "g_baker@crap.org"))
+        .append("mobile", new Document("work", "789 012 3456"));
+    _contacts.replaceOne(eq("first", "George"), doc, upsert);
+  
+    // Query and display the document for first: "George" from the collection contacts
+    LOGGER.info("Document for George [after upsert]:");
+    doc = _contacts.find(eq("first", "George")).first();
+    if (doc != null) {
+      LOGGER.info(doc.toJson());
+    }
+  }
+
+  // Perform some delete operations
+  static void removeAndDropContacts() {
+    // Delete the document for first = "Bob" from the collection contacts
+    _contacts.deleteOne(new Document("first", "Bob"));
+
+    // Query and display all the documents in the collection contacts
+    LOGGER.info("\"Documents in contacts [after removing Bob]:\"");
+    for (Document doc : _contacts.find()) {
+      LOGGER.info(doc.toJson());
+    }
+
+    // Delete all the remaining documents for the collection contacts
+    _contacts.deleteMany(new Document());
+
+    // Display the number of documents in the collection contacts
+    LOGGER.info(String.format("Number of documents in contacts: %d", _contacts.countDocuments()));
+
+    // Drop the collection contacts
+    _contacts.drop();
+
+    // Display all the collections in the database mydb
+    LOGGER.info("List of collections:");
+    for (String name : _db.listCollectionNames()) {
+      LOGGER.info(name);
+    }
+  }
+
+  public static void main(String[] args) {
+    LOGGER.info("Ready to start ...");
+
+    try {
+      connectToDB();
+      setupDbAndCollection();
+      insertContactAndCheck();
+      insertFiveContacts();
+      queryContacts();
+      updateContacts();
+      removeAndDropContacts();
+    }
+    catch (Exception ex) {
+      ex.printStackTrace(System.err);
+    }
+    finally {
+      // Close the database connection
+      if (_client != null) {
+        _client.close();
+      }
+    }
+
+    LOGGER.info("Done !!!");
+  }
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>Ensure the MongoDB cluster is up and running and <span class="bold">mongodb-n1</span> is the primary. Open a terminal window
+        and execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/mongodb</p>
+      <p>$ mvn exec:java -Dexec.mainClass=com.polarsparc.mongodb.Mongo_1</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>[INFO] Scanning for projects...
+[INFO] 
+[INFO] -------------------&lt; com.polarsparc.mongodb:Mongo_1 &gt;-------------------
+[INFO] Building Mongo_1 1.0
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- exec-maven-plugin:3.0.0:java (default-cli) @ Mongo_1 ---
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 main&gt; Ready to start ... 
+[2021-01-30 16:40:33] [WARNING] &lt;com.mongodb.diagnostics.logging.Loggers shouldUseSLF4J&gt; SLF4J not found on the classpath.  Logging is disabled for the 'org.mongodb.driver' component 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 connectToDB&gt; Connected to MongoDB @ mongodb://192.168.1.53:5001/mydb 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 setupDbAndCollection&gt; List of collections: 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 insertContactAndCheck&gt; List of collections: 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 insertContactAndCheck&gt; contacts 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 insertContactAndCheck&gt; Number of documents in contacts: 1 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 insertContactAndCheck&gt; {"_id": {"$oid": "6015d251ed846520c9b56172"}, "first": "Alice", "last": "Thompson", "email": {"personal": "alice.t@home.io", "work": "alice.thompson@work.net"}, "mobile": {"personal": "123 456 7890"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; Documents in contacts: 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56172"}, "first": "Alice", "last": "Thompson", "email": {"personal": "alice.t@home.io", "work": "alice.thompson@work.net"}, "mobile": {"personal": "123 456 7890"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56173"}, "first": "Bob", "last": "Jones", "email": {"work": "bobj@doktor.net"}, "mobile": {"work": "234 567 8901"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56174"}, "first": "Charlie", "last": "Lee", "email": {"personal": "cl3000@ranch.net"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56175"}, "first": "Eve", "middle": "Jo", "last": "Parker", "email": {"work": "ej_parker@awesome.org"}, "mobile": {"personal": "345 678 9012"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56176"}, "first": "Frank", "last": "Smith", "email": {"personal": "frank45@root.org", "work": "frank.smith@excellent.net"}, "mobile": {"personal": "456 789 0123", "work": "567 890 1234"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56177"}, "first": "Frank", "last": "Cooper", "email": {"personal": "frankc@runner.or"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; Document for Bob: 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56173"}, "first": "Bob", "last": "Jones", "email": {"work": "bobj@doktor.net"}, "mobile": {"work": "234 567 8901"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; Document for Charlie Lee: 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56174"}, "first": "Charlie", "last": "Lee", "email": {"personal": "cl3000@ranch.net"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; Document for bobj@doktor.net: 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56173"}, "first": "Bob", "last": "Jones", "email": {"work": "bobj@doktor.net"}, "mobile": {"work": "234 567 8901"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56172"}, "first": "Alice", "last": "Thompson"} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56173"}, "first": "Bob", "last": "Jones"} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56174"}, "first": "Charlie", "last": "Lee"} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56175"}, "first": "Eve", "last": "Parker"} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56176"}, "first": "Frank", "last": "Smith"} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56177"}, "first": "Frank", "last": "Cooper"} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"first": "Alice", "last": "Thompson"} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"first": "Bob", "last": "Jones"} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"first": "Charlie", "last": "Lee"} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"first": "Eve", "last": "Parker"} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"first": "Frank", "last": "Smith"} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"first": "Frank", "last": "Cooper"} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"first": "Alice", "last": "Thompson", "mobile": {"personal": "123 456 7890"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"first": "Bob", "last": "Jones", "mobile": {}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"first": "Charlie", "last": "Lee"} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"first": "Eve", "last": "Parker", "mobile": {"personal": "345 678 9012"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"first": "Frank", "last": "Smith", "mobile": {"personal": "456 789 0123"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"first": "Frank", "last": "Cooper"} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"first": "Alice", "last": "Thompson"} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"first": "Bob", "last": "Jones"} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 queryContacts&gt; {"first": "Charlie", "last": "Lee"} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 updateContacts&gt; Document for Charlie [after update]: 
+[2021-01-30 16:40:33] [WARNING] &lt;com.polarsparc.mongodb.Mongo_1 updateContacts&gt; No document for Charlie !!! 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 updateContacts&gt; Document for Charlie [after update using mobile]: 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 updateContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56174"}, "mobile": {"personal": "678 901 2345"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 updateContacts&gt; Document for Charlie [after update fix]: 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 updateContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56174"}, "first": "Charlie", "last": "Lee", "email": {"personal": "cl3000@ranch.net"}, "mobile": {"personal": "678 901 2345"}} 
+[2021-02-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 updateContacts&gt; Document for George [after upsert]:
+[2021-02-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 updateContacts&gt; {"_id": {"$oid": "601c9df98d37d50b59287bb7"}, "first": "George", "last": "Baker", "email": {"work": "g_baker@crap.org"}, "mobile": {"work": "789 012 3456"}}
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 removeAndDropContacts&gt; "Documents in contacts [after removing Bob]:" 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 removeAndDropContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56172"}, "first": "Alice", "last": "Thompson", "email": {"personal": "alice.t@home.io", "work": "alice.thompson@work.net"}, "mobile": {"personal": "123 456 7890"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 removeAndDropContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56174"}, "first": "Charlie", "last": "Lee", "email": {"personal": "cl3000@ranch.net"}, "mobile": {"personal": "678 901 2345"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 removeAndDropContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56175"}, "first": "Eve", "middle": "Jo", "last": "Parker", "email": {"work": "ej_parker@awesome.org"}, "mobile": {"personal": "345 678 9012"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 removeAndDropContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56176"}, "first": "Frank", "last": "Smith", "email": {"personal": "frank45@root.org", "work": "frank.smith@excellent.net"}, "mobile": {"personal": "456 789 0123", "work": "567 890 1234"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 removeAndDropContacts&gt; {"_id": {"$oid": "6015d251ed846520c9b56177"}, "first": "Frank", "last": "Cooper", "email": {"personal": "frankc@runner.or"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 removeAndDropContacts&gt; {"_id": {"$oid": "601c9df98d37d50b59287bb7"}, "first": "George", "last": "Baker", "email": {"work": "g_baker@crap.org"}, "mobile": {"work": "789 012 3456"}} 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 removeAndDropContacts&gt; Number of documents in contacts: 0 
+[2021-01-30 16:40:33] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 removeAndDropContacts&gt; List of collections: 
+[2021-01-30 16:40:34] [INFO   ] &lt;com.polarsparc.mongodb.Mongo_1 main&gt; Done !!! 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.981 s
+[INFO] Finished at: 2021-01-30T16:40:34-05:00
+[INFO] ------------------------------------------------------------------------</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">PERFECT</span> !!! We have successfully demonstrated the use of the Java MongoDB driver using an example
+        code.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Python MongoDB Driver</p>
+    </div>
+    <div id="para-div">
+      <p>Ensure the Python Mongo driver is installed by executing the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt install pip3 -y</p>
+      <p>$ sudo pip3 install pymongo</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the Python directory structure for the demonstrations, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME</p>
+      <p>$ mkdir -p python/mongodb</p>
+      <p>$ cd $HOME/python/mongodb</p>
+    </div>
+    <div id="para-div">
+      <p>We will first explain the different sections of the Python program (called <span class="hi-yellow">Mongo-1.py</span>) by
+        their respective functions (before showing the whole program).</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Python function called <span class="hi-blue">connect_to_db()</span> that connects to the MongoDB
+        primary node of the cluster:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">connect_to_db()</div>
+      <div class="src-body-1">
+      <pre># Open connection to MongoDB cluster
+def connect_to_db():
+    db_url = 'mongodb://192.168.1.53:5001/mydb'
+    client = None
+    try:
+        client = pymongo.MongoClient(db_url)
+        logging.info("Connected to MongoDB @ %s" % db_url)
+    except ConnectionFailure as e:
+        logging.error("Could not connect to MongoDB @ %s: %s" % (db_url, e))
+    return client</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the function(s) used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">pymongo.MongoClient(url)</span> :: returns an object to a client that represents a connection to the
+            MongoDB cluster</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the Python function called <span class="hi-blue">setup_db_n_collection()</span> gets a reference to the specified
+        MongoDB database and collection:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">setup_db_n_collection()</div>
+      <div class="src-body-1">
+      <pre># Setup the database and the collection
+def setup_db_n_collection(client):
+    # logging.info("setup ...")
+
+    # Setup the db variable to point to the database mydb
+    db = client["mydb"]
+
+    # Setup the contacts variable to point to the collection contacts
+    contacts = db["contacts"]
+
+    # Display all the collections in the database mydb
+    logging.info("List of collections: %s" % db.list_collection_names())
+
+    return db, contacts</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the function(s) used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">db["mydb"]</span> :: an instance of type <span class="hi-grey">pymongo.database.Database</span>
+            that points to the specified MongoDB database <span class="bold">mydb</span></p>
+        </li>
+        <li>
+          <p><span class="bold">db["contacts"]</span> :: an instance of type <span class="hi-grey">pymongo.collection.Collection
+            </span> that points to the specified the MongoDB collection <span class="bold">contacts</span></p>
+        </li>
+        <li>
+          <p><span class="bold">list_collection_names()</span> :: method on the pymongo.database.Database object to get the list of
+            all the MongoDB collections in the current database</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the Python function called <span class="hi-blue">insert_contact_n_check()</span> inserts a document into
+        the collection, lists all the collections in the database, displays the count of documents in the collection, and displays
+        all the documents from the collection:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">insert_contact_n_check()</div>
+      <div class="src-body-1">
+      <pre># Insert a document into the collection contacts
+def insert_contact_n_check(db, contacts):
+    # Insert a document for Alice
+    contacts.insert_one({"first": "Alice", "last": "Thompson",
+                          "email": {"personal": "alice.t@home.io", "work": "alice.thompson@work.net"},
+                          "mobile": {"personal": "123 456 7890"}})
+
+    # Display all the collections in the database mydb
+    logging.info("List of collections: %s" % db.list_collection_names())
+
+    # Display the number of documents in the collection contacts
+    logging.info("Number of documents in contacts: %d" % contacts.count_documents({}))
+
+    # Query and display all the documents in the collection contacts
+    cursor = contacts.find()
+    for doc in cursor:
+        logging.info(doc)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the function(s) used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">insert_one(json)</span> :: method on the pymongo.collection.Collection object to insert the specified
+            document in JSON string format</p>
+        </li>
+        <li>
+          <p><span class="bold">count_documents()</span> :: method on the pymongo.collection.Collection object to return the count
+            of all the documents in the collection</p>
+        </li>
+        <li>
+          <p><span class="bold">find()</span> :: method on the pymongo.collection.Collection object that returns an object of type
+            <span class="hi-grey">pymongo.cursor.Cursor</span> which represents a cursor to all the documents in the collection</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the Python function called <span class="hi-blue">insert_five_contacts()</span> inserts five documents into
+        the collection:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">insert_five_contacts()</div>
+      <div class="src-body-1">
+      <pre># Insert five more documents into the collection contacts
+def insert_five_contacts(contacts):
+    contacts.insert_one({"first": "Bob", "last": "Jones",
+                         "email": {"work": "bobj@doktor.net"},
+                         "mobile": {"work": "234 567 8901"}})
+    contacts.insert_one({"first": "Charlie", "last": "Lee",
+                         "email": {"personal": "cl3000@ranch.net"}})
+    contacts.insert_many([{"first": "Eve", "middle": "Jo", "last": "Parker",
+                           "email": {"work": "ej_parker@awesome.org"},
+                           "mobile": {"personal": "345 678 9012"}}])
+    contacts.insert_many([{"first": "Frank", "last": "Smith",
+                           "email": {"personal": "frank45@root.org", "work": "frank.smith@excellent.net"},
+                           "mobile": {"personal": "456 789 0123", "work": "567 890 1234"}}])
+    contacts.insert_one({"first": "Frank", "last": "Cooper",
+                         "email": {"personal": "frankc@runner.org"}})</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the function(s) used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">insert_many(list)</span> :: method on the pymongo.collection.Collection object to insert the specified
+            list of documents where each document is in JSON string format</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the Python function called <span class="hi-blue">query_contacts()</span> queries documents from the collection
+        using various filters and selections:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">query_contacts()</div>
+      <div class="src-body-1">
+      <pre># Perform various query operations
+def query_contacts(contacts):
+    # Query and display all the documents in the collection contacts
+    logging.info("Documents in contacts:")
+    cursor = contacts.find()
+    for doc in cursor:
+        logging.info(doc)
+
+    # Query and display the document for first = "Bob" from the collection contacts
+    logging.info("Document for Bob:")
+    logging.info(contacts.find_one({"first": "Bob"}))
+
+    # Query and display the document for first = "Charlie" and last = "Lee" from the collection contacts
+    logging.info("Document for Charlie Lee:")
+    logging.info(contacts.find_one({"first": "Charlie", "last": "Lee"}))
+
+    # Query and display the document for email.work = "bobj@doktor.net" from the collection contacts
+    logging.info("Document for bobj@doktor.net:")
+    logging.info(contacts.find_one({"email.work": "bobj@doktor.net"}))
+
+    # Query and display only first and last for all the documents in the collection contacts
+    logging.info("First and Last name(s) in contacts:")
+    cursor = contacts.find({}, {"first": 1, "last": 1})
+    for doc in cursor:
+        logging.info(doc)
+
+    # Query and display only first and last (without _id) for all the documents in the collection contacts
+    logging.info("First and Last name(s) [without _id] in contacts:")
+    cursor = contacts.find({}, {"first": 1, "last": 1, "_id": 0})
+    for doc in cursor:
+        logging.info(doc)
+
+    # Query and display only first, last, and mobile.persona (without _id)
+    # for all the documents in the collection contacts
+    logging.info("First, Last name, Personal Mobile(s) [without _id] in contacts:")
+    cursor = contacts.find({}, {"first": 1, "last": 1, "mobile.personal": 1, "_id": 0})
+    for doc in cursor:
+        logging.info(doc)
+
+    # Query and display only first and last (without _id) for 3 documents in the collection contacts
+    logging.info("First and Last name(s) [without _id with limit 3] in contacts:")
+    cursor = contacts.find({}, {"first": 1, "last": 1, "_id": 0}).limit(3)
+    for doc in cursor:
+        logging.info(doc)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the function(s) used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">{"first": "Bob"}</span> :: specifies a filter that matches all documents where the value of the
+            field <span class="bold">first</span> equals the value <span class="bold">Bob</span></p>
+        </li>
+        <li>
+          <p><span class="bold">{"first": "Charlie", "last": "Lee"}</span> :: specifies a filter that matches all documents where the
+            value of the field <span class="bold">first</span> equals the value <span class="bold">Charlie</span> AND the value of the
+            field <span class="bold">last</span> equals the value <span class="bold">Lee</span></p>
+        </li>
+        <li>
+          <p><span class="bold">{}</span> :: specifies a filter that matches all documents</p>
+        </li>
+        <li>
+          <p><span class="bold">{"first": 1, "last": 1}</span> :: specifies a selection criteria such that we only want the specified
+            fields <span class="bold">first</span> and <span class="bold">last</span> (with the value of 1)</p>
+        </li>
+        <li>
+          <p><span class="bold">{"first": 1, "last": 1, "_id": 0}</span> :: specifies a selection criteria such that we only want the
+            specified fields <span class="bold">first</span> and <span class="bold">last</span> (with the value of 1) and exclude the
+            field <span class="bold">_id</span> (with the value of 0)</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the Python function called <span class="hi-blue">update_contacts()</span> updates a document from the
+        collection that replaces all the information currently in the document (wrong way), then shows the correct way to replace
+        the field(s) in the document from the collection, and finally demonstrates the upsert of a document into the collection:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">update_contacts()</div>
+      <div class="src-body-1">
+      <pre># Perform some update operations
+def update_contacts(contacts):
+    # Update the document for first = "Charlie" in the collection contacts
+    contacts.replace_one({"first": "Charlie"}, {"mobile": {"personal": "678 901 2345"}})
+
+    # Query and display the document for first = "Charlie" from the collection contacts
+    logging.info("Document for Charlie [after update]:")
+    doc = contacts.find_one({"first": "Charlie"})
+    if doc:
+        logging.info(doc)
+    else:
+        logging.warning("No document for Charlie !!!")
+
+    # Query and display the document for mobile: { personal: "678 901 2345" } from the collection contacts
+    logging.info("Document for Charlie [after update using mobile]:")
+    logging.info(contacts.find_one({"mobile": {"personal": "678 901 2345"}}))
+
+    # Update the document for mobile: { personal: "678 901 2345" } (to restore Charlie) in the collection contacts
+    contacts.replace_one({"mobile": {"personal": "678 901 2345"}},
+                          {"first": "Charlie", "last": "Lee",
+                          "email": {"personal": "cl3000@ranch.net"},
+                          "mobile": {"personal": "678 901 2345"}})
+
+    # Query and display the document for first = "Charlie" from the collection contacts (after fix)
+    logging.info("Document for Charlie [after update fix]:")
+    logging.info(contacts.find_one({"first": "Charlie"}))
+  
+    # Upsert the document for first = "George" in the collection contacts
+    contacts.replace_one({"first": "George"}, {"first": "George", "last": "Baker",
+                                               "email": {"work": "g_baker@crap.org"},
+                                               "mobile": {"work": "789 012 3456"}},
+                         upsert=True)
+
+    # Query and display the document for first = "George" from the collection contacts (after upsert)
+    logging.info("Document for George [after upsert]:")
+    logging.info(contacts.find_one({"first": "George"}))</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the function(s) used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">replace_one(filter, document)</span> :: replace the document identified by the specified filter
+            with the specified document</p>
+        </li>
+        <li>
+          <p><span class="bold">replace_one(filter, document, upsert=True)</span> :: insert the specified document identified by
+            the specified filter if not found else update</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the Python function called <span class="hi-blue">remove_n_drop_contacts()</span> removes a document from
+        the collection, displays the exisiting documents in the collection, removes the remaining documents from the collection,
+        displays the count of documents from the collection, drops the collection, and displays the list of collections in the
+        database:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">remove_n_drop_contacts()</div>
+      <div class="src-body-1">
+      <pre># Perform some delete operations
+def remove_n_drop_contacts(db, contacts):
+    # Delete the document for first = "Bob" from the collection contacts
+    contacts.delete_one({"first": "Bob"})
+
+    # Query and display all the documents in the collection contacts
+    logging.info("Documents in contacts [after removing Bob]:")
+    cursor = contacts.find()
+    for doc in cursor:
+        logging.info(doc)
+
+    # Delete all the remaining documents for the collection contacts
+    contacts.delete_many({})
+
+    # Display the number of documents in the collection contacts
+    logging.info("Number of documents in contacts [after remove all]: %d" % contacts.count_documents({}))
+
+    # Drop the collection contacts
+    contacts.drop()
+
+    # Display all the collections in the database mydb
+    logging.info("List of collections: %s" % db.list_collection_names())</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the function(s) used in the code segment above:</p>
+      <ul id="blue-ol">
+        <li>
+          <p><span class="bold">delete_one(filter)</span> :: removes the document identified by the specified filter from the
+            collection</p>
+        </li>
+        <li>
+          <p><span class="bold">delete_many(filter)</span> :: removes all the documents matching by the specified filter from the
+            collection. Note that the filter specified by the empty document <span class="hi-grey">{}</span> matches all the
+            documents in the collection</p>
+        </li>
+        <li>
+          <p><span class="bold">drop()</span> :: drops the collection from the database</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the full Python program called <span class="hi-yellow">Mongo-1.py</span> that performs all the operations
+        we executed through the command-line interface in <a href="./MongoDB-1.html" target="_blank"><span class="bold">Part-1</span>
+        </a>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Mongo-1.py</div>
+      <div class="src-body-1">
+      <pre>#
+# Author: Bhaskar S
+# Blog:   https://polarsparc.github.io
+# Date:   30 Jan 2021
+#
+
+import logging
+import pymongo
+from pymongo.errors import ConnectionFailure
+
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+
+
+# Open connection to MongoDB cluster
+def connect_to_db():
+    # db_url = 'mongodb://192.168.1.53:5001,192.168.1.53:5002,192.168.1.53:5003/mydb?replicaSet=mongodb-rs'
+    db_url = 'mongodb://192.168.1.53:5001/mydb'
+    client = None
+    try:
+        client = pymongo.MongoClient(db_url)
+        logging.info("Connected to MongoDB @ %s" % db_url)
+    except ConnectionFailure as e:
+        logging.error("Could not connect to MongoDB @ %s: %s" % (db_url, e))
+    return client
+
+
+# Setup the database and the collection
+def setup_db_n_collection(client):
+    # logging.info("setup ...")
+
+    # Setup the db variable to point to the database mydb
+    db = client["mydb"]
+
+    # Setup the contacts variable to point to the collection contacts
+    contacts = db["contacts"]
+
+    # Display all the collections in the database mydb
+    logging.info("List of collections: %s" % db.list_collection_names())
+
+    return db, contacts
+
+
+# Insert a document into the collection contacts
+def insert_contact_n_check(db, contacts):
+    # Insert a document for Alice
+    contacts.insert_one({"first": "Alice", "last": "Thompson",
+                          "email": {"personal": "alice.t@home.io", "work": "alice.thompson@work.net"},
+                          "mobile": {"personal": "123 456 7890"}})
+
+    # Display all the collections in the database mydb
+    logging.info("List of collections: %s" % db.list_collection_names())
+
+    # Display the number of documents in the collection contacts
+    logging.info("Number of documents in contacts: %d" % contacts.count_documents({}))
+
+    # Query and display all the documents in the collection contacts
+    cursor = contacts.find()
+    for doc in cursor:
+        logging.info(doc)
+
+
+# Insert five more documents into the collection contacts
+def insert_five_contacts(contacts):
+    contacts.insert_one({"first": "Bob", "last": "Jones",
+                          "email": {"work": "bobj@doktor.net"},
+                          "mobile": {"work": "234 567 8901"}})
+    contacts.insert_one({"first": "Charlie", "last": "Lee",
+                          "email": {"personal": "cl3000@ranch.net"}})
+    contacts.insert_many([{"first": "Eve", "middle": "Jo", "last": "Parker",
+                            "email": {"work": "ej_parker@awesome.org"},
+                            "mobile": {"personal": "345 678 9012"}}])
+    contacts.insert_many([{"first": "Frank", "last": "Smith",
+                            "email": {"personal": "frank45@root.org", "work": "frank.smith@excellent.net"},
+                            "mobile": {"personal": "456 789 0123", "work": "567 890 1234"}}])
+    contacts.insert_one({"first": "Frank", "last": "Cooper",
+                          "email": {"personal": "frankc@runner.org"}})
+
+
+# Perform various query operations
+def query_contacts(contacts):
+    # Query and display all the documents in the collection contacts
+    logging.info("Documents in contacts:")
+    cursor = contacts.find()
+    for doc in cursor:
+        logging.info(doc)
+
+    # Query and display the document for first = "Bob" from the collection contacts
+    logging.info("Document for Bob:")
+    logging.info(contacts.find_one({"first": "Bob"}))
+
+    # Query and display the document for first = "Charlie" and last = "Lee" from the collection contacts
+    logging.info("Document for Charlie Lee:")
+    logging.info(contacts.find_one({"first": "Charlie", "last": "Lee"}))
+
+    # Query and display the document for email.work = "bobj@doktor.net" from the collection contacts
+    logging.info("Document for bobj@doktor.net:")
+    logging.info(contacts.find_one({"email.work": "bobj@doktor.net"}))
+
+    # Query and display only first and last for all the documents in the collection contacts
+    logging.info("First and Last name(s) in contacts:")
+    cursor = contacts.find({}, {"first": 1, "last": 1})
+    for doc in cursor:
+        logging.info(doc)
+
+    # Query and display only first and last (without _id) for all the documents in the collection contacts
+    logging.info("First and Last name(s) [without _id] in contacts:")
+    cursor = contacts.find({}, {"first": 1, "last": 1, "_id": 0})
+    for doc in cursor:
+        logging.info(doc)
+
+    # Query and display only first, last, and mobile.persona (without _id)
+    # for all the documents in the collection contacts
+    logging.info("First, Last name, Personal Mobile(s) [without _id] in contacts:")
+    cursor = contacts.find({}, {"first": 1, "last": 1, "mobile.personal": 1, "_id": 0})
+    for doc in cursor:
+        logging.info(doc)
+
+    # Query and display only first and last (without _id) for 3 documents in the collection contacts
+    logging.info("First and Last name(s) [without _id with limit 3] in contacts:")
+    cursor = contacts.find({}, {"first": 1, "last": 1, "_id": 0}).limit(3)
+    for doc in cursor:
+        logging.info(doc)
+
+
+# Perform some update operations
+def update_contacts(contacts):
+    # Update the document for first = "Charlie" in the collection contacts
+    contacts.replace_one({"first": "Charlie"}, {"mobile": {"personal": "678 901 2345"}})
+
+    # Query and display the document for first = "Charlie" from the collection contacts
+    logging.info("Document for Charlie [after update]:")
+    doc = contacts.find_one({"first": "Charlie"})
+    if doc:
+        logging.info(doc)
+    else:
+        logging.warning("No document for Charlie !!!")
+
+    # Query and display the document for mobile: { personal: "678 901 2345" } from the collection contacts
+    logging.info("Document for Charlie [after update using mobile]:")
+    logging.info(contacts.find_one({"mobile": {"personal": "678 901 2345"}}))
+
+    # Update the document for mobile: { personal: "678 901 2345" } (to restore Charlie) in the collection contacts
+    contacts.replace_one({"mobile": {"personal": "678 901 2345"}},
+                          {"first": "Charlie", "last": "Lee",
+                          "email": {"personal": "cl3000@ranch.net"},
+                          "mobile": {"personal": "678 901 2345"}})
+
+    # Query and display the document for first = "Charlie" from the collection contacts (after fix)
+    logging.info("Document for Charlie [after update fix]:")
+    logging.info(contacts.find_one({"first": "Charlie"}))
+
+    # Query and display the document for first = "Charlie" from the collection contacts (after fix)
+    logging.info("Document for Charlie [after update fix]:")
+    logging.info(contacts.find_one({"first": "Charlie"}))
+  
+    # Upsert the document for first = "George" in the collection contacts
+    contacts.replace_one({"first": "George"}, {"first": "George", "last": "Baker",
+                                               "email": {"work": "g_baker@crap.org"},
+                                               "mobile": {"work": "789 012 3456"}},
+                         upsert=True)
+
+    # Query and display the document for first = "George" from the collection contacts (after upsert)
+    logging.info("Document for George [after upsert]:")
+    logging.info(contacts.find_one({"first": "George"}))
+
+
+# Perform some delete operations
+def remove_n_drop_contacts(db, contacts):
+    # Delete the document for first = "Bob" from the collection contacts
+    contacts.delete_one({"first": "Bob"})
+
+    # Query and display all the documents in the collection contacts
+    logging.info("Documents in contacts [after removing Bob]:")
+    cursor = contacts.find()
+    for doc in cursor:
+        logging.info(doc)
+
+    # Delete all the remaining documents for the collection contacts
+    contacts.delete_many({})
+
+    # Display the number of documents in the collection contacts
+    logging.info("Number of documents in contacts [after remove all]: %d" % contacts.count_documents({}))
+
+    # Drop the collection contacts
+    contacts.drop()
+
+    # Display all the collections in the database mydb
+    logging.info("List of collections: %s" % db.list_collection_names())
+
+
+# Clean resources
+def clean_up(client):
+    # Close the database connection
+    client.close()
+
+
+# Main
+def main():
+    logging.info("Ready to start ...")
+
+    client = connect_to_db()
+    db, contacts = setup_db_n_collection(client)
+    insert_contact_n_check(db, contacts)
+    insert_five_contacts(contacts)
+    query_contacts(contacts)
+    update_contacts(contacts)
+    remove_n_drop_contacts(db, contacts)
+    clean_up(client)
+
+    logging.info("Done !!!")
+
+
+if __name__ == '__main__':
+    main()</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>Ensure the MongoDB cluster is up and running and <span class="bold">mongodb-n1</span> is the primary. Open a terminal window
+        and execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/python/mongodb</p>
+      <p>$ python3 Mongo-1.py</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>2021-01-30 20:03:56,519 - Ready to start ...
+2021-01-30 20:03:56,522 - Connected to MongoDB @ mongodb://192.168.1.53:5001/mydb
+2021-01-30 20:03:56,525 - List of collections: []
+2021-01-30 20:03:56,538 - List of collections: ['contacts']
+2021-01-30 20:03:56,539 - Number of documents in contacts: 1
+2021-01-30 20:03:56,540 - {'_id': ObjectId('601601fcbf000118d66bcd00'), 'first': 'Alice', 'last': 'Thompson', 'email': {'personal': 'alice.t@home.io', 'work': 'alice.thompson@work.net'}, 'mobile': {'personal': '123 456 7890'}}
+2021-01-30 20:03:56,545 - Documents in contacts:
+2021-01-30 20:03:56,546 - {'_id': ObjectId('601601fcbf000118d66bcd00'), 'first': 'Alice', 'last': 'Thompson', 'email': {'personal': 'alice.t@home.io', 'work': 'alice.thompson@work.net'}, 'mobile': {'personal': '123 456 7890'}}
+2021-01-30 20:03:56,546 - {'_id': ObjectId('601601fcbf000118d66bcd01'), 'first': 'Bob', 'last': 'Jones', 'email': {'work': 'bobj@doktor.net'}, 'mobile': {'work': '234 567 8901'}}
+2021-01-30 20:03:56,546 - {'_id': ObjectId('601601fcbf000118d66bcd02'), 'first': 'Charlie', 'last': 'Lee', 'email': {'personal': 'cl3000@ranch.net'}}
+2021-01-30 20:03:56,546 - {'_id': ObjectId('601601fcbf000118d66bcd03'), 'first': 'Eve', 'middle': 'Jo', 'last': 'Parker', 'email': {'work': 'ej_parker@awesome.org'}, 'mobile': {'personal': '345 678 9012'}}
+2021-01-30 20:03:56,546 - {'_id': ObjectId('601601fcbf000118d66bcd04'), 'first': 'Frank', 'last': 'Smith', 'email': {'personal': 'frank45@root.org', 'work': 'frank.smith@excellent.net'}, 'mobile': {'personal': '456 789 0123', 'work': '567 890 1234'}}
+2021-01-30 20:03:56,547 - {'_id': ObjectId('601601fcbf000118d66bcd05'), 'first': 'Frank', 'last': 'Cooper', 'email': {'personal': 'frankc@runner.org'}}
+2021-01-30 20:03:56,547 - Document for Bob:
+2021-01-30 20:03:56,547 - {'_id': ObjectId('601601fcbf000118d66bcd01'), 'first': 'Bob', 'last': 'Jones', 'email': {'work': 'bobj@doktor.net'}, 'mobile': {'work': '234 567 8901'}}
+2021-01-30 20:03:56,548 - Document for Charlie Lee:
+2021-01-30 20:03:56,548 - {'_id': ObjectId('601601fcbf000118d66bcd02'), 'first': 'Charlie', 'last': 'Lee', 'email': {'personal': 'cl3000@ranch.net'}}
+2021-01-30 20:03:56,548 - Document for bobj@doktor.net:
+2021-01-30 20:03:56,549 - {'_id': ObjectId('601601fcbf000118d66bcd01'), 'first': 'Bob', 'last': 'Jones', 'email': {'work': 'bobj@doktor.net'}, 'mobile': {'work': '234 567 8901'}}
+2021-01-30 20:03:56,549 - First and Last name(s) in contacts:
+2021-01-30 20:03:56,550 - {'_id': ObjectId('601601fcbf000118d66bcd00'), 'first': 'Alice', 'last': 'Thompson'}
+2021-01-30 20:03:56,550 - {'_id': ObjectId('601601fcbf000118d66bcd01'), 'first': 'Bob', 'last': 'Jones'}
+2021-01-30 20:03:56,550 - {'_id': ObjectId('601601fcbf000118d66bcd02'), 'first': 'Charlie', 'last': 'Lee'}
+2021-01-30 20:03:56,550 - {'_id': ObjectId('601601fcbf000118d66bcd03'), 'first': 'Eve', 'last': 'Parker'}
+2021-01-30 20:03:56,550 - {'_id': ObjectId('601601fcbf000118d66bcd04'), 'first': 'Frank', 'last': 'Smith'}
+2021-01-30 20:03:56,550 - {'_id': ObjectId('601601fcbf000118d66bcd05'), 'first': 'Frank', 'last': 'Cooper'}
+2021-01-30 20:03:56,551 - First and Last name(s) [without _id] in contacts:
+2021-01-30 20:03:56,551 - {'first': 'Alice', 'last': 'Thompson'}
+2021-01-30 20:03:56,551 - {'first': 'Bob', 'last': 'Jones'}
+2021-01-30 20:03:56,552 - {'first': 'Charlie', 'last': 'Lee'}
+2021-01-30 20:03:56,552 - {'first': 'Eve', 'last': 'Parker'}
+2021-01-30 20:03:56,552 - {'first': 'Frank', 'last': 'Smith'}
+2021-01-30 20:03:56,552 - {'first': 'Frank', 'last': 'Cooper'}
+2021-01-30 20:03:56,552 - First, Last name, Personal Mobile(s) [without _id] in contacts:
+2021-01-30 20:03:56,553 - {'first': 'Alice', 'last': 'Thompson', 'mobile': {'personal': '123 456 7890'}}
+2021-01-30 20:03:56,553 - {'first': 'Bob', 'last': 'Jones', 'mobile': {}}
+2021-01-30 20:03:56,553 - {'first': 'Charlie', 'last': 'Lee'}
+2021-01-30 20:03:56,554 - {'first': 'Eve', 'last': 'Parker', 'mobile': {'personal': '345 678 9012'}}
+2021-01-30 20:03:56,554 - {'first': 'Frank', 'last': 'Smith', 'mobile': {'personal': '456 789 0123'}}
+2021-01-30 20:03:56,554 - {'first': 'Frank', 'last': 'Cooper'}
+2021-01-30 20:03:56,554 - First and Last name(s) [without _id with limit 3] in contacts:
+2021-01-30 20:03:56,555 - {'first': 'Alice', 'last': 'Thompson'}
+2021-01-30 20:03:56,555 - {'first': 'Bob', 'last': 'Jones'}
+2021-01-30 20:03:56,555 - {'first': 'Charlie', 'last': 'Lee'}
+2021-01-30 20:03:56,556 - Document for Charlie [after update]:
+2021-01-30 20:03:56,557 - No document for Charlie !!!
+2021-01-30 20:03:56,557 - Document for Charlie [after update using mobile]:
+2021-01-30 20:03:56,558 - {'_id': ObjectId('601601fcbf000118d66bcd02'), 'mobile': {'personal': '678 901 2345'}}
+2021-01-30 20:03:56,558 - Document for Charlie [after update fix]:
+2021-01-30 20:03:56,559 - {'_id': ObjectId('601601fcbf000118d66bcd02'), 'first': 'Charlie', 'last': 'Lee', 'email': {'personal': 'cl3000@ranch.net'}, 'mobile': {'personal': '678 901 2345'}}
+2021-01-30 20:03:56,559 - Document for George [after upsert]:
+2021-01-30 20:03:56,560 - {'_id': ObjectId('601ca3ed8d37d50b59288cff'), 'first': 'George', 'last': 'Baker', 'email': {'work': 'g_baker@crap.org'}, 'mobile': {'work': '789 012 3456'}}
+2021-01-30 20:03:56,560 - Documents in contacts [after removing Bob]:
+2021-01-30 20:03:56,561 - {'_id': ObjectId('601601fcbf000118d66bcd00'), 'first': 'Alice', 'last': 'Thompson', 'email': {'personal': 'alice.t@home.io', 'work': 'alice.thompson@work.net'}, 'mobile': {'personal': '123 456 7890'}}
+2021-01-30 20:03:56,561 - {'_id': ObjectId('601601fcbf000118d66bcd02'), 'first': 'Charlie', 'last': 'Lee', 'email': {'personal': 'cl3000@ranch.net'}, 'mobile': {'personal': '678 901 2345'}}
+2021-01-30 20:03:56,561 - {'_id': ObjectId('601601fcbf000118d66bcd03'), 'first': 'Eve', 'middle': 'Jo', 'last': 'Parker', 'email': {'work': 'ej_parker@awesome.org'}, 'mobile': {'personal': '345 678 9012'}}
+2021-01-30 20:03:56,561 - {'_id': ObjectId('601601fcbf000118d66bcd04'), 'first': 'Frank', 'last': 'Smith', 'email': {'personal': 'frank45@root.org', 'work': 'frank.smith@excellent.net'}, 'mobile': {'personal': '456 789 0123', 'work': '567 890 1234'}}
+2021-01-30 20:03:56,561 - {'_id': ObjectId('601601fcbf000118d66bcd05'), 'first': 'Frank', 'last': 'Cooper', 'email': {'personal': 'frankc@runner.org'}}
+2021-01-30 20:03:56,561 - {'_id': ObjectId('601ca3ed8d37d50b59288cff'), 'first': 'George', 'last': 'Baker', 'email': {'work': 'g_baker@crap.org'}, 'mobile': {'work': '789 012 3456'}}
+2021-01-30 20:03:56,563 - Number of documents in contacts [after remove all]: 0
+2021-01-30 20:03:56,564 - List of collections: []
+2021-01-30 20:03:56,565 - Done !!!</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">AWESOME</span> !!! We have successfully demonstrated the use of the Python MongoDB driver using an
+        example code.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://mongodb.github.io/mongo-java-driver/4.2/driver/" target="_blank"><span class="bold">Mongo Java Driver Documentation</span></a></p>
+      <p><a href="https://pymongo.readthedocs.io/en/stable/index.html" target="_blank"><span class="bold">PyMongo Documentation</span></a></p>
+      <p><a href="https://polarsparc.github.io/MongoDB/MongoDB-1.html" target="_blank"><span class="bold">Hands-on MongoDB :: Part-1</span></a></p>
+      <p><a href="https://docs.mongodb.com/manual/" target="_blank"><span class="bold">MongoDB Manual</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,1323 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Hands-on MongoDB :: Part-1">
+    <meta name="subject" content="Hands-on MongoDB :: Part-1">
+    <meta name="keywords" content="mongodb, nosql">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Hands-on MongoDB :: Part-1</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Hands-on MongoDB :: Part-1</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">01/23/2021 (<span class="hi-yellow">UPDATED</span>)</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">MongoDB</span> is a very popular, modern, general purpose, distributed, <span class="hi-yellow">
+        Document-Oriented</span> NoSQL database with the following features:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>JSON Data Model</p>
+        </li>
+        <li>
+          <p>Rich Hierarchical Structure</p>
+        </li>
+        <li>
+          <p>Flexible Dynamic Schema</p>
+        </li>
+        <li>
+          <p>Ad-hoc Queries</p>
+        </li>
+        <li>
+          <p>Server-side Javascript</p>
+        </li>
+        <li>
+          <p>High Availability via Replica Set</p>
+        </li>
+        <li>
+          <p>Horizontal Scalability via Sharding</p>
+        </li>
+      </ul>
+    </div>
+    <div id="section-div">
+      <p>Installation and Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The installation will be on a <span class="bold">Ubuntu 20.04 LTS</span> based Linux desktop.</p>
+    </div>
+    <div id="para-div">
+      <p>Ensure <span class="bold">Docker</span> is installed on the system. Else, follow the instructions provided in the article
+        <a href="https://polarsparc.github.io/xhtml/Docker.html" target="_blank"><span class="bold">Introduction to Docker</span></a>
+        to complete the installation.</p>
+      <p>Check the latest stable version of <a href="https://hub.docker.com/_/mongo" target="_blank"><span class="bold">Mongo</span></a>
+        official docker image. Version <span class="hi-yellow">4.4.3</span> was the latest at the time of this article.</p>
+      <p>To download the latest docker image of <span class="bold">Mongo</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker pull mongo:4.4.3</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>4.4.3: Pulling from library/mongo
+f22ccc0b8772: Pull complete 
+3cf8fb62ba5f: Pull complete 
+e80c964ece6a: Pull complete 
+329e632c35b3: Pull complete 
+3e1bd1325a3d: Pull complete 
+4aa6e3d64a4a: Pull complete 
+035bca87b778: Pull complete 
+874e4e43cb00: Pull complete 
+0e50e71d834e: Pull complete 
+27768a0d0c67: Pull complete 
+be4e0bd8b992: Pull complete 
+262b87da894c: Pull complete 
+Digest: sha256:001400644bfc27b5da634ee09b95b4129566e2d4dccb6d27bd403b10cff9191b
+Status: Downloaded newer image for mongo:4.4.3
+docker.io/library/mongo:4.4.3</pre>
+    </div>
+    <div id="para-div">
+      <p>For our MongoDB setup, we will go with a 3-node high availability cluster with each node running in docker.</p>
+      <p>In MongoDB, one server (referred to as the <span class="bold">primary</span> node) can replicate data to other nodes in the
+        cluster (referred to as the <span class="bold">secondary</span> nodes). The MongoDB secondary nodes are often referred to as
+        the <span class="hi-yellow">Replica Sets</span>. The nodes in the cluster go through a voting process to select a node as the
+        primary, while the others automatically become the secondary nodes.</p>
+    </div>
+    <div id="para-div">
+      <p>We need to specifiy a data directory on the host that will be mounted as a data volume for each of the MongoDB nodes in the
+        cluster.</p>
+      <p>To create a data directory (for each of the nodes in the cluster) on the host, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/Downloads/DATA/mongodb/node-1</p>
+      <p>$ mkdir -p $HOME/Downloads/DATA/mongodb/node-2</p>
+      <p>$ mkdir -p $HOME/Downloads/DATA/mongodb/node-3</p>
+    </div>
+    <div id="para-div">
+      <p>For our cluster setup, we will create and use a docker <span class="bold">bridge</span> network. This will allow containers
+        connected to the bridge network to communicate with each other using container names, while providing network isolation from
+        containers outside the bridge network.</p>
+    </div>
+    <div id="para-div">
+      <p>To create a docker bridge network called <span class="hi-blue">mongodb-net</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker network create mongodb-net --driver bridge</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>b779bd624f445b822821821bbe3c49e5ee2007a0015075c239a8ac9e6065002e</pre>
+    </div>
+    <div id="para-div">
+      <p>Time to initialze and start each of the 3 nodes in the MongoDB database cluster.</p>
+      <p>To start the first MongoDB database node (with name <span class="hi-blue">mongodb-n1</span> and using the database port of
+        <span class="hi-grey">5001</span>), execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -d --rm -it --name mongodb-n1 --net mongodb-net -p 5001:5001 -v $HOME/Downloads/DATA/mongodb/node-1:/data/db
+        mongo:4.4.3 mongod --bind_ip_all --replSet mongodb-rs --port 5001</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>b680df1b4180d277ef96f78679b4744bd675a674deb55c128e3a3a1d2c9dce1f</pre>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the options used to start the <span class="bold">mongod</span> daemon:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-blue">--bind_ip_all</span> :: By default, the mongod daemon binds to localhost. This option allows it
+            to bind to all the IP address(es)</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">--replSet</span> :: Specifies the name of the replica set (<span class="bold">mongodb-rs</span>),
+            which will be used later to initialize and configure the replica set</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To check the MongoDB database node log, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker logs mongodb-n1</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>{"t":{"$date":"2021-01-23T02:12:38.985+00:00"},"s":"I",  "c":"CONTROL",  "id":23285,   "ctx":"main","msg":"Automatically disabling TLS 1.0, to force-enable TLS 1.0 specify --sslDisabledProtocols 'none'"}
+{"t":{"$date":"2021-01-23T02:12:39.000+00:00"},"s":"W",  "c":"ASIO",     "id":22601,   "ctx":"main","msg":"No TransportLayer configured during NetworkInterface startup"}
+{"t":{"$date":"2021-01-23T02:12:39.000+00:00"},"s":"I",  "c":"NETWORK",  "id":4648601, "ctx":"main","msg":"Implicit TCP FastOpen unavailable. If TCP FastOpen is required, set tcpFastOpenServer, tcpFastOpenClient, and tcpFastOpenQueueSize."}
+{"t":{"$date":"2021-01-23T02:12:39.000+00:00"},"s":"W",  "c":"ASIO",     "id":22601,   "ctx":"main","msg":"No TransportLayer configured during NetworkInterface startup"}
+{"t":{"$date":"2021-01-23T02:12:39.001+00:00"},"s":"I",  "c":"STORAGE",  "id":4615611, "ctx":"initandlisten","msg":"MongoDB starting","attr":{"pid":1,"port":5001,"dbPath":"/data/db","architecture":"64-bit","host":"b680df1b4180"}}
+{"t":{"$date":"2021-01-23T02:12:39.001+00:00"},"s":"I",  "c":"CONTROL",  "id":23403,   "ctx":"initandlisten","msg":"Build Info","attr":{"buildInfo":{"version":"4.4.3","gitVersion":"913d6b62acfbb344dde1b116f4161360acd8fd13","openSSLVersion":"OpenSSL 1.1.1  11 Sep 2018","modules":[],"allocator":"tcmalloc","environment":{"distmod":"ubuntu1804","distarch":"x86_64","target_arch":"x86_64"}}}}
+{"t":{"$date":"2021-01-23T02:12:39.001+00:00"},"s":"I",  "c":"CONTROL",  "id":51765,   "ctx":"initandlisten","msg":"Operating System","attr":{"os":{"name":"Ubuntu","version":"18.04"}}}
+{"t":{"$date":"2021-01-23T02:12:39.001+00:00"},"s":"I",  "c":"CONTROL",  "id":21951,   "ctx":"initandlisten","msg":"Options set by command line","attr":{"options":{"net":{"bindIp":"*","port":5001},"replication":{"replSet":"mongodb-rs"}}}}
+{"t":{"$date":"2021-01-23T02:12:39.003+00:00"},"s":"I",  "c":"STORAGE",  "id":22297,   "ctx":"initandlisten","msg":"Using the XFS filesystem is strongly recommended with the WiredTiger storage engine. See http://dochub.mongodb.org/core/prodnotes-filesystem","tags":["startupWarnings"]}
+{"t":{"$date":"2021-01-23T02:12:39.003+00:00"},"s":"I",  "c":"STORAGE",  "id":22315,   "ctx":"initandlisten","msg":"Opening WiredTiger","attr":{"config":"create,cache_size=15544M,session_max=33000,eviction=(threads_min=4,threads_max=4),config_base=false,statistics=(fast),log=(enabled=true,archive=true,path=journal,compressor=snappy),file_manager=(close_idle_time=100000,close_scan_interval=10,close_handle_minimum=250),statistics_log=(wait=0),verbose=[recovery_progress,checkpoint_progress,compact_progress],"}}
+{"t":{"$date":"2021-01-23T02:12:39.804+00:00"},"s":"I",  "c":"STORAGE",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":"[1611367959:804920][1:0x7f5ea98c9ac0], txn-recover: [WT_VERB_RECOVERY | WT_VERB_RECOVERY_PROGRESS] Set global recovery timestamp: (0, 0)"}}
+{"t":{"$date":"2021-01-23T02:12:39.804+00:00"},"s":"I",  "c":"STORAGE",  "id":22430,   "ctx":"initandlisten","msg":"WiredTiger message","attr":{"message":"[1611367959:804974][1:0x7f5ea98c9ac0], txn-recover: [WT_VERB_RECOVERY | WT_VERB_RECOVERY_PROGRESS] Set global oldest timestamp: (0, 0)"}}
+{"t":{"$date":"2021-01-23T02:12:39.811+00:00"},"s":"I",  "c":"STORAGE",  "id":4795906, "ctx":"initandlisten","msg":"WiredTiger opened","attr":{"durationMillis":808}}
+{"t":{"$date":"2021-01-23T02:12:39.811+00:00"},"s":"I",  "c":"RECOVERY", "id":23987,   "ctx":"initandlisten","msg":"WiredTiger recoveryTimestamp","attr":{"recoveryTimestamp":{"$timestamp":{"t":0,"i":0}}}}
+{"t":{"$date":"2021-01-23T02:12:39.823+00:00"},"s":"I",  "c":"STORAGE",  "id":4366408, "ctx":"initandlisten","msg":"No table logging settings modifications are required for existing WiredTiger tables","attr":{"loggingEnabled":false}}
+{"t":{"$date":"2021-01-23T02:12:39.823+00:00"},"s":"I",  "c":"STORAGE",  "id":22262,   "ctx":"initandlisten","msg":"Timestamp monitor starting"}
+{"t":{"$date":"2021-01-23T02:12:39.827+00:00"},"s":"W",  "c":"CONTROL",  "id":22120,   "ctx":"initandlisten","msg":"Access control is not enabled for the database. Read and write access to data and configuration is unrestricted","tags":["startupWarnings"]}
+{"t":{"$date":"2021-01-23T02:12:39.834+00:00"},"s":"I",  "c":"STORAGE",  "id":20536,   "ctx":"initandlisten","msg":"Flow Control is enabled on this deployment"}
+{"t":{"$date":"2021-01-23T02:12:39.837+00:00"},"s":"I",  "c":"SHARDING", "id":20997,   "ctx":"initandlisten","msg":"Refreshed RWC defaults","attr":{"newDefaults":{}}}
+{"t":{"$date":"2021-01-23T02:12:39.837+00:00"},"s":"I",  "c":"STORAGE",  "id":20320,   "ctx":"initandlisten","msg":"createCollection","attr":{"namespace":"local.startup_log","uuidDisposition":"generated","uuid":{"uuid":{"$uuid":"d9529b4d-4ed9-4758-b817-6371c2dcc4d0"}},"options":{"capped":true,"size":10485760}}}
+{"t":{"$date":"2021-01-23T02:12:39.847+00:00"},"s":"I",  "c":"INDEX",    "id":20345,   "ctx":"initandlisten","msg":"Index build: done building","attr":{"buildUUID":null,"namespace":"local.startup_log","index":"_id_","commitTimestamp":{"$timestamp":{"t":0,"i":0}}}}
+{"t":{"$date":"2021-01-23T02:12:39.847+00:00"},"s":"I",  "c":"FTDC",     "id":20625,   "ctx":"initandlisten","msg":"Initializing full-time diagnostic data capture","attr":{"dataDirectory":"/data/db/diagnostic.data"}}
+{"t":{"$date":"2021-01-23T02:12:39.848+00:00"},"s":"I",  "c":"STORAGE",  "id":20320,   "ctx":"initandlisten","msg":"createCollection","attr":{"namespace":"local.replset.oplogTruncateAfterPoint","uuidDisposition":"generated","uuid":{"uuid":{"$uuid":"ed917ea5-0f43-4295-a609-80419ea20491"}},"options":{}}}
+{"t":{"$date":"2021-01-23T02:12:39.857+00:00"},"s":"I",  "c":"INDEX",    "id":20345,   "ctx":"initandlisten","msg":"Index build: done building","attr":{"buildUUID":null,"namespace":"local.replset.oplogTruncateAfterPoint","index":"_id_","commitTimestamp":{"$timestamp":{"t":0,"i":0}}}}
+{"t":{"$date":"2021-01-23T02:12:39.857+00:00"},"s":"I",  "c":"STORAGE",  "id":20320,   "ctx":"initandlisten","msg":"createCollection","attr":{"namespace":"local.replset.minvalid","uuidDisposition":"generated","uuid":{"uuid":{"$uuid":"190d60d6-7cb7-424c-8984-f356390474a8"}},"options":{}}}
+{"t":{"$date":"2021-01-23T02:12:39.866+00:00"},"s":"I",  "c":"INDEX",    "id":20345,   "ctx":"initandlisten","msg":"Index build: done building","attr":{"buildUUID":null,"namespace":"local.replset.minvalid","index":"_id_","commitTimestamp":{"$timestamp":{"t":0,"i":0}}}}
+{"t":{"$date":"2021-01-23T02:12:39.867+00:00"},"s":"I",  "c":"STORAGE",  "id":20320,   "ctx":"initandlisten","msg":"createCollection","attr":{"namespace":"local.replset.election","uuidDisposition":"generated","uuid":{"uuid":{"$uuid":"313af4b1-3c34-4ce9-ac09-132cb8cbfe00"}},"options":{}}}
+{"t":{"$date":"2021-01-23T02:12:39.876+00:00"},"s":"I",  "c":"INDEX",    "id":20345,   "ctx":"initandlisten","msg":"Index build: done building","attr":{"buildUUID":null,"namespace":"local.replset.election","index":"_id_","commitTimestamp":{"$timestamp":{"t":0,"i":0}}}}
+{"t":{"$date":"2021-01-23T02:12:39.876+00:00"},"s":"I",  "c":"REPL",     "id":21311,   "ctx":"initandlisten","msg":"Did not find local initialized voted for document at startup"}
+{"t":{"$date":"2021-01-23T02:12:39.876+00:00"},"s":"I",  "c":"REPL",     "id":21312,   "ctx":"initandlisten","msg":"Did not find local Rollback ID document at startup. Creating one"}
+{"t":{"$date":"2021-01-23T02:12:39.876+00:00"},"s":"I",  "c":"STORAGE",  "id":20320,   "ctx":"initandlisten","msg":"createCollection","attr":{"namespace":"local.system.rollback.id","uuidDisposition":"generated","uuid":{"uuid":{"$uuid":"aed2c993-7563-4031-990b-cc6706e6c37a"}},"options":{}}}
+{"t":{"$date":"2021-01-23T02:12:39.884+00:00"},"s":"I",  "c":"INDEX",    "id":20345,   "ctx":"initandlisten","msg":"Index build: done building","attr":{"buildUUID":null,"namespace":"local.system.rollback.id","index":"_id_","commitTimestamp":{"$timestamp":{"t":0,"i":0}}}}
+{"t":{"$date":"2021-01-23T02:12:39.884+00:00"},"s":"I",  "c":"REPL",     "id":21531,   "ctx":"initandlisten","msg":"Initialized the rollback ID","attr":{"rbid":1}}
+{"t":{"$date":"2021-01-23T02:12:39.884+00:00"},"s":"I",  "c":"REPL",     "id":21313,   "ctx":"initandlisten","msg":"Did not find local replica set configuration document at startup","attr":{"error":{"code":47,"codeName":"NoMatchingDocument","errmsg":"Did not find replica set configuration document in local.system.replset"}}}
+{"t":{"$date":"2021-01-23T02:12:39.885+00:00"},"s":"I",  "c":"REPL",     "id":40440,   "ctx":"initandlisten","msg":"Starting the TopologyVersionObserver"}
+{"t":{"$date":"2021-01-23T02:12:39.885+00:00"},"s":"I",  "c":"REPL",     "id":40445,   "ctx":"TopologyVersionObserver","msg":"Started TopologyVersionObserver"}
+{"t":{"$date":"2021-01-23T02:12:39.885+00:00"},"s":"I",  "c":"NETWORK",  "id":23015,   "ctx":"listener","msg":"Listening on","attr":{"address":"/tmp/mongodb-5001.sock"}}
+{"t":{"$date":"2021-01-23T02:12:39.885+00:00"},"s":"I",  "c":"NETWORK",  "id":23015,   "ctx":"listener","msg":"Listening on","attr":{"address":"0.0.0.0"}}
+{"t":{"$date":"2021-01-23T02:12:39.886+00:00"},"s":"I",  "c":"NETWORK",  "id":23016,   "ctx":"listener","msg":"Waiting for connections","attr":{"port":5001,"ssl":"off"}}
+{"t":{"$date":"2021-01-23T02:12:39.888+00:00"},"s":"I",  "c":"CONTROL",  "id":20714,   "ctx":"LogicalSessionCacheRefresh","msg":"Failed to refresh session cache, will try again at the next refresh interval","attr":{"error":"NotYetInitialized: Replication has not yet been configured"}}
+{"t":{"$date":"2021-01-23T02:12:39.888+00:00"},"s":"I",  "c":"CONTROL",  "id":20712,   "ctx":"LogicalSessionCacheReap","msg":"Sessions collection is not set up; waiting until next sessions reap interval","attr":{"error":"NamespaceNotFound: config.system.sessions does not exist"}}</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, start the second MongoDB database node (with name <span class="hi-blue">mongodb-n2</span> and using the database port
+        of <span class="hi-grey">5002</span>), execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -d --rm -it --name mongodb-n2 --net mongodb-net -p 5002:5002 -v $HOME/Downloads/DATA/mongodb/node-2:/data/db
+        mongo:4.4.3 mongod --bind_ip_all --replSet mongodb-rs --port 5002</p>
+    </div>
+    <div id="para-div">
+      <p>Next, start the third MongoDB database node (with name <span class="hi-blue">mongodb-n3</span> and using the database
+        port of <span class="hi-grey">5003</span>), execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -d --rm -it --name mongodb-n3 --net mongodb-net -p 5003:5003 -v $HOME/Downloads/DATA/mongodb/node-3:/data/db
+        mongo:4.4.3 mongod --bind_ip_all --replSet mongodb-rs --port 5003</p>
+    </div>
+    <div id="para-div">
+      <p>Make a note of the host's IP address - in our case it is <span class="hi-red">192.168.1.53</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Finally, time to configure the MongoDB high availability replica set. For this, we will need to connect to one of the nodes
+        in the cluster. To connect to the first Mongodb node, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker exec -it mongodb-n1 mongo --port 5001</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>MongoDB shell version v4.4.3
+connecting to: mongodb://127.0.0.1:5001/?compressors=disabled&gssapiServiceName=mongodb
+Implicit session: session { "id" : UUID("9605137b-1afd-4e0c-b51a-bc8622a8dd1b") }
+MongoDB server version: 4.4.3
+Welcome to the MongoDB shell.
+For interactive help, type "help".
+For more comprehensive documentation, see
+  https://docs.mongodb.com/
+Questions? Try the MongoDB Developer Community Forums
+  https://community.mongodb.com
+---
+The server generated these startup warnings when booting: 
+        2021-01-23T02:12:39.003+00:00: Using the XFS filesystem is strongly recommended with the WiredTiger storage engine. See http://dochub.mongodb.org/core/prodnotes-filesystem
+        2021-01-23T02:12:39.827+00:00: Access control is not enabled for the database. Read and write access to data and configuration is unrestricted
+---
+---
+        Enable MongoDB's free cloud-based monitoring service, which will then receive and display
+        metrics about your deployment (disk utilization, CPU, operation statistics, etc).
+
+        The monitoring data will be available on a MongoDB website with a unique URL accessible to you
+        and anyone you share the URL with. MongoDB may use this information to make product
+        improvements and to suggest MongoDB products and deployment options to you.
+
+        To enable free monitoring, run the following command: db.enableFreeMonitoring()
+        To permanently disable this reminder, run the following command: db.disableFreeMonitoring()
+---
+&gt;</pre>
+    </div>
+    <div id="para-div">
+      <p>The prompt will change to <span class="bold">&gt;</span></p>
+    </div>
+    <div id="para-div">
+      <p>We need to create a configuration object (in JSON format) specifying the nodes of the replica set. To do that, execute the
+        following command in the <span class="bold">&gt;</span> prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>&gt; config = {"_id": "mongodb-rs", "members": [{"_id":0, "host":"192.168.1.53:5001"}, {"_id":1, "host":"192.168.1.53:5002"},
+        {"_id":2, "host":"192.168.1.53:5003"}]}</p>
+    </div>
+    <div id="para-div">
+      <p>The very first document field <span class="hi-yellow">_id</span> is set to the name of the replica set <span class="hi-grey">
+        mongodb-rs</span>, which was used when starting each of the mongod nodes of the cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>{
+"_id" : "mongodb-rs",
+"members" : [
+  {
+    "_id" : 0,
+    "host" : "192.168.1.53:5001"
+  },
+  {
+    "_id" : 1,
+    "host" : "192.168.1.53:5002"
+  },
+  {
+    "_id" : 2,
+    "host" : "192.168.1.53:5003"
+  }
+]
+}</pre>
+    </div>
+    <br/>
+    <div id="error-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>It is *<span class="underbold">VERY</span>* important to use the host's IP address and *<span class="underbold">NOT</span>* the docker host name (or container name)</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To initialize the MongoDB high availabilty replica set, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>&gt; rs.initiate(config)</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>{
+"ok" : 1,
+"$clusterTime" : {
+  "clusterTime" : Timestamp(1611368632, 1),
+  "signature" : {
+    "hash" : BinData(0,"AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
+    "keyId" : NumberLong(0)
+  }
+},
+"operationTime" : Timestamp(1611368632, 1)
+}</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">SUCCESS</span> - since we got an <span class="hi-green">"ok" : 1</span>. Also, the prompt will change
+        to either <span class="hi-grey">mongodb-rs:PRIMARY&gt;</span> or <span class="hi-grey">mongodb-rs:SECONDARY&gt;</span> based
+        on the role this node is designated as - primary oy secondary.</p>
+      <p>In this case, the prompt changed to <span class="bold">mongodb-rs:PRIMARY&gt;</span> indicating this is the primary node.</p>
+    </div>
+    <div id="para-div">
+      <p>To check the status of the replica set, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; rs.status()</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>{
+  "set" : "mongodb-rs",
+  "date" : ISODate("2021-01-23T02:28:51.453Z"),
+  "myState" : 1,
+  "term" : NumberLong(1),
+  "syncSourceHost" : "",
+  "syncSourceId" : -1,
+  "heartbeatIntervalMillis" : NumberLong(2000),
+  "majorityVoteCount" : 2,
+  "writeMajorityCount" : 2,
+  "votingMembersCount" : 3,
+  "writableVotingMembersCount" : 3,
+  "optimes" : {
+    "lastCommittedOpTime" : {
+      "ts" : Timestamp(1611368924, 1),
+      "t" : NumberLong(1)
+    },
+    "lastCommittedWallTime" : ISODate("2021-01-23T02:28:44.174Z"),
+    "readConcernMajorityOpTime" : {
+      "ts" : Timestamp(1611368924, 1),
+      "t" : NumberLong(1)
+    },
+    "readConcernMajorityWallTime" : ISODate("2021-01-23T02:28:44.174Z"),
+    "appliedOpTime" : {
+      "ts" : Timestamp(1611368924, 1),
+      "t" : NumberLong(1)
+    },
+    "durableOpTime" : {
+      "ts" : Timestamp(1611368924, 1),
+      "t" : NumberLong(1)
+    },
+    "lastAppliedWallTime" : ISODate("2021-01-23T02:28:44.174Z"),
+    "lastDurableWallTime" : ISODate("2021-01-23T02:28:44.174Z")
+  },
+  "lastStableRecoveryTimestamp" : Timestamp(1611368884, 1),
+  "electionCandidateMetrics" : {
+    "lastElectionReason" : "electionTimeout",
+    "lastElectionDate" : ISODate("2021-01-23T02:24:04.140Z"),
+    "electionTerm" : NumberLong(1),
+    "lastCommittedOpTimeAtElection" : {
+      "ts" : Timestamp(0, 0),
+      "t" : NumberLong(-1)
+    },
+    "lastSeenOpTimeAtElection" : {
+      "ts" : Timestamp(1611368632, 1),
+      "t" : NumberLong(-1)
+    },
+    "numVotesNeeded" : 2,
+    "priorityAtElection" : 1,
+    "electionTimeoutMillis" : NumberLong(10000),
+    "numCatchUpOps" : NumberLong(0),
+    "newTermStartDate" : ISODate("2021-01-23T02:24:04.159Z"),
+    "wMajorityWriteAvailabilityDate" : ISODate("2021-01-23T02:24:05.346Z")
+  },
+  "members" : [
+    {
+      "_id" : 0,
+      "name" : "192.168.1.53:5001",
+      "health" : 1,
+      "state" : 1,
+      "stateStr" : "PRIMARY",
+      "uptime" : 973,
+      "optime" : {
+        "ts" : Timestamp(1611368924, 1),
+        "t" : NumberLong(1)
+      },
+      "optimeDate" : ISODate("2021-01-23T02:28:44Z"),
+      "syncSourceHost" : "",
+      "syncSourceId" : -1,
+      "infoMessage" : "",
+      "electionTime" : Timestamp(1611368644, 1),
+      "electionDate" : ISODate("2021-01-23T02:24:04Z"),
+      "configVersion" : 1,
+      "configTerm" : 1,
+      "self" : true,
+      "lastHeartbeatMessage" : ""
+    },
+    {
+      "_id" : 1,
+      "name" : "192.168.1.53:5002",
+      "health" : 1,
+      "state" : 2,
+      "stateStr" : "SECONDARY",
+      "uptime" : 298,
+      "optime" : {
+        "ts" : Timestamp(1611368924, 1),
+        "t" : NumberLong(1)
+      },
+      "optimeDurable" : {
+        "ts" : Timestamp(1611368924, 1),
+        "t" : NumberLong(1)
+      },
+      "optimeDate" : ISODate("2021-01-23T02:28:44Z"),
+      "optimeDurableDate" : ISODate("2021-01-23T02:28:44Z"),
+      "lastHeartbeat" : ISODate("2021-01-23T02:28:50.147Z"),
+      "lastHeartbeatRecv" : ISODate("2021-01-23T02:28:49.652Z"),
+      "pingMs" : NumberLong(0),
+      "lastHeartbeatMessage" : "",
+      "syncSourceHost" : "mongodb-n1:5001",
+      "syncSourceId" : 0,
+      "infoMessage" : "",
+      "configVersion" : 1,
+      "configTerm" : 1
+    },
+    {
+      "_id" : 2,
+      "name" : "192.168.1.53:5003",
+      "health" : 1,
+      "state" : 2,
+      "stateStr" : "SECONDARY",
+      "uptime" : 298,
+      "optime" : {
+        "ts" : Timestamp(1611368924, 1),
+        "t" : NumberLong(1)
+      },
+      "optimeDurable" : {
+        "ts" : Timestamp(1611368924, 1),
+        "t" : NumberLong(1)
+      },
+      "optimeDate" : ISODate("2021-01-23T02:28:44Z"),
+      "optimeDurableDate" : ISODate("2021-01-23T02:28:44Z"),
+      "lastHeartbeat" : ISODate("2021-01-23T02:28:50.147Z"),
+      "lastHeartbeatRecv" : ISODate("2021-01-23T02:28:49.652Z"),
+      "pingMs" : NumberLong(0),
+      "lastHeartbeatMessage" : "",
+      "syncSourceHost" : "mongodb-n1:5001",
+      "syncSourceId" : 0,
+      "infoMessage" : "",
+      "configVersion" : 1,
+      "configTerm" : 1
+    }
+  ],
+  "ok" : 1,
+  "$clusterTime" : {
+    "clusterTime" : Timestamp(1611368924, 1),
+    "signature" : {
+      "hash" : BinData(0,"AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
+      "keyId" : NumberLong(0)
+    }
+  },
+  "operationTime" : Timestamp(1611368924, 1)
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>Finally, to exit from the MongoDB node shell, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; exit</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>bye</pre>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Basic Concepts<br />
+      </p>
+    </div>
+    <div id="para-div">
+      <p>This section will cover some basic concepts of MongoDB:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>A <span class="hi-yellow">Document</span> is the most basic unit of data in MongoDB. It is analogous to a record in the
+            traditional relational database. A <span class="bold">document</span> is nothing more than a JSON object, which is an
+            ordered set of key-value pairs, where the key is a string and the value could be: a boolean, a number, a string, an array,
+            or another JSON <span class="bold">document</span>. Internally, MongoDB stores a <span class="bold">document</span> in
+            an optimized Binary JSON (BSON) format</p>
+        </li>
+        <li>
+          <p>A <span class="hi-yellow">Collection</span> is a group of <span class="bold">documents</span>. It is analogous to a table
+            in the traditional relational database. Within a <span class="bold">collection</span>, <span class="bold">documents</span>
+            can have different key-value pairs resulting in a dynamic schema</p>
+        </li>
+        <li>
+          <p>A <span class="hi-yellow">Database</span> is a container for <span class="bold">collections</span>. A single instance
+            of MongoDB can have many <span class="bold">databases</span>. Each <span class="bold">database</span> is stored in separate
+            files on the underlying disk</p>
+        </li>
+        <li>
+          <p>MongoDB by default stores all the <span class="bold">database</span> files in the directory <span class="hi-yellow">
+            /data/db</span>. In our case, we mapped it to a data directory on the host using docker volumes</p>
+        </li>
+        <li>
+          <p>The default port on which the MongoDB database is listening for MongoDB clients is <span class="bold">27017</span>. In
+            our case, we use ports 5001 through 5003 for each of the nodes in our cluster</p>
+        </li>
+      </ul>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with MongoDB</p>
+    </div>
+    <div id="para-div">
+      <p>The best way to explore MongoDB is to use the command-line interface called <span class="hi-yellow">mongo</span>, which is
+        nothing more than an interactive JavaScript shell. In the following paragraphs we will explore some basics of MongoDB.</p>
+    </div>
+    <div id="para-div">
+      <p>From the Output.8 above, we can infer the <span class="bold">PRIMARY</span> node is running on the host port
+        <span class="hi-blue">5001</span>.</p>
+      <p>To launch the command-line interactive MongoDB client on the <span class="underbold">PRIMARY</span> node running on the port
+        5001 using docker, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>docker run --rm -it mongo:4.4.3 mongo --host 192.168.1.53 --port 5001 test</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>MongoDB shell version v4.4.3
+connecting to: mongodb://192.168.1.53:5001/test?compressors=disabled&gssapiServiceName=mongodb
+Implicit session: session { "id" : UUID("2597330c-c633-4cc4-ab54-9efb1a7a34b2") }
+MongoDB server version: 4.4.3
+Welcome to the MongoDB shell.
+For interactive help, type "help".
+For more comprehensive documentation, see
+  https://docs.mongodb.com/
+Questions? Try the MongoDB Developer Community Forums
+  https://community.mongodb.com
+---
+The server generated these startup warnings when booting: 
+        2021-01-23T02:12:39.003+00:00: Using the XFS filesystem is strongly recommended with the WiredTiger storage engine. See http://dochub.mongodb.org/core/prodnotes-filesystem
+        2021-01-23T02:12:39.827+00:00: Access control is not enabled for the database. Read and write access to data and configuration is unrestricted
+---
+---
+        Enable MongoDB's free cloud-based monitoring service, which will then receive and display
+        metrics about your deployment (disk utilization, CPU, operation statistics, etc).
+
+        The monitoring data will be available on a MongoDB website with a unique URL accessible to you
+        and anyone you share the URL with. MongoDB may use this information to make product
+        improvements and to suggest MongoDB products and deployment options to you.
+
+        To enable free monitoring, run the following command: db.enableFreeMonitoring()
+        To permanently disable this reminder, run the following command: db.disableFreeMonitoring()
+---
+mongodb-rs:PRIMARY&gt; </pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the currently available databases, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; show dbs</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>admin   0.000GB
+config  0.000GB
+local   0.000GB</pre>
+    </div>
+    <div id="para-div">
+      <p>The above three MongoDB databases are system specific <span class="underbold">internal</span> databases.</p>
+      <p>By default the MongoDB client connects to the database called <span class="hi-yellow">test</span>, which will be physically
+        created only when we perform some operation on that database.</p>
+    </div>
+    <br/>
+    <div id="error-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>Executing any of the MongoDB database commands on the SECONDARY node(s), will produce the following error:
+
+        uncaught exception: Error: listDatabases failed:{
+          "topologyVersion" : {
+            "processId" : ObjectId("6025cd3844aef80738ee67f5"),
+            "counter" : NumberLong(5)
+          },
+          "operationTime" : Timestamp(1613090185, 1),
+          "ok" : 0,
+          "errmsg" : "not master and slaveOk=false",
+          "code" : 13435,
+          "codeName" : "NotPrimaryNoSecondaryOk",
+          "$clusterTime" : {
+            "clusterTime" : Timestamp(1613090185, 1),
+            "signature" : {
+              "hash" : BinData(0,"AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
+              "keyId" : NumberLong(0)
+            }
+        }
+
+More on this in a future part of this series.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For our demo, we will create our own database called <span class="hi-yellow">mydb</span>. To create the <span class="bold">
+        mydb</span> database, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; use mydb</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>switched to db mydb</pre>
+    </div>
+    <div id="para-div">
+      <p>Notice that we only indicated that we want to use the <span class="bold">mydb</span> database; we did not create one. MongoDB
+        uses lazy initialization and delays the creation of the database physically until we create a collection and add a document
+        to it.</p>
+      <p>MongoDB client sets the global variable <span class="hi-yellow">db</span> to the current database in use.</p>
+      <p>To check the database currently in use, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>mydb</pre>
+    </div>
+    <div id="para-div">
+      <p>To perform any operation on a database, we will use the global variable <span class="bold">db</span>. For the demo, we will
+        work with the collection <span class="hi-yellow">contacts</span>. To access this collection, we refer to it as
+        <span class="bold">db.contacts</span>. Again, just as MongoDB did not physically create a database, MongoDB will defer the
+        creation of the collection <span class="bold">contacts</span> until we add at least one document to that collection.</p>
+      <p>To list all the collection(s) in a database, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; show collections</p>
+    </div>
+    <div id="para-div">
+      <p>The output will be empty indicating that there are no collection(s) yet.</p>
+      <p>To create the collection <span class="bold">contacts</span>, we need to add at least one document to the collection. To add
+        a new document to a collection, use the <span class="hi-yellow">insert()</span> command. Let us add a new document by executing
+        the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY> db.contacts.insert({ first: "Alice", last: "Thompson", email: { personal: "alice.t@home.io",
+        work: "alice.thompson@work.net" }, mobile: { personal: "123 456 7890" } })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>WriteResult({ "nInserted" : 1 })</pre>
+    </div>
+    <div id="para-div">
+      <p>The above output indicates that there were no errors and the document was successfully added.</p>
+      <p>This is similar to the <span class="bold">INSERT INTO contacts VALUES(...)</span> SQL statement from the relational world.</p>
+      <p>Let us now list all the collection(s) in a database by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; show collections</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>contacts</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be seen from the above output, MongoDB has created the collection <span class="bold">contacts</span>.</p>
+      <p>To display the number of documents in the collection <span class="bold">contacts</span>, use the <span class="hi-yellow">
+        count()</span> command. Now, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.count()</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>1</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be seen from the above output, we have <span class="bold">1</span> document in the collection <span class="bold">
+        contacts</span>.</p>
+      <p>This is similar to the <span class="bold">SELECT COUNT(*) FROM contacts</span> SQL statement from the relational world.</p>
+      <p>To display all the documents in the collection <span class="bold">contacts</span>, use the <span class="hi-yellow">find()</span>
+        command. Now, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find()</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.17</h4>
+      <pre>{ "_id" : ObjectId("600b8fd9df2ffe1ec2eaa031"), "first" : "Alice", "last" : "Thompson", "email" : { "personal" : "alice.t@home.io", "work" : "alice.thompson@work.net" }, "mobile" : { "personal" : "123 456 7890" } }</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be seen from the above output, we see the document we inserted into the collection <span class="bold">contacts</span>
+        earlier.</p>
+      <p>This is similar to the <span class="bold">SELECT * FROM contacts</span> SQL statement from the relational world.</p>
+      <p>But wait !!! What is with the key <span class="hi-yellow">_id</span> ??? We never had that in the document when we added
+        it.</p>
+      <p>Every MongoDB document must have a unique key by with the document can be identified. This is analogous to the primary key
+        of a table in relational database. The key <span class="bold">_id</span> is the unique primary key automatically added by
+        MongoDB.</p>
+      <p>The document key <span class="bold">_id</span> is an object of type <span class="hi-yellow">ObjectId</span> which contains
+        a hex-string of 12 bytes that is guaranteed to be unique across a cluster of machines and is generated by concatenating: </p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>Time in Seconds since Epoch (4 bytes)</p>
+        </li>
+        <li>
+          <p>Hash of the Machine Host Name (3 bytes)</p>
+        </li>
+        <li>
+          <p>Process ID of mongod (2 bytes)</p>
+        </li>
+        <li>
+          <p>Next Value from an Incrementing Counter (3 bytes)</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To display all the documents in the collection <span class="bold">contacts</span> in a prettier readable format, use the
+        <span class="hi-yellow">pretty()</span> command. Now, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find().pretty()</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.18</h4>
+      <pre>{
+  "_id" : ObjectId("600b8fd9df2ffe1ec2eaa031"),
+  "first" : "Alice",
+  "last" : "Thompson",
+  "email" : {
+    "personal" : "alice.t@home.io",
+    "work" : "alice.thompson@work.net"
+  },
+  "mobile" : {
+    "personal" : "123 456 7890"
+  }
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>The <span class="bold">insert()</span> command on execution just returns a status of how many document(s) were inserted.
+        What if we need want the key <span class="bold">_id</span> value after the addition ? In order to do that, use the
+        <span class="hi-yellow">insertOne()</span> command. Let us add a new document by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.insertOne({ first: "Bob", last: "Jones", email: { work: "bobj@doktor.net" },
+        mobile: { work: "234 567 8901" } })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.19</h4>
+      <pre>{
+  "acknowledged" : true,
+  "insertedId" : ObjectId("600b94a5df2ffe1ec2eaa032")
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>Now let us insert <span class="bold">4</span> more documents to the collection <span class="bold">contacts</span> by executing
+        the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.insertOne({ first: "Charlie", last: "Lee", email: { personal: "cl3000@ranch.net" } })</p>
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.insert({ first: "Eve", middle: "Jo", last: "Parker", email: { work: "ej_parker@awesome.org" },
+        mobile: { personal: "345 678 9012" } })</p>
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.insert({ first: "Frank", last: "Smith", email: { personal: "frank45@root.org",
+        work: "frank.smith@excellent.net" }, mobile: { personal: "456 789 0123", work: "567 890 1234" } })</p>
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.insertOne({ first: "Frank", last: "Cooper", email: { personal: "frankc@runner.org" } })</p>
+    </div>
+    <div id="para-div">
+      <p>Now, let us query and display all the documents in the collection <span class="bold">contacts</span> by executing the
+        following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find()</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.20</h4>
+      <pre>{ "_id" : ObjectId("600b8fd9df2ffe1ec2eaa031"), "first" : "Alice", "last" : "Thompson", "email" : { "personal" : "alice.t@home.io", "work" : "alice.thompson@work.net" }, "mobile" : { "personal" : "123 456 7890" } }
+{ "_id" : ObjectId("600b94a5df2ffe1ec2eaa032"), "first" : "Bob", "last" : "Jones", "email" : { "work" : "bobj@doktor.net" }, "mobile" : { "work" : "234 567 8901" } }
+{ "_id" : ObjectId("600b94fadf2ffe1ec2eaa033"), "first" : "Charlie", "last" : "Lee", "email" : { "personal" : "cl3000@ranch.net" } }
+{ "_id" : ObjectId("600b9513df2ffe1ec2eaa034"), "first" : "Eve", "middle" : "Jo", "last" : "Parker", "email" : { "work" : "ej_parker@awesome.org" }, "mobile" : { "personal" : "345 678 9012" } }
+{ "_id" : ObjectId("600b9527df2ffe1ec2eaa035"), "first" : "Frank", "last" : "Smith", "email" : { "personal" : "frank45@root.org", "work" : "frank.smith@excellent.net" }, "mobile" : { "personal" : "456 789 0123", "work" : "567 890 1234" } }
+{ "_id" : ObjectId("600b9636df2ffe1ec2eaa036"), "first" : "Frank", "last" : "Cooper", "email" : { "personal" : "frankc@runner.org" } }</pre>
+    </div>
+    <div id="para-div">
+      <p>To query all the document(s) on the key <span class="bold">first</span> with a value of <span class="bold">Bob</span> from
+        the collection <span class="bold">contacts</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find({ first: "Bob" })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.21</h4>
+      <pre>{ "_id" : ObjectId("600b94a5df2ffe1ec2eaa032"), "first" : "Bob", "last" : "Jones", "email" : { "work" : "bobj@doktor.net" }, "mobile" : { "work" : "234 567 8901" } }</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be seen from the above output, we have <span class="bold">one</span> document from the collection <span class="bold">
+        contacts</span> with the key <span class="bold">first</span> having a value of <span class="bold">Bob</span>.</p>
+      <p>This is similar to the <span class="bold">SELECT * FROM contacts WHERE first = "Bob"</span> statement from the relational
+        world.</p>
+    </div>
+    <div id="para-div">
+      <p>To query all the document(s) on the key <span class="bold">first</span> with a value of <span class="bold">Charlie</span>
+        and on the key <span class="bold">last</span> with a value of <span class="bold">Lee</span> from the collection
+        <span class="bold">contacts</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find({ first: "Charlie", last: "Lee" })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.22</h4>
+      <pre>{ "_id" : ObjectId("600b94fadf2ffe1ec2eaa033"), "first" : "Charlie", "last" : "Lee", "email" : { "personal" : "cl3000@ranch.net" } }</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be seen from the above output, we have <span class="bold">one</span> document from the collection <span class="bold">
+        contacts</span> with the key <span class="bold">first</span> having a value of <span class="bold">Charlie</span> and the key
+        <span class="bold">last</span> having a value of <span class="bold">Lee</span>.</p>
+      <p>This is similar to the <span class="bold">SELECT * FROM contacts WHERE first = "Charlie" AND last = "Lee"</span> statement
+        from the relational world.</p>
+    </div>
+    <div id="para-div">
+      <p>To query all the document(s) on the key <span class="bold">first</span> with a value of <span class="bold">Frank</span> from
+        the collection <span class="bold">contacts</span> and display them in a pretty JSON format, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find({ first: "Frank" }).forEach(printjson)</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output in a pretty JSON format:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.23</h4>
+      <pre>{
+  "_id" : ObjectId("600b9527df2ffe1ec2eaa035"),
+  "first" : "Frank",
+  "last" : "Smith",
+  "email" : {
+    "personal" : "frank45@root.org",
+    "work" : "frank.smith@excellent.net"
+  },
+  "mobile" : {
+    "personal" : "456 789 0123",
+    "work" : "567 890 1234"
+  }
+}
+{
+  "_id" : ObjectId("600b9636df2ffe1ec2eaa036"),
+  "first" : "Frank",
+  "last" : "Cooper",
+  "email" : {
+    "personal" : "frankc@runner.org"
+  }
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>What if we desire to find all the document(s) based on the key <span class="bold">work</span> that is inside the key
+        <span class="bold">email</span> ??? The search key to use would be the composite key <span class="hi-blue">"email.work"</span>.
+        The dot between <span class="bold">email</span> and <span class="bold">work</span> instructs the query engine to look for a
+        key named <span class="bold">email</span> that contains an inner key named <span class="bold">work</span> and then to match
+        the value of the inner key. To query all the document(s) on the key <span class="bold">"email.work"</span> with a value of
+        <span class="bold">"bobj@doktor.net"</span> from the collection <span class="bold">contacts</span>, execute the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find({ "email.work": "bobj@doktor.net" })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.24</h4>
+      <pre>{ "_id" : ObjectId("600b94a5df2ffe1ec2eaa032"), "first" : "Bob", "last" : "Jones", "email" : { "work" : "bobj@doktor.net" }, "mobile" : { "work" : "234 567 8901" } }</pre>
+    </div>
+    <div id="para-div">
+      <p>To query all the document(s) and list only the keys <span class="bold">first</span> and <span class="bold">last</span> from
+        the collection <span class="bold">contacts</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find({}, { first: 1, last: 1 })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.25</h4>
+      <pre>{ "_id" : ObjectId("600b8fd9df2ffe1ec2eaa031"), "first" : "Alice", "last" : "Thompson" }
+{ "_id" : ObjectId("600b94a5df2ffe1ec2eaa032"), "first" : "Bob", "last" : "Jones" }
+{ "_id" : ObjectId("600b94fadf2ffe1ec2eaa033"), "first" : "Charlie", "last" : "Lee" }
+{ "_id" : ObjectId("600b9513df2ffe1ec2eaa034"), "first" : "Eve", "last" : "Parker" }
+{ "_id" : ObjectId("600b9527df2ffe1ec2eaa035"), "first" : "Frank", "last" : "Smith" }
+{ "_id" : ObjectId("600b9636df2ffe1ec2eaa036"), "first" : "Frank", "last" : "Cooper" }</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be seen from the above output, it shows all the documents from the collection <span class="bold">contacts</span> with
+        the keys <span class="bold">first</span> and <span class="bold">last</span>.</p>
+      <p>This is similar to the <span class="bold">SELECT first, last FROM contacts</span> SQL statement from the relational world.</p>
+      <p>But <span class="bold">WAIT</span> !!! Why is the key <span class="bold">_id</span> showing up ??? We never asked for it -
+        did we ?</p>
+      <p>MongoDB by default includes the key <span class="bold">_id</span> in every query irrespective of whether we asked for it or
+        not. If we do not want the key <span class="bold">_id</span> to show up, we need to explicitly suppress it.</p>
+    </div>
+    <div id="para-div">
+      <p>To query all the document(s) and list only the keys <span class="bold">first</span> and <span class="bold">last</span>
+        (without the key <span class="bold">_id</span>) from the collection <span class="bold">contacts</span>, execute the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find({}, { first: 1, last: 1, _id: 0 })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.26</h4>
+      <pre>{ "first" : "Alice", "last" : "Thompson" }
+{ "first" : "Bob", "last" : "Jones" }
+{ "first" : "Charlie", "last" : "Lee" }
+{ "first" : "Eve", "last" : "Parker" }
+{ "first" : "Frank", "last" : "Smith" }
+{ "first" : "Frank", "last" : "Cooper" }</pre>
+    </div>
+    <div id="para-div">
+      <p>To query all the document(s) and list only the keys <span class="bold">first</span>, <span class="bold">last</span>, and
+        <span class="bold">mobile.personal</span> from the collection <span class="bold">contacts</span>, execute the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find({}, { first: 1, last: 1, "mobile.personal": 1, _id: 0 })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.27</h4>
+      <pre>{ "first" : "Alice", "last" : "Thompson", "mobile" : { "personal" : "123 456 7890" } }
+{ "first" : "Bob", "last" : "Jones", "mobile" : {  } }
+{ "first" : "Charlie", "last" : "Lee" }
+{ "first" : "Eve", "last" : "Parker", "mobile" : { "personal" : "345 678 9012" } }
+{ "first" : "Frank", "last" : "Smith", "mobile" : { "personal" : "456 789 0123" } }
+{ "first" : "Frank", "last" : "Cooper" }</pre>
+    </div>
+    <div id="para-div">
+      <p>Until now we have been using the <span class="bold">find()</span> command on the MongoDB collection <span class="bold">
+        contacts</span> and it appears to return a list of documents from that collection. In reality, the <span class="bold">find()
+        </span> command returns a <span class="hi-yellow">database cursor</span> and not a list of documents (even if there is one
+        entry).</p>
+      <p>Since MongoDB client is also a Javascript engine, we can iterate the database cursor from the command-line interface. Execute
+        the following commands in the command-line interface:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; var cur = db.contacts.find({}, { first: 1, last: 1, _id: 0 })</p>
+      <p>while (cur.hasNext()) {</p>
+      <p>...   var doc = cur.next();</p>
+      <p>...   print("First name: " + doc.first + ", Last name: " + doc.last);</p>
+      <p>... }</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.28</h4>
+      <pre>First name: Alice, Last name: Thompson
+First name: Bob, Last name: Jones
+First name: Charlie, Last name: Lee
+First name: Eve, Last name: Parker
+First name: Frank, Last name: Smith
+First name: Frank, Last name: Cooper</pre>
+    </div>
+    <div id="para-div">
+      <p>This is cool, ain't it !!!</p>
+    </div>
+    <div id="para-div">
+      <p>Now, to query and return an actual document for the key <span class="bold">first</span> with a value of <span class="bold">
+        Eve</span> from the collection <span class="bold">contacts</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.findOne({ first: "Eve" })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.29</h4>
+      <pre>{
+  "_id" : ObjectId("600b9513df2ffe1ec2eaa034"),
+  "first" : "Eve",
+  "middle" : "Jo",
+  "last" : "Parker",
+  "email" : {
+    "work" : "ej_parker@awesome.org"
+  },
+  "mobile" : {
+    "personal" : "345 678 9012"
+  }
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>To limit the number of documents returned by the <span class="bold">find()</span> query command, use the
+        <span class="hi-yellow">limit()</span> function. To demonstrate this capability, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find({}, { first: 1, last: 1, "mobile.personal": 1, _id: 0 }).limit(3)</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.30</h4>
+      <pre>{ "first" : "Alice", "last" : "Thompson", "mobile" : { "personal" : "123 456 7890" } }
+{ "first" : "Bob", "last" : "Jones", "mobile" : {  } }
+{ "first" : "Charlie", "last" : "Lee" }</pre>
+    </div>
+    <div id="para-div">
+      <p>We will <span class="underbold">COVER</span> more advanced queries in a later part in this series.</p>
+      <p>Let us move on to updating documents now.</p>
+    </div>
+    <div id="para-div">
+      <p>To update a document, use the <span class="hi-yellow">update()</span> function.</p>
+      <p>Let us go ahead and update the document for the key <span class="bold">first</span> with a value of <span class="bold">
+        Charlie</span> to contain the key <span class="bold">mobile</span>. For this, let us execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.update({ first: "Charlie" }, { mobile: { personal: "678 901 2345" } } )</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.31</h4>
+      <pre>WriteResult({ "nMatched" : 1, "nUpserted" : 0, "nModified" : 1 })</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, let us query the document for the key <span class="bold">first</span> with a value of <span class="bold">Charlie</span>
+        from the collection <span class="bold">contacts</span> by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find({ first: "Charlie" })</p>
+    </div>
+    <div id="para-div">
+      <p>There will be nothing returned. No document found ??? What happened here ???</p>
+      <p>The default behavior of the <span class="bold">update()</span> command is to replace the whole document. If we query the
+        document for the key <span class="bold">mobile</span> with a value of <span class="bold">{ personal: "678 901 2345" }</span>,
+        we will find the document. Let us execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find({ mobile: { personal: "678 901 2345" } })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.32</h4>
+      <pre>{ "_id" : ObjectId("600b94fadf2ffe1ec2eaa033"), "mobile" : { "personal" : "678 901 2345" } }</pre>
+    </div>
+    <div id="para-div">
+      <p>Let us fix the document for the key <span class="bold">mobile</span> with a value of
+        <span class="bold">{ "personal" : "678 901 2345" }</span> to contain the missing keys <span class="bold">first</span>,
+        <span class="bold">last</span>, <span class="bold">email</span>, and <span class="bold">mobile</span>. For this, let us execute
+        the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.update({ mobile: { personal: "678 901 2345" } }, { first: "Charlie", last: "Lee",
+        email: { personal: "cl3000@ranch.net" }, mobile: { personal: "678 901 2345" } })</p>
+    </div>
+    <div id="para-div">
+      <p>Now, we should be able to query the document for the key <span class="bold">first</span> with a value of <span class="bold">
+        Charlie</span> from the collection <span class="bold">contacts</span> by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find({ first: "Charlie" })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.33</h4>
+      <pre>{ "_id" : ObjectId("600b94fadf2ffe1ec2eaa033"), "first" : "Charlie", "last" : "Lee", "email" : { "personal" : "cl3000@ranch.net" }, "mobile" : { "personal" : "678 901 2345" } }</pre>
+    </div>
+    <div id="para-div">
+      <p>What would happen if we try to update a document that does not <span class="underbold">EXIST</span> ???</p>
+      <p>Let us go ahead and update the document for the key <span class="bold">first</span> with a value of <span class="bold">
+        George</span>. For this, let us execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.update({ first: "George" }, { first: "George", last: "Baker", email: { work: "g_baker@crap.org" }, mobile: { work: "789 012 3456" } })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.34</h4>
+      <pre>WriteResult({ "nMatched" : 0, "nUpserted" : 0, "nModified" : 0 })</pre>
+    </div>
+    <div id="para-div">
+      <p>As is evident from the Output.34 above, nothing was matched, inserted, or updated. What if we desired the document be
+        updated if present or inserted if <span class="underbold">NOT</span> present - an <span class="bold">upsert</span>
+        operation ???</p>
+    </div>
+    <div id="para-div">
+      <p>To upsert a document, use the <span class="hi-yellow">update()</span> function with a third parameter specifying the option
+        <span class="hi-blue">{ upsert: true }</span>.</p>
+      <p>Let us go ahead and upsert the document for the key <span class="bold">first</span> with a value of <span class="bold">
+        George</span>. For this, let us execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.update({ first: "George" }, { first: "George", last: "Baker", email: { work: "g_baker@crap.org" }, mobile: { work: "789 012 3456" } }, { upsert: true })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.35</h4>
+      <pre>WriteResult({
+  "nMatched" : 0,
+  "nUpserted" : 1,
+  "nModified" : 0,
+  "_id" : ObjectId("601c911b8d37d50b592856f5")
+})</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, we should be able to query the document for the key <span class="bold">first</span> with a value of <span class="bold">
+        George</span> from the collection <span class="bold">contacts</span> by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find({ first: "George" })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.36</h4>
+      <pre>{ "_id" : ObjectId("601c911b8d37d50b592856f5"), "first" : "George", "last" : "Baker", "email" : { "work" : "g_baker@crap.org" }, "mobile" : { "work" : "789 012 3456" } }</pre>
+    </div>
+    <div id="para-div">
+      <p>We will <span class="underbold">COVER</span> more advanced updates in a later part in this series.</p>
+      <p>Let us move on to deleting documents now.</p>
+    </div>
+    <div id="para-div">
+      <p>To delete a document, use the <span class="hi-yellow">remove()</span> function.</p>
+      <p>Let us go ahead and delete the document for the key <span class="bold">first</span> with a value of <span class="bold">Bob
+        </span>. For this, let us execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.remove({ first: "Bob" })</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.37</h4>
+      <pre>WriteResult({ "nRemoved" : 1 })</pre>
+    </div>
+    <div id="para-div">
+      <p>This is similar to the <span class="bold">DELETE FROM contacts WHERE first = "Bob"</span> SQL statement from the relational
+        world.</p>
+      <p>Now, let us query all the documents from the collection <span class="bold">contacts</span> by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.find()</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.38</h4>
+      <pre>{ "_id" : ObjectId("600b8fd9df2ffe1ec2eaa031"), "first" : "Alice", "last" : "Thompson", "email" : { "personal" : "alice.t@home.io", "work" : "alice.thompson@work.net" }, "mobile" : { "personal" : "123 456 7890" } }
+{ "_id" : ObjectId("600b94fadf2ffe1ec2eaa033"), "first" : "Charlie", "last" : "Lee", "email" : { "personal" : "cl3000@ranch.net" } }
+{ "_id" : ObjectId("600b9513df2ffe1ec2eaa034"), "first" : "Eve", "middle" : "Jo", "last" : "Parker", "email" : { "work" : "ej_parker@awesome.org" }, "mobile" : { "personal" : "345 678 9012" } }
+{ "_id" : ObjectId("600b9527df2ffe1ec2eaa035"), "first" : "Frank", "last" : "Smith", "email" : { "personal" : "frank45@root.org", "work" : "frank.smith@excellent.net" }, "mobile" : { "personal" : "456 789 0123", "work" : "567 890 1234" } }
+{ "_id" : ObjectId("600b9636df2ffe1ec2eaa036"), "first" : "Frank", "last" : "Cooper", "email" : { "personal" : "frankc@runner.org" } }
+{ "_id" : ObjectId("601c911b8d37d50b592856f5"), "first" : "George", "last" : "Baker", "email" : { "work" : "g_baker@crap.org" }, "mobile" : { "work" : "789 012 3456" } }</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be seen from the above output, the document for the key <span class="bold">first</span> with a value of
+        <span class="bold">Bob</span> is gone !!!</p>
+    </div>
+    <div id="para-div">
+      <p>To delete all the documents from a collection, use the <span class="bold">remove({})</span> function without any criteria.</p>
+      <p>Let us go ahead and delete all the documents by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.remove({})</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.39</h4>
+      <pre>WriteResult({ "nRemoved" : 6 })</pre>
+    </div>
+    <div id="para-div">
+      <p>This is similar to the <span class="bold">DELETE FROM contacts</span> SQL statement from the relational world.</p>
+      <p>Now let us display the number of documents in the collection <span class="bold">contacts</span> by executing the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.count()</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.40</h4>
+      <pre>0</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be seen from the above output, all the documents from the collection <span class="bold">contacts</span> are gone !!!</p>
+    </div>
+    <div id="para-div">
+      <p>To drop the collection <span class="bold">contacts</span>, use the <span class="hi-yellow">drop()</span> function.</p>
+      <p>Let us go ahead and drop the collection <span class="bold">contacts</span> by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>mongodb-rs:PRIMARY&gt; db.contacts.drop()</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.41</h4>
+      <pre>true</pre>
+    </div>
+    <div id="para-div">
+      <p>This is similar to the <span class="bold">DROP TABLE contacts</span> SQL statement from the relational world.</p>
+    </div>
+    <div id="para-div">
+      <p>Finally, to exit the MongoDB command-line shell, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>exit</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://docs.mongodb.com/manual/" target="_blank"><span class="bold">MongoDB Manual</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
