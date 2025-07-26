@@ -1,0 +1,778 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=windows-1252">
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Introduction to SQLAlchemy :: Part - 2">
+    <meta name="subject" content="Introduction to SQLAlchemy :: Part - 2">
+    <meta name="keywords" content="database, python">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Introduction to SQLAlchemy :: Part - 2</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br>
+    <table borber="0">
+      <tbody><tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </tbody></table>
+    <br>
+    <div id="title-div">
+      <p>Introduction to SQLAlchemy :: Part - 2</p>
+    </div>
+    <br>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">04/17/2020</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"> <br>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/BigData/SQLAlchemy-1.html" target="_blank"><span class="bold">Part - 1</span></a>
+        of this series, we focused on basic capabilities of the <span class="bold">Core</span> layer for interacting with
+        <span class="bold">PostgreSQL</span> database.</p>
+      <p>In this article, we will explore the Object Relational Mapping (<span class="hi-blue">ORM</span>) layer for interacting
+        with the SQL database.</p>
+      <p>The <span class="bold">ORM</span> layer allows one to associate a user defined <span class="bold">Python</span> class
+        (domain model) with a database table. Object instances of the class correspond to the rows in the database table. Any
+        changes made to state in the object instances, transparently synchronizes with the corresponding rows in the database
+        table.</p>
+      <p>In addition, the <span class="bold">ORM</span> layer allows one to express database queries on tables as well as
+        relationships between tables (such as one-to-one, on-to-many, many-to-one, many-to-many) in terms of the user defined
+        classes.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with SQLAlchemy ORM</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/BigData/SQLAlchemy-1.html" target="_blank"><span class="bold">Part - 1</span></a>,
+        we already created a simple database table called <span class="hi-yellow">customer</span>. In this demonstration, we
+        will create two user defined classes - one to represent the existing database table <span class="bold">customer</span>
+        and the other to represent a new database table <span class="hi-yellow">account</span> (with a one-to-many relationship
+        between the <span class="bold">customer</span> and the <span class="bold">account</span> tables. The following diagram
+        illustrates this relationship:</p>
+      <div id="img-outer-div"> <img alt="Customer Account" class="img-cls" src="./images/SQLAlchemy-5.png">
+        <div class="img-cap">Customer and Account</div>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The classes <span class="hi-blue">Customer</span> and <span class="hi-blue">Account</span> defined in the following
+        <span class="bold">Python</span> program (<span class="bold">ex_sa_05.py</span>) correspond to the database tables
+        <span class="bold">customer</span> and <span class="bold">account</span> respectively:</p>
+    </div>    
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ex_sa_05.py</div>
+      <div class="src-body-1">
+      <pre>from datetime import datetime
+from sqlalchemy import Column, DateTime, ForeignKey
+from sqlalchemy import Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+
+Base = declarative_base()
+
+
+class Customer(Base):
+    __tablename__ = "customer"
+
+    id = Column(Integer, autoincrement=True, primary_key=True)
+    first_name = Column(String(25), nullable=False)
+    last_name = Column(String(25), nullable=False, index=True)
+    email = Column(String(50))
+    mobile = Column(String(10))
+
+    def __repr__(self):
+        return "[Customer: id=%d, first_name=%s, last_name=%s, email=%s]" % \
+               (self.id, self.first_name, self.last_name, self.email)
+
+
+class Account(Base):
+    __tablename__ = "account"
+
+    acct_no = Column(Integer, primary_key=True)
+    acct_name = Column(String(50), nullable=False)
+    acct_open_dt = Column(DateTime(), default=datetime.now)
+    acct_update_dt = Column(DateTime(), default=datetime.now, onupdate=datetime.now)
+    cust_id = Column(Integer, ForeignKey('customer.id'))
+
+    customer = relationship("Customer", backref='accounts')
+
+    def __repr__(self):
+        return "[Account: acct_no=%d, acct_name=%s, acct_open_dt=%s, acct_update_dt=%s, customer=%s]" % \
+               (self.acct_no, self.acct_name, self.acct_open_dt, self.acct_update_dt, self.customer.last_name)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the <span class="bold">Python</span> classes and methods:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-blue">declarative_base()</span> :: Method that creates the <span class="bold">ORM</span> object
+            model base class, which needs be extended by the user defined class to create the domain model object</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">__tablename__</span> :: Internal attribute that specifies the database table name this
+            user defined class represents</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">relationship()</span> :: Method that allows one to establish the <span class="bold">ORM
+            </span> domain model object relationship</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">backref</span> :: Keyword that automatically adds the specified name as the attribute
+            in the related domain model object</p>
+        </li>
+    </ul></div>
+    <div id="para-div">
+      <p>The user defined domain model class will contain one or more <span class="bold">Column</span> attributes that
+        represent the database columns. One *<span class="underbold">DOES NOT</span>* have to supply the column name as the
+        first argument to the <span class="bold">Column</span> constructor. Instead, the attribute name will be used as the
+        column name.</p>
+      <p>Also, one *<span class="underbold">MUST</span>* ensure there is at least one attribute marked as a primary key, so
+        as to uniquely identify and associate an instance of the class with a specific row in the database table.</p>
+      <p>On the one-to-many relationship between <span class="bold">Customer</span> and <span class="bold">Account</span>
+        domain objects, one *<span class="underbold">MUST</span>* have a foreign key attribute <span class="bold">Column</span>
+        in the <span class="bold">Account</span> class. In addition, one *<span class="underbold">SHOULD</span>* specify
+        the <span class="bold">backref</span> parameter when indicating the related domain model object. In this example,
+        the <span class="bold">Account</span> object can access the related <span class="bold">Customer</span> object via
+        the <span class="hi-yellow">customer</span> attribute. Since we specified the <span class="bold">backref</span>
+        parameter with the name <span class="hi-yellow">accounts</span>, it will be implicitly accessible as an attribute
+        via the related <span class="bold">Customer</span> object.</p>
+    </div>
+    <div id="para-div">
+      <p>In following <span class="bold">Python</span> program (<span class="bold">ex_sa_06.py</span>), the method
+        <span class="hi-blue">create_account_table</span> creates the <span class="bold">account</span> database table and
+        the method <span class="hi-blue">insert_account_recs</span> inserts *<span class="underbold">3</span>* sample
+        accounts:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ex_sa_06.py</div>
+      <div class="src-body-1">
+      <pre>import logging
+
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import sessionmaker
+from SQLAlchemy.ex_sa_00 import create_db_engine
+from SQLAlchemy.ex_sa_05 import Base, Account
+
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+
+
+def create_account_table(engine: Engine) -&gt; bool:
+    status = False
+
+    if not engine.dialect.has_table(engine, 'account'):
+        Base.metadata.create_all(db_engine)
+
+        logging.info("Created the account table !!!")
+
+        status = True
+    else:
+        logging.info("The account table already exists !!!")
+
+    return status
+
+
+def insert_account_recs(engine: Engine):
+    if engine.dialect.has_table(engine, 'account'):
+        Session = sessionmaker(bind=engine)
+
+        session = Session()
+
+        try:
+            ad_acct = Account(acct_no=1001, acct_name='Alice Trade Account', cust_id=1)
+            session.add(ad_acct)
+            session.commit()
+
+            logging.info("Inserted account for Alice")
+        except SQLAlchemyError as e:
+            logging.error(e)
+
+        try:
+            bb_acct = Account(acct_no=1002, acct_name='Bob Credit Account', cust_id=2)
+            session.add(bb_acct)
+            session.commit()
+
+            logging.info("Inserted account for Bob")
+        except SQLAlchemyError as e:
+            logging.error(e)
+
+        try:
+            cd_acct = Account(acct_no=1003, acct_name='Charlie Trade Account', cust_id=3)
+            session.add(cd_acct)
+            session.commit()
+
+            logging.info("Inserted account for Charlie")
+        except SQLAlchemyError as e:
+            logging.error(e)
+
+        session.close()
+    else:
+        logging.info("The account table *DOES NOT* exists !!!")
+
+
+if __name__ == "__main__":
+    db_engine = create_db_engine()
+    if create_account_table(db_engine):
+        insert_account_recs(db_engine)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the <span class="bold">Python</span> classes and methods:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-blue">Base.metadata.create_all()</span> :: Method that creates database table(s) for all the
+            domain object class(es) in the metadata if not already present</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Session</span> :: An object that manages the database persistence operations of the
+            <span class="bold">ORM</span> domain model object(s)</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">sessionmaker()</span> :: Factory method that creates an instance of <span class="bold">
+            Session</span> object</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Session.add()</span> :: Method to add the specified domain model object into the
+            <span class="bold">Session</span> object for persistence</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Session.commit()</span> :: Method to flush and commit all the changes to the
+            <span class="bold">Session</span> object</p>
+        </li>
+    </ul></div>
+    <div id="para-div">
+      <p>To run the Python program <span class="bold">ex_sa_06.py</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ python ex_sa_06.py</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>2020-04-17 21:30:53,386 - Postgres database url: postgres://polarsparc:polarsparc$123@localhost:5432/my_test_db
+2020-04-17 21:30:53,447 - Connected to the Postgres database !!!
+2020-04-17 21:30:53,473 - Created the account table !!!
+2020-04-17 21:30:53,491 - Inserted account for Alice
+2020-04-17 21:30:53,494 - Inserted account for Bob
+2020-04-17 21:30:53,496 - Inserted account for Charlie</pre>
+    </div>
+    <div id="para-div">
+      <p>The following <span class="bold">Python</span> program (<span class="bold">ex_sa_07.py</span>) demonstrates the CRUD
+        (Create, Read, Update, Delete) operations on the <span class="bold">account</span> database table.</p>
+    </div>
+    <div id="para-div">
+      <p>The method <span class="hi-blue">create_dummy_account</span> first creates a dummy customer record and then creates
+        a dummy account record associated with the dummy customer record, the method <span class="hi-blue">query_dummy_account
+        </span> reads the dummy account record, the method <span class="hi-blue">update_dummy_account</span> updates the
+        dummy account record, and finally the method <span class="hi-blue">delete_dummy_account</span> deletes the dummy
+        account and customer records.</p>
+    </div>    
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ex_sa_07.py</div>
+      <div class="src-body-1">
+      <pre>import logging
+
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
+from SQLAlchemy.ex_sa_00 import create_db_engine
+from SQLAlchemy.ex_sa_05 import Customer, Account
+
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+
+
+def create_dummy_account(engine: Engine):
+    if engine.dialect.has_table(engine, 'customer') and engine.dialect.has_table(engine, 'account'):
+        Session = sessionmaker(bind=engine)
+
+        session = Session()
+
+        dummy_cust = Customer(first_name='Dummy', last_name='Joker', email='djoker@losers.io')
+
+        try:
+            session.add(dummy_cust)
+            session.commit()
+
+            logging.info("Inserted record for Dummy customer: %s" % dummy_cust)
+        except SQLAlchemyError as e:
+            logging.error(e)
+
+        try:
+            dummy_acct = Account(acct_no=9999, acct_name='Dummy Coin Account', cust_id=dummy_cust.id)
+            session.add(dummy_acct)
+
+            session.commit()
+
+            logging.info("Inserted record for Dummy account: %s" % dummy_acct)
+        except SQLAlchemyError as e:
+            logging.error(e)
+
+        session.close()
+    else:
+        logging.info("The customer and/or account table(s) *DOES NOT* exist !!!")
+
+
+def query_dummy_account(engine: Engine):
+    if engine.dialect.has_table(engine, 'account'):
+        Session = sessionmaker(bind=engine)
+
+        session = Session()
+
+        recs = session.query(Account).filter(Account.acct_no == 9999)
+        if recs.count() == 1:
+            for r in recs:
+                logging.info(r)
+        else:
+            logging.info("Record for Dummy account *DOES NOT* exist !!!")
+
+        session.close()
+    else:
+        logging.info("The account table *DOES NOT* exist !!!")
+
+
+def update_dummy_account(engine: Engine):
+    if engine.dialect.has_table(engine, 'account'):
+        Session = sessionmaker(bind=engine)
+
+        session = Session()
+
+        rec = session.query(Account).filter(Account.acct_no == 9999).first()
+        if rec:
+            rec.acct_name = 'Dummy Crypto Account'
+        else:
+            logging.info("Record for Dummy account *DOES NOT* exist !!!")
+
+        session.commit()
+
+        logging.info("Updated record for Dummy account")
+
+        session.close()
+    else:
+        logging.info("The account table *DOES NOT* exist !!!")
+
+
+def delete_dummy_account(engine: Engine):
+    if engine.dialect.has_table(engine, 'account'):
+        Session = sessionmaker(bind=engine)
+
+        session = Session()
+
+        session.query(Account).filter(Account.acct_no == 9999).delete()
+
+        session.commit()
+
+        logging.info("Deleted record for Dummy account")
+
+        session.query(Customer).filter(Customer.last_name == 'Joker').delete()
+
+        session.commit()
+
+        logging.info("Deleted record for Dummy customer")
+
+        session.close()
+    else:
+        logging.info("The account table *DOES NOT* exist !!!")
+
+
+if __name__ == "__main__":
+    db_engine = create_db_engine()
+    create_dummy_account(db_engine)
+    query_dummy_account(db_engine)
+    update_dummy_account(db_engine)
+    query_dummy_account(db_engine)
+    delete_dummy_account(db_engine)
+    query_dummy_account(db_engine)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the <span class="bold">Python</span> classes and methods:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-blue">query()</span> :: Method that represents a database query operation and translates into a
+            <span class="bold">SELECT</span> operation. It returns an object of type <span class="hi-purple">Query</span></p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Query.filter()</span> :: Method that applies the specified search criteria and translates
+            into a <span class="bold">WHERE</span> clause. It returns an object of type <span class="bold">Query</span></p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Query.first()</span> :: Method that returns the first result from the <span class="bold">
+            Query</span> object</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Query.delete()</span> :: Method that deletes row(s) represented by the <span class="bold">
+            <span class="bold">Session</span> object for persistence</span></p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Session.commit()</span> :: Method to flush and commit all the changes to the
+            Query object</p>
+        </li>
+    </ul></div>
+    <div id="para-div">
+      <p>To run the Python program <span class="bold">ex_sa_07.py</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ python ex_sa_07.py</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>2020-04-17 21:33:18,385 - Postgres database url: postgres://polarsparc:polarsparc$123@localhost:5432/my_test_db
+2020-04-17 21:33:18,441 - Connected to the Postgres database !!!
+2020-04-17 21:33:18,454 - Inserted record for Dummy customer: [Customer: id=49, first_name=Dummy, last_name=Joker, email=djoker@losers.io]
+2020-04-17 21:33:18,460 - Inserted record for Dummy account: [Account: acct_no=9999, acct_name=Dummy Coin Account, acct_open_dt=2020-04-17 21:33:18.455890, acct_update_dt=2020-04-17 21:33:18.455898, customer=Joker]
+2020-04-17 21:33:18,465 - [Account: acct_no=9999, acct_name=Dummy Coin Account, acct_open_dt=2020-04-17 21:33:18.455890, acct_update_dt=2020-04-17 21:33:18.455898, customer=Joker]
+2020-04-17 21:33:18,471 - Updated record for Dummy account
+2020-04-17 21:33:18,475 - [Account: acct_no=9999, acct_name=Dummy Crypto Account, acct_open_dt=2020-04-17 21:33:18.455890, acct_update_dt=2020-04-17 21:33:18.469849, customer=Joker]
+2020-04-17 21:33:18,478 - Deleted record for Dummy account
+2020-04-17 21:33:18,481 - Deleted record for Dummy customer
+2020-04-17 21:33:18,484 - Record for Dummy account *DOES NOT* exist !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>The following <span class="bold">Python</span> program (<span class="bold">ex_sa_08.py</span>) demonstrates various
+        query operations on the <span class="bold">account</span> database table.</p>
+    </div>
+    <div id="para-div">
+      <p>The method <span class="hi-blue">create_cust_accts</span> first creates 3 test customer records and then creates 5
+        test account records associated with the 3 test customer records. The method <span class="hi-blue">query_cust_accts
+        </span> demonstrates the various query operations on the <span class="bold">customer</span> and <span class="bold">
+        account</span> database tables. Finally, method <span class="hi-blue">delete_cust_accts</span> removes all the test
+        <span class="bold">account</span> and <span class="bold">customer</span> records.</p>
+    </div>    
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ex_sa_08.py</div>
+      <div class="src-body-1">
+      <pre>import logging
+
+from sqlalchemy import and_, func
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
+from SQLAlchemy.ex_sa_00 import create_db_engine
+from SQLAlchemy.ex_sa_05 import Customer, Account
+
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+
+
+def create_cust_accts(engine: Engine):
+    if engine.dialect.has_table(engine, 'customer') and engine.dialect.has_table(engine, 'account'):
+        Session = sessionmaker(bind=engine)
+
+        session = Session()
+
+        c1 = Customer(first_name='David', last_name='Plumber', email='dplum@home.co', mobile='4445556666')
+        c2 = Customer(first_name='Emily', last_name='Player', email='emilyp@cool.net')
+        c3 = Customer(first_name='Frank', last_name='Doctor', email='fdoctor@pain.cc', mobile='5556667777')
+
+        try:
+            session.add_all([c1, c2, c3])
+            session.commit()
+
+            logging.info("Inserted record(s) for 3 customers: %s, %s, %s" % \
+                         (c1.first_name, c2.first_name, c3.first_name))
+        except SQLAlchemyError as e:
+            logging.error(e)
+
+        try:
+            d1 = Account(acct_no=2001, acct_name='David Trade Account', cust_id=c1.id)
+            d2 = Account(acct_no=2002, acct_name='David Cash Account', cust_id=c1.id)
+            d3 = Account(acct_no=2003, acct_name='Emily Crypto Account', cust_id=c2.id)
+            d4 = Account(acct_no=2004, acct_name='Frank Cash Account', cust_id=c3.id)
+            d5 = Account(acct_no=2005, acct_name='Frank Credit Account', cust_id=c3.id)
+            session.add_all([d1, d2, d3, d4, d5])
+
+            session.commit()
+
+            logging.info("Inserted record(s) for 5 accounts for: %s, %s, %s" % \
+                         (c1.first_name, c2.first_name, c3.first_name))
+        except SQLAlchemyError as e:
+            logging.error(e)
+
+        session.close()
+    else:
+        logging.info("The customer and/or account table(s) *DOES NOT* exist !!!")
+
+
+def query_cust_accts(engine: Engine):
+    if engine.dialect.has_table(engine, 'customer') and engine.dialect.has_table(engine, 'account'):
+        Session = sessionmaker(bind=engine)
+
+        session = Session()
+
+        logging.info("SQL =&gt; %s" % session.query(Customer.last_name, Customer.email))
+        recs = session.query(Customer.last_name, Customer.email).all()
+        if len(recs) &gt; 0:
+            for r in recs:
+                logging.info(r)
+        else:
+            logging.info("Record(s) in customer *DO NOT* exist !!!")
+        logging.info("-------------------------")
+
+        logging.info("SQL =&gt; %s" % session.query(Customer.last_name, Customer.email).\
+                     filter(Customer.last_name.like('pl%')))
+        recs = session.query(Customer.last_name, Customer.email).filter(Customer.last_name.like('pl%'))
+        if recs.count() &gt; 0:
+            for r in recs:
+                logging.info(r)
+        else:
+            logging.info("Record(s) in customer for last_name like 'pl%' *DO NOT* exist !!!")
+        logging.info("-------------------------")
+
+        recs = session.query(Customer.last_name, Customer.email).filter(Customer.last_name.ilike('pl%'))
+        if recs.count() &gt; 0:
+            for r in recs:
+                logging.info(r)
+        else:
+            logging.info("Record(s) in customer for last_name like (insensitive) 'pl%' *DO NOT* exist !!!")
+        logging.info("-------------------------")
+
+        logging.info("SQL =&gt; %s" % session.query(Customer.first_name, Customer.last_name, Customer.email).\
+                     filter(Customer.last_name.in_(['Driver', 'Plumber'])))
+        recs = session.query(Customer.first_name, Customer.last_name, Customer.email). \
+            filter(Customer.last_name.in_(['Driver', 'Plumber']))
+        if recs.count() &gt; 0:
+            for r in recs:
+                logging.info(r)
+        else:
+            logging.info("Record(s) in customer for last_name in ['Driver', 'Plumber'] *DO NOT* exist !!!")
+        logging.info("-------------------------")
+
+        logging.info("SQL =&gt; %s" % session.query(Customer).order_by(Customer.last_name))
+        recs = session.query(Customer).order_by(Customer.last_name)
+        if recs.count() &gt; 0:
+            for r in recs:
+                logging.info(r)
+        else:
+            logging.info("Record(s) in customer *DO NOT* exist !!!")
+        logging.info("-------------------------")
+
+        recs = session.query(Customer.first_name, Customer.last_name, Customer.mobile).filter(Customer.mobile != None)
+        if recs.count() &gt; 0:
+            for r in recs:
+                logging.info(r)
+        else:
+            logging.info("Record(s) in customer with mobile *DO NOT* exist !!!")
+        logging.info("-------------------------")
+
+        logging.info("SQL =&gt; %s" % session.query(Account).limit(2))
+        recs = session.query(Account).limit(2)
+        if recs.count() &gt; 0:
+            for r in recs:
+                logging.info(r)
+        else:
+            logging.info("Record(s) in account *DO NOT* exist !!!")
+        logging.info("-------------------------")
+
+        logging.info("SQL =&gt; %s" % session.query(Customer.last_name, Account.acct_name).join(Account))
+        recs = session.query(Customer.last_name, Account.acct_name).join(Account)
+        if recs.count() &gt; 0:
+            for r in recs:
+                logging.info(r)
+        else:
+            logging.info("Record(s) in account.join(customer) *DO NOT* exist !!!")
+        logging.info("-------------------------")
+
+        logging.info("SQL =&gt; %s" % session.query(Customer.last_name, func.count(Account.cust_id).label('count')).\
+                     join(Account).group_by(Customer.id).order_by('count'))
+        recs = session.query(Customer.last_name, func.count(Account.cust_id).label('count')).\
+                     join(Account).group_by(Customer.id).order_by('count')
+        if recs.count() &gt; 0:
+            for r in recs:
+                logging.info(r)
+        else:
+            logging.info("Record(s) in account.join(customer) group_by *DO NOT* exist !!!")
+        logging.info("-------------------------")
+
+        session.close()
+    else:
+        logging.info("The account/customer table(s) *DOES NOT* exist !!!")
+
+
+def delete_cust_accts(engine: Engine):
+    if engine.dialect.has_table(engine, 'customer') and engine.dialect.has_table(engine, 'account'):
+        Session = sessionmaker(bind=engine)
+
+        session = Session()
+
+        session.query(Account).filter(and_(Account.acct_no &gt;= 2001, Account.acct_no &lt;= 2005)).delete()
+
+        session.commit()
+
+        logging.info("Deleted record(s) for account numbers: [2001 thru 2005]")
+
+        session.query(Customer).filter(Customer.first_name == 'Frank').delete()
+        session.query(Customer).filter(Customer.last_name.like('%Pl%')).delete(synchronize_session=False)
+
+        session.commit()
+
+        logging.info("Deleted record(s) for customers: [David, Emily, Frank]")
+
+        session.close()
+    else:
+        logging.info("The account table *DOES NOT* exist !!!")
+
+
+if __name__ == "__main__":
+    db_engine = create_db_engine()
+    create_cust_accts(db_engine)
+    query_cust_accts(db_engine)
+    delete_cust_accts(db_engine)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>Notice the use of the argument <span class="hi-yellow">synchronize_session=False</span> in the <span class="bold">
+        delete()</span> method.</p>
+    </div>
+    <div id="error-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>Ensure the flag <span class="underbold">synchronize_session=False</span> is specified as an argument to the <span class="bold">delete()</span> method when records are filtered using some expression criteria. Else will encounter the following error:<br><br><span class="bold">sqlalchemy.exc.InvalidRequestError: Could not evaluate current criteria in Python: "Cannot evaluate BinaryExpression with operator &lt;function like_op at 0x...&gt;". Specify 'fetch' or False for the synchronize_session parameter</span></pre>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the <span class="bold">Python</span> methods:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-blue">query(D.c1, D.c2)</span> :: Method that represents a database query operation selecting
+            the columns c1 and c2 on the database table represented by the domain object D. This translates into
+            <span class="bold">SELECT c1, c2 ON d</span> operation. It returns an object of type <span class="bold">Query
+            </span></p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Query.all()</span> :: Method that returns all the results from the <span class="bold">
+            Query</span> object</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Query.limit(N)</span> :: Method that limits the number of returned results only only N
+            entries from the <span class="bold">Query</span> object</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Query.filter(D.c2.like('P'))</span> :: Method that filters the column c2 values of the
+            database table represented by the domain object D using the case-sensitive <span class="bold">LIKE</span> match
+            using the pattern P. It returns an object of type <span class="bold">Query</span></p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Query.filter(D.c2.ilike('P'))</span> :: Method that filters the column c2 values of the
+            database table represented by the domain object D using the case-insensitive <span class="bold">LIKE</span>
+            match using the pattern P. It returns an object of type <span class="bold">Query</span></p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Query.filter(D.c2.in_([v1, v2]))</span> :: Method that filters the column c2 values of
+            the database table represented by the domain object D using the <span class="bold">IN</span> clause for the
+            desired values v1 and v2 specified as a list. It returns an object of type <span class="bold">Query</span></p>
+        </li>
+        <li>
+          <p><span class="hi-blue">query(D1).join(D2)</span> :: Method that returns all the columns and all the rows from
+            the <span class="bold">JOIN</span> operation on the database tables represented by the domain objects D1 and
+            D2. It returns an object of type <span class="bold">Query</span></p>
+        </li>
+    </ul></div>
+    <div id="para-div">
+      <p>To run the Python program <span class="bold">ex_sa_08.py</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ python ex_sa_08.py</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>2020-04-17 21:35:38,345 - Postgres database url: postgres://polarsparc:polarsparc$123@localhost:5432/my_test_db
+2020-04-17 21:35:38,403 - Connected to the Postgres database !!!
+2020-04-17 21:35:38,420 - Inserted record(s) for 3 customers: David, Emily, Frank
+2020-04-17 21:35:38,427 - Inserted record(s) for 5 accounts for: David, Emily, Frank
+2020-04-17 21:35:38,430 - SQL =&gt; SELECT customer.last_name AS customer_last_name, customer.email AS customer_email 
+FROM customer
+2020-04-17 21:35:38,431 - ('Doctor', 'alice.d@timbuk2.do')
+2020-04-17 21:35:38,431 - ('Builder', 'bbuilder@nomansland.bu')
+2020-04-17 21:35:38,431 - ('Driver', 'charlie.driver@vehicles.ve')
+2020-04-17 21:35:38,431 - ('Plumber', 'dplum@home.co')
+2020-04-17 21:35:38,431 - ('Player', 'emilyp@cool.net')
+2020-04-17 21:35:38,431 - ('Doctor', 'fdoctor@pain.cc')
+2020-04-17 21:35:38,431 - -------------------------
+2020-04-17 21:35:38,432 - SQL =&gt; SELECT customer.last_name AS customer_last_name, customer.email AS customer_email 
+FROM customer 
+WHERE customer.last_name LIKE %(last_name_1)s
+2020-04-17 21:35:38,434 - Record(s) in customer for last_name like 'pl%' *DO NOT* exist !!!
+2020-04-17 21:35:38,434 - -------------------------
+2020-04-17 21:35:38,437 - ('Plumber', 'dplum@home.co')
+2020-04-17 21:35:38,437 - ('Player', 'emilyp@cool.net')
+2020-04-17 21:35:38,437 - -------------------------
+2020-04-17 21:35:38,438 - SQL =&gt; SELECT customer.first_name AS customer_first_name, customer.last_name AS customer_last_name, customer.email AS customer_email 
+FROM customer 
+WHERE customer.last_name IN (%(last_name_1)s, %(last_name_2)s)
+2020-04-17 21:35:38,442 - ('Charlie', 'Driver', 'charlie.driver@vehicles.ve')
+2020-04-17 21:35:38,442 - ('David', 'Plumber', 'dplum@home.co')
+2020-04-17 21:35:38,442 - -------------------------
+2020-04-17 21:35:38,442 - SQL =&gt; SELECT customer.id AS customer_id, customer.first_name AS customer_first_name, customer.last_name AS customer_last_name, customer.email AS customer_email, customer.mobile AS customer_mobile 
+FROM customer ORDER BY customer.last_name
+2020-04-17 21:35:38,445 - [Customer: id=2, first_name=Bob, last_name=Builder, email=bbuilder@nomansland.bu]
+2020-04-17 21:35:38,445 - [Customer: id=1, first_name=Alice, last_name=Doctor, email=alice.d@timbuk2.do]
+2020-04-17 21:35:38,445 - [Customer: id=52, first_name=Frank, last_name=Doctor, email=fdoctor@pain.cc]
+2020-04-17 21:35:38,445 - [Customer: id=3, first_name=Charlie, last_name=Driver, email=charlie.driver@vehicles.ve]
+2020-04-17 21:35:38,445 - [Customer: id=51, first_name=Emily, last_name=Player, email=emilyp@cool.net]
+2020-04-17 21:35:38,445 - [Customer: id=50, first_name=David, last_name=Plumber, email=dplum@home.co]
+2020-04-17 21:35:38,445 - -------------------------
+2020-04-17 21:35:38,448 - ('Alice', 'Doctor', '1112223333')
+2020-04-17 21:35:38,448 - ('Charlie', 'Driver', '2223334444')
+2020-04-17 21:35:38,448 - ('David', 'Plumber', '4445556666')
+2020-04-17 21:35:38,448 - ('Frank', 'Doctor', '5556667777')
+2020-04-17 21:35:38,448 - -------------------------
+2020-04-17 21:35:38,449 - SQL =&gt; SELECT account.acct_no AS account_acct_no, account.acct_name AS account_acct_name, account.acct_open_dt AS account_acct_open_dt, account.acct_update_dt AS account_acct_update_dt, account.cust_id AS account_cust_id 
+FROM account 
+ LIMIT %(param_1)s
+2020-04-17 21:35:38,452 - [Account: acct_no=1001, acct_name=Alice Trade Account, acct_open_dt=2020-04-17 21:30:53.483108, acct_update_dt=2020-04-17 21:30:53.483124, customer=Doctor]
+2020-04-17 21:35:38,453 - [Account: acct_no=1002, acct_name=Bob Credit Account, acct_open_dt=2020-04-17 21:30:53.492095, acct_update_dt=2020-04-17 21:30:53.492107, customer=Builder]
+2020-04-17 21:35:38,454 - -------------------------
+2020-04-17 21:35:38,455 - SQL =&gt; SELECT customer.last_name AS customer_last_name, account.acct_name AS account_acct_name 
+FROM customer JOIN account ON customer.id = account.cust_id
+2020-04-17 21:35:38,457 - ('Doctor', 'Alice Trade Account')
+2020-04-17 21:35:38,457 - ('Builder', 'Bob Credit Account')
+2020-04-17 21:35:38,457 - ('Driver', 'Charlie Trade Account')
+2020-04-17 21:35:38,457 - ('Plumber', 'David Trade Account')
+2020-04-17 21:35:38,457 - ('Plumber', 'David Cash Account')
+2020-04-17 21:35:38,457 - ('Player', 'Emily Crypto Account')
+2020-04-17 21:35:38,457 - ('Doctor', 'Frank Cash Account')
+2020-04-17 21:35:38,457 - ('Doctor', 'Frank Credit Account')
+2020-04-17 21:35:38,457 - -------------------------
+2020-04-17 21:35:38,458 - SQL =&gt; SELECT customer.last_name AS customer_last_name, count(account.cust_id) AS count 
+FROM customer JOIN account ON customer.id = account.cust_id GROUP BY customer.id ORDER BY count
+2020-04-17 21:35:38,462 - ('Builder', 1)
+2020-04-17 21:35:38,462 - ('Player', 1)
+2020-04-17 21:35:38,462 - ('Doctor', 1)
+2020-04-17 21:35:38,462 - ('Driver', 1)
+2020-04-17 21:35:38,462 - ('Plumber', 2)
+2020-04-17 21:35:38,462 - ('Doctor', 2)
+2020-04-17 21:35:38,462 - -------------------------
+2020-04-17 21:35:38,467 - Deleted record(s) for account numbers: [2001 thru 2005]
+2020-04-17 21:35:38,470 - Deleted record(s) for customers: [David, Emily, Frank]</pre>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/BigData/SQLAlchemy-1.html" target="_blank"><span class="bold">Introduction to SQLAlchemy :: Part - 1</span></a></p>
+      <p><a href="https://docs.sqlalchemy.org/en/13/orm/tutorial.html" target="_blank"><span class="bold">SQLAlchemy Object Relational Tutorial</span></a></p>
+      <p><a href="https://www.sqlalchemy.org/" target="_blank"><span class="bold">SQLAlchemy</span></a></p>
+      <p><a href="https://www.pythonsheets.com/notes/python-sqlalchemy.html" target="_blank"><span class="bold">PySheet SQLAlchemy</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

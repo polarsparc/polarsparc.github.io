@@ -1,0 +1,1269 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Hands-on with Consul">
+    <meta name="subject" content="Hands-on with HashiCorp Vault">
+    <meta name="keywords" content="cloud, linux, service_registry, consul">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Hands-on with Consul</title>
+    <link rel="stylesheet" type="text/css" href="../css/polarsparc-v2.4.css" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Hands-on with Consul</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">04/29/2017</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>As more and more Enterprises leverage containers to deploy services (or microservices), these
+        services get distributed across the network on different endpoints (ip addresses and ports) due
+        to the dynamic nature of containers. How do clients then discovery the location of these service
+        instances so that they can make requests and interact with them ?</p>
+      <p>Enter - <span class="hi-yellow">Service Registry</span> !!!</p>
+      <p>A <span class="bold">Service Registry</span> is simply a proxy server that maintains a
+        datastore of all the services instances and their endpoint locations. There are often
+        multiple instances of <span class="bold">Service Registry</span> running in a cluster for
+        high availability.</p>
+      <p>As service instances get launched, on start-up, they register their endpoint location (ip
+        address and port) with the <span class="bold">Service Registry</span>.</p>
+      <p>When clients are ready to use any of these services, they simply query the
+        <span class="bold">Service Registry</span> to discover the service endpoint (ip address
+        and port) and send requests to that endpoint.</p>
+      <p><a href="https://www.consul.io/" target="_blank"><span class="bold">Consul</span></a>
+        is one such the open source <span class="bold">Service Registry</span> products available
+        for use in an Enterprise.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Figure-1 illustrates the high-level architecture of the setup for our
+        hands-on demonstration of <span class="bold">Consul</span> as a <span class="bold">Service
+        Registry</span>:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/Consul.png" class="img-cls" alt="Architecture" />
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <div id="para-div">
+      <p>To expand on each of the components in Figure-1 above:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="bold">Service Registry</span> :: leverage <span class="bold">Consul</span>
+            running in a <span class="bold">Docker</span> container for service registration</p>
+        </li>
+        <li>
+          <p><span class="bold">Service</span> :: leverage two instances of a simply Python
+            <span class="bold">Flask</span> based service, each running in a separate
+            <span class="bold">Docker</span> container</p>
+        </li>
+        <li>
+          <p><span class="bold">Load Balancer</span> :: leverage <span class="bold">nginx</span>
+            running in a <span class="bold">Docker</span> container for service discovery and load
+            balancing across the two service instances</p>
+        </li>
+        <li>
+          <p><span class="bold">Client</span> :: leverage a broswer to access the service</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>In our setup, we will have just a single instance of <span class="bold">Consul</span> running
+        on the localhost <span class="bold">127.0.0.1</span>.</p>
+    </div>
+    <div id="section-div">
+      <p>Setup for Dev Mode</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Consul</span> in the dev mode is for development purposes only. In this
+        mode, <span class="bold">Consul</span> will automatically bind to the localhost (127.0.0.1)
+        and store the service registry in-memory (no persistence).</p>
+      <p>The setup is assumed to be on a <span class="bold">Ubuntu 16.04 LTS</span> based Linux desktop.</p>
+      <p>Ensure that <span class="bold">Docker</span> is installed and setup. If not, refer to
+        <a href="http://polarsparc.github.io/xhtml/Docker.html" target="_blank"><span class="bold">
+          Introduction to Docker</span></a> for installation and setup.</p>
+    </div>
+    <div id="para-div">
+      <p>Ensure the <span class="bold">curl</span> and <span class="bold">jq</span> packages exists.
+        To install, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt-get update</p>
+      <p>$ sudo apt-get install curl</p>
+      <p>$ sudo apt-get install jq</p>
+    </div>
+    <div id="para-div">
+      <p>Fetch a pre-built <span class="bold">Docker</span> image for <span class="bold">Consul</span>
+        from the <a target="_blank" href="https://hub.docker.com/"><span class="bold">Docker Hub</span></a>
+        registry and store it on the local host. The current latest version of <span class="bold">Consul</span>
+        is <span class="bold">0.8.1</span> at the time of this writing. To fetch the image, execute the
+        following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker pull consul:0.8.1</p>
+    </div>
+    <div id="para-div">
+      <p>Next, fetch a pre-built <span class="bold">Docker</span> image for <span class="bold">nginx</span>
+        from the <a target="_blank" href="https://hub.docker.com/"><span class="bold">Docker Hub</span></a>
+        registry and store it on the local host. The current latest version of <span class="bold">nginx</span>
+        is <span class="bold">1.12</span> at the time of this writing. To fetch the image, execute the
+        following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker pull nginx:1.12</p>
+    </div>
+    <div id="para-div">
+      <p>Assuming the current directory is <span class="hi-yellow">/home/alice/consul</span>, create the following
+        sub-directories:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="bold">bin</span></p>
+        </li>
+        <li>
+          <p><span class="bold">json</span></p>
+        </li>
+        <li>
+          <p><span class="bold">docker-image/flask</span></p>
+        </li>
+        <li>
+          <p><span class="bold">docker-image/nginx-consul</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Change directory to <span class="bold">/home/alice/consul/bin</span>. Download and extract the current
+        version (<span class="bold">0.18.2</span> at the time of this writing) of
+        <a target="_blank" href="https://releases.hashicorp.com/consul-template/0.18.2/consul-template_0.18.2_linux_amd64.tgz">
+          <span class="bold">Consul Template</span></a>.</p>
+      <p><span class="bold">Consul Template</span> is used for automatically querying <span class="bold">Consul</span>
+        for registered services, create a config file for <span class="bold">nginx</span> based on a template file,
+        and triggering <span class="bold">nginx</span> to reload the new config.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, change directory to <span class="bold">/home/alice/consul/json</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Create a file called <span class="hi-yellow">flask-1.json</span> as shown below:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">flask-1.json</div>
+      <div class="gen-src-body">
+      <pre>{
+  "ID": "myapp-1",
+  "Name": "myapp",
+  "Address": "localhost",
+  "Port": 25001
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>Similarly, create another file called <span class="hi-yellow">flask-2.json</span> as shown below:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">flask-2.json</div>
+      <div class="gen-src-body">
+      <pre>{
+  "ID": "myapp-2",
+  "Name": "myapp",
+  "Address": "localhost",
+  "Port": 25002
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The files <span class="bold">flask-1.json</span> and <span class="bold">flask-2.json</span> above are
+        the service definitions for the two instances of the simple Python <span class="bold">Flask</span> based
+        service.</p>
+      <p>To register a service in <span class="bold">Consul</span>, we need a service definition, which includes
+        the following pieces of information:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">ID</span> :: each service must define and use an unique ID</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Name</span> :: each service must include a Name. If two service definitions use the
+            same Name, they are assumed to be two different instances running on different endpoints (ip address and port)</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Address</span> :: specifies the ip address where this service instance is located</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Port</span> :: specifies the network port where this service instance is located</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Next, change directory to <span class="bold">/home/alice/consul/docker-image/flask</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Create a simple Python <span class="bold">Flask</span> based service application called
+        <span class="hi-yellow">app.py</span> as shown below:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">app.py</div>
+      <div class="gen-src-body">
+      <pre>from flask import Flask
+
+import os
+
+app = Flask(__name__)
+
+@app.route('/')
+def hello():
+    name = os.environ.get('MYAPP_NAME', 'MyApp')
+
+    return '&lt;br\&gt;&lt;h3&gt;&lt;center&gt;Hello, Welcome to Dockerized Flask (' + name + ') !!!&lt;center&gt;&lt;/h3&gt;'
+
+if __name__ == '__main__':
+    port = os.environ.get('MYAPP_PORT', 5000)
+
+    app.run(host='0.0.0.0', port=port)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>Next, create a Dockerfile (which will be used to build our custom <span class="bold">Docker</span> image)
+        as shown below:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Dockerfile</div>
+      <div class="gen-src-body">
+      <pre>FROM ubuntu:14.04
+
+LABEL Version="1.0" \
+      Author="Bhaskar.S" \
+      Email="bswamina@polarsparc.com"
+
+RUN apt-get update && \
+    apt-get install -y python && \
+    apt-get install -y python-flask && \
+    apt-get clean
+
+ADD app.py /home/flask/app.py
+
+WORKDIR /home/flask
+
+ENTRYPOINT ["python", "/home/flask/app.py"]</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>To build a custom <span class="bold">Docker</span> image using the above <span class="bold">Dockerfile</span>,
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker build -t 'ubuntu_flask' .</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Sending build context to Docker daemon 3.072 kB
+Step 1 : FROM ubuntu:14.04
+ ---&lt; 7c09e61e9035
+Step 2 : LABEL Version "1.0" Author "Bhaskar.S" Email "bswamina@polarsparc.com"
+ ---&lt; Running in c2703e8122b2
+ ---&lt; e16be1e2975c
+Removing intermediate container c2703e8122b2
+Step 3 : RUN apt-get update &&     apt-get install -y python &&     apt-get install -y python-flask &&     apt-get clean
+ ---&lt; Running in f8d6e23d8892
+Ign http://archive.ubuntu.com trusty InRelease
+Get:1 http://archive.ubuntu.com trusty-updates InRelease [65.9 kB]
+Get:2 http://archive.ubuntu.com trusty-security InRelease [65.9 kB]
+Get:3 http://archive.ubuntu.com trusty Release.gpg [933 B]
+Get:4 http://archive.ubuntu.com trusty-updates/main Sources [489 kB]
+Get:5 http://archive.ubuntu.com trusty-updates/restricted Sources [6467 B]
+Get:6 http://archive.ubuntu.com trusty-updates/universe Sources [225 kB]
+Get:7 http://archive.ubuntu.com trusty-updates/main amd64 Packages [1219 kB]
+Get:8 http://archive.ubuntu.com trusty-updates/restricted amd64 Packages [21.2 kB]
+Get:9 http://archive.ubuntu.com trusty-updates/universe amd64 Packages [522 kB]
+Get:10 http://archive.ubuntu.com trusty Release [58.5 kB]
+Get:11 http://archive.ubuntu.com trusty-security/main Sources [164 kB]
+Get:12 http://archive.ubuntu.com trusty-security/restricted Sources [5066 B]
+Get:13 http://archive.ubuntu.com trusty-security/universe Sources [62.1 kB]
+Get:14 http://archive.ubuntu.com trusty-security/main amd64 Packages [753 kB]
+Get:15 http://archive.ubuntu.com trusty-security/restricted amd64 Packages [17.8 kB]
+Get:16 http://archive.ubuntu.com trusty-security/universe amd64 Packages [201 kB]
+Get:17 http://archive.ubuntu.com trusty/main Sources [1335 kB]
+Get:18 http://archive.ubuntu.com trusty/restricted Sources [5335 B]
+Get:19 http://archive.ubuntu.com trusty/universe Sources [7926 kB]
+Get:20 http://archive.ubuntu.com trusty/main amd64 Packages [1743 kB]
+Get:21 http://archive.ubuntu.com trusty/restricted amd64 Packages [16.0 kB]
+Get:22 http://archive.ubuntu.com trusty/universe amd64 Packages [7589 kB]
+Fetched 22.5 MB in 7s (2817 kB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following extra packages will be installed:
+  libpython-stdlib libpython2.7-minimal libpython2.7-stdlib python-minimal
+  python2.7 python2.7-minimal
+Suggested packages:
+  python-doc python-tk python2.7-doc binutils binfmt-support
+The following NEW packages will be installed:
+  libpython-stdlib libpython2.7-minimal libpython2.7-stdlib python
+  python-minimal python2.7 python2.7-minimal
+0 upgraded, 7 newly installed, 0 to remove and 9 not upgraded.
+Need to get 3731 kB of archives.
+After this operation, 16.0 MB of additional disk space will be used.
+Get:1 http://archive.ubuntu.com/ubuntu/ trusty-updates/main libpython2.7-minimal amd64 2.7.6-8ubuntu0.3 [307 kB]
+Get:2 http://archive.ubuntu.com/ubuntu/ trusty-updates/main python2.7-minimal amd64 2.7.6-8ubuntu0.3 [1187 kB]
+Get:3 http://archive.ubuntu.com/ubuntu/ trusty-updates/main libpython2.7-stdlib amd64 2.7.6-8ubuntu0.3 [1873 kB]
+Get:4 http://archive.ubuntu.com/ubuntu/ trusty/main libpython-stdlib amd64 2.7.5-5ubuntu3 [7012 B]
+Get:5 http://archive.ubuntu.com/ubuntu/ trusty-updates/main python2.7 amd64 2.7.6-8ubuntu0.3 [197 kB]
+Get:6 http://archive.ubuntu.com/ubuntu/ trusty/main python-minimal amd64 2.7.5-5ubuntu3 [27.5 kB]
+Get:7 http://archive.ubuntu.com/ubuntu/ trusty/main python amd64 2.7.5-5ubuntu3 [134 kB]
+debconf: unable to initialize frontend: Dialog
+debconf: (TERM is not set, so the dialog frontend is not usable.)
+debconf: falling back to frontend: Readline
+debconf: unable to initialize frontend: Readline
+debconf: (This frontend requires a controlling tty.)
+debconf: falling back to frontend: Teletype
+dpkg-preconfigure: unable to re-open stdin:
+Fetched 3731 kB in 1s (2267 kB/s)
+Selecting previously unselected package libpython2.7-minimal:amd64.
+(Reading database ... 11569 files and directories currently installed.)
+Preparing to unpack .../libpython2.7-minimal_2.7.6-8ubuntu0.3_amd64.deb ...
+Unpacking libpython2.7-minimal:amd64 (2.7.6-8ubuntu0.3) ...
+Selecting previously unselected package python2.7-minimal.
+Preparing to unpack .../python2.7-minimal_2.7.6-8ubuntu0.3_amd64.deb ...
+Unpacking python2.7-minimal (2.7.6-8ubuntu0.3) ...
+Selecting previously unselected package libpython2.7-stdlib:amd64.
+Preparing to unpack .../libpython2.7-stdlib_2.7.6-8ubuntu0.3_amd64.deb ...
+Unpacking libpython2.7-stdlib:amd64 (2.7.6-8ubuntu0.3) ...
+Selecting previously unselected package libpython-stdlib:amd64.
+Preparing to unpack .../libpython-stdlib_2.7.5-5ubuntu3_amd64.deb ...
+Unpacking libpython-stdlib:amd64 (2.7.5-5ubuntu3) ...
+Selecting previously unselected package python2.7.
+Preparing to unpack .../python2.7_2.7.6-8ubuntu0.3_amd64.deb ...
+Unpacking python2.7 (2.7.6-8ubuntu0.3) ...
+Selecting previously unselected package python-minimal.
+Preparing to unpack .../python-minimal_2.7.5-5ubuntu3_amd64.deb ...
+Unpacking python-minimal (2.7.5-5ubuntu3) ...
+Selecting previously unselected package python.
+Preparing to unpack .../python_2.7.5-5ubuntu3_amd64.deb ...
+Unpacking python (2.7.5-5ubuntu3) ...
+Processing triggers for mime-support (3.54ubuntu1.1) ...
+Setting up libpython2.7-minimal:amd64 (2.7.6-8ubuntu0.3) ...
+Setting up python2.7-minimal (2.7.6-8ubuntu0.3) ...
+Linking and byte-compiling packages for runtime python2.7...
+Setting up libpython2.7-stdlib:amd64 (2.7.6-8ubuntu0.3) ...
+Setting up libpython-stdlib:amd64 (2.7.5-5ubuntu3) ...
+Setting up python2.7 (2.7.6-8ubuntu0.3) ...
+Setting up python-minimal (2.7.5-5ubuntu3) ...
+Setting up python (2.7.5-5ubuntu3) ...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following extra packages will be installed:
+  libjs-jquery python-blinker python-itsdangerous python-jinja2
+  python-markupsafe python-openssl python-pkg-resources python-pyinotify
+  python-werkzeug
+Suggested packages:
+  javascript-common python-flask-doc python-jinja2-doc python-openssl-doc
+  python-openssl-dbg python-distribute python-distribute-doc
+  python-pyinotify-doc ipython python-genshi python-lxml python-greenlet
+  python-redis python-pylibmc python-memcache python-werkzeug-doc
+The following NEW packages will be installed:
+  libjs-jquery python-blinker python-flask python-itsdangerous python-jinja2
+  python-markupsafe python-openssl python-pkg-resources python-pyinotify
+  python-werkzeug
+0 upgraded, 10 newly installed, 0 to remove and 9 not upgraded.
+Need to get 751 kB of archives.
+After this operation, 3894 kB of additional disk space will be used.
+Get:1 http://archive.ubuntu.com/ubuntu/ trusty/main libjs-jquery all 1.7.2+dfsg-2ubuntu1 [78.8 kB]
+Get:2 http://archive.ubuntu.com/ubuntu/ trusty/main python-blinker all 1.3.dfsg1-1ubuntu2 [29.8 kB]
+Get:3 http://archive.ubuntu.com/ubuntu/ trusty-updates/main python-werkzeug all 0.9.4+dfsg-1.1ubuntu2 [236 kB]
+Get:4 http://archive.ubuntu.com/ubuntu/ trusty/main python-markupsafe amd64 0.18-1build2 [14.3 kB]
+Get:5 http://archive.ubuntu.com/ubuntu/ trusty/main python-jinja2 all 2.7.2-2 [161 kB]
+Get:6 http://archive.ubuntu.com/ubuntu/ trusty/main python-itsdangerous all 0.22+dfsg1-1build1 [11.5 kB]
+Get:7 http://archive.ubuntu.com/ubuntu/ trusty/main python-flask all 0.10.1-2build1 [51.7 kB]
+Get:8 http://archive.ubuntu.com/ubuntu/ trusty/main python-openssl amd64 0.13-2ubuntu6 [81.5 kB]
+Get:9 http://archive.ubuntu.com/ubuntu/ trusty-updates/main python-pkg-resources all 3.3-1ubuntu2 [61.9 kB]
+Get:10 http://archive.ubuntu.com/ubuntu/ trusty/main python-pyinotify all 0.9.4-1build1 [24.5 kB]
+debconf: unable to initialize frontend: Dialog
+debconf: (TERM is not set, so the dialog frontend is not usable.)
+debconf: falling back to frontend: Readline
+debconf: unable to initialize frontend: Readline
+debconf: (This frontend requires a controlling tty.)
+debconf: falling back to frontend: Teletype
+dpkg-preconfigure: unable to re-open stdin:
+Fetched 751 kB in 1s (567 kB/s)
+Selecting previously unselected package libjs-jquery.
+(Reading database ... 12368 files and directories currently installed.)
+Preparing to unpack .../libjs-jquery_1.7.2+dfsg-2ubuntu1_all.deb ...
+Unpacking libjs-jquery (1.7.2+dfsg-2ubuntu1) ...
+Selecting previously unselected package python-blinker.
+Preparing to unpack .../python-blinker_1.3.dfsg1-1ubuntu2_all.deb ...
+Unpacking python-blinker (1.3.dfsg1-1ubuntu2) ...
+Selecting previously unselected package python-werkzeug.
+Preparing to unpack .../python-werkzeug_0.9.4+dfsg-1.1ubuntu2_all.deb ...
+Unpacking python-werkzeug (0.9.4+dfsg-1.1ubuntu2) ...
+Selecting previously unselected package python-markupsafe.
+Preparing to unpack .../python-markupsafe_0.18-1build2_amd64.deb ...
+Unpacking python-markupsafe (0.18-1build2) ...
+Selecting previously unselected package python-jinja2.
+Preparing to unpack .../python-jinja2_2.7.2-2_all.deb ...
+Unpacking python-jinja2 (2.7.2-2) ...
+Selecting previously unselected package python-itsdangerous.
+Preparing to unpack .../python-itsdangerous_0.22+dfsg1-1build1_all.deb ...
+Unpacking python-itsdangerous (0.22+dfsg1-1build1) ...
+Selecting previously unselected package python-flask.
+Preparing to unpack .../python-flask_0.10.1-2build1_all.deb ...
+Unpacking python-flask (0.10.1-2build1) ...
+Selecting previously unselected package python-openssl.
+Preparing to unpack .../python-openssl_0.13-2ubuntu6_amd64.deb ...
+Unpacking python-openssl (0.13-2ubuntu6) ...
+Selecting previously unselected package python-pkg-resources.
+Preparing to unpack .../python-pkg-resources_3.3-1ubuntu2_all.deb ...
+Unpacking python-pkg-resources (3.3-1ubuntu2) ...
+Selecting previously unselected package python-pyinotify.
+Preparing to unpack .../python-pyinotify_0.9.4-1build1_all.deb ...
+Unpacking python-pyinotify (0.9.4-1build1) ...
+Setting up libjs-jquery (1.7.2+dfsg-2ubuntu1) ...
+Setting up python-blinker (1.3.dfsg1-1ubuntu2) ...
+Setting up python-werkzeug (0.9.4+dfsg-1.1ubuntu2) ...
+Setting up python-markupsafe (0.18-1build2) ...
+Setting up python-jinja2 (2.7.2-2) ...
+Setting up python-itsdangerous (0.22+dfsg1-1build1) ...
+Setting up python-flask (0.10.1-2build1) ...
+Setting up python-openssl (0.13-2ubuntu6) ...
+Setting up python-pkg-resources (3.3-1ubuntu2) ...
+Setting up python-pyinotify (0.9.4-1build1) ...
+ ---> 7de1f7d9af36
+Removing intermediate container f8d6e23d8892
+Step 4 : ADD app.py /home/flask/app.py
+ ---> fe7a20c19be9
+Removing intermediate container 800b28677f0d
+Step 5 : WORKDIR /home/flask
+ ---> Running in a51bcf3c0634
+ ---> ec946f4a2a52
+Removing intermediate container a51bcf3c0634
+Step 6 : ENTRYPOINT python /home/flask/app.py
+ ---> Running in 5b90162aa360
+ ---> 956ea6b5e99c
+Removing intermediate container 5b90162aa360
+Successfully built 956ea6b5e99c</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, change directory to <span class="bold">/home/alice/consul/docker-image/nginx-consul</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Create a simple <span class="bold">HTML</span> file called <span class="hi-yellow">index.html</span>
+        as shown below:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">index.html</div>
+      <div class="gen-src-body">
+      <pre>&lt;html&gt;
+    &lt;head&gt;&lt;title&gt;Hello NGINX !!!&lt;/title&gt;&lt;/head&gt;
+    &lt;body&gt;&lt;h3&gt;Hello NGINX !!!&lt;/h3&gt;&lt;/body&gt;
+&lt;/html&gt;</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>Next, create a <span class="bold">Consul Template</span> file called <span class="hi-yellow">nginx.consul.tmpl</span>
+        as shown below:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">nginx.consul.tmpl</div>
+      <div class="gen-src-body">
+      <pre>{{range services}}
+upstream {{.Name}} {
+  least_conn;
+  {{range service .Name}}
+  server {{.Address}}:{{.Port}};
+  {{end}}
+}
+{{end}}
+
+server {
+  listen 80 default_server;
+
+  location / {
+    root /usr/share/nginx/html/;
+    index index.html;
+  }
+
+  {{range services}}
+  location /service/{{.Name}}/ {
+    proxy_pass http://{{.Name}}/;
+  }
+  {{end}}
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>As indicated earlier, the <span class="bold">Consul Template</span> file is used to generate the
+        config file for <span class="bold">nginx</span> with the service endpoints.</p>
+    </div>
+    <div id="para-div">
+      <p>Finally, create a Dockerfile (which will be used to build our custom <span class="bold">Docker</span> image)
+        as shown below:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Dockerfile</div>
+      <div class="gen-src-body">
+      <pre>FROM nginx:1.12
+
+RUN apt-get update -q && apt-get -y install curl
+
+RUN curl -L https://releases.hashicorp.com/consul-template/0.18.2/consul-template_0.18.2_linux_amd64.tgz | tar -C /usr/local/bin -zxf -
+
+RUN mkdir /etc/consul-templates
+
+COPY nginx.consul.tmpl /etc/consul-templates/nginx.conf
+COPY index.html /usr/share/nginx/html/
+
+RUN rm /etc/nginx/conf.d/*
+
+CMD /usr/sbin/nginx -c /etc/nginx/nginx.conf && consul-template \
+-consul-addr=$DOCKER_HOST:8500 -consul-token=$CONSUL_TOKEN \
+-template "/etc/consul-templates/nginx.conf:/etc/nginx/conf.d/default.conf:/usr/sbin/nginx -s reload"</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>To build a custom <span class="bold">Docker</span> image using the above <span class="bold">Dockerfile</span>,
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker build -t 'nginx_consul_tmpl' .</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Sending build context to Docker daemon 4.608 kB
+Step 1 : FROM nginx:1.12
+ ---> 6139903af4b3
+Step 2 : RUN apt-get update -q && apt-get -y install curl
+ ---> Running in 110cccfbdb7b
+Get:1 http://security.debian.org stretch/updates InRelease [62.9 kB]
+Get:2 http://deb.debian.org/debian stretch InRelease [186 kB]
+Get:3 http://deb.debian.org/debian stretch-updates InRelease [88.5 kB]
+Get:4 http://nginx.org/packages/debian stretch InRelease [2845 B]
+Get:5 http://deb.debian.org/debian stretch/main amd64 Packages [9511 kB]
+Get:6 http://nginx.org/packages/debian stretch/nginx amd64 Packages [3792 B]
+Fetched 9856 kB in 2s (4487 kB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+The following additional packages will be installed:
+  ca-certificates krb5-locales libcurl3 libffi6 libgdbm3 libgmp10 libgnutls30
+  libgssapi-krb5-2 libhogweed4 libidn11 libidn2-0 libk5crypto3 libkeyutils1
+  libkrb5-3 libkrb5support0 libldap-2.4-2 libldap-common libnettle6
+  libnghttp2-14 libp11-kit0 libperl5.24 libpsl5 librtmp1 libsasl2-2
+  libsasl2-modules libsasl2-modules-db libssh2-1 libssl1.0.2 libtasn1-6
+  libunistring0 openssl perl perl-base perl-modules-5.24 publicsuffix rename
+Suggested packages:
+  gnutls-bin krb5-doc krb5-user libsasl2-modules-gssapi-mit
+  | libsasl2-modules-gssapi-heimdal libsasl2-modules-ldap libsasl2-modules-otp
+  libsasl2-modules-sql perl-doc libterm-readline-gnu-perl
+  | libterm-readline-perl-perl make
+The following NEW packages will be installed:
+  ca-certificates curl krb5-locales libcurl3 libffi6 libgdbm3 libgmp10
+  libgnutls30 libgssapi-krb5-2 libhogweed4 libidn11 libidn2-0 libk5crypto3
+  libkeyutils1 libkrb5-3 libkrb5support0 libldap-2.4-2 libldap-common
+  libnettle6 libnghttp2-14 libp11-kit0 libperl5.24 libpsl5 librtmp1 libsasl2-2
+  libsasl2-modules libsasl2-modules-db libssh2-1 libssl1.0.2 libtasn1-6
+  libunistring0 openssl perl perl-modules-5.24 publicsuffix rename
+The following packages will be upgraded:
+  perl-base
+1 upgraded, 36 newly installed, 0 to remove and 22 not upgraded.
+Need to get 14.5 MB of archives.
+After this operation, 57.1 MB of additional disk space will be used.
+Get:1 http://deb.debian.org/debian stretch/main amd64 perl-base amd64 5.24.1-2 [1342 kB]
+Get:2 http://deb.debian.org/debian stretch/main amd64 perl-modules-5.24 all 5.24.1-2 [2722 kB]
+Get:3 http://deb.debian.org/debian stretch/main amd64 libgdbm3 amd64 1.8.3-14 [30.0 kB]
+Get:4 http://deb.debian.org/debian stretch/main amd64 libperl5.24 amd64 5.24.1-2 [3539 kB]
+Get:5 http://deb.debian.org/debian stretch/main amd64 perl amd64 5.24.1-2 [218 kB]
+Get:6 http://deb.debian.org/debian stretch/main amd64 libssl1.0.2 amd64 1.0.2k-1 [1294 kB]
+Get:7 http://deb.debian.org/debian stretch/main amd64 krb5-locales all 1.15-1 [93.5 kB]
+Get:8 http://deb.debian.org/debian stretch/main amd64 libgmp10 amd64 2:6.1.2+dfsg-1 [253 kB]
+Get:9 http://deb.debian.org/debian stretch/main amd64 libnettle6 amd64 3.3-1+b1 [191 kB]
+Get:10 http://deb.debian.org/debian stretch/main amd64 libhogweed4 amd64 3.3-1+b1 [136 kB]
+Get:11 http://deb.debian.org/debian stretch/main amd64 libidn11 amd64 1.33-1 [115 kB]
+Get:12 http://deb.debian.org/debian stretch/main amd64 libffi6 amd64 3.2.1-6 [20.4 kB]
+Get:13 http://deb.debian.org/debian stretch/main amd64 libp11-kit0 amd64 0.23.3-2 [111 kB]
+Get:14 http://deb.debian.org/debian stretch/main amd64 libtasn1-6 amd64 4.10-1 [50.3 kB]
+Get:15 http://deb.debian.org/debian stretch/main amd64 libgnutls30 amd64 3.5.8-5 [895 kB]
+Get:16 http://deb.debian.org/debian stretch/main amd64 libkeyutils1 amd64 1.5.9-9 [12.4 kB]
+Get:17 http://deb.debian.org/debian stretch/main amd64 libkrb5support0 amd64 1.15-1 [61.7 kB]
+Get:18 http://deb.debian.org/debian stretch/main amd64 libk5crypto3 amd64 1.15-1 [119 kB]
+Get:19 http://deb.debian.org/debian stretch/main amd64 libkrb5-3 amd64 1.15-1 [311 kB]
+Get:20 http://deb.debian.org/debian stretch/main amd64 libgssapi-krb5-2 amd64 1.15-1 [154 kB]
+Get:21 http://deb.debian.org/debian stretch/main amd64 libsasl2-modules-db amd64 2.1.27~101-g0780600+dfsg-3 [68.2 kB]
+Get:22 http://deb.debian.org/debian stretch/main amd64 libsasl2-2 amd64 2.1.27~101-g0780600+dfsg-3 [105 kB]
+Get:23 http://deb.debian.org/debian stretch/main amd64 libldap-common all 2.4.44+dfsg-3 [84.5 kB]
+Get:24 http://deb.debian.org/debian stretch/main amd64 libldap-2.4-2 amd64 2.4.44+dfsg-3 [218 kB]
+Get:25 http://deb.debian.org/debian stretch/main amd64 openssl amd64 1.1.0e-1 [739 kB]
+Get:26 http://deb.debian.org/debian stretch/main amd64 ca-certificates all 20161130 [203 kB]
+Get:27 http://deb.debian.org/debian stretch/main amd64 libunistring0 amd64 0.9.6+really0.9.3-0.1 [279 kB]
+Get:28 http://deb.debian.org/debian stretch/main amd64 libidn2-0 amd64 0.16-1 [60.6 kB]
+Get:29 http://deb.debian.org/debian stretch/main amd64 libnghttp2-14 amd64 1.18.1-1 [79.1 kB]
+Get:30 http://deb.debian.org/debian stretch/main amd64 libpsl5 amd64 0.17.0-3 [41.8 kB]
+Get:31 http://deb.debian.org/debian stretch/main amd64 librtmp1 amd64 2.4+20151223.gitfa8646d.1-1+b1 [60.4 kB]
+Get:32 http://deb.debian.org/debian stretch/main amd64 libssh2-1 amd64 1.7.0-1 [138 kB]
+Get:33 http://deb.debian.org/debian stretch/main amd64 libcurl3 amd64 7.52.1-4 [291 kB]
+Get:34 http://deb.debian.org/debian stretch/main amd64 curl amd64 7.52.1-4 [227 kB]
+Get:35 http://deb.debian.org/debian stretch/main amd64 libsasl2-modules amd64 2.1.27~101-g0780600+dfsg-3 [102 kB]
+Get:36 http://deb.debian.org/debian stretch/main amd64 rename all 0.20-4 [12.5 kB]
+Get:37 http://deb.debian.org/debian stretch/main amd64 publicsuffix all 20170117-1 [97.6 kB]
+debconf: delaying package configuration, since apt-utils is not installed
+Fetched 14.5 MB in 1s (10.4 MB/s)
+(Reading database ... 7174 files and directories currently installed.)
+Preparing to unpack .../perl-base_5.24.1-2_amd64.deb ...
+Unpacking perl-base (5.24.1-2) over (5.24.1-1) ...
+Setting up perl-base (5.24.1-2) ...
+Selecting previously unselected package perl-modules-5.24.
+(Reading database ... 7174 files and directories currently installed.)
+Preparing to unpack .../00-perl-modules-5.24_5.24.1-2_all.deb ...
+Unpacking perl-modules-5.24 (5.24.1-2) ...
+Selecting previously unselected package libgdbm3:amd64.
+Preparing to unpack .../01-libgdbm3_1.8.3-14_amd64.deb ...
+Unpacking libgdbm3:amd64 (1.8.3-14) ...
+Selecting previously unselected package libperl5.24:amd64.
+Preparing to unpack .../02-libperl5.24_5.24.1-2_amd64.deb ...
+Unpacking libperl5.24:amd64 (5.24.1-2) ...
+Selecting previously unselected package perl.
+Preparing to unpack .../03-perl_5.24.1-2_amd64.deb ...
+Unpacking perl (5.24.1-2) ...
+Selecting previously unselected package libssl1.0.2:amd64.
+Preparing to unpack .../04-libssl1.0.2_1.0.2k-1_amd64.deb ...
+Unpacking libssl1.0.2:amd64 (1.0.2k-1) ...
+Selecting previously unselected package krb5-locales.
+Preparing to unpack .../05-krb5-locales_1.15-1_all.deb ...
+Unpacking krb5-locales (1.15-1) ...
+Selecting previously unselected package libgmp10:amd64.
+Preparing to unpack .../06-libgmp10_2%3a6.1.2+dfsg-1_amd64.deb ...
+Unpacking libgmp10:amd64 (2:6.1.2+dfsg-1) ...
+Selecting previously unselected package libnettle6:amd64.
+Preparing to unpack .../07-libnettle6_3.3-1+b1_amd64.deb ...
+Unpacking libnettle6:amd64 (3.3-1+b1) ...
+Selecting previously unselected package libhogweed4:amd64.
+Preparing to unpack .../08-libhogweed4_3.3-1+b1_amd64.deb ...
+Unpacking libhogweed4:amd64 (3.3-1+b1) ...
+Selecting previously unselected package libidn11:amd64.
+Preparing to unpack .../09-libidn11_1.33-1_amd64.deb ...
+Unpacking libidn11:amd64 (1.33-1) ...
+Selecting previously unselected package libffi6:amd64.
+Preparing to unpack .../10-libffi6_3.2.1-6_amd64.deb ...
+Unpacking libffi6:amd64 (3.2.1-6) ...
+Selecting previously unselected package libp11-kit0:amd64.
+Preparing to unpack .../11-libp11-kit0_0.23.3-2_amd64.deb ...
+Unpacking libp11-kit0:amd64 (0.23.3-2) ...
+Selecting previously unselected package libtasn1-6:amd64.
+Preparing to unpack .../12-libtasn1-6_4.10-1_amd64.deb ...
+Unpacking libtasn1-6:amd64 (4.10-1) ...
+Selecting previously unselected package libgnutls30:amd64.
+Preparing to unpack .../13-libgnutls30_3.5.8-5_amd64.deb ...
+Unpacking libgnutls30:amd64 (3.5.8-5) ...
+Selecting previously unselected package libkeyutils1:amd64.
+Preparing to unpack .../14-libkeyutils1_1.5.9-9_amd64.deb ...
+Unpacking libkeyutils1:amd64 (1.5.9-9) ...
+Selecting previously unselected package libkrb5support0:amd64.
+Preparing to unpack .../15-libkrb5support0_1.15-1_amd64.deb ...
+Unpacking libkrb5support0:amd64 (1.15-1) ...
+Selecting previously unselected package libk5crypto3:amd64.
+Preparing to unpack .../16-libk5crypto3_1.15-1_amd64.deb ...
+Unpacking libk5crypto3:amd64 (1.15-1) ...
+Selecting previously unselected package libkrb5-3:amd64.
+Preparing to unpack .../17-libkrb5-3_1.15-1_amd64.deb ...
+Unpacking libkrb5-3:amd64 (1.15-1) ...
+Selecting previously unselected package libgssapi-krb5-2:amd64.
+Preparing to unpack .../18-libgssapi-krb5-2_1.15-1_amd64.deb ...
+Unpacking libgssapi-krb5-2:amd64 (1.15-1) ...
+Selecting previously unselected package libsasl2-modules-db:amd64.
+Preparing to unpack .../19-libsasl2-modules-db_2.1.27~101-g0780600+dfsg-3_amd64.deb ...
+Unpacking libsasl2-modules-db:amd64 (2.1.27~101-g0780600+dfsg-3) ...
+Selecting previously unselected package libsasl2-2:amd64.
+Preparing to unpack .../20-libsasl2-2_2.1.27~101-g0780600+dfsg-3_amd64.deb ...
+Unpacking libsasl2-2:amd64 (2.1.27~101-g0780600+dfsg-3) ...
+Selecting previously unselected package libldap-common.
+Preparing to unpack .../21-libldap-common_2.4.44+dfsg-3_all.deb ...
+Unpacking libldap-common (2.4.44+dfsg-3) ...
+Selecting previously unselected package libldap-2.4-2:amd64.
+Preparing to unpack .../22-libldap-2.4-2_2.4.44+dfsg-3_amd64.deb ...
+Unpacking libldap-2.4-2:amd64 (2.4.44+dfsg-3) ...
+Selecting previously unselected package openssl.
+Preparing to unpack .../23-openssl_1.1.0e-1_amd64.deb ...
+Unpacking openssl (1.1.0e-1) ...
+Selecting previously unselected package ca-certificates.
+Preparing to unpack .../24-ca-certificates_20161130_all.deb ...
+Unpacking ca-certificates (20161130) ...
+Selecting previously unselected package libunistring0:amd64.
+Preparing to unpack .../25-libunistring0_0.9.6+really0.9.3-0.1_amd64.deb ...
+Unpacking libunistring0:amd64 (0.9.6+really0.9.3-0.1) ...
+Selecting previously unselected package libidn2-0:amd64.
+Preparing to unpack .../26-libidn2-0_0.16-1_amd64.deb ...
+Unpacking libidn2-0:amd64 (0.16-1) ...
+Selecting previously unselected package libnghttp2-14:amd64.
+Preparing to unpack .../27-libnghttp2-14_1.18.1-1_amd64.deb ...
+Unpacking libnghttp2-14:amd64 (1.18.1-1) ...
+Selecting previously unselected package libpsl5:amd64.
+Preparing to unpack .../28-libpsl5_0.17.0-3_amd64.deb ...
+Unpacking libpsl5:amd64 (0.17.0-3) ...
+Selecting previously unselected package librtmp1:amd64.
+Preparing to unpack .../29-librtmp1_2.4+20151223.gitfa8646d.1-1+b1_amd64.deb ...
+Unpacking librtmp1:amd64 (2.4+20151223.gitfa8646d.1-1+b1) ...
+Selecting previously unselected package libssh2-1:amd64.
+Preparing to unpack .../30-libssh2-1_1.7.0-1_amd64.deb ...
+Unpacking libssh2-1:amd64 (1.7.0-1) ...
+Selecting previously unselected package libcurl3:amd64.
+Preparing to unpack .../31-libcurl3_7.52.1-4_amd64.deb ...
+Unpacking libcurl3:amd64 (7.52.1-4) ...
+Selecting previously unselected package curl.
+Preparing to unpack .../32-curl_7.52.1-4_amd64.deb ...
+Unpacking curl (7.52.1-4) ...
+Selecting previously unselected package libsasl2-modules:amd64.
+Preparing to unpack .../33-libsasl2-modules_2.1.27~101-g0780600+dfsg-3_amd64.deb ...
+Unpacking libsasl2-modules:amd64 (2.1.27~101-g0780600+dfsg-3) ...
+Selecting previously unselected package rename.
+Preparing to unpack .../34-rename_0.20-4_all.deb ...
+Unpacking rename (0.20-4) ...
+Selecting previously unselected package publicsuffix.
+Preparing to unpack .../35-publicsuffix_20170117-1_all.deb ...
+Unpacking publicsuffix (20170117-1) ...
+Setting up perl-modules-5.24 (5.24.1-2) ...
+Setting up libgdbm3:amd64 (1.8.3-14) ...
+Setting up libperl5.24:amd64 (5.24.1-2) ...
+Setting up libnettle6:amd64 (3.3-1+b1) ...
+Setting up libnghttp2-14:amd64 (1.18.1-1) ...
+Setting up libldap-common (2.4.44+dfsg-3) ...
+Setting up libsasl2-modules-db:amd64 (2.1.27~101-g0780600+dfsg-3) ...
+Setting up libsasl2-2:amd64 (2.1.27~101-g0780600+dfsg-3) ...
+Setting up libtasn1-6:amd64 (4.10-1) ...
+Setting up perl (5.24.1-2) ...
+update-alternatives: using /usr/bin/prename to provide /usr/bin/rename (rename) in auto mode
+update-alternatives: warning: skip creation of /usr/share/man/man1/rename.1.gz because associated file /usr/share/man/man1/prename.1.gz (of link group rename) doesn't exist
+Setting up libssl1.0.2:amd64 (1.0.2k-1) ...
+debconf: unable to initialize frontend: Dialog
+debconf: (TERM is not set, so the dialog frontend is not usable.)
+debconf: falling back to frontend: Readline
+Setting up libgmp10:amd64 (2:6.1.2+dfsg-1) ...
+Setting up libssh2-1:amd64 (1.7.0-1) ...
+Setting up krb5-locales (1.15-1) ...
+Processing triggers for libc-bin (2.24-9) ...
+Setting up publicsuffix (20170117-1) ...
+Setting up libunistring0:amd64 (0.9.6+really0.9.3-0.1) ...
+Setting up openssl (1.1.0e-1) ...
+Setting up libffi6:amd64 (3.2.1-6) ...
+Setting up libkeyutils1:amd64 (1.5.9-9) ...
+Setting up libsasl2-modules:amd64 (2.1.27~101-g0780600+dfsg-3) ...
+Setting up ca-certificates (20161130) ...
+debconf: unable to initialize frontend: Dialog
+debconf: (TERM is not set, so the dialog frontend is not usable.)
+debconf: falling back to frontend: Readline
+Updating certificates in /etc/ssl/certs...
+173 added, 0 removed; done.
+Setting up libidn11:amd64 (1.33-1) ...
+Setting up libidn2-0:amd64 (0.16-1) ...
+Setting up rename (0.20-4) ...
+update-alternatives: using /usr/bin/file-rename to provide /usr/bin/rename (rename) in auto mode
+update-alternatives: warning: skip creation of /usr/share/man/man1/rename.1.gz because associated file /usr/share/man/man1/file-rename.1p.gz (of link group rename) doesn't exist
+Setting up libpsl5:amd64 (0.17.0-3) ...
+Setting up libkrb5support0:amd64 (1.15-1) ...
+Setting up libhogweed4:amd64 (3.3-1+b1) ...
+Setting up libp11-kit0:amd64 (0.23.3-2) ...
+Setting up libk5crypto3:amd64 (1.15-1) ...
+Setting up libgnutls30:amd64 (3.5.8-5) ...
+Setting up librtmp1:amd64 (2.4+20151223.gitfa8646d.1-1+b1) ...
+Setting up libldap-2.4-2:amd64 (2.4.44+dfsg-3) ...
+Setting up libkrb5-3:amd64 (1.15-1) ...
+Setting up libgssapi-krb5-2:amd64 (1.15-1) ...
+Setting up libcurl3:amd64 (7.52.1-4) ...
+Setting up curl (7.52.1-4) ...
+Processing triggers for libc-bin (2.24-9) ...
+Processing triggers for ca-certificates (20161130) ...
+Updating certificates in /etc/ssl/certs...
+0 added, 0 removed; done.
+Running hooks in /etc/ca-certificates/update.d...
+done.
+ ---> 23f7eff62db8
+Removing intermediate container 110cccfbdb7b
+Step 3 : RUN curl -L https://releases.hashicorp.com/consul-template/0.18.2/consul-template_0.18.2_linux_amd64.tgz | tar -C /usr/local/bin -zxf -
+ ---> Running in 921b629f31a2
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 2465k  100 2465k    0     0  6377k      0 --:--:-- --:--:-- --:--:-- 6386k
+ ---> 690ddded1fa5
+Removing intermediate container 921b629f31a2
+Step 4 : RUN mkdir /etc/consul-templates
+ ---> Running in e1488d52f359
+ ---> 740970ad876b
+Removing intermediate container e1488d52f359
+Step 5 : COPY nginx.consul.tmpl /etc/consul-templates/nginx.conf
+ ---> 7c4107cfd6d3
+Removing intermediate container 9a33d8a6856f
+Step 6 : COPY index.html /usr/share/nginx/html/
+ ---> 110e178159ad
+Removing intermediate container 410d8efa74a0
+Step 7 : RUN rm /etc/nginx/conf.d/*
+ ---> Running in f9eee8c19bf0
+ ---> 3c93fd04b50c
+Removing intermediate container f9eee8c19bf0
+Step 8 : CMD /usr/sbin/nginx -c /etc/nginx/nginx.conf && consul-template -consul-addr=$DOCKER_HOST:8500 -consul-token=$CONSUL_TOKEN -template "/etc/consul-templates/nginx.conf:/etc/nginx/conf.d/default.conf:/usr/sbin/nginx -s reload"
+ ---> Running in f8527dd9d334
+ ---> fa6797ac86db
+Removing intermediate container f8527dd9d334
+Successfully built fa6797ac86db</pre>
+    </div>
+    <div id="para-div">
+      <p>Finally, change directory to <span class="bold">/home/alice/consul</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Now we are ready to get our hands dirty with <span class="bold">Consul</span>.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Consul in Dev Mode</p>
+    </div>
+    <div id="para-div">
+      <p>To start <span class="bold">Consul</span> in development mode, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --name consul-dev --net=host consul:0.8.1 agent -node consul-dev -dev</p>
+    </div>
+    <div id="para-div">
+      <p>Notice the use of the option <span class="hi-green">--net=host</span> in the above command. It is
+        recommended that <span class="bold">Consul</span> be run in host networking mode in Docker as
+        <span class="bold">Consul</span>'s consensus and gossip protocols can experience delays or packet
+        losses due to the extra network layer.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>==> Starting Consul agent...
+==> Consul agent running!
+           Version: 'v0.8.1'
+           Node ID: '9d9ff3e2-9660-d382-f36f-5f33e39d2a40'
+         Node name: 'consul-dev'
+        Datacenter: 'dc1'
+            Server: true (bootstrap: false)
+       Client Addr: 127.0.0.1 (HTTP: 8500, HTTPS: -1, DNS: 8600)
+      Cluster Addr: 127.0.0.1 (LAN: 8301, WAN: 8302)
+    Gossip encrypt: false, RPC-TLS: false, TLS-Incoming: false
+             Atlas: <disabled>
+
+==> Log data will now stream in as it occurs:
+
+    2017/04/29 17:18:08 [DEBUG] Using unique ID "9d9ff3e2-9660-d382-f36f-5f33e39d2a40" from host as node ID
+    2017/04/29 17:18:08 [INFO] raft: Initial configuration (index=1): [{Suffrage:Voter ID:127.0.0.1:8300 Address:127.0.0.1:8300}]
+    2017/04/29 17:18:08 [INFO] raft: Node at 127.0.0.1:8300 [Follower] entering Follower state (Leader: "")
+    2017/04/29 17:18:08 [INFO] serf: EventMemberJoin: consul-dev 127.0.0.1
+    2017/04/29 17:18:08 [INFO] serf: EventMemberJoin: consul-dev.dc1 127.0.0.1
+    2017/04/29 17:18:08 [INFO] consul: Adding LAN server consul-dev (Addr: tcp/127.0.0.1:8300) (DC: dc1)
+    2017/04/29 17:18:08 [INFO] consul: Handled member-join event for server "consul-dev.dc1" in area "wan"
+    2017/04/29 17:18:14 [WARN] raft: Heartbeat timeout from "" reached, starting election
+    2017/04/29 17:18:14 [INFO] raft: Node at 127.0.0.1:8300 [Candidate] entering Candidate state in term 2
+    2017/04/29 17:18:14 [DEBUG] raft: Votes needed: 1
+    2017/04/29 17:18:14 [DEBUG] raft: Vote granted from 127.0.0.1:8300 in term 2. Tally: 1
+    2017/04/29 17:18:14 [INFO] raft: Election won. Tally: 1
+    2017/04/29 17:18:14 [INFO] raft: Node at 127.0.0.1:8300 [Leader] entering Leader state
+    2017/04/29 17:18:14 [INFO] consul: cluster leadership acquired
+    2017/04/29 17:18:14 [INFO] consul: New leader elected: consul-dev
+    2017/04/29 17:18:14 [DEBUG] consul: reset tombstone GC to index 3
+    2017/04/29 17:18:14 [INFO] consul: member 'consul-dev' joined, marking health alive
+    2017/04/29 17:18:14 [INFO] agent: Synced service 'consul'
+    2017/04/29 17:18:14 [DEBUG] agent: Node info in sync
+    2017/04/29 17:20:00 [DEBUG] agent: Service 'consul' in sync
+    2017/04/29 17:20:00 [DEBUG] agent: Node info in sync</pre>
+    </div>
+    <div id="para-div">
+      <p>To list the members in the <span class="bold">Consul</span> cluster, one could execute the
+        following <span class="bold">Docker</span> command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker exec -t consul-dev consul members</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>Node        Address         Status  Type    Build  Protocol  DC
+consul-dev  127.0.0.1:8301  alive   server  0.8.1  2         dc1</pre>
+    </div>
+    <div id="para-div">
+      <p>To list the members in the <span class="bold">Consul</span> cluster, one could also use
+        the <span class="bold">Consul</span>'s HTTP api interface as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl http://localhost:8500/v1/agent/members | jq</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>[
+  {
+    "Name": "consul-dev",
+    "Addr": "127.0.0.1",
+    "Port": 8301,
+    "Tags": {
+      "build": "0.8.1:'e9ca44d",
+      "dc": "dc1",
+      "id": "9d9ff3e2-9660-d382-f36f-5f33e39d2a40",
+      "port": "8300",
+      "raft_vsn": "2",
+      "role": "consul",
+      "vsn": "2",
+      "vsn_max": "3",
+      "vsn_min": "2",
+      "wan_join_port": "8302"
+    },
+    "Status": 1,
+    "ProtocolMin": 1,
+    "ProtocolMax": 5,
+    "ProtocolCur": 2,
+    "DelegateMin": 2,
+    "DelegateMax": 5,
+    "DelegateCur": 4
+  }
+]</pre>
+    </div>
+    <div id="para-div">
+      <p>To list the nodes in the <span class="bold">Consul</span> cluster, execute the following
+        <span class="bold">Consul</span> HTTP api:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl http://localhost:8500/v1/catalog/nodes | jq</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>[
+  {
+    "ID": "9d9ff3e2-9660-d382-f36f-5f33e39d2a40",
+    "Node": "consul-dev",
+    "Address": "127.0.0.1",
+    "TaggedAddresses": {
+      "lan": "127.0.0.1",
+      "wan": "127.0.0.1"
+    },
+    "Meta": {},
+    "CreateIndex": 5,
+    "ModifyIndex": 6
+  }
+]</pre>
+    </div>
+    <div id="para-div">
+      <p>To list the services registered in the <span class="bold">Consul</span> server, execute the
+        following <span class="bold">Consul</span> HTTP api:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl http://localhost:8500/v1/catalog/services | jq</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>{
+    "consul": []
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>To start the <span class="bold">nginx</span> load balancer integrated with the
+        <span class="bold">Consul Template</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --net=host --name nginx-lb -d -e DOCKER_HOST=localhost nginx_consul_tmpl</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>2b636365a0dede4162cc48dec3039f05a2acd5af46b65214c07a877aa3fdf66a</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the running <span class="bold">Docker</span> containers, execute the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker ps</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>CONTAINER ID    IMAGE               COMMAND                  CREATED           STATUS         PORTS     NAMES
+505024d1e0c8    nginx_consul_tmpl   "/bin/sh -c '/usr/sbi"   47 minutes ago    Up 47 minutes            nginx-lb
+601204bf3e75    consul:0.8.1        "docker-entrypoint.sh"   56 minutes ago    Up 56 minutes            consul-dev</pre>
+    </div>
+    <div id="para-div">
+      <p>To display the <span class="bold">nginx</span> config generated by <span class="bold">Consul Template</span>,
+        execute the following <span class="bold">Docker</span> command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker exec -it nginx-lb cat /etc/nginx/conf.d/default.conf</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>upstream consul {
+  least_conn;
+
+  server 127.0.0.1:8300;
+
+}
+
+
+server {
+  listen 80 default_server;
+
+  location / {
+    root /usr/share/nginx/html/;
+    index index.html;
+  }
+
+
+  location /service/consul/ {
+    proxy_pass http://consul/;
+  }
+
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>Open a browser and access the URL <a href="http://localhost" target="_blank">
+        <span class="bold">http://localhost</span></a> to test <span class="bold">nginx</span>.
+        The following would be the typical view:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/NGINX.png" class="img-cls" alt="NGINX" />
+      <div class="img-cap">Figure-2</div>
+    </div>
+    <div id="para-div">
+      <p>Start the first instance of the simple Python <span class="bold">Flask</span> based
+        service by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -d --name myapp-1 --net=host -e MYAPP_PORT=25001 -e MYAPP_NAME='MyApp-1' ubuntu_flask</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>5c11238e108df00131d17f8e835061032da25ae39c857546d4b00e8fcfc23c33</pre>
+    </div>
+    <div id="para-div">
+      <p>Similarly, start the second instance of the simple Python <span class="bold">Flask</span> based
+        service by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -d --name myapp-2 --net=host -e MYAPP_PORT=25002 -e MYAPP_NAME='MyApp-2' ubuntu_flask</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>762e8ce26b8276575e18047139e9674819f1e92a5c456c6ea986aa4e4de90111</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the running <span class="bold">Docker</span> containers, execute the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker ps</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>CONTAINER ID    IMAGE               COMMAND                  CREATED             STATUS            PORTS       NAMES
+653bba271ea3    ubuntu_flask        "python /home/flask/a"   4 seconds ago       Up 2 seconds                  myapp-2
+2ada2b2b1218    ubuntu_flask        "python /home/flask/a"   2 minutes ago       Up 2 minutes                  myapp-1
+505024d1e0c8    nginx_consul_tmpl   "/bin/sh -c '/usr/sbi"   About an hour ago   Up About an hour              nginx-lb
+601204bf3e75    consul:0.8.1        "docker-entrypoint.sh"   About an hour ago   Up About an hour              consul-dev</pre>
+    </div>
+    <div id="para-div">
+      <p>To register the first instance of the simple Python <span class="bold">Flask</span> based service
+        with <span class="bold">Consul</span>, execute the following <span class="bold">Consul</span> HTTP api:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl -X PUT --data-binary @./json/flask-1.json http://localhost:8500/v1/agent/service/register</p>
+    </div>
+    <div id="para-div">
+      <p>Similarly, to register the second instance of the simple Python <span class="bold">Flask</span> based
+        service with <span class="bold">Consul</span>, execute the following <span class="bold">Consul</span>
+        HTTP api:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl -X PUT --data-binary @./json/flask-2.json http://localhost:8500/v1/agent/service/register</p>
+    </div>
+    <div id="para-div">
+      <p>Now, let us display the <span class="bold">nginx</span> config generated by <span class="bold">Consul Template</span>
+        by executing the following <span class="bold">Docker</span> command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker exec -it nginx-lb cat /etc/nginx/conf.d/default.conf</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>upstream consul {
+  least_conn;
+
+  server 127.0.0.1:8300;
+
+}
+
+upstream myapp {
+  least_conn;
+
+  server localhost:25001;
+
+  server localhost:25002;
+
+}
+
+
+server {
+  listen 80 default_server;
+
+  location / {
+    root /usr/share/nginx/html/;
+    index index.html;
+  }
+
+
+  location /service/consul/ {
+    proxy_pass http://consul/;
+  }
+
+  location /service/myapp/ {
+    proxy_pass http://myapp/;
+  }
+
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>To list the services registered in the <span class="bold">Consul</span> server, execute the
+        following <span class="bold">Consul</span> HTTP api:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl http://localhost:8500/v1/catalog/services | jq</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>{
+  "consul": [],
+  "myapp": []
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>To list the endpoint locations of the registered service <span class="bold">myapp</span> server,
+        execute the following <span class="bold">Consul</span> HTTP api:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl http://localhost:8500/v1/catalog/service/myapp | jq</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>[
+  {
+    "ID": "9d9ff3e2-9660-d382-f36f-5f33e39d2a40",
+    "Node": "consul-dev",
+    "Address": "127.0.0.1",
+    "TaggedAddresses": {
+      "lan": "127.0.0.1",
+      "wan": "127.0.0.1"
+    },
+    "NodeMeta": {},
+    "ServiceID": "myapp-1",
+    "ServiceName": "myapp",
+    "ServiceTags": [],
+    "ServiceAddress": "localhost",
+    "ServicePort": 25001,
+    "ServiceEnableTagOverride": false,
+    "CreateIndex": 314,
+    "ModifyIndex": 314
+  },
+  {
+    "ID": "9d9ff3e2-9660-d382-f36f-5f33e39d2a40",
+    "Node": "consul-dev",
+    "Address": "127.0.0.1",
+    "TaggedAddresses": {
+      "lan": "127.0.0.1",
+      "wan": "127.0.0.1"
+    },
+    "NodeMeta": {},
+    "ServiceID": "myapp-2",
+    "ServiceName": "myapp",
+    "ServiceTags": [],
+    "ServiceAddress": "localhost",
+    "ServicePort": 25002,
+    "ServiceEnableTagOverride": false,
+    "CreateIndex": 315,
+    "ModifyIndex": 315
+  }
+]</pre>
+    </div>
+    <div id="para-div">
+      <p>Open a browser and access the URL <a href="http://localhost/service/myapp/" target="_blank">
+        <span class="bold">http://localhost/service/myapp</span></a> to test <span class="bold">nginx</span>.
+        The following would be the typical view:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/MyApp-1.png" class="img-cls" alt="MyApp-1" />
+      <div class="img-cap">Figure-3</div>
+    </div>
+    <div id="para-div">
+      <p>Refresh the browser and the following would be the typical view:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/MyApp-2.png" class="img-cls" alt="MyApp-2" />
+      <div class="img-cap">Figure-4</div>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Hooray</span> !!! We have successfully demonstrated the use of <span class="bold">Consul</span>
+        in a development mode.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://www.consul.io/docs/index.html" target="_blank"><span class="bold">Official Consul Documentation</span></a></p>
+      <p><a href="http://polarsparc.github.io/xhtml/Docker.html" target="_blank"><span class="bold">Introduction to Docker</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,1555 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Hands-on with HashiCorp Vault">
+    <meta name="subject" content="Hands-on with HashiCorp Vault">
+    <meta name="keywords" content="cloud, linux, security, vault">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Hands-on with HashiCorp Vault</title>
+    <link rel="stylesheet" type="text/css" href="../css/polarsparc-v2.4.css" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Hands-on with HashiCorp Vault</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">01/01/2021</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>Time and again we have observed many application developers store credentials such as access tokens, database passwords,
+        certificates, etc., in configuration files that is open and visible to all. Is there a secure way to store and control
+        access to these sensitive assets ???</p>
+      <p>This is where <span class="hi-yellow">HashiCorp Vault</span> comes in handy to help Enterprises centrally store, allow
+        access, and deploy secrets across applications, systems, and infrastructure. This becomes even more critical as more and
+        more Enterprises are heading towards the Cloud (be it private or public).</p>
+    </div>
+    <div id="para-div">
+      <p>The following are some of the key features of <span class="bold">Vault</span>:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="bold">Controlled Access</span> :: client access is granted only after successful authentication and
+            verification of client operation against the access policy</p>
+        </li>
+        <li>
+          <p><span class="bold">Encrypted Storage</span> :: secrets are encrypted (using an encryption key) prior to storing them
+            on the persistent storage backend</p>
+        </li>
+        <li>
+          <p><span class="bold">Dynamic Secrets</span> :: when the appropriate plugin is configured, can dynamically generate
+            secrets for popular relational databases, public cloud providers, etc</p>
+        </li>
+        <li>
+          <p><span class="bold">Secrets Lifecycle</span> :: dynamically created secrets have a lease associated with them and at
+            the end of the lease, they are revoked and destroyed, unless the lease is renewed by client</p>
+        </li>
+        <li>
+          <p><span class="bold">Audit Trail</span> :: all client activity is logged to an audit device for regulatory purposes</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following illustration depicts the high-level architectural components of <span class="bold">Vault</span>:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/vault-1.png" class="img-cls" alt="Architectural Components" />
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>When <span class="bold">Vault</span> is setup for the first time, it needs to be <span class="underbold">INITIALIZED</span>.
+        As part of the initialization process, <span class="bold">Vault</span> generates a <span class="hi-yellow">Master Key</span>
+        which is broken up into a certain number of <span class="hi-grey">Key Shares</span> (default is <span class="bold">5</span>).
+        A certain number of these Key Shares, referred to as <span class="hi-grey">Key Threshold</span> (default is <span class="bold">
+        3</span>), can be combined to form the Master Key. The Master Key is <span class="underbold">NEVER</span> persisted in any
+        store - it <span class="underbold">ONLY</span> resides in the memory. In addition, a <span class="hi-grey">root</span> access
+        token is also generated, using which one gets full access to <span class="bold">Vault</span>.</p>
+      <p>Let us expand on each of the components from the Figure-1 above:</p>
+        <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-green">API Layer</span> :: one can interact with <span class="bold">Vault</span> either using the
+            command line interface (CLI) or using a well-defined set of HTTP API endpoints. In either case, under-the-hood they go
+            through this layer for access</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Storage Backend</span> :: responsible for the persistent storage of all the encrypted secrets so
+            that they are available even after restart(s). The officially supported backends are - <span class="hi-grey">Filesystem
+            </span>, <span class="hi-grey">Consul</span>, and <span class="hi-grey">Raft</span>. There are plethora of 3rd-party
+            backends that can be used, such as, <span class="hi-vanila">etcd</span>, <span class="hi-vanila">PostgreSQL</span>,
+            <span class="hi-vanila">MySQL</span>, <span class="hi-vanila">MSSQL</span>, <span class="hi-vanila">DynamoDB</span>, etc.,
+            to name a few</p>
+        </li>
+        <li>
+          <p><span class="hi-red">Barrier</span> :: it is a secure shield around the core of <span class="bold">Vault</span>. When
+            <span class="bold">Vault</span> is started, it is in a <span class="hi-yellow">Sealed</span> state (locked). One has to
+            <span class="hi-yellow">Unseal</span> (or unlock) the Barrier before one can interact with the core components of
+            <span class="bold">Vault</span>. The unseal operation happens with the Key Threshold number of Key Shares, which
+            regenerates the Master Key. The Master Key is then used to regenerate the <span class="hi-yellow">Encryption Key</span>.
+            All data passing through the Barrier (either in via the API Layer or out to the Storage Backend) is encrypted using the
+            Encryption Key</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">Path Routing</span> :: in <span class="bold">Vault</span> resources are referred to by their
+            associated <span class="hi-yellow">Path</span>. When a client makes a request to perform some operation (providing a
+            Path as a parameter), the request is routed to the appropriate component by Path Routing based on the Path prefix</p>
+        </li>
+        <li>
+          <p><span class="hi-grey">Audit Device</span> :: responsible for keeping a detailed log of all the activities - requests
+            and responses to/from the <span class="bold">Vault</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Auth Method</span> :: used for authenticating clients (applications, systems, or users) that
+            want to access and interact with <span class="bold">Vault</span>. The default Auth Method is token based. There is also
+            the user-password based option in <span class="bold">Vault</span>. In addition, <span class="bold">Vault</span> can
+            integrate with <span class="hi-vanila">LDAP</span>, <span class="hi-vanila">Kerberos</span>, <span class="hi-vanila">
+            Github</span>, etc., to name a few</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Secrets Engine</span> :: responsible for managing the secrets - generating a dynamic secret or
+            storing a client provided secret (after encrypting the secret). The simplest is the Key-Value (kv) Secrets Engine that
+            persists client provided secrets in the Storage Backend (after encryption). There are two variants of kv Secrets Engine
+            - v1 (non-versioned) and v2 (versioned with metadata). When a Secrets Engine is enabled, it is mounted at a certain Path.
+            There are a variety of Secrets Engine options available</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">System Backend</span> :: used for configuring and managing the internal components of
+            <span class="bold">Vault</span> at runtime. It is mounted at the Path <span class="hi-grey">/sys</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Policy Store</span> :: used for storing a named collection of access control policy rules. A
+            policy rule allows or denies some operation on a Path. Policies provide a declarative way to grant or deny access to
+            certain Paths and operations in <span class="bold">Vault</span>. By default, there are two built-in named policies
+            defined within <span class="bold">Vault</span> - <span class="hi-vanila">default</span> policy and the
+            <span class="hi-vanila">root</span> policy</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Token Store</span> :: responsible for creating and storing tokens in <span class="bold">Vault
+            </span> and mounted at the Path <span class="hi-grey">/auth/token</span>. Clients can authenticate to <span class="bold">
+            Vault</span> using an access token. When a client successfully authenticates with a user-password or through any external
+            identity provider (such as Github), <span class="bold">Vault</span> generates and swaps it for a new token so that the
+            client can attach the token in future interactions with the <span class="bold">Vault</span>. Attached to the token are
+            the access control policies that govern what operations the client can perform</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Audit Broker</span> :: responsible for capturing and fanning out the trail of all activity in
+            <span class="bold">Vault</span> to the configured Audit Devices</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Core</span> :: is the workhorse of <span class="bold">Vault</span> that manages the flow of
+            all the requests/responses through the Path Routing, ensures created tokens have a lease associated with them and are
+            stored in the Token Store, ensures associated policies from the Policy Store are enforced, and ensures all activity is
+            logged via the Audit Broker</p>
+        </li>
+      </ul>
+    </div>
+    <div id="section-div">
+      <p>Environment Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The setup will be on a Ubuntu 20.04 LTS based Linux desktop. For the demonstrations, we will create an environment with
+        3 virtual machines running on the hypervisor <span class="hi-yellow">VirtualBox</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the virtual machines environment setup:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/vault-2.png" class="img-cls" alt="VM Environment" />
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are some of the highlights of the 3 virtual machines:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">vm-1</span> :: 1 vCPU, 2GB RAM, 20GB storage, Ubuntu 20.04 OS, and uses a single virtual network
+            interface with <span class="bold">Bridge</span> networking and will host the Storage Backend</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">vm-2</span> :: 1 vCPU, 2GB RAM, 20GB storage, Ubuntu 20.04 OS, and uses a single virtual network
+            interface with <span class="bold">Bridge</span> networking and will host the <span class="bold">Vault</span> server</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">vm-3</span> :: 1 vCPU, 2GB RAM, 20GB storage, Ubuntu 20.04 OS, and uses a single virtual network
+            interface with <span class="bold">Bridge</span> and will host the <span class="hi-grey">Postgres</span> database</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Open a Terminal window for each of the 3 virtual machines <span class="bold">vm-1</span> thru <span class="bold">vm-3</span>
+        to install/setup the pre-requisites.</p>
+    </div>
+    <div id="para-div">
+      <p>In the Terminal for <span class="bold">vm-1</span>, we will download and setup the 3rd-party Storage Backend called
+        <span class="hi-yellow">etcd</span>, which is a popular cloud native distributed and reliable key-value store.</p>
+    </div>
+    <div id="para-div">
+      <p>At the time of this article, the latest version of <span class="bold">etcd</span> was <span class="bold">v3.4.14</span>.
+        For the setup, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/Apps/etcd</p>
+      <p>$ sudo apt-get install curl -y</p>
+      <p>$ curl -L https://storage.googleapis.com/etcd/v3.4.14/etcd-v3.4.14-linux-amd64.tar.gz -o $HOME/Downloads/etcd-v3.4.14-linux-amd64.tar.gz</p>
+      <p>$ cd $HOME/Downloads</p>
+      <p>$ gunzip ./etcd-v3.4.14-linux-amd64.tar.gz</p>
+      <p>$ tar xvf ./etcd-v3.4.14-linux-amd64.tar</p>
+      <p>$ cp ./etcd-v3.4.14-linux-amd64/etcd* $HOME/Apps/etcd</p>
+      <p>$ cd $HOME/Apps/etcd</p>
+    </div>
+    <div id="para-div">
+      <p>At this point, we should have the two executables <span class="hi-blue">etcd</span> and <span class="hi-blue">etcdctl</span>
+        in the current directory <span class="bold">$HOME/Apps/etcd</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Copy the contents of the following configuration to a YAML file called <span class="hi-grey">ps-etcd-conf.yml</span> in the
+        current directory <span class="bold">$HOME/Apps/etcd</span>.</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ps-etcd-conf.yml</div>
+      <div class="src-body-1">
+        <pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   01 Jan 2021
+#
+
+# This is the configuration file for the etcd server.
+
+# Human-readable name for this member.
+name: 'ps-etcd-server'
+
+# Path to the data directory.
+data-dir: ./data
+
+# List of comma separated URLs to listen on for peer traffic.
+listen-peer-urls: http://0.0.0.0:2380
+
+# List of comma separated URLs to listen on for client traffic.
+listen-client-urls: http://0.0.0.0:2379
+
+# List of this member's peer URLs to advertise to the rest of the cluster.
+# The URLs needed to be a comma-separated list.
+initial-advertise-peer-urls: http://192.168.1.33:2380
+
+# List of this member's client URLs to advertise to the public.
+# The URLs needed to be a comma-separated list.
+advertise-client-urls: http://192.168.1.33:2379
+
+# Initial cluster configuration for bootstrapping.
+initial-cluster: ps-etcd-server=http://192.168.1.33:2380
+
+# Enable debug-level logging for etcd.
+debug: false
+
+logger: zap</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To start the <span class="bold">etcd</span> server, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./etcd --config-file ./ps-etcd-conf.yml</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>{"level":"info","ts":"2020-12-31T11:20:38.271-0500","caller":"etcdmain/config.go:307","msg":"loaded server configuration, other configuration command line flags and environment variables will be ignored if provided","path":"./ps-etcd-conf.yml"}
+{"level":"info","ts":"2020-12-31T11:20:38.271-0500","caller":"embed/etcd.go:117","msg":"configuring peer listeners","listen-peer-urls":["http://0.0.0.0:2380"]}
+{"level":"info","ts":"2020-12-31T11:20:38.271-0500","caller":"embed/etcd.go:127","msg":"configuring client listeners","listen-client-urls":["http://0.0.0.0:2379"]}
+{"level":"info","ts":"2020-12-31T11:20:38.271-0500","caller":"embed/etcd.go:302","msg":"starting an etcd server","etcd-version":"3.4.14","git-sha":"8a03d2e96","go-version":"go1.12.17","go-os":"linux","go-arch":"amd64","max-cpu-set":1,"max-cpu-available":1,"member-initialized":false,"name":"ps-etcd-server","data-dir":"./data","wal-dir":"","wal-dir-dedicated":"","member-dir":"data/member","force-new-cluster":false,"heartbeat-interval":"100ms","election-timeout":"1s","initial-election-tick-advance":true,"snapshot-count":100000,"snapshot-catchup-entries":5000,"initial-advertise-peer-urls":["http://192.168.1.33:2380"],"listen-peer-urls":["http://0.0.0.0:2380"],"advertise-client-urls":["http://192.168.1.33:2379"],"listen-client-urls":["http://0.0.0.0:2379"],"listen-metrics-urls":[],"cors":["*"],"host-whitelist":["*"],"initial-cluster":"ps-etcd-server=http://192.168.1.33:2380","initial-cluster-state":"new","initial-cluster-token":"etcd-cluster","quota-size-bytes":2147483648,"pre-vote":false,"initial-corrupt-check":false,"corrupt-check-time-interval":"0s","auto-compaction-mode":"","auto-compaction-retention":"0s","auto-compaction-interval":"0s","discovery-url":"","discovery-proxy":""}
+2020-12-31 13:40:38.271868 W | pkg/fileutil: check file permission: directory "./data" exist, but the permission is "drwxrwxr-x". The recommended permission is "-rwx------" to prevent possible unprivileged access to the data.
+{"level":"info","ts":"2020-12-31T11:20:38.277-0500","caller":"etcdserver/backend.go:80","msg":"opened backend db","path":"data/member/snap/db","took":"5.825856ms"}
+{"level":"info","ts":"2020-12-31T11:20:38.285-0500","caller":"etcdserver/raft.go:486","msg":"starting local member","local-member-id":"35ef855791ca152c","cluster-id":"c4385a52ed4a8e11"}
+{"level":"info","ts":"2020-12-31T11:20:38.286-0500","caller":"raft/raft.go:1530","msg":"35ef855791ca152c switched to configuration voters=()"}
+{"level":"info","ts":"2020-12-31T11:20:38.286-0500","caller":"raft/raft.go:700","msg":"35ef855791ca152c became follower at term 0"}
+{"level":"info","ts":"2020-12-31T11:20:38.286-0500","caller":"raft/raft.go:383","msg":"newRaft 35ef855791ca152c [peers: [], term: 0, commit: 0, applied: 0, lastindex: 0, lastterm: 0]"}
+{"level":"info","ts":"2020-12-31T11:20:38.286-0500","caller":"raft/raft.go:700","msg":"35ef855791ca152c became follower at term 1"}
+{"level":"info","ts":"2020-12-31T11:20:38.286-0500","caller":"raft/raft.go:1530","msg":"35ef855791ca152c switched to configuration voters=(3886471614598616364)"}
+{"level":"warn","ts":"2020-12-31T11:20:38.297-0500","caller":"auth/store.go:1366","msg":"simple token is not cryptographically signed"}
+{"level":"info","ts":"2020-12-31T11:20:38.304-0500","caller":"etcdserver/quota.go:98","msg":"enabled backend quota with default value","quota-name":"v3-applier","quota-size-bytes":2147483648,"quota-size":"2.1 GB"}
+{"level":"info","ts":"2020-12-31T11:20:38.307-0500","caller":"etcdserver/server.go:803","msg":"starting etcd server","local-member-id":"35ef855791ca152c","local-server-version":"3.4.14","cluster-version":"to_be_decided"}
+{"level":"info","ts":"2020-12-31T11:20:38.316-0500","caller":"etcdserver/server.go:669","msg":"started as single-node; fast-forwarding election ticks","local-member-id":"35ef855791ca152c","forward-ticks":9,"forward-duration":"900ms","election-ticks":10,"election-timeout":"1s"}
+{"level":"info","ts":"2020-12-31T11:20:38.317-0500","caller":"embed/etcd.go:579","msg":"serving peer traffic","address":"[::]:2380"}
+{"level":"info","ts":"2020-12-31T11:20:38.318-0500","caller":"embed/etcd.go:244","msg":"now serving peer/client/metrics","local-member-id":"35ef855791ca152c","initial-advertise-peer-urls":["http://192.168.1.33:2380"],"listen-peer-urls":["http://0.0.0.0:2380"],"advertise-client-urls":["http://192.168.1.33:2379"],"listen-client-urls":["http://0.0.0.0:2379"],"listen-metrics-urls":[]}
+{"level":"info","ts":"2020-12-31T11:20:38.318-0500","caller":"raft/raft.go:1530","msg":"35ef855791ca152c switched to configuration voters=(3886471614598616364)"}
+{"level":"info","ts":"2020-12-31T11:20:38.318-0500","caller":"membership/cluster.go:392","msg":"added member","cluster-id":"c4385a52ed4a8e11","local-member-id":"35ef855791ca152c","added-peer-id":"35ef855791ca152c","added-peer-peer-urls":["http://192.168.1.33:2380"]}
+{"level":"info","ts":"2020-12-31T11:20:39.186-0500","caller":"raft/raft.go:923","msg":"35ef855791ca152c is starting a new election at term 1"}
+{"level":"info","ts":"2020-12-31T11:20:39.186-0500","caller":"raft/raft.go:713","msg":"35ef855791ca152c became candidate at term 2"}
+{"level":"info","ts":"2020-12-31T11:20:39.186-0500","caller":"raft/raft.go:824","msg":"35ef855791ca152c received MsgVoteResp from 35ef855791ca152c at term 2"}
+{"level":"info","ts":"2020-12-31T11:20:39.186-0500","caller":"raft/raft.go:765","msg":"35ef855791ca152c became leader at term 2"}
+{"level":"info","ts":"2020-12-31T11:20:39.186-0500","caller":"raft/node.go:325","msg":"raft.node: 35ef855791ca152c elected leader 35ef855791ca152c at term 2"}
+{"level":"info","ts":"2020-12-31T11:20:39.187-0500","caller":"etcdserver/server.go:2528","msg":"setting up initial cluster version","cluster-version":"3.4"}
+{"level":"info","ts":"2020-12-31T11:20:39.191-0500","caller":"membership/cluster.go:558","msg":"set initial cluster version","cluster-id":"c4385a52ed4a8e11","local-member-id":"35ef855791ca152c","cluster-version":"3.4"}
+{"level":"info","ts":"2020-12-31T11:20:39.191-0500","caller":"api/capability.go:76","msg":"enabled capabilities for version","cluster-version":"3.4"}
+{"level":"info","ts":"2020-12-31T11:20:39.191-0500","caller":"etcdserver/server.go:2560","msg":"cluster version is updated","cluster-version":"3.4"}
+{"level":"info","ts":"2020-12-31T11:20:39.191-0500","caller":"etcdserver/server.go:2037","msg":"published local member to cluster through raft","local-member-id":"35ef855791ca152c","local-member-attributes":"{Name:ps-etcd-server ClientURLs:[http://192.168.1.33:2379]}","request-path":"/0/members/35ef855791ca152c/attributes","cluster-id":"c4385a52ed4a8e11","publish-timeout":"7s"}
+{"level":"info","ts":"2020-12-31T11:20:39.192-0500","caller":"embed/serve.go:139","msg":"serving client traffic insecurely; this is strongly discouraged!","address":"[::]:2379"}</pre>
+    </div>
+    <div id="para-div">
+      <p>Open a new Terminal on <span class="bold">vm-1</span> and execute the following command to check the version:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ETCDCTL_API=3 ./etcdctl version</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>etcdctl version: 3.4.14
+API version: 3.4</pre>
+    </div>
+    <div id="para-div">
+      <p>In the new Terminal on <span class="bold">vm-1</span>, execute the following command to check the cluster members:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ETCDCTL_API=3 ./etcdctl --endpoints=http://192.168.1.33:2379 member list</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>35ef855791ca152c, started, ps-etcd-server, http://192.168.1.33:2380, http://192.168.1.33:2379, false</pre>
+    </div>
+    <div id="para-div">
+      <p>In the new Terminal on <span class="bold">vm-1</span>, execute the following command to store some arbitrary key-value in
+        <span class="bold">etcd</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ETCDCTL_API=3 ./etcdctl put token "ae1b310ef86p034ef22"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>OK</pre>
+    </div>
+    <div id="para-div">
+      <p>In the new Terminal on <span class="bold">vm-1</span>, execute the following command to retrieve the arbitrary key-value
+        from <span class="bold">etcd</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ETCDCTL_API=3 ./etcdctl get token</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>token
+ae1b310ef86p034ef22</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">PERFECT</span> !!! The <span class="bold">etcd</span> setup works as expected.</p>
+    </div>
+    <div id="para-div">
+      <p>Moving on, in the Terminal for <span class="bold">vm-2</span>, we will download and setup <span class="bold">Vault</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>At the time of this article, the latest version of <span class="bold">Vault</span> was <span class="bold">v1.6.1</span>.
+        For the setup, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/Apps/vault</p>
+      <p>$ sudo apt-get install curl jq -y</p>
+      <p>$ curl -L https://releases.hashicorp.com/vault/1.6.1/vault_1.6.1_linux_amd64.zip -o $HOME/Downloads/vault_1.6.1_linux_amd64.zip</p>
+      <p>$ cd $HOME/Downloads</p>
+      <p>$ unzip ./vault_1.6.1_linux_amd64.zip</p>
+      <p>$ cp ./vault $HOME/Apps/vault</p>
+      <p>$ cd $HOME/Apps/vault</p>
+    </div>
+    <div id="para-div">
+      <p>At this point, we should have the one executable <span class="hi-blue">vault</span> in the current directory <span class="bold">
+        $HOME/Apps/vault</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Copy the contents of the following HashiCorp Configuration Language (HCL) based configuration file called <span class="hi-grey">
+        ps-vault-conf.hcl</span> in the current directory <span class="bold">$HOME/Apps/vault</span>.</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ps-vault-conf.hcl</div>
+      <div class="src-body-1">
+        <pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   01 Jan 2021
+#
+
+storage "etcd" {
+  address  = "http://192.168.1.33:2379"
+  etcd_api = "v3"
+}
+
+listener "tcp" {
+  address     = "192.168.1.34:8200"
+  tls_disable = 1
+}
+
+disable_mlock = true
+
+api_addr = "http://192.168.1.34:8200"
+cluster_name = "ps-vault-server"
+cluster_addr = "https://192.168.1.34:8201"
+
+ui = true</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To start the <span class="bold">Vault</span> server, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault server -config=ps-vault-conf.hcl -log-level=info</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>==> Vault server configuration:
+
+        Api Address: http://192.168.1.34:8200
+                Cgo: disabled
+    Cluster Address: https://192.168.1.34:8201
+         Go Version: go1.15.4
+         Listener 1: tcp (addr: "192.168.1.34:8200", cluster address: "192.168.1.34:8201", max_request_duration: "1m30s", max_request_size: "33554432", tls: "disabled")
+          Log Level: info
+              Mlock: supported: true, enabled: false
+      Recovery Mode: false
+            Storage: etcd (HA disabled)
+            Version: Vault v1.6.1
+        Version Sha: 6d2db3f033e02e70202bef9ec896360062b88b03
+
+==> Vault server started! Log data will stream in below:
+
+2020-12-31T11:25:09.151-0500 [INFO]  proxy environment: http_proxy= https_proxy= no_proxy=</pre>
+    </div>
+    <div id="para-div">
+      <p>This is a fresh setup of <span class="bold">Vault</span> and hence needs to be <span class="underbold">INITIALIZED</span>
+        for the first time only.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a new Terminal on <span class="bold">vm-2</span> and execute the following commands to initialize <span class="bold">
+        Vault</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ export VAULT_ADDR='http://192.168.1.34:8200'</p>
+      <p>$ ./vault operator init</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>Unseal Key 1: XX3yeN2mV3BbZo3Izz6V3BnmUfPiyBbHUAsrnv49e0Qd
+Unseal Key 2: zsBxnrQiEgSTR7RMIm9f/jukcYwYizIeSisaNv8ZTPgG
+Unseal Key 3: MSvczb8YXMlbRwNpWMSDnuWCnc7S0yss6oRMDINvxXCw
+Unseal Key 4: g26TABEhtGxTySup8pkRYW2elIkn7ErPAxfhWM9Hc4A4
+Unseal Key 5: WzwAsDyxnyI8O1HKekYAdzaBUa8vJiwMk+zQPF6wYrAC
+
+Initial Root Token: s.ELjcgaF2DbVQuCGGmXpFmVH7
+
+Vault initialized with 5 key shares and a key threshold of 3. Please securely
+distribute the key shares printed above. When the Vault is re-sealed,
+restarted, or stopped, you must supply at least 3 of these keys to unseal it
+before it can start servicing requests.
+
+Vault does not store the generated master key. Without at least 3 key to
+reconstruct the master key, Vault will remain permanently sealed!
+
+It is possible to generate new unseal keys, provided you have a quorum of
+existing unseal keys shares. See "vault operator rekey" for more information.</pre>
+    </div>
+    <div id="para-div">
+      <p>Notice the 5 <span class="bold">Key Shares</span> and the <span class="bold">root</span> token displayed in the Output.7
+        above. One needs to safe-guard these keys and token.</p>
+    </div>
+    <div id="para-div">
+      <p>In the first Terminal on <span class="bold">vm-2</span> where the <span class="bold">Vault</span> server is running, we will
+        see the following additional output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>2020-12-31T11:26:48.620-0500 [INFO]  core: security barrier not initialized
+2020-12-31T11:26:48.634-0500 [INFO]  core: security barrier initialized: stored=1 shares=5 threshold=3
+2020-12-31T11:26:48.643-0500 [INFO]  core: post-unseal setup starting
+2020-12-31T11:26:48.666-0500 [INFO]  core: loaded wrapping token key
+2020-12-31T11:26:48.666-0500 [INFO]  core: successfully setup plugin catalog: plugin-directory=
+2020-12-31T11:26:48.668-0500 [INFO]  core: no mounts; adding default mount table
+2020-12-31T11:26:48.672-0500 [INFO]  core: successfully mounted backend: type=cubbyhole path=cubbyhole/
+2020-12-31T11:26:48.673-0500 [INFO]  core: successfully mounted backend: type=system path=sys/
+2020-12-31T11:26:48.673-0500 [INFO]  core: successfully mounted backend: type=identity path=identity/
+2020-12-31T11:26:48.690-0500 [INFO]  core: successfully enabled credential backend: type=token path=token/
+2020-12-31T11:26:48.692-0500 [INFO]  core: restoring leases
+2020-12-31T11:26:48.692-0500 [INFO]  rollback: starting rollback manager
+2020-12-31T11:26:48.695-0500 [INFO]  expiration: lease restore complete
+2020-12-31T11:26:48.706-0500 [INFO]  identity: entities restored
+2020-12-31T11:26:48.707-0500 [INFO]  identity: groups restored
+2020-12-31T11:26:48.710-0500 [INFO]  core: usage gauge collection is disabled
+2020-12-31T11:26:48.711-0500 [INFO]  core: post-unseal setup complete
+2020-12-31T11:26:48.715-0500 [INFO]  core: root token generated
+2020-12-31T11:26:48.716-0500 [INFO]  core: pre-seal teardown starting
+2020-12-31T11:26:48.716-0500 [INFO]  rollback: stopping rollback manager
+2020-12-31T11:26:48.716-0500 [INFO]  core: pre-seal teardown complete</pre>
+    </div>
+    <div id="para-div">
+      <p>In the second Terminal on <span class="bold">vm-2</span>, execute the following command to check the status of
+        <span class="bold">Vault</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault status</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>Key                Value
+---                -----
+Seal Type          shamir
+Initialized        true
+Sealed             true
+Total Shares       5
+Threshold          3
+Unseal Progress    0/3
+Unseal Nonce       n/a
+Version            1.6.1
+Storage Type       etcd
+HA Enabled         false</pre>
+    </div>
+    <div id="para-div">
+      <p>As is evident from the Output.9, the Barrier of <span class="bold">Vault</span> is in the <span class="bold">sealed</span>
+        state and no operations will be permitted. Also, notice the Storage Backend used - it is <span class="bold">etcd</span>.</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">EXCELLENT</span> !!! The <span class="bold">Vault</span> setup works as expected.</p>
+    </div>
+    <br/>
+    <div id="info-div">
+      <h4>Development Mode</h4>
+      <pre>The <span class="bold">Vault</span> server can also be started in a development mode using the <span class="hi-yellow">-dev</span> option as shown below:<br/>
+  $ ./vault server -dev<br/>
+In this mode, the Storage Backend is entirely in-memory and the server is automatically initialized and unsealed</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Moving on, in the Terminal for <span class="bold">vm-3</span>, we will setup the popular SQL database <span class="bold">
+        Postgres</span> to run in <span class="bold">Docker</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Ensure <span class="bold">Docker</span> is installed on the system. Else, follow the instructions provided in the article
+        <a href="https://polarsparc.github.io/Docker/Docker.html" target="_blank"><span class="bold">Introduction to Docker</span></a>
+        to complete the installation.</p>
+      <p>Check the latest stable version for <a href="https://hub.docker.com/_/postgres" target="_blank"><span class="bold">Postgres
+        </span></a> docker image. Version <span class="hi-yellow">12.5</span> was the latest at the time of this article.</p>
+      <p>To download the latest docker image for <span class="bold">Postgres</span>, execute the following command in the Terminal
+        for <span class="bold">vm-3</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker pull postgres:12.5</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>12.5: Pulling from library/postgres
+68ced04f60ab: Pull complete 
+59f4081d08e6: Pull complete 
+74fc17f00df0: Pull complete 
+8e5e30d57895: Pull complete 
+a1fd179b16c6: Pull complete 
+7496d9eb4150: Pull complete 
+0328931819fd: Pull complete 
+8acde85a664a: Pull complete 
+38e831e7d2d3: Pull complete 
+582b4ba3b134: Pull complete 
+cbf69ccc1db5: Pull complete 
+1e1f3255b2e0: Pull complete 
+c1c0cedd64ec: Pull complete 
+6adde56874ed: Pull complete 
+Digest: sha256:110d3325db02daa6e1541fdd37725fcbecb7d51411229d922562f208c51d35cc
+Status: Downloaded newer image for postgres:12.5
+docker.io/library/postgres:12.5</pre>
+    </div>
+    <div id="para-div">
+      <p>We need to specifiy a directory on the host that will be mounted as a data volume for the <span class="bold">Postgres</span>
+        database.</p>
+      <p>To create a data directory on the host, execute the following command in the Terminal for <span class="bold">vm-3</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/Apps/postgres</p>
+    </div>
+    <div id="para-div">
+      <p>Now, we will need to initialze and start the <span class="bold">Postgres</span> database.</p>
+      <p>To initialze and start the <span class="bold">Postgres</span> database, execute the following command in the Terminal for
+        <span class="bold">vm-3</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -d --rm --name postgres-12.5 -e POSTGRES_USER=polarsparc -e POSTGRES_PASSWORD=polarsparc\$123 -p 192.168.1.35:5432:5432
+        -v $HOME/Apps/postgres:/var/lib/postgresql/data postgres:12.5</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>a2dadd7c4e2e0ac5a7c776b75b4942c8429a96665aa6aa7965c9617eef724701</pre>
+    </div>
+    <div id="para-div">
+      <p>To check the <span class="bold">Postgres</span> database log, execute the following command in the Terminal for
+        <span class="bold">vm-3</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker logs postgres-12.5</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>...SNIP...
+2020-12-31 11:28:54.433 UTC [1] LOG:  starting PostgreSQL 12.5 (Debian 12.5-1.pgdg100+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 8.3.0-6) 8.3.0, 64-bit
+2020-12-31 11:28:54.435 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2020-12-31 11:28:54.436 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2020-12-31 11:28:54.443 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2020-12-31 11:28:54.466 UTC [65] LOG:  database system was shut down at 2020-12-29 20:57:54 UTC
+2020-12-31 11:28:54.472 UTC [1] LOG:  database system is ready to accept connections</pre>
+    </div>
+    <div id="para-div">
+      <p>Finally, we will need to create the database called <span class="hi-yellow">my_dev_db</span>. For that we need to enter the
+        docker shell by executing the following command in the Terminal for <span class="bold">vm-3</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker exec -it postgres-12.5 sh</p>
+    </div>
+    <div id="para-div">
+      <p>The shell prompt will change to <span class="bold">#</span></p>
+    </div>
+    <div id="para-div">
+      <p>We need to enter the <span class="hi-yellow">psql</span> shell by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p># psql -U polarsparc</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>psql (12.5 (Debian 12.5-1.pgdg100+1))
+Type "help" for help.</pre>
+    </div>
+    <div id="para-div">
+      <p>The shell prompt will change to <span class="bold">polarsparc=#</span></p>
+    </div>
+    <div id="para-div">
+      <p>Execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>polarsparc=# CREATE ROLE dev_role NOINHERIT;</p>
+    </div>
+    <div id="para-div">
+      <p>Next, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>polarsparc=# CREATE DATABASE my_dev_db;</p>
+    </div>
+    <div id="para-div">
+      <p>Then, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>polarsparc=# GRANT ALL PRIVILEGES ON DATABASE my_dev_db TO dev_role;</p>
+    </div>
+    <div id="para-div">
+      <p>To exit <span class="bold">psql</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>polarsparc=# \q</p>
+    </div>
+    <div id="para-div">
+      <p>Finally, to exit docker shell, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p># exit</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">AWESOME</span> !!! This completes the <span class="bold">Postgres</span> setup.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with HashiCorp Vault</p>
+    </div>
+    <div id="para-div">
+      <p>Before we can perform any operations in <span class="bold">Vault</span>, one needs to first <span class="bold">unseql</span>
+        the Barrier and the <span class="bold">login</span> to <span class="bold">Vault</span> using the <span class="bold">root</span>
+        token.</p>
+    </div>
+    <div id="para-div">
+      <p>In the second Terminal on <span class="bold">vm-2</span> and execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault operator unseal</p>
+    </div>
+    <div id="para-div">
+      <p>This will prompt us to enter one of the Key Shares. We will pick the <span class="bold">Unseal Key 1</span> in this case.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>Key                Value
+---                -----
+Seal Type          shamir
+Initialized        true
+Sealed             true
+Total Shares       5
+Threshold          3
+Unseal Progress    1/3
+Unseal Nonce       cc14b215-7ba0-993d-c3fb-abf13305deb2
+Version            1.6.1
+Storage Type       etcd
+HA Enabled         false</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="underbold">REMEMBER</span> we will need at least 3 (Key Thresold) keys before the Barrier is unsealed. The
+        above was the first one.</p>
+    </div>
+    <div id="para-div">
+      <p>Execute the following command the second time:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault operator unseal</p>
+    </div>
+    <div id="para-div">
+      <p>This will again prompt us to enter one of the Key Shares. This time we will pick <span class="bold">Unseal Key 3</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>Key                Value
+---                -----
+Seal Type          shamir
+Initialized        true
+Sealed             true
+Total Shares       5
+Threshold          3
+Unseal Progress    2/3
+Unseal Nonce       cc14b215-7ba0-993d-c3fb-abf13305deb2
+Version            1.6.1
+Storage Type       etcd
+HA Enabled         false</pre>
+    </div>
+    <div id="para-div">
+      <p>Execute the following command the third (and last) time:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault operator unseal</p>
+    </div>
+    <div id="para-div">
+      <p>This will again prompt us to enter one of the Key Shares. This time we will pick <span class="bold">Unseal Key 5</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>Key             Value
+---             -----
+Seal Type       shamir
+Initialized     true
+Sealed          false
+Total Shares    5
+Threshold       3
+Version         1.6.1
+Storage Type    etcd
+Cluster Name    vault-cluster-586b9d85
+Cluster ID      c43ea8d3-e9f3-ff1d-1549-de4e17e3a141
+HA Enabled      false</pre>
+    </div>
+    <div id="para-div">
+      <p>In the first Terminal on <span class="bold">vm-2</span> where the <span class="bold">Vault</span> server is running, we will
+        see the following additional output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.17</h4>
+      <pre>2020-12-31T11:30:17.259-0500 [INFO]  core.cluster-listener.tcp: starting listener: listener_address=192.168.1.34:8201
+2020-12-31T11:30:17.259-0500 [INFO]  core.cluster-listener: serving cluster requests: cluster_listen_address=192.168.1.34:8201
+2020-12-31T11:30:17.260-0500 [INFO]  core: post-unseal setup starting
+2020-12-31T11:30:17.265-0500 [INFO]  core: loaded wrapping token key
+2020-12-31T11:30:17.265-0500 [INFO]  core: successfully setup plugin catalog: plugin-directory=
+2020-12-31T11:30:17.274-0500 [INFO]  core: successfully mounted backend: type=system path=sys/
+2020-12-31T11:30:17.275-0500 [INFO]  core: successfully mounted backend: type=identity path=identity/
+2020-12-31T11:30:17.275-0500 [INFO]  core: successfully mounted backend: type=cubbyhole path=cubbyhole/
+2020-12-31T11:30:17.282-0500 [INFO]  core: successfully enabled credential backend: type=token path=token/
+2020-12-31T11:30:17.284-0500 [INFO]  core: restoring leases
+2020-12-31T11:30:17.284-0500 [INFO]  rollback: starting rollback manager
+2020-12-31T11:30:17.285-0500 [INFO]  expiration: lease restore complete
+2020-12-31T11:30:17.286-0500 [INFO]  identity: entities restored
+2020-12-31T11:30:17.291-0500 [INFO]  identity: groups restored
+2020-12-31T11:30:17.296-0500 [INFO]  core: usage gauge collection is disabled
+2020-12-31T11:30:17.297-0500 [INFO]  core: post-unseal setup complete
+2020-12-31T11:30:17.297-0500 [INFO]  core: vault is unsealed</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">WALLA</span> !!! The Barrier has been unsealed.</p>
+    </div>
+    <div id="para-div">
+      <p>In the second Terminal on <span class="bold">vm-2</span> and execute the following command to login to <span class="bold">
+        Vault</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault login</p>
+    </div>
+    <div id="para-div">
+      <p>This will prompt us to enter a token. We will use the <span class="bold">Initial root token</span> to authenticate.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.18</h4>
+      <pre>Success! You are now authenticated. The token information displayed below
+is already stored in the token helper. You do NOT need to run "vault login"
+again. Future Vault requests will automatically use this token.
+
+Key                  Value
+---                  -----
+token                s.ELjcgaF2DbVQuCGGmXpFmVH7
+token_accessor       dvqbPLOE6xq9esYc9lcXmjbL
+token_duration       -
+token_renewable      false
+token_policies       ["root"]
+identity_policies    []
+policies             ["root"]</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the Auth Methods enabled, execute the following command in the second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault auth list</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.19</h4>
+      <pre>Path      Type     Accessor               Description
+----      ----     --------               -----------
+token/    token    auth_token_16934c45    token based credentials</pre>
+    </div>
+    <div id="para-div">
+      <p>From Output.19 above, only the token based Auth Method is enabled, which is the default.</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the Secrets Engines enabled, execute the following command in the second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault secrets list</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.20</h4>
+      <pre>Path          Type         Accessor              Description
+----          ----         --------              -----------
+cubbyhole/    cubbyhole    cubbyhole_56dbdfca    per-token private secret storage
+identity/     identity     identity_a9b26092     identity store
+sys/          system       system_a2c9881a       system endpoints used for control, policy and debugging</pre>
+    </div>
+    <div id="para-div">
+      <p>To enable the simple key-value (kv) Secrets Engine at the path <span class="bold">/secret</span>, execute the following
+        command in the second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault secrets enable -path=secret kv</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.21</h4>
+      <pre>Success! Enabled the kv secrets engine at: secret/</pre>
+    </div>
+    <div id="para-div">
+      <p>In the first Terminal on <span class="bold">vm-2</span> where the <span class="bold">Vault</span> server is running, we will
+        see the following additional output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.22</h4>
+      <pre>2020-12-31T11:32:20.386-0500 [INFO]  core: successful mount: namespace= path=secret/ type=kv
+2020-12-31T11:32:46.582-0500 [INFO]  core: mount tuning of options: path=secret/ options=map[version:2]
+2020-12-31T11:32:46.587-0500 [INFO]  secrets.kv.kv_68898e16: collecting keys to upgrade
+2020-12-31T11:32:46.589-0500 [INFO]  secrets.kv.kv_68898e16: done collecting keys: num_keys=1
+2020-12-31T11:32:46.589-0500 [INFO]  secrets.kv.kv_68898e16: upgrading keys finished</pre>
+    </div>
+    <div id="para-div">
+      <p>Once again, let us list all the Secrets Engines enabled by executing the following command in the second Terminal on
+        <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault secrets list</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.23</h4>
+      <pre>Path          Type         Accessor              Description
+----          ----         --------              -----------
+cubbyhole/    cubbyhole    cubbyhole_56dbdfca    per-token private secret storage
+identity/     identity     identity_a9b26092     identity store
+secret/       kv           kv_d724bada           n/a
+sys/          system       system_a2c9881a       system endpoints used for control, policy and debugging</pre>
+    </div>
+    <div id="para-div">
+      <p>From Output.23 above, we observe the just enabled kv Secrets Engine mounted at the path <span class="bold">secret/</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the secrets stored at the path <span class="bold">secret/</span>, execute the following command in the second
+        Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault kv list secret</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.24</h4>
+      <pre>No value found at secret/</pre>
+    </div>
+    <div id="para-div">
+      <p>To store some arbitrary secret at the path <span class="bold">secret/</span>, execute the following command in the second
+        Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault kv put secret/my-secret password="S3cr3t\$K3y!"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.25</h4>
+      <pre>Success! Data written to: secret/my-secret</pre>
+    </div>
+    <div id="para-div">
+      <p>To retrieve the arbitrary secret stored at the path <span class="bold">secret/my-secret</span>, execute the following
+        command in the second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault kv get secret/my-secret</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.26</h4>
+      <pre>====== Data ======
+Key         Value
+---         -----
+password    S3cr3t$K3y!</pre>
+    </div>
+    <div id="para-div">
+      <p>By default, the kv Secrets Engine is the version 1 engine with no versioning. Only verion 2 engine supports versioning and
+        metadata.</p>
+    </div>
+    <div id="para-div">
+      <p>To enable versioning for the Secrets Engine at the path <span class="bold">secret/</span>, execute the following command in
+        the second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault kv enable-versioning secret</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.27</h4>
+      <pre>Success! Tuned the secrets engine at: secret/</pre>
+    </div>
+    <div id="para-div">
+      <p>Once again, to retrieve the arbitrary secret stored at the path <span class="bold">secret/my-secret</span>, execute the
+        following command in the second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault kv get secret/my-secret</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.28</h4>
+      <pre>====== Metadata ======
+Key              Value
+---              -----
+created_time     2020-12-31T11:34:12.329237498Z
+deletion_time    n/a
+destroyed        false
+version          1
+
+====== Data ======
+Key         Value
+---         -----
+password    S3cr3t$K3y!</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.28 above, we see the metadata information along with the version number displayed.</p>
+    </div>
+    <div id="para-div">
+      <p>To update the arbitrary secret at the path <span class="bold">secret/my-secret</span>, execute the following command in the
+        second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault kv put secret/my-secret password="Simpl3#K3y!"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.29</h4>
+      <pre>Key              Value
+---              -----
+created_time     2020-12-31T11:34:12.329237498Z
+deletion_time    n/a
+destroyed        false
+version          2</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.29 above, we see the updated metadata information along with the updated version number displayed.</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, to retrieve the arbitrary secret stored at the path <span class="bold">secret/my-secret</span>, execute the
+        following command in the second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault kv get secret/my-secret</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.30</h4>
+      <pre>====== Metadata ======
+Key              Value
+---              -----
+created_time     2020-12-31T11:34:12.329237498Z
+deletion_time    n/a
+destroyed        false
+version          2
+
+====== Data ======
+Key         Value
+---         -----
+password    Simpl3#K3y!</pre>
+    </div>
+    <div id="para-div">
+      <p>To retrieve the arbitrary secret stored at the path <span class="bold">secret/my-secret</span> using the HTTP API, execute
+        the following command in the second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl -H "X-Vault-Token: s.ELjcgaF2DbVQuCGGmXpFmVH7" http://192.168.1.34:8200/v1/secret/data/my-secret | jq</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.31</h4>
+      <pre>{
+  "request_id": "26723b95-47c2-3d27-7caa-8bf0cdda43d0",
+  "lease_id": "",
+  "renewable": false,
+  "lease_duration": 0,
+  "data": {
+    "data": {
+      "password": "Simpl3#K3y!"
+    },
+    "metadata": {
+      "created_time": "2020-12-31T11:34:12.329237498Z",
+      "deletion_time": "",
+      "destroyed": false,
+      "version": 2
+    }
+  },
+  "wrap_info": null,
+  "warnings": null,
+  "auth": null
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>To soft delete the arbitrary secret at the path <span class="bold">secret/my-secret</span>, execute the following command
+        in the second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault kv delete secret/my-secret</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.32</h4>
+      <pre>Success! Data deleted (if it existed) at: secret/my-secret</pre>
+    </div>
+    <div id="para-div">
+      <p>Once again, to retrieve the arbitrary secret stored at the path <span class="bold">secret/my-secret</span>, execute the
+        following command in the second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault kv get secret/my-secret</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.33</h4>
+      <pre>====== Metadata ======
+Key              Value
+---              -----
+created_time     2020-12-31T11:34:12.329237498Z
+deletion_time    2020-12-31T11:36:23.194899664Z
+destroyed        false
+version          2</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.33 above, we see the updated metadata information along with the deletion time displayed.</p>
+    </div>
+    <div id="para-div">
+      <p>To list the currently deployed policies on the <span class="bold">Vault</span>, execute the following command in the second
+        Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault policy list</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.34</h4>
+      <pre>default
+root</pre>
+    </div>
+    <div id="para-div">
+      <p>To display the access rules defined in <span class="bold">default</span> policy, execute the following command in the second
+        Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault policy read default</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.35</h4>
+      <pre># Allow tokens to look up their own properties
+path "auth/token/lookup-self" {
+    capabilities = ["read"]
+}
+
+# Allow tokens to renew themselves
+path "auth/token/renew-self" {
+    capabilities = ["update"]
+}
+
+# Allow tokens to revoke themselves
+path "auth/token/revoke-self" {
+    capabilities = ["update"]
+}
+
+# Allow a token to look up its own capabilities on a path
+path "sys/capabilities-self" {
+    capabilities = ["update"]
+}
+
+# Allow a token to look up its own entity by id or name
+path "identity/entity/id/{{identity.entity.id}}" {
+  capabilities = ["read"]
+}
+path "identity/entity/name/{{identity.entity.name}}" {
+  capabilities = ["read"]
+}
+
+# Allow a token to look up its resultant ACL from all policies. This is useful
+# for UIs. It is an internal path because the format may change at any time
+# based on how the internal ACL features and capabilities change.
+path "sys/internal/ui/resultant-acl" {
+    capabilities = ["read"]
+}
+
+# Allow a token to renew a lease via lease_id in the request body; old path for
+# old clients, new path for newer
+path "sys/renew" {
+    capabilities = ["update"]
+}
+path "sys/leases/renew" {
+    capabilities = ["update"]
+}
+
+# Allow looking up lease properties. This requires knowing the lease ID ahead
+# of time and does not divulge any sensitive information.
+path "sys/leases/lookup" {
+    capabilities = ["update"]
+}
+
+# Allow a token to manage its own cubbyhole
+path "cubbyhole/*" {
+    capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# Allow a token to wrap arbitrary values in a response-wrapping token
+path "sys/wrapping/wrap" {
+    capabilities = ["update"]
+}
+
+# Allow a token to look up the creation time and TTL of a given
+# response-wrapping token
+path "sys/wrapping/lookup" {
+    capabilities = ["update"]
+}
+
+# Allow a token to unwrap a response-wrapping token. This is a convenience to
+# avoid client token swapping since this is also part of the response wrapping
+# policy.
+path "sys/wrapping/unwrap" {
+    capabilities = ["update"]
+}
+
+# Allow general purpose tools
+path "sys/tools/hash" {
+    capabilities = ["update"]
+}
+path "sys/tools/hash/*" {
+    capabilities = ["update"]
+}
+
+# Allow checking the status of a Control Group request if the user has the
+# accessor
+path "sys/control-group/request" {
+    capabilities = ["update"]
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, we will demonstrate one of the <span class="underbold">INTERESTING</span> features of <span class="bold">Vault</span>
+        - the generation and automatic revokation of a temporary access token.</p>
+    </div>
+    <div id="para-div">
+      <p>Let us first store some arbitrary secret at the path <span class="bold">secret/top-secret</span> by executing the following
+        command in the second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault kv put secret/top-secret password="G0lden#K3y!"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.36</h4>
+      <pre>Success! Data written to: secret/top-secret</pre>
+    </div>
+    <div id="para-div">
+      <p>To generate an ephemeral token that is valid for <span class="bold">1</span> minute, execute the following command in the
+        second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault token create -ttl 1m</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.37</h4>
+      <pre>Key                  Value
+        ---                  -----
+token                s.YQ0gCWVNZEQGLuoPmW9UG4es
+token_accessor       KujhEGCMUKYHOK2dhR6wSY8c
+token_duration       1m
+token_renewable      true
+token_policies       ["root"]
+identity_policies    []
+policies             ["root"]</pre>
+    </div>
+    <div id="para-div">
+      <p>To retrieve the arbitrary secret stored at the path <span class="bold">secret/top-secret</span>, execute the following
+        command in the second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ VAULT_TOKEN="s.YQ0gCWVNZEQGLuoPmW9UG4es" ./vault kv get secret/top-secret</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.38</h4>
+      <pre>====== Metadata ======
+Key              Value
+---              -----
+created_time     2020-12-31T11:41:01.027018677Z
+deletion_time    n/a
+destroyed        false
+version          1
+
+====== Data ======
+Key         Value
+---         -----
+password    G0lden#K3y!</pre>
+    </div>
+    <div id="para-div">
+      <p>Wait for about a minute and in the first Terminal on <span class="bold">vm-2</span> where the <span class="bold">Vault</span>
+        server is running, we will see the following additional output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.39</h4>
+      <pre>2020-12-31T11:42:01.538-0500 [INFO]  expiration: revoked lease: lease_id=auth/token/create/h29d3d2bdc894604c79eccd7e5cf8b28b7f874bd515589e62cf245d0ad4381b3c</pre>
+    </div>
+    <div id="para-div">
+      <p>Once again, to retrieve the arbitrary secret stored at the path <span class="bold">secret/top-secret</span>, execute the
+        following command in the second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ VAULT_TOKEN="s.YQ0gCWVNZEQGLuoPmW9UG4es" ./vault kv get secret/top-secret</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.40</h4>
+      <pre>Error making API request.
+
+URL: GET http://192.168.1.34:8200/v1/sys/internal/ui/mounts/secret/top-secret
+Code: 403. Errors:
+
+* permission denied</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">BINGO</span> !!! The ephemeral token was revoked as expected.</p>
+    </div>
+    <div id="para-div">
+      <p>Now for the <span class="underbold">FINALE</span>, we will demonstrate the dynamic secrets creation and automatic revokation
+        capability of <span class="bold">Vault</span> for the <span class="bold">Postgres</span> database.</p>
+    </div>
+    <div id="para-div">
+      <p>First, we need to enable the Database Secrets Engine (for generating the database credentials dynamically) by executing the
+        following command in the second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault secrets enable database</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.41</h4>
+      <pre>Success! Enabled the database secrets engine at: database/</pre>
+    </div>
+    <div id="para-div">
+      <p>In the first Terminal on <span class="bold">vm-2</span> where the <span class="bold">Vault</span> server is running, we will
+        see the following additional output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.42</h4>
+      <pre>2020-12-31T11:46:58.316-0500 [INFO]  secrets.database.database_ae606b34: initializing database rotation queue
+2020-12-31T11:46:58.317-0500 [INFO]  core: successful mount: namespace= path=database/ type=database
+2020-12-31T11:46:58.330-0500 [INFO]  secrets.database.database_ae606b34: populating role rotation queue
+2020-12-31T11:46:58.334-0500 [INFO]  secrets.database.database_ae606b34: starting periodic ticker</pre>
+    </div>
+    <div id="para-div">
+      <p>Once again, let us list all the Secrets Engines enabled by executing the following command in the second Terminal on
+        <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault secrets list</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.43</h4>
+      <pre>Path          Type         Accessor              Description
+----          ----         --------              -----------
+cubbyhole/    cubbyhole    cubbyhole_56dbdfca    per-token private secret storage
+database/     database     database_af307901     n/a
+identity/     identity     identity_a9b26092     identity store
+secret/       kv           kv_d724bada           n/a
+sys/          system       system_a2c9881a       system endpoints used for control, policy and debugging</pre>
+    </div>
+    <div id="para-div">
+      <p>From Output.43 above, we observe the just enabled Database Secrets Engine mounted at the path
+        <span class="bold">database/</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Next, we need to configure the Database Secrets Engine to interact with the <span class="bold">Postgres</span> database
+        through the <span class="hi-yellow">postgresql-database-plugin</span> plugin interface.</p>
+    </div>
+    <div id="para-div">
+      <p>To configure the Database Secrets Engine with the plugin, the connection URL and the user/password credentials for the
+        <span class="bold">Postgres</span> database, execute the following command in the second Terminal on
+        <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <pre>$ ./vault write database/config/my_dev_db \
+plugin_name=postgresql-database-plugin \
+connection_url="postgresql://{{username}}:{{password}}@192.168.1.35:5432/my_dev_db?sslmode=disable" \
+allowed_roles="dev_role" \
+username="polarsparc" \
+password="polarsparc\$123"</pre>
+    </div>
+    <div id="para-div">
+      <p>There will be <span class="underbold">NO</span> output.</p>
+    </div>
+    <div id="para-div">
+      <p>Next, we need to associate the <span class="bold">Postgres</span> plugin with a role in <span class="bold">Vault</span>.
+        A <span class="bold">Vault</span> role is a logical name that maps to the dynamically generated database credentials. The
+        credentials generation are expressed as SQL statements and assigned to the <span class="bold">Vault</span> role. The SQL
+        statements dynamically create a new role and then grant that role the permissions that are defined in the associated
+        <span class="bold">Postgres</span> role <span class="hi-yellow">dev_role</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To create the <span class="bold">Vault</span> role called <span class="hi-grey">dev_role</span> and associate the SQL
+        statements for the creation of dynamic database credentials (with an expiry of <span class="bold">5</span> mins), execute
+        the following command in the second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <pre>$ ./vault write database/roles/dev_role \
+db_name=my_dev_db \
+creation_statements="CREATE ROLE \"{{name}}\" WITH LOGIN PASSWORD '{{password}}' VALID UNTIL '{{expiration}}' INHERIT; \
+  GRANT dev_role TO \"{{name}}\";" \
+default_ttl="5m" \
+max_ttl="10m"</pre>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.44</h4>
+      <pre>Success! Data written to: database/roles/dev_role</pre>
+    </div>
+    <div id="para-div">
+      <p>To request an ephemeral database credential that is valid for <span class="bold">5</span> mins, execute the following
+        command in the second Terminal on <span class="bold">vm-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ./vault read database/creds/dev_role</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.45</h4>
+      <pre>Key                Value
+---                -----
+lease_id           database/creds/dev_role/wEaRzHEtVuiCFFyqsuQp2CM8
+lease_duration     5m
+lease_renewable    true
+password           -i0QEYUY1OS66HoOrsF1
+username           v-root-dev_role-pIfKVMpcU7Cj42crwllF-1609333873</pre>
+    </div>
+    <div id="para-div">
+      <p>To test the dynamically created database credentials, execute the following command in the Terminal for <span class="bold">
+        vm-3</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker exec -it postgres-12.5 sh</p>
+    </div>
+    <div id="para-div">
+      <p>The shell prompt will change to <span class="bold">#</span></p>
+    </div>
+    <div id="para-div">
+      <p>We need to enter the <span class="bold">psql</span> shell by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p># psql -d my_dev_db -U v-root-dev_role-pIfKVMpcU7Cj42crwllF-1609333873</p>
+    </div>
+    <div id="para-div">
+      <p>The shell prompt will change to <span class="bold">my_dev_db=&gt;</span></p>
+    </div>
+    <div id="para-div">
+      <p>Execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>my_dev_db=&gt; SELECT usename, valuntil FROM pg_user;</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.46</h4>
+      <pre>                     usename                     |        valuntil        
+-------------------------------------------------+------------------------
+ polarsparc                                      | 
+ v-root-dev_role-pIfKVMpcU7Cj42crwllF-1609333873 | 2020-12-31 11:53:18+00
+(2 rows)</pre>
+    </div>
+    <div id="para-div">
+      <p>To exit <span class="bold">psql</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>polarsparc=# \q</p>
+    </div>
+    <div id="para-div">
+      <p>Wait for about <span class="bold">5</span> mins anhd in the first Terminal on <span class="bold">vm-2</span> where the
+        <span class="bold">Vault</span> server is running, we will see the following additional output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.47</h4>
+      <pre>2020-12-31T11:53:18.138-0500 [INFO]  expiration: revoked lease: lease_id=database/creds/dev_role/wEaRzHEtVuiCFFyqsuQp2CM8</pre>
+    </div>
+    <div id="para-div">
+      <p>Re-enter the <span class="bold">psql</span> shell by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p># psql -d my_dev_db -U v-root-dev_role-pIfKVMpcU7Cj42crwllF-1609333873</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.48</h4>
+      <pre>psql: error: FATAL:  role "v-root-dev_role-pIfKVMpcU7Cj42crwllF-1609333873" does not exist</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">HOORAY</span> !!! The dynamically generated database credentials was revoked as expected.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://github.com/etcd-io/etcd/releases/" target="_blank"><span class="bold">etcd Releases</span></a></p>
+      <p><a href="https://etcd.io/docs/v3.4.0/op-guide/configuration/" target="_blank"><span class="bold">etcd Configuration Flags</span></a></p>
+      <p><a href="https://www.vaultproject.io/docs/internals/architecture" target="_blank"><span class="bold">Vault Architecture</span></a></p>
+      <p><a href="https://www.vaultproject.io/docs/configuration" target="_blank"><span class="bold">Vault Configuration</span></a></p>
+      <p><a href="https://www.vaultproject.io/docs/commands" target="_blank"><span class="bold">Vault CLI Commands</span></a></p>
+      <p><a href="https://learn.hashicorp.com/tutorials/vault/database-secrets" target="_blank"><span class="bold">Vault Dynamic Database Secrets</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

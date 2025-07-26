@@ -1,0 +1,589 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=windows-1252">
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Introduction to SQLAlchemy :: Part - 3">
+    <meta name="subject" content="Introduction to SQLAlchemy :: Part - 3">
+    <meta name="keywords" content="database, python">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Introduction to SQLAlchemy :: Part - 3</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br>
+    <table borber="0">
+      <tbody><tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </tbody></table>
+    <br>
+    <div id="title-div">
+      <p>Introduction to SQLAlchemy :: Part - 3</p>
+    </div>
+    <br>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">04/25/2020</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"> <br>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/BigData/SQLAlchemy-2.html" target="_blank"><span class="bold">Part - 2</span></a>
+        of this series, we began exploring the basics of the the Object Relational Mapping (<span class="hi-blue">ORM</span>)
+        layer for interacting with <span class="bold">PostgreSQL</span> database, as well as introduced the one-to-many
+        relationship between the <span class="bold">customer</span> and <span class="bold">account</span> entities.</p>
+      <p>In this article, we will explore the remaining two entity relationships - <span class="hi-yellow">one-to-one</span>
+        and <span class="hi-yellow">many-to-many</span>.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with SQLAlchemy ORM Relationships</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/BigData/SQLAlchemy-1.html" target="_blank"><span class="bold">Part - 1</span></a>,
+        we created a simple database table called <span class="hi-yellow">customer</span> and in
+        <a href="https://polarsparc.github.io/BigData/SQLAlchemy-2.html" target="_blank"><span class="bold">Part - 2</span></a>,
+        we created another simple database table called <span class="hi-yellow">account</span> with a one-to-many relationship
+        between them. In this demonstration, we will create yet another database table called <span class="hi-yellow">kyc</span>
+        with a one-to-one relationship with both the <span class="bold">account</span> and <span class="bold">customer</span>
+        tables. The following diagram illustrates this relationship:</p>
+      <div id="img-outer-div"> <img alt="Customer Account Kyc" class="img-cls" src="./images/SQLAlchemy-6.png">
+        <div class="img-cap">Customer, Account, and Kyc</div>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The class <span class="hi-blue">Kyc</span> defined in the following <span class="bold">Python</span> program
+        (<span class="bold">ex_sa_09.py</span>) correspond to the database table <span class="bold">kyc</span>:</p>
+    </div>    
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ex_sa_09.py</div>
+      <div class="src-body-1">
+      <pre>from datetime import datetime
+from sqlalchemy import Column, ForeignKey, DateTime
+from sqlalchemy import Integer, Boolean
+from sqlalchemy.orm import relationship
+from SQLAlchemy.ex_sa_05 import Base
+
+
+class Kyc(Base):
+    __tablename__ = "kyc"
+
+    kyc_id = Column(Integer, autoincrement=True, primary_key=True)
+    kyc_flag = Column(Boolean, default=False)
+    kyc_update_dt = Column(DateTime(), default=datetime.now, onupdate=datetime.now)
+    cid = Column(Integer, ForeignKey('customer.id'))
+    ano = Column(Integer, ForeignKey('account.acct_no'))
+
+    customer = relationship("Customer", uselist=False)
+
+    account = relationship("Account", uselist=False)
+
+    def __repr__(self):
+        return "[Kyc: kyc_flag=%s, kyc_update_dt=%s, customer=%s, account=%s]" % \
+               (self.kyc_flag, self.kyc_update_dt, self.customer.last_name, self.account.acct_name)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the <span class="bold">Python</span> classes and methods:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">onupdate</span> :: Sets the value of the column <span class="bold">kyc_update_dt
+            </span> with the current timestamp on row update</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">uselist=False</span> :: Keyword creates a one-to-one relationship with the specified
+            domain model object name</p>
+        </li>
+    </ul></div>
+    <div id="para-div">
+      <p>In following <span class="bold">Python</span> program (<span class="bold">ex_sa_10.py</span>), the method
+        <span class="hi-blue">create_kyc_table</span> creates the <span class="bold">kyc</span> database table and the
+        method <span class="hi-blue">insert_kyc_recs</span> inserts *<span class="underbold">3</span>* sample rows
+        for the associated <span class="bold">account</span> and <span class="bold">customer</span>:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ex_sa_10.py</div>
+      <div class="src-body-1">
+      <pre>import logging
+
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import sessionmaker
+from SQLAlchemy.ex_sa_00 import create_db_engine
+from SQLAlchemy.ex_sa_09 import Base, Kyc
+
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+
+
+def create_kyc_table(engine: Engine) -&gt; bool:
+    status = False
+
+    if not engine.dialect.has_table(engine, 'kyc'):
+        Base.metadata.create_all(db_engine)
+
+        logging.info("Created the kyc table !!!")
+
+        status = True
+    else:
+        logging.info("The kyc table already exists !!!")
+
+    return status
+
+
+def insert_kyc_recs(engine: Engine):
+    if engine.dialect.has_table(engine, 'kyc'):
+        Session = sessionmaker(bind=engine)
+
+        session = Session()
+
+        try:
+            ad_kyc = Kyc(kyc_flag=True, cid=1, ano=1001)
+            session.add(ad_kyc)
+            session.commit()
+
+            logging.info("Inserted kyc for Alice")
+        except SQLAlchemyError as e:
+            logging.error(e)
+
+        try:
+            bb_kyc = Kyc(cid=2, ano=1002)
+            session.add(bb_kyc)
+            session.commit()
+
+            logging.info("Inserted kyc for Bob")
+        except SQLAlchemyError as e:
+            logging.error(e)
+
+        try:
+            cd_kyc = Kyc(cid=3, ano=1003)
+            session.add(cd_kyc)
+            session.commit()
+
+            logging.info("Inserted kyc for Charlie")
+        except SQLAlchemyError as e:
+            logging.error(e)
+
+        session.close()
+    else:
+        logging.info("The kyc table *DOES NOT* exist !!!")
+
+
+if __name__ == "__main__":
+    db_engine = create_db_engine()
+    if create_kyc_table(db_engine):
+        insert_kyc_recs(db_engine)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>To run the Python program <span class="bold">ex_sa_10.py</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ python ex_sa_10.py</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>2020-04-24 21:31:35,372 - Postgres database url: postgres://polarsparc:polarsparc$123@localhost:5432/my_test_db
+2020-04-24 21:31:35,459 - Connected to the Postgres database !!!
+2020-04-24 21:31:35,489 - Created the kyc table !!!
+2020-04-24 21:31:35,506 - Inserted kyc for Alice
+2020-04-24 21:31:35,509 - Inserted kyc for Bob
+2020-04-24 21:31:35,511 - Inserted kyc for Charlie</pre>
+    </div>
+    <div id="para-div">
+      <p>The following <span class="bold">Python</span> program (<span class="bold">ex_sa_11.py</span>) demonstrates the
+        query and update operations on the <span class="bold">kyc</span> database table.</p>
+    </div>
+    <div id="para-div">
+      <p>The method <span class="hi-blue">query_kyc</span> queries all the records, the method <span class="hi-blue">
+        query_kyc_order</span> queries all the records and sorts them in a descending order by the update date, and finally
+        the method <span class="hi-blue">update_kyc</span> updates a row by the last name of the associated customer.</p>
+    </div>    
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ex_sa_11.py</div>
+      <div class="src-body-1">
+      <pre>import logging
+import time
+
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import sessionmaker
+from SQLAlchemy.ex_sa_00 import create_db_engine
+from SQLAlchemy.ex_sa_09 import Kyc
+
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+
+
+def query_kyc(engine: Engine):
+    if engine.dialect.has_table(engine, 'customer') and engine.dialect.has_table(engine, 'account') and \
+            engine.dialect.has_table(engine, 'kyc'):
+        Session = sessionmaker(bind=engine)
+
+        session = Session()
+
+        recs = session.query(Kyc).all()
+        if len(recs) &gt; 0:
+            for r in recs:
+                logging.info(r)
+        else:
+            logging.info("Record(s) for kyc *DOES NOT* exist !!!")
+
+        session.close()
+    else:
+        logging.info("The customer/account/kyc table(s) *DOES NOT* exist !!!")
+
+
+def query_kyc_order(engine: Engine):
+    if engine.dialect.has_table(engine, 'customer') and engine.dialect.has_table(engine, 'account') and \
+            engine.dialect.has_table(engine, 'kyc'):
+        Session = sessionmaker(bind=engine)
+
+        session = Session()
+
+        recs = session.query(Kyc).order_by(Kyc.kyc_update_dt.desc())
+        if recs.count() &gt; 0:
+            for r in recs:
+                logging.info(r)
+        else:
+            logging.info("Record(s) for kyc *DOES NOT* exist !!!")
+
+        session.close()
+    else:
+        logging.info("The customer/account/kyc table(s) *DOES NOT* exist !!!")
+
+
+def update_kyc(engine: Engine, name: str, flag: bool):
+    if engine.dialect.has_table(engine, 'kyc'):
+        Session = sessionmaker(bind=engine)
+
+        session = Session()
+
+        rec = session.query(Kyc).filter(Kyc.customer.has(last_name=name)).first()
+        if rec:
+            rec.kyc_flag = flag
+        else:
+            logging.info("Record for Customer '%s' *DOES NOT* exist !!!" % name)
+
+        session.commit()
+
+        logging.info("Updated record for Customer '%s'" % name)
+
+        session.close()
+    else:
+        logging.info("The kyc table *DOES NOT* exist !!!")
+
+
+if __name__ == "__main__":
+    db_engine = create_db_engine()
+    query_kyc(db_engine)
+    update_kyc(db_engine, 'Driver', True)
+    query_kyc(db_engine)
+    update_kyc(db_engine, 'Driver', False)
+    update_kyc(db_engine, 'Builder', True)
+    time.sleep(1)
+    update_kyc(db_engine, 'Builder', False)
+    query_kyc_order(db_engine)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the <span class="bold">Python</span> classes and methods:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-blue">Query.all()</span> :: Method that selects all the rows from the specified database table</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Query.order_by()</span> :: Method that orders the selected rows in ascending order (by
+            default) on the specified column</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">desc()</span> :: Method on a database column to indicate the default order needs to be
+            reversed (descending order)</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">has()</span> :: Method that selects row(s) that match the specified criteria on the
+            specified database column</p>
+        </li>
+    </ul></div>
+    <div id="para-div">
+      <p>To run the Python program <span class="bold">ex_sa_11.py</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ python ex_sa_11.py</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>2020-04-24 21:36:16,810 - Postgres database url: postgres://polarsparc:polarsparc$123@localhost:5432/my_test_db
+2020-04-24 21:36:16,866 - Connected to the Postgres database !!!
+2020-04-24 21:36:16,879 - [Kyc: kyc_flag=True, kyc_update_dt=2020-04-24 20:11:35.501991, customer=Doctor, account=Alice Trade Account]
+2020-04-24 21:36:16,883 - [Kyc: kyc_flag=False, kyc_update_dt=2020-04-24 20:11:35.507191, customer=Builder, account=Bob Credit Account]
+2020-04-24 21:36:16,884 - [Kyc: kyc_flag=False, kyc_update_dt=2020-04-24 20:11:35.509393, customer=Driver, account=Charlie Trade Account]
+2020-04-24 21:36:16,893 - Updated record for Customer 'Driver'
+2020-04-24 21:36:16,897 - [Kyc: kyc_flag=True, kyc_update_dt=2020-04-24 20:11:35.501991, customer=Doctor, account=Alice Trade Account]
+2020-04-24 21:36:16,898 - [Kyc: kyc_flag=False, kyc_update_dt=2020-04-24 20:11:35.507191, customer=Builder, account=Bob Credit Account]
+2020-04-24 21:36:16,899 - [Kyc: kyc_flag=True, kyc_update_dt=2020-04-24 21:36:16.891167, customer=Driver, account=Charlie Trade Account]
+2020-04-24 21:36:16,905 - Updated record for Customer 'Driver'
+2020-04-24 21:36:16,910 - Updated record for Customer 'Builder'
+2020-04-24 21:36:17,920 - Updated record for Customer 'Builder'
+2020-04-24 21:36:17,929 - [Kyc: kyc_flag=False, kyc_update_dt=2020-04-24 21:36:17.917521, customer=Builder, account=Bob Credit Account]
+2020-04-24 21:36:17,930 - [Kyc: kyc_flag=False, kyc_update_dt=2020-04-24 21:36:16.903741, customer=Driver, account=Charlie Trade Account]
+2020-04-24 21:36:17,931 - [Kyc: kyc_flag=True, kyc_update_dt=2020-04-24 20:11:35.501991, customer=Doctor, account=Alice Trade Account]</pre>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/BigData/SQLAlchemy-1.html" target="_blank"><span class="bold">Part - 1</span></a>,
+        we created a simple database table called <span class="hi-yellow">securities</span>. In this demonstration, we will
+        create another database table called <span class="hi-yellow">trades</span> with a many-to-many relationship with both
+        the <span class="bold">account</span> and <span class="bold">securities</span> tables. In other words, the database
+        table <span class="bold">trades</span> acts as a join table between the <span class="bold">account</span> and the
+        <span class="bold">securities</span> tables. The following diagram illustrates this relationship:</p>
+      <div id="img-outer-div"> <img alt="Account Securities Trades" class="img-cls" src="./images/SQLAlchemy-7.png">
+        <div class="img-cap">Account, Securities, and Trades</div>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The classes <span class="hi-blue">Account</span>, <span class="hi-blue">Securities</span>, and <span class="hi-blue">
+        Trades</span> defined in the following <span class="bold">Python</span> program (<span class="bold">ex_sa_12.py</span>)
+        correspond to the database tables <span class="bold">account</span>, <span class="bold">securities</span>, and
+        <span class="bold">trades</span> respectively:</p>
+    </div>    
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ex_sa_12.py</div>
+      <div class="src-body-1">
+      <pre>from datetime import datetime
+from sqlalchemy import Column, CheckConstraint, DateTime, ForeignKey, Numeric
+from sqlalchemy import Integer, String
+from sqlalchemy.orm import relationship
+
+import SQLAlchemy
+from SQLAlchemy.ex_sa_05 import Base
+
+
+class Account(SQLAlchemy.ex_sa_05.Account):
+    security = relationship('Securities', secondary='trades')
+
+
+class Securities(Base):
+    __tablename__ = "securities"
+
+    id = Column(Integer, autoincrement=True, primary_key=True)
+    symbol = Column(String(10), nullable=False, unique=True)
+    price = Column(Numeric(5, 2), default=0.0)
+
+    account = relationship(Account, secondary='trades')
+
+    def __repr__(self):
+        return "[Securities: id=%d, symbol=%s, price=%5.2f]" % (self.id, self.symbol, self.price)
+
+
+class Trades(Base):
+    __tablename__ = "trades"
+    __table_args__ = (CheckConstraint("trade_type IN ('B', 'S')"),)
+
+    trade_id = Column(Integer, autoincrement=True, primary_key=True)
+    trade_dt = Column(DateTime(), default=datetime.now)
+    trade_type = Column(String(1), nullable=False)
+    quantity = Column(Integer, nullable=False, default=0)
+    sid = Column(Integer, ForeignKey('securities.id'))
+    aid = Column(Integer, ForeignKey('account.acct_no'))
+
+    account = relationship(Account, backref='trades')
+    security = relationship(Securities, backref='trades')
+
+    def __repr__(self):
+        return "[Trades: customer=%s %s, trade_dt=%s, trade_type=%s, quantity=%d, security=%s]" % \
+               (self.account.customer.first_name, self.account.customer.last_name, self.trade_dt, self.trade_type, \
+                self.quantity, self.security.symbol)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the <span class="bold">Python</span> keyword(s):</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">secondary</span> :: Keyword that associates the specified name as the join table in
+            forming the many-to-many relationship between the related tables</p>
+        </li>
+    </ul></div>
+    <div id="para-div">
+      <p>In following <span class="bold">Python</span> program (<span class="bold">ex_sa_13.py</span>), the method
+        <span class="hi-blue">create_trades_table</span> creates the <span class="bold">trades</span> database table, the
+        method <span class="hi-blue">insert_trades</span> inserts *<span class="underbold">6</span>* sample trades, and the
+        method <span class="hi-blue">query_trades</span> performs a query of the trades:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ex_sa_13.py</div>
+      <div class="src-body-1">
+      <pre>import logging
+
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import sessionmaker
+from SQLAlchemy.ex_sa_00 import create_db_engine
+from SQLAlchemy.ex_sa_05 import Customer
+from SQLAlchemy.ex_sa_12 import Base, Account, Securities, Trades
+
+logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
+
+
+def create_trades_table(engine: Engine) -&gt; bool:
+    status = False
+
+    if not engine.dialect.has_table(engine, 'trades'):
+        Base.metadata.create_all(db_engine)
+
+        logging.info("Created the trades table !!!")
+
+        status = True
+    else:
+        logging.info("The trades table already exists !!!")
+
+    return status
+
+
+def insert_trades(engine: Engine):
+    if engine.dialect.has_table(engine, 'trades'):
+        Session = sessionmaker(bind=engine)
+
+        session = Session()
+
+        try:
+            t1 = Trades(trade_type='B', quantity=100, aid=1001, sid=1)
+            t2 = Trades(trade_type='B', quantity=300, aid=1001, sid=3)
+            t3 = Trades(trade_type='B', quantity=50, aid=1003, sid=1)
+            t4 = Trades(trade_type='B', quantity=150, aid=1003, sid=2)
+            t5 = Trades(trade_type='S', quantity=100, aid=1001, sid=3)
+            t6 = Trades(trade_type='S', quantity=50, aid=1003, sid=2)
+
+            tlst = [t1, t2, t3, t4, t5, t6]
+
+            session.add_all(tlst)
+            session.commit()
+
+            logging.info("Inserted record(s) for 6 trades:")
+
+            for tr in tlst:
+                logging.info("\t==&gt; %s" % tr)
+        except SQLAlchemyError as e:
+            logging.error(e)
+
+        session.close()
+    else:
+        logging.info("The trades table *DOES NOT* exist !!!")
+
+
+def query_trades(engine: Engine):
+    if engine.dialect.has_table(engine, 'account') and engine.dialect.has_table(engine, 'customer') and \
+            engine.dialect.has_table(engine, 'securities') and engine.dialect.has_table(engine, 'trades'):
+        Session = sessionmaker(bind=engine)
+
+        session = Session()
+
+        logging.info("SQL =&gt; %s" % session.query(Customer.first_name, Customer.last_name, Account.acct_name,
+                                                 Trades.trade_dt, Trades.trade_type, Trades.quantity,
+                                                 Securities.symbol, Securities.price) \
+                     .select_from(Trades).join(Account).join(Securities).join(Customer))
+        recs = session.query(Customer.first_name, Customer.last_name, Account.acct_name,
+                             Trades.trade_dt, Trades.trade_type, Trades.quantity,
+                             Securities.symbol, Securities.price) \
+            .select_from(Trades).join(Account).join(Securities).join(Customer)
+        if recs.count() &gt; 0:
+            logging.info("&lt; -------------------------")
+            for r in recs:
+                logging.info(r)
+            logging.info("------------------------- &gt;")
+        else:
+            logging.info("Record(s) for trades by customers *DOES NOT* exist !!!")
+
+        session.close()
+    else:
+        logging.info("The account/customer/securities/trades table(s) *DOES NOT* exist !!!")
+
+
+if __name__ == "__main__":
+    db_engine = create_db_engine()
+    if create_trades_table(db_engine):
+        insert_trades(db_engine)
+    query_trades(db_engine)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are brief descriptions for some of the <span class="bold">Python</span> classes and methods:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-blue">add_all()</span> :: Method that takes a list of domain model objects to add to the
+            <span class="bold">Session</span> for persistence</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Query.join()</span> :: Method to perform a join on the mapped domain model objects using
+            the foreign key relationships between them</p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Query.select_from()</span> :: Method to control the 'left' side of the join</p>
+        </li>
+    </ul></div>
+    <div id="error-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>Ensure the method <span class="underbold">select_from()</span> is used to indicate the table on the left to perform the joins. Else will encounter the following error:<br><br><span class="bold">Can't determine which FROM clause to join from, there are multiple FROMS which can join to this entity. Please use the .select_from() method to establish an explicit left side, as well as providing an explcit ON clause if not present already to help resolve the ambiguity</span></pre>
+    </div>
+    <div id="para-div">
+      <p>To run the Python program <span class="bold">ex_sa_13.py</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ python ex_sa_13.py</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>2020-04-24 21:47:29,353 - Postgres database url: postgres://polarsparc:polarsparc$123@localhost:5432/my_test_db
+2020-04-24 21:47:29,435 - Connected to the Postgres database !!!
+2020-04-24 21:47:29,462 - Created the trades table !!!
+2020-04-24 21:47:29,487 - Inserted record(s) for 6 trades:
+2020-04-24 21:47:29,497 - 	==&gt; [Trades: customer=Alice Doctor, trade_dt=2020-04-24 21:47:29.478902, trade_type=B, quantity=100, security=BULL.ST]
+2020-04-24 21:47:29,498 - 	==&gt; [Trades: customer=Alice Doctor, trade_dt=2020-04-24 21:47:29.482047, trade_type=B, quantity=300, security=BARK.ST]
+2020-04-24 21:47:29,500 - 	==&gt; [Trades: customer=Charlie Driver, trade_dt=2020-04-24 21:47:29.482694, trade_type=B, quantity=50, security=BULL.ST]
+2020-04-24 21:47:29,502 - 	==&gt; [Trades: customer=Charlie Driver, trade_dt=2020-04-24 21:47:29.483480, trade_type=B, quantity=150, security=DOG.ST]
+2020-04-24 21:47:29,503 - 	==&gt; [Trades: customer=Alice Doctor, trade_dt=2020-04-24 21:47:29.484275, trade_type=S, quantity=100, security=BARK.ST]
+2020-04-24 21:47:29,504 - 	==&gt; [Trades: customer=Charlie Driver, trade_dt=2020-04-24 21:47:29.485013, trade_type=S, quantity=50, security=DOG.ST]
+2020-04-24 21:47:29,513 - SQL =&gt; SELECT customer.first_name AS customer_first_name, customer.last_name AS customer_last_name, account.acct_name AS account_acct_name, trades.trade_dt AS trades_trade_dt, trades.trade_type AS trades_trade_type, trades.quantity AS trades_quantity, securities.symbol AS securities_symbol, securities.price AS securities_price 
+FROM trades JOIN account ON account.acct_no = trades.aid JOIN securities ON securities.id = trades.sid JOIN customer ON customer.id = account.cust_id
+2020-04-24 21:47:29,519 - &lt; -------------------------
+2020-04-24 21:47:29,520 - ('Alice', 'Doctor', 'Alice Trade Account', datetime.datetime(2020, 4, 25, 13, 47, 29, 478902), 'B', 100, 'BULL.ST', Decimal('25.75'))
+2020-04-24 21:47:29,520 - ('Alice', 'Doctor', 'Alice Trade Account', datetime.datetime(2020, 4, 25, 13, 47, 29, 482047), 'B', 300, 'BARK.ST', Decimal('144.90'))
+2020-04-24 21:47:29,520 - ('Charlie', 'Driver', 'Charlie Trade Account', datetime.datetime(2020, 4, 25, 13, 47, 29, 482694), 'B', 50, 'BULL.ST', Decimal('25.75'))
+2020-04-24 21:47:29,520 - ('Charlie', 'Driver', 'Charlie Trade Account', datetime.datetime(2020, 4, 25, 13, 47, 29, 483480), 'B', 150, 'DOG.ST', Decimal('54.15'))
+2020-04-24 21:47:29,521 - ('Alice', 'Doctor', 'Alice Trade Account', datetime.datetime(2020, 4, 25, 13, 47, 29, 484275), 'S', 100, 'BARK.ST', Decimal('144.90'))
+2020-04-24 21:47:29,521 - ('Charlie', 'Driver', 'Charlie Trade Account', datetime.datetime(2020, 4, 25, 13, 47, 29, 485013), 'S', 50, 'DOG.ST', Decimal('54.15'))
+2020-04-24 21:47:29,521 - ------------------------- &gt;</pre>
+    </div>
+    <div id="para-div">
+      <p>This concludes the exploration of the basic capabilities in the <span class="bold">SQLAlchemy ORM</span> layer.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/BigData/SQLAlchemy-1.html" target="_blank"><span class="bold">Introduction to SQLAlchemy :: Part - 1</span></a></p>
+      <p><a href="https://polarsparc.github.io/BigData/SQLAlchemy-2.html" target="_blank"><span class="bold">Introduction to SQLAlchemy :: Part - 2</span></a></p>
+      <p><a href="https://docs.sqlalchemy.org/en/13/orm/tutorial.html" target="_blank"><span class="bold">SQLAlchemy Object Relational Tutorial</span></a></p>
+      <p><a href="https://www.sqlalchemy.org/" target="_blank"><span class="bold">SQLAlchemy</span></a></p>
+      <p><a href="https://www.pythonsheets.com/notes/python-sqlalchemy.html" target="_blank"><span class="bold">PySheet SQLAlchemy</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

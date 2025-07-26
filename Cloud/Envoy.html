@@ -1,0 +1,1500 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Introduction to Envoy">
+    <meta name="subject" content="Introduction to Envoy">
+    <meta name="keywords" content="arm64, envoy, odroid-n2, python">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Introduction to Envoy</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="ps-header">
+      <img src="./images/envoy-1.png" />
+    </div>
+    <br/>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">10/25/2020</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">Envoy</span> is an open source service proxy and a communication bus designed for large modern API
+        driven microservices architecture. It is a Layer3/Layer4 (TCP/UDP) network proxy with additional support for Layer7 (HTTP).</p>
+      <p>Before describing the architecture components of <span class="bold">Envoy</span>, we define the following two terms:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-grey">Downstream</span> :: a client entity connecting to Envoy to send requests and receives responses</p>
+        </li>
+        <li>
+          <p><span class="hi-red">Upstream</span> :: a service entity that Envoy connects to for forwarding requests and for getting
+            responses from</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the high-level architecture of <span class="bold">Envoy</span>:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/envoy-2.png" class="img-cls" alt="Envoy Architecture" />
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are the core components of <span class="bold">Envoy</span>:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">Listener</span> :: module responsible for binding to an IP address/port and accept connections
+            from <span class="bold">Downstream</span> nodes</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Cluster</span> :: module responsible for connecting to a group of <span class="bold">Upstream
+            </span> nodes and forwarding requests using an associated load-balancing policy</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Load Balancer</span> :: module responsible for distributing traffic between the different
+            <span class="bold">Upstream</span> nodes within a <span class="bold">Cluster</span> in order to effectively use the
+            available resources</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Network Filter</span> :: module that handles incoming requests on a <span class="bold">Listener
+            </span> and maps them to the appropriate <span class="bold">Cluster</span>(s)</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Filter Chain</span> :: a series of <span class="bold">Network Filter</span>(s) that form a
+            request processing pipeline</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Worker Thread</span> :: architecture uses a single process with multiple threads. Once a
+            <span class="bold">Downstream</span> connection is accepted by a <span class="bold">Listener</span>, the connection
+            spends the rest of its lifetime bound to a single worker thread</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">HTTP Router Filter</span> :: implements HTTP forwarding by reverse proxying requests from the
+            <span class="bold">Downstream</span> to the appropriate <span class="bold">Cluster</span> based on route configuration</p>
+        </li>
+      </ul>
+    </div>
+    <div id="section-div">
+      <p>Installation and System Setup</p>
+    </div>
+    <div id="para-div">
+      <p>In this setup, the installation will be on a 5-node <a href="https://polarsparc.github.io/General/N2-Cluster.html" target=
+        "_blank"><span class="bold">ODroid-N2 Cluster</span></a> running <a href="https://www.armbian.com/" target="_blank">Armbian
+          Ubuntu Linux</a>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following picture illustrates the 5-node <span class="bold">ODroid-N2</span> cluster in operation:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/envoy-3.png" class="img-cls" alt="N2 Cluster" />
+      <div class="img-cap">Figure-2</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For this tutorial, let us assume the 5-nodes in the cluster to have the following host names and ip addresses:</p>
+    </div>
+    <table id="col2-table">
+      <thead>
+        <tr>
+          <th>Host name</th>
+          <th>IP Address</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col2-c1-odd">my-n2-1</td>
+          <td class="col2-c2-odd">192.168.1.41</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even">my-n2-2</td>
+          <td class="col2-c2-even">192.168.1.42</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd">my-n2-3</td>
+          <td class="col2-c2-odd">192.168.1.43</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even">my-n2-4</td>
+          <td class="col2-c2-even">192.168.1.44</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd">my-n2-5</td>
+          <td class="col2-c2-odd">192.168.1.45</td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>Open a Terminal window and open a tab for each of the 5 nodes <span class="bold">my-n2-1</span> thru <span class="bold">
+        my-n2-5</span>. In each of the Terminal tabs, <span class="bold">ssh</span> into the corresponding node.</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the package repository for <span class="bold">Docker</span> on the node <span class="bold">my-n2-1</span>, execute
+        the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt-get update</p>
+      <p>$ sudo apt-get install apt-transport-https ca-certificates curl software-properties-common -y</p>
+      <p>$ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -</p>
+      <p>$ sudo add-apt-repository "deb [arch=arm64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"</p>
+      <p>$ sudo apt-get update</p>
+    </div>
+    <div id="para-div">
+      <p>To install <span class="bold">Docker</span> on the node <span class="bold">my-n2-1</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt-get install docker-ce docker-ce-cli containerd.io</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Reading package lists... Done
+Building dependency tree       
+Reading state information... Done
+Recommended packages:
+  cgroupfs-mount | cgroup-lite pigz apparmor
+The following NEW packages will be installed:
+  containerd.io docker-ce docker-ce-cli
+0 upgraded, 3 newly installed, 0 to remove and 53 not upgraded.
+Need to get 66.8 MB of archives.
+After this operation, 338 MB of additional disk space will be used.
+Get:1 https://download.docker.com/linux/ubuntu focal/stable arm64 containerd.io arm64 1.3.7-1 [17.7 MB]
+Get:2 https://download.docker.com/linux/ubuntu focal/stable arm64 docker-ce-cli arm64 5:19.03.13~3-0~ubuntu-focal [33.9 MB]
+Get:3 https://download.docker.com/linux/ubuntu focal/stable arm64 docker-ce arm64 5:19.03.13~3-0~ubuntu-focal [15.2 MB]            
+Fetched 66.8 MB in 8s (8,073 kB/s)                                                                                                 
+Selecting previously unselected package containerd.io.
+(Reading database ... 35397 files and directories currently installed.)
+Preparing to unpack .../containerd.io_1.3.7-1_arm64.deb ...
+Unpacking containerd.io (1.3.7-1) ...
+Selecting previously unselected package docker-ce-cli.
+Preparing to unpack .../docker-ce-cli_5%3a19.03.13~3-0~ubuntu-focal_arm64.deb ...
+Unpacking docker-ce-cli (5:19.03.13~3-0~ubuntu-focal) ...
+Selecting previously unselected package docker-ce.
+Preparing to unpack .../docker-ce_5%3a19.03.13~3-0~ubuntu-focal_arm64.deb ...
+Unpacking docker-ce (5:19.03.13~3-0~ubuntu-focal) ...
+Setting up containerd.io (1.3.7-1) ...
+Created symlink /etc/systemd/system/multi-user.target.wants/containerd.service → /lib/systemd/system/containerd.service.
+Setting up docker-ce-cli (5:19.03.13~3-0~ubuntu-focal) ...
+Setting up docker-ce (5:19.03.13~3-0~ubuntu-focal) ...
+Created symlink /etc/systemd/system/multi-user.target.wants/docker.service → /lib/systemd/system/docker.service.
+Created symlink /etc/systemd/system/sockets.target.wants/docker.socket → /lib/systemd/system/docker.socket.
+Processing triggers for man-db (2.9.1-1) ...
+Processing triggers for systemd (245.4-4ubuntu3.2) ...</pre>
+    </div>
+    <div id="para-div">
+      <p>To ensure we are able to execute the <span class="bold">Docker</span> commands as the logged in user without the need for
+        <span class="bold">sudo</span> on the node <span class="bold">my-n2-1</span>, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo usermod -aG docker $USER</p>
+      <p>$ sudo reboot now</p>
+    </div>
+    <div id="para-div">
+      <p>After the reboot, in the Terminal for <span class="bold">my-n2-1</span>, <span class="bold">ssh</span> into the node
+        <span class="bold">my-n2-1</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To verify the <span class="bold">Docker</span> installation, on the node <span class="bold">my-n2-1</span>, execute the
+        following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker info</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Client:
+ Debug Mode: false
+
+Server:
+Containers: 0
+  Running: 0
+  Paused: 0
+  Stopped: 0
+Images: 0
+Server Version: 19.03.13
+Storage Driver: overlay2
+  Backing Filesystem: extfs
+  Supports d_type: true
+  Native Overlay Diff: true
+Logging Driver: json-file
+Cgroup Driver: cgroupfs
+Plugins:
+  Volume: local
+  Network: bridge host ipvlan macvlan null overlay
+  Log: awslogs fluentd gcplogs gelf journald json-file local logentries splunk syslog
+Swarm: inactive
+Runtimes: runc
+Default Runtime: runc
+Init Binary: docker-init
+containerd version: 8fba4e9a7d01810a393d5d25a3621dc101981175
+runc version: dc9208a3303feef5b3839f4323d9beb36df0a9dd
+init version: fec3683
+Security Options:
+  apparmor
+  seccomp
+  Profile: default
+Kernel Version: 5.8.5-meson64
+Operating System: Armbian 20.08.1 Focal
+OSType: linux
+Architecture: aarch64
+CPUs: 6
+Total Memory: 3.548GiB
+Name: my-n2-1
+ID: ZI3H:XOQH:VGMW:2DDA:XJ7C:YOAF:GCQX:QPYL:QPZ5:3T3F:YSD5:55PD
+Docker Root Dir: /var/lib/docker
+Debug Mode: false
+Registry: https://index.docker.io/v1/
+Labels:
+Experimental: false
+Insecure Registries:
+  127.0.0.0/8
+Live Restore Enabled: false</pre>
+    </div>
+    <div id="para-div">
+      <p>On <a href="https://hub.docker.com/" target="_blank"><span class="bold">Docker Hub</span></a>, check for the current stable
+        version of <span class="hi-yellow">envoyproxy/envoy</span>. At the time of this article, the current stable version was
+        <span class="bold">envoyproxy/envoy:v1.16.0</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>In the Terminal for <span class="bold">my-n2-1</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker pull envoyproxy/envoy:v1.16.0</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>v1.16.0: Pulling from envoyproxy/envoy
+296c9ad75bee: Pull complete 
+c0533d139302: Pull complete 
+3c11bb34abc8: Pull complete 
+40d754534a3e: Pull complete 
+a2f5b0e4b68c: Pull complete 
+75ce9faf1541: Pull complete 
+867afef8fe98: Pull complete 
+7cd7a83430b1: Pull complete 
+aefaf5e2c28e: Pull complete 
+b65172b3fd35: Pull complete 
+Digest: sha256:9e72bbba48041223ccf79ba81754b1bd84a67c6a1db8a9dbff77ea6fc1cb04ea
+Status: Downloaded newer image for envoyproxy/envoy:v1.16.0
+docker.io/envoyproxy/envoy:v1.16.0</pre>
+    </div>
+    <div id="para-div">
+      <p>We will use <span class="bold">Python</span> and <span class="bold">Flask</span> to implement two simple services for our
+        demonstration.</p>
+      <p>We need to install the <span class="bold">Flask</span> module for <span class="bold">Python</span>. On each of the nodes
+        <span class="bold">my-n2-2</span> thru <span class="bold">my-n2-5</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt install python3-flask -y</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>Reading package lists... Done
+Building dependency tree       
+Reading state information... Done
+The following additional packages will be installed:
+  libjs-jquery python3-click python3-colorama python3-itsdangerous python3-jinja2 python3-markupsafe python3-werkzeug
+Suggested packages:
+  python-flask-doc python-jinja2-doc ipython3 python-werkzeug-doc python3-lxml python3-termcolor python3-watchdog
+Recommended packages:
+  javascript-common python3-blinker python3-simplejson python3-openssl python3-pyinotify
+The following NEW packages will be installed:
+  libjs-jquery python3-click python3-colorama python3-flask python3-itsdangerous python3-jinja2 python3-markupsafe
+  python3-werkzeug
+0 upgraded, 8 newly installed, 0 to remove and 53 not upgraded.
+Need to get 805 kB of archives.
+After this operation, 3,060 kB of additional disk space will be used.
+Get:1 http://ports.ubuntu.com focal/main arm64 libjs-jquery all 3.3.1~dfsg-3 [329 kB]
+Get:2 http://ports.ubuntu.com focal/main arm64 python3-colorama all 0.4.3-1build1 [23.9 kB]
+Get:3 http://ports.ubuntu.com focal/main arm64 python3-click all 7.0-3 [64.8 kB]
+Get:4 http://ports.ubuntu.com focal/main arm64 python3-itsdangerous all 1.1.0-1 [14.6 kB]
+Get:5 http://ports.ubuntu.com focal/main arm64 python3-markupsafe arm64 1.1.0-1build2 [13.9 kB]
+Get:6 http://ports.ubuntu.com focal/main arm64 python3-jinja2 all 2.10.1-2 [95.5 kB]
+Get:7 http://ports.ubuntu.com focal/main arm64 python3-werkzeug all 0.16.1+dfsg1-2 [183 kB]
+Get:8 http://ports.ubuntu.com focal/main arm64 python3-flask all 1.1.1-2 [80.3 kB]
+Fetched 805 kB in 1s (843 kB/s)         
+Selecting previously unselected package libjs-jquery.
+(Reading database ... 36030 files and directories currently installed.)
+Preparing to unpack .../0-libjs-jquery_3.3.1~dfsg-3_all.deb ...
+Unpacking libjs-jquery (3.3.1~dfsg-3) ...
+Selecting previously unselected package python3-colorama.
+Preparing to unpack .../1-python3-colorama_0.4.3-1build1_all.deb ...
+Unpacking python3-colorama (0.4.3-1build1) ...
+Selecting previously unselected package python3-click.
+Preparing to unpack .../2-python3-click_7.0-3_all.deb ...
+Unpacking python3-click (7.0-3) ...
+Selecting previously unselected package python3-itsdangerous.
+Preparing to unpack .../3-python3-itsdangerous_1.1.0-1_all.deb ...
+Unpacking python3-itsdangerous (1.1.0-1) ...
+Selecting previously unselected package python3-markupsafe.
+Preparing to unpack .../4-python3-markupsafe_1.1.0-1build2_arm64.deb ...
+Unpacking python3-markupsafe (1.1.0-1build2) ...
+Selecting previously unselected package python3-jinja2.
+Preparing to unpack .../5-python3-jinja2_2.10.1-2_all.deb ...
+Unpacking python3-jinja2 (2.10.1-2) ...
+Selecting previously unselected package python3-werkzeug.
+Preparing to unpack .../6-python3-werkzeug_0.16.1+dfsg1-2_all.deb ...
+Unpacking python3-werkzeug (0.16.1+dfsg1-2) ...
+Selecting previously unselected package python3-flask.
+Preparing to unpack .../7-python3-flask_1.1.1-2_all.deb ...
+Unpacking python3-flask (1.1.1-2) ...
+Setting up python3-colorama (0.4.3-1build1) ...
+Setting up python3-itsdangerous (1.1.0-1) ...
+Setting up python3-click (7.0-3) ...
+Setting up python3-markupsafe (1.1.0-1build2) ...
+Setting up python3-jinja2 (2.10.1-2) ...
+Setting up libjs-jquery (3.3.1~dfsg-3) ...
+Setting up python3-werkzeug (0.16.1+dfsg1-2) ...
+Setting up python3-flask (1.1.1-2) ...</pre>
+    </div>
+    <br/>
+    <div id="info-div">
+      <h4>** NOTE **</h4>
+      <pre>For all our demonstrations, we will run the <span class="bold">Envoy</span> proxy on <span class="bold">my-n2-1</span></pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the first demonstration, we will deploy a simple <span class="bold">Python</span> based service on <span class="bold">
+        my-n2-2</span> and have <span class="bold">Envoy</span> (on <span class="bold">my-n2-1</span>) reverse-proxy to it.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the setup for the first demonstration:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/envoy-4.png" class="img-cls" alt="Demo One" />
+      <div class="img-cap">Figure-3</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the code for the simple <span class="bold">Python</span> based service:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ServiceApp.py</div>
+      <div class="gen-src-body">
+      <pre>#
+# Name:   Simple Flask Service
+# Author: Bhaskar S
+# Blog:   https://polarsparc.github.io
+#
+
+import socket
+import sys
+from datetime import datetime
+from flask import Flask
+
+app = Flask(__name__)
+PORT = 0
+
+
+@app.route('/first')
+def first():
+    return "{'Message': 'Hello from %s:%d', 'Timestamp': '%s'}" % (socket.gethostname(), PORT, datetime.now())
+
+
+if __name__ == '__main__':
+    if len(sys.argv) == 2:
+        PORT = int(sys.argv[1])
+        app.run(host='0.0.0.0', port=PORT)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the <span class="bold">Envoy</span> proxy configuration defined in an<span class="bold">
+        YAML</span> format:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">first.yaml</div>
+      <div class="gen-src-body">
+      <pre>static_resources:
+  listeners:
+  - name: first_listener
+    address:
+      socket_address: { address: 0.0.0.0, port_value: 8080 }
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          stat_prefix: all_http_ingress
+          route_config:
+            name: all_http_route
+            virtual_hosts:
+            - name: all_http_cluster
+              domains: ["*"]
+              routes:
+              - match: { prefix: "/first" }
+                route: { cluster: first_cluster }
+              - match: { prefix: "/" }
+                direct_response: { status: 403, body: { inline_string: "{'Message': 'Not Allowed'}" } }
+          http_filters:
+          - name: envoy.filters.http.router
+  clusters:
+  - name: first_cluster
+    connect_timeout: 1.0s
+    type: STRICT_DNS
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: first_cluster
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 192.168.1.42
+                port_value: 8081</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following section explains some of the elements from the <span class="bold">first.yaml</span> configuration file:</p>
+      <ul id="blue-arw-ul">
+        <li>
+          <p><span class="hi-yellow">static_resources</span> :: indicates the resources are statically defined as opposed to the
+            means of configuring resources dynamically once the proxy is running</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">listeners</span> :: the section for defining <span class="bold">Listener</span>s</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">name</span> :: the unique name by which this <span class="bold">Listener</span> is known</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">address</span> :: the IP address and port that the <span class="bold">Listener</span> should
+            listen on</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">filters</span> :: the section for defining the chain of <span class="bold">Filter</span>s</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">name</span> :: the name of the connection manager to use for requests on this <span class="bold">
+            Listener</span>. The connection manager <span class="hi-grey">envoy.filters.network.http_connection_manager</span> is the
+            one for handling HTTP (Layer 7) traffic</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">@type</span> :: specifies the type of the connection manager to use and must be set to
+            <span class="hi-grey">type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">stat_prefix</span> :: a human readable prefix to use when emitting statistics for the connection
+            manager</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">route_config</span> :: the section for mapping the url prefixes (routes) to <span class="bold">
+            Cluster</span>s</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">domains</span> :: specifies the list of domains for which the route mapping is valid. The '*'
+            (asterisk) implies all domains</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">routes</span> :: the list of routes that will be matched, in order, for incoming requests</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">prefix</span> :: a prefix rule that must match the beginning of the url path header</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">cluster</span> :: the name of the <span class="bold">Cluster</span> to which the request should
+            be forwarded to</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">direct_response</span> :: indicates sending the specified HTTP status code  and body text back
+            to the requestor</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">http_filters</span> :: specifies the HTTP <span class="bold">Filter</span>s to route the request
+            through. In this case we use the pre-defined router <span class="hi-grey">envoy.filters.http.router</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">clusters</span> :: the section for defining <span class="bold">Cluster</span>s</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">name</span> :: a unique name for the <span class="bold">Cluster</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">connect_timeout</span> :: the timeout value for new network connections to service endpoint(s)
+            in the <span class="bold">Cluster</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">type</span> :: the discovery mechanism to use to resolve the <span class="bold">Cluster</span>
+            service endpoint(s). In this case we are using DNS</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">lb_policy</span> :: the type of load-balancer mechanism to use to forward requests to the service
+            endpoint(s) of the <span class="bold">Cluster</span>. In this case we are using the round-robin mechanism</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">lb_endpoints</span> :: a list of IP addresses and ports where the service is listening for requests</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To start the simple <span class="bold">Python</span> service, execute the following command in the Terminal for
+        <span class="bold">my-n2-2</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ python3 ServiceApp.py 8081</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre> * Serving Flask app "ServiceApp" (lazy loading)
+ * Environment: production
+    WARNING: This is a development server. Do not use it in a production deployment.
+    Use a production WSGI server instead.
+ * Debug mode: off
+ * Running on http://0.0.0.0:8081/ (Press CTRL+C to quit)</pre>
+    </div>
+    <div id="para-div">
+      <p>To start the <span class="bold">Envoy</span> proxy, execute the following command in the Terminal for <span class="bold">
+        my-n2-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name envoy -p 8080:8080 -v $HOME/first.yaml:/etc/envoy/envoy.yaml envoyproxy/envoy:v1.16.0</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:305] initializing epoch 0 (base id=0, hot restart version=11.120)
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:307] statically linked extensions:
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.filters.http: envoy.buffer, envoy.cors, envoy.csrf, envoy.ext_authz, envoy.fault, envoy.filters.http.adaptive_concurrency, envoy.filters.http.admission_control, envoy.filters.http.aws_lambda, envoy.filters.http.aws_request_signing, envoy.filters.http.buffer, envoy.filters.http.cache, envoy.filters.http.cdn_loop, envoy.filters.http.compressor, envoy.filters.http.cors, envoy.filters.http.csrf, envoy.filters.http.decompressor, envoy.filters.http.dynamic_forward_proxy, envoy.filters.http.dynamo, envoy.filters.http.ext_authz, envoy.filters.http.fault, envoy.filters.http.grpc_http1_bridge, envoy.filters.http.grpc_http1_reverse_bridge, envoy.filters.http.grpc_json_transcoder, envoy.filters.http.grpc_stats, envoy.filters.http.grpc_web, envoy.filters.http.gzip, envoy.filters.http.header_to_metadata, envoy.filters.http.health_check, envoy.filters.http.ip_tagging, envoy.filters.http.jwt_authn, envoy.filters.http.local_ratelimit, envoy.filters.http.lua, envoy.filters.http.oauth, envoy.filters.http.on_demand, envoy.filters.http.original_src, envoy.filters.http.ratelimit, envoy.filters.http.rbac, envoy.filters.http.router, envoy.filters.http.squash, envoy.filters.http.tap, envoy.grpc_http1_bridge, envoy.grpc_json_transcoder, envoy.grpc_web, envoy.gzip, envoy.health_check, envoy.http_dynamo_filter, envoy.ip_tagging, envoy.local_rate_limit, envoy.lua, envoy.rate_limit, envoy.router, envoy.squash
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.quic_client_codec: quiche
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.transport_sockets.upstream: envoy.transport_sockets.alts, envoy.transport_sockets.quic, envoy.transport_sockets.raw_buffer, envoy.transport_sockets.tap, envoy.transport_sockets.tls, envoy.transport_sockets.upstream_proxy_protocol, raw_buffer, tls
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.resource_monitors: envoy.resource_monitors.fixed_heap, envoy.resource_monitors.injected_resource
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.internal_redirect_predicates: envoy.internal_redirect_predicates.allow_listed_routes, envoy.internal_redirect_predicates.previous_routes, envoy.internal_redirect_predicates.safe_cross_scheme
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.dubbo_proxy.route_matchers: default
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.tracers: envoy.dynamic.ot, envoy.lightstep, envoy.tracers.datadog, envoy.tracers.dynamic_ot, envoy.tracers.lightstep, envoy.tracers.opencensus, envoy.tracers.xray, envoy.tracers.zipkin, envoy.zipkin
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.filters.network: envoy.client_ssl_auth, envoy.echo, envoy.ext_authz, envoy.filters.network.client_ssl_auth, envoy.filters.network.direct_response, envoy.filters.network.dubbo_proxy, envoy.filters.network.echo, envoy.filters.network.ext_authz, envoy.filters.network.http_connection_manager, envoy.filters.network.kafka_broker, envoy.filters.network.local_ratelimit, envoy.filters.network.mongo_proxy, envoy.filters.network.mysql_proxy, envoy.filters.network.postgres_proxy, envoy.filters.network.ratelimit, envoy.filters.network.rbac, envoy.filters.network.redis_proxy, envoy.filters.network.rocketmq_proxy, envoy.filters.network.sni_cluster, envoy.filters.network.sni_dynamic_forward_proxy, envoy.filters.network.tcp_proxy, envoy.filters.network.thrift_proxy, envoy.filters.network.zookeeper_proxy, envoy.http_connection_manager, envoy.mongo_proxy, envoy.ratelimit, envoy.redis_proxy, envoy.tcp_proxy
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.health_checkers: envoy.health_checkers.redis
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.stats_sinks: envoy.dog_statsd, envoy.metrics_service, envoy.stat_sinks.dog_statsd, envoy.stat_sinks.hystrix, envoy.stat_sinks.metrics_service, envoy.stat_sinks.statsd, envoy.statsd
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.thrift_proxy.filters: envoy.filters.thrift.rate_limit, envoy.filters.thrift.router
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.quic_server_codec: quiche
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.grpc_credentials: envoy.grpc_credentials.aws_iam, envoy.grpc_credentials.default, envoy.grpc_credentials.file_based_metadata
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.thrift_proxy.protocols: auto, binary, binary/non-strict, compact, twitter
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.udp_packet_writers: udp_default_writer, udp_gso_batch_writer
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.access_loggers: envoy.access_loggers.file, envoy.access_loggers.http_grpc, envoy.access_loggers.tcp_grpc, envoy.file_access_log, envoy.http_grpc_access_log, envoy.tcp_grpc_access_log
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.http.cache: envoy.extensions.http.cache.simple
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.transport_sockets.downstream: envoy.transport_sockets.alts, envoy.transport_sockets.quic, envoy.transport_sockets.raw_buffer, envoy.transport_sockets.tap, envoy.transport_sockets.tls, raw_buffer, tls
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.clusters: envoy.cluster.eds, envoy.cluster.logical_dns, envoy.cluster.original_dst, envoy.cluster.static, envoy.cluster.strict_dns, envoy.clusters.aggregate, envoy.clusters.dynamic_forward_proxy, envoy.clusters.redis
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.retry_host_predicates: envoy.retry_host_predicates.omit_canary_hosts, envoy.retry_host_predicates.omit_host_metadata, envoy.retry_host_predicates.previous_hosts
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.thrift_proxy.transports: auto, framed, header, unframed
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.upstreams: envoy.filters.connection_pools.http.generic, envoy.filters.connection_pools.http.http, envoy.filters.connection_pools.http.tcp
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.retry_priorities: envoy.retry_priorities.previous_priorities
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.resolvers: envoy.ip
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.compression.decompressor: envoy.compression.gzip.decompressor
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.udp_listeners: quiche_quic_listener, raw_udp_listener
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.filters.listener: envoy.filters.listener.http_inspector, envoy.filters.listener.original_dst, envoy.filters.listener.original_src, envoy.filters.listener.proxy_protocol, envoy.filters.listener.tls_inspector, envoy.listener.http_inspector, envoy.listener.original_dst, envoy.listener.original_src, envoy.listener.proxy_protocol, envoy.listener.tls_inspector
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.filters.udp_listener: envoy.filters.udp.dns_filter, envoy.filters.udp_listener.udp_proxy
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.compression.compressor: envoy.compression.gzip.compressor
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.dubbo_proxy.serializers: dubbo.hessian2
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.dubbo_proxy.filters: envoy.filters.dubbo.router
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.bootstrap: envoy.extensions.network.socket_interface.default_socket_interface
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.dubbo_proxy.protocols: dubbo
+[2020-10-24 00:44:17.424][7][info][main] [source/server/server.cc:309]   envoy.guarddog_actions: envoy.watchdog.abort_action, envoy.watchdog.profile_action
+[2020-10-24 00:44:17.438][7][warning][misc] [source/common/protobuf/utility.cc:294] Configuration does not parse cleanly as v3. v2 configuration is deprecated and will be removed from Envoy at the start of Q1 2021: Unknown field in: {"static_resources":{"clusters":[{"connect_timeout":"1.0s","lb_policy":"ROUND_ROBIN","type":"STRICT_DNS","hosts":[{"socket_address":{"address":"192.168.1.42","port_value":8081}}],"name":"first_cluster"}],"listeners":[{"address":{"socket_address":{"address":"0.0.0.0","port_value":8080}},"name":"first_listener","filter_chains":[{"filters":[{"typed_config":{"http_filters":[{"name":"envoy.filters.http.router"}],"stat_prefix":"all_http_ingress","@type":"type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager","route_config":{"name":"all_http_route","virtual_hosts":[{"routes":[{"route":{"cluster":"first_cluster"},"match":{"prefix":"/first"}},{"direct_response":{"status":403,"body":{"inline_string":"{'Message': 'Not Allowed'}"}},"match":{"prefix":"/"}}],"domains":["*"],"name":"all_http_cluster"}]}},"name":"envoy.filters.network.http_connection_manager"}]}]}]}}
+[2020-10-24 00:44:17.439][7][warning][misc] [source/common/protobuf/message_validator_impl.cc:21] Deprecated field: type envoy.api.v2.Cluster Using deprecated option 'envoy.api.v2.Cluster.hosts' from file cluster.proto. This configuration will be removed from Envoy soon. Please see https://www.envoyproxy.io/docs/envoy/latest/version_history/version_history for details. If continued use of this field is absolutely necessary, see https://www.envoyproxy.io/docs/envoy/latest/configuration/operations/runtime#using-runtime-overrides-for-deprecated-features for how to apply a temporary and highly discouraged override.
+[2020-10-24 00:44:17.439][7][info][main] [source/server/server.cc:325] HTTP header map info:
+[2020-10-24 00:44:17.440][7][warning][runtime] [source/common/runtime/runtime_features.cc:31] Unable to use runtime singleton for feature envoy.http.headermap.lazy_map_min_size
+[2020-10-24 00:44:17.440][7][warning][runtime] [source/common/runtime/runtime_features.cc:31] Unable to use runtime singleton for feature envoy.http.headermap.lazy_map_min_size
+[2020-10-24 00:44:17.441][7][warning][runtime] [source/common/runtime/runtime_features.cc:31] Unable to use runtime singleton for feature envoy.http.headermap.lazy_map_min_size
+[2020-10-24 00:44:17.441][7][warning][runtime] [source/common/runtime/runtime_features.cc:31] Unable to use runtime singleton for feature envoy.http.headermap.lazy_map_min_size
+[2020-10-24 00:44:17.441][7][info][main] [source/server/server.cc:328]   request header map: 608 bytes: :authority,:method,:path,:protocol,:scheme,accept,accept-encoding,access-control-request-method,authorization,cache-control,cdn-loop,connection,content-encoding,content-length,content-type,expect,grpc-accept-encoding,grpc-timeout,if-match,if-modified-since,if-none-match,if-range,if-unmodified-since,keep-alive,origin,pragma,proxy-connection,referer,te,transfer-encoding,upgrade,user-agent,via,x-client-trace-id,x-envoy-attempt-count,x-envoy-decorator-operation,x-envoy-downstream-service-cluster,x-envoy-downstream-service-node,x-envoy-expected-rq-timeout-ms,x-envoy-external-address,x-envoy-force-trace,x-envoy-hedge-on-per-try-timeout,x-envoy-internal,x-envoy-ip-tags,x-envoy-max-retries,x-envoy-original-path,x-envoy-original-url,x-envoy-retriable-header-names,x-envoy-retriable-status-codes,x-envoy-retry-grpc-on,x-envoy-retry-on,x-envoy-upstream-alt-stat-name,x-envoy-upstream-rq-per-try-timeout-ms,x-envoy-upstream-rq-timeout-alt-response,x-envoy-upstream-rq-timeout-ms,x-forwarded-client-cert,x-forwarded-for,x-forwarded-proto,x-ot-span-context,x-request-id
+[2020-10-24 00:44:17.441][7][info][main] [source/server/server.cc:328]   request trailer map: 128 bytes: 
+[2020-10-24 00:44:17.441][7][info][main] [source/server/server.cc:328]   response header map: 424 bytes: :status,access-control-allow-credentials,access-control-allow-headers,access-control-allow-methods,access-control-allow-origin,access-control-expose-headers,access-control-max-age,age,cache-control,connection,content-encoding,content-length,content-type,date,etag,expires,grpc-message,grpc-status,keep-alive,last-modified,location,proxy-connection,server,transfer-encoding,upgrade,vary,via,x-envoy-attempt-count,x-envoy-decorator-operation,x-envoy-degraded,x-envoy-immediate-health-check-fail,x-envoy-ratelimited,x-envoy-upstream-canary,x-envoy-upstream-healthchecked-cluster,x-envoy-upstream-service-time,x-request-id
+[2020-10-24 00:44:17.441][7][info][main] [source/server/server.cc:328]   response trailer map: 152 bytes: grpc-message,grpc-status
+[2020-10-24 00:44:17.443][7][warning][main] [source/server/server.cc:454] No admin address given, so no admin HTTP server started.
+[2020-10-24 00:44:17.444][7][info][main] [source/server/server.cc:583] runtime: layers:
+  - name: base
+    static_layer:
+      {}
+  - name: admin
+    admin_layer:
+      {}
+[2020-10-24 00:44:17.444][7][info][config] [source/server/configuration_impl.cc:95] loading tracing configuration
+[2020-10-24 00:44:17.444][7][info][config] [source/server/configuration_impl.cc:70] loading 0 static secret(s)
+[2020-10-24 00:44:17.444][7][info][config] [source/server/configuration_impl.cc:76] loading 1 cluster(s)
+[2020-10-24 00:44:17.447][7][info][config] [source/server/configuration_impl.cc:80] loading 1 listener(s)
+[2020-10-24 00:44:17.454][7][info][config] [source/server/configuration_impl.cc:121] loading stats sink configuration
+[2020-10-24 00:44:17.454][7][info][runtime] [source/common/runtime/runtime_impl.cc:421] RTDS has finished initialization
+[2020-10-24 00:44:17.454][7][info][upstream] [source/common/upstream/cluster_manager_impl.cc:178] cm init: all clusters initialized
+[2020-10-24 00:44:17.454][7][warning][main] [source/server/server.cc:565] there is no configured limit to the number of allowed active connections. Set a limit via the runtime key overload.global_downstream_max_connections
+[2020-10-24 00:44:17.455][7][info][main] [source/server/server.cc:660] all clusters initialized. initializing init manager
+[2020-10-24 00:44:17.455][7][info][config] [source/server/listener_manager_impl.cc:888] all dependencies initialized. starting workers
+[2020-10-24 00:44:17.456][7][info][main] [source/server/server.cc:679] starting main dispatch loop</pre>
+    </div>
+    <div id="para-div">
+      <p>In this first demonstration, we have configured <span class="bold">Envoy</span> such that it forwards any incoming requests
+        on the url prefix <span class="hi-blue">/first</span> to the <span class="bold">Python</span> service on <span class="bold">
+        my-n2-2:8081</span>. Request on any other prefix gets the <span class="hi-red">Not Allowed</span> message.</p>
+    </div>
+    <div id="para-div">
+      <p>To access the url prefix <span class="bold">/first</span> (through the proxy), execute the following command from another
+        host:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl -v http://192.168.1.41:8080/first</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>*   Trying 192.168.1.41:8080...
+* TCP_NODELAY set
+* Connected to 192.168.1.41 (192.168.1.41) port 8080 (#0)
+&gt; GET /first HTTP/1.1
+&gt; Host: 192.168.1.41:8080
+&gt; User-Agent: curl/7.68.0
+&gt; Accept: */*
+&gt; 
+* Mark bundle as not supporting multiuse
+&lt; HTTP/1.1 200 OK
+&lt; content-type: text/html; charset=utf-8
+&lt; content-length: 81
+&lt; server: envoy
+&lt; date: Sat, 24 Oct 2020 00:54:39 GMT
+&lt; x-envoy-upstream-service-time: 6
+&lt; 
+* Connection #0 to host 192.168.1.41 left intact
+{'Message': 'Hello from my-n2-2:8081', 'Timestamp': '2020-10-23 20:54:39.064856'}</pre>
+    </div>
+    <div id="para-div">
+      <p>To access the root url prefix <span class="bold">/</span> (through the proxy), execute the following command from another
+        host:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl -v http://192.168.1.41:8080/</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>*   Trying 192.168.1.41:8080...
+* TCP_NODELAY set
+* Connected to 192.168.1.41 (192.168.1.41) port 8080 (#0)
+&gt; GET / HTTP/1.1
+&gt; Host: 192.168.1.41:8080
+&gt; User-Agent: curl/7.68.0
+&gt; Accept: */*
+&gt; 
+* Mark bundle as not supporting multiuse
+&lt; HTTP/1.1 403 Forbidden
+&lt; content-length: 26
+&lt; content-type: text/plain
+&lt; date: Sat, 24 Oct 2020 00:57:58 GMT
+&lt; server: envoy
+&lt; 
+* Connection #0 to host 192.168.1.41 left intact
+{'Message': 'Not Allowed'}</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">PERFECT</span> !!! The setup works as expected.</p>
+    </div>
+    <div id="para-div">
+      <p>To stop the <span class="bold">Envoy</span> proxy, execute the following command in the Terminal for <span class="bold">
+        my-n2-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker stop envoy</p>
+    </div>
+    <div id="para-div">
+      <p>Moving on to the second demonstration, we will deploy the simple <span class="bold">Python</span> based service on the node
+        <span class="bold">my-n2-3</span> as well (in addition to the one on <span class="bold">my-n2-2</span>).</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the setup for the second demonstration:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/envoy-5.png" class="img-cls" alt="Demo Two" />
+      <div class="img-cap">Figure-4</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are the contents of the <span class="bold">Envoy</span> proxy configuration defined in an<span class="bold">
+        YAML</span> format:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">second.yaml</div>
+      <div class="gen-src-body">
+      <pre>static_resources:
+  listeners:
+  - name: second_listener
+    address:
+      socket_address: { address: 0.0.0.0, port_value: 8080 }
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          stat_prefix: all_http_ingress
+          route_config:
+            name: all_http_route
+            virtual_hosts:
+            - name: all_http_cluster
+              domains: ["*"]
+              routes:
+              - match: { prefix: "/first" }
+                route: { cluster: first_cluster }
+              - match: { prefix: "/" }
+                direct_response: { status: 403, body: { inline_string: "{'Message': 'Not Allowed'}" } }
+          http_filters:
+          - name: envoy.filters.http.router
+  clusters:
+  - name: first_cluster
+    connect_timeout: 1.0s
+    type: STRICT_DNS
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: first_cluster
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 192.168.1.42
+                port_value: 8081
+        - endpoint:
+            address:
+              socket_address:
+                address: 192.168.1.43
+                port_value: 8081</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>To start a second instance of the simple <span class="bold">Python</span> service, execute the following command in the
+        Terminal for <span class="bold">my-n2-3</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ python3 ServiceApp.py 8081</p>
+    </div>
+    <div id="para-div">
+      <p>The output would be similar to the one in Output.5 above.</p>
+    </div>
+    <div id="para-div">
+      <p>To start the <span class="bold">Envoy</span> proxy, execute the following command in the Terminal for <span class="bold">
+        my-n2-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name envoy -p 8080:8080 -v $HOME/second.yaml:/etc/envoy/envoy.yaml envoyproxy/envoy:v1.16.0</p>
+    </div>
+    <div id="para-div">
+      <p>The output would be similar to the one in Output.6 above.</p>
+    </div>
+    <div id="para-div">
+      <p>In this second demonstration, we have configured <span class="bold">Envoy</span> such that it forwards any incoming requests
+        on the url prefix <span class="hi-blue">/first</span> to the <span class="bold">Python</span> services on <span class="bold">
+        my-n2-2:8081</span> and <span class="bold">my-n2-3:8081</span> in a round-robin fashion. Request on any other prefix gets the
+        <span class="hi-red">Not Allowed</span> message.</p>
+    </div>
+    <div id="para-div">
+      <p>To access the url prefix <span class="bold">/first</span> (through the proxy), execute the following command from another
+        host:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl -v http://192.168.1.41:8080/first</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>*   Trying 192.168.1.41:8080...
+* TCP_NODELAY set
+* Connected to 192.168.1.41 (192.168.1.41) port 8080 (#0)
+&gt; GET /first HTTP/1.1
+&gt; Host: 192.168.1.41:8080
+&gt; User-Agent: curl/7.68.0
+&gt; Accept: */*
+&gt; 
+* Mark bundle as not supporting multiuse
+&lt; HTTP/1.1 200 OK
+&lt; content-type: text/html; charset=utf-8
+&lt; content-length: 81
+&lt; server: envoy
+&lt; date: Sat, 24 Oct 2020 01:20:21 GMT
+&lt; x-envoy-upstream-service-time: 6
+&lt; 
+* Connection #0 to host 192.168.1.41 left intact
+{'Message': 'Hello from my-n2-2:8081', 'Timestamp': '2020-10-23 21:20:21.393865'}</pre>
+    </div>
+    <div id="para-div">
+      <p>Retrying the above command one more time, we would get the following typical output </p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>*   Trying 192.168.1.41:8080...
+* TCP_NODELAY set
+* Connected to 192.168.1.41 (192.168.1.41) port 8080 (#0)
+&gt; GET /first HTTP/1.1
+&gt; Host: 192.168.1.41:8080
+&gt; User-Agent: curl/7.68.0
+&gt; Accept: */*
+&gt; 
+* Mark bundle as not supporting multiuse
+&lt; HTTP/1.1 200 OK
+&lt; content-type: text/html; charset=utf-8
+&lt; content-length: 81
+&lt; server: envoy
+&lt; date: Sat, 24 Oct 2020 01:20:42 GMT
+&lt; x-envoy-upstream-service-time: 6
+&lt; 
+* Connection #0 to host 192.168.1.41 left intact
+{'Message': 'Hello from my-n2-3:8081', 'Timestamp': '2020-10-23 21:20:42.868562'}</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">AWESOME</span> !!! The setup works as expected and round-robins between the two service instances.</p>
+    </div>
+    <div id="para-div">
+      <p>To stop the <span class="bold">Envoy</span> proxy, execute the following command in the Terminal for <span class="bold">
+        my-n2-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker stop envoy</p>
+    </div>
+    <div id="para-div">
+      <p>Next, on to the third demonstration, we will deploy another simple <span class="bold">Python</span> based service on the
+        nodes <span class="bold">my-n2-4</span> and <span class="bold">my-n2-5</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the setup for the third demonstration:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/envoy-6.png" class="img-cls" alt="Demo Three" />
+      <div class="img-cap">Figure-5</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the code for the other simple <span class="bold">Python</span> based service:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">ServiceApp2.py</div>
+      <div class="gen-src-body">
+      <pre>#
+# Name:   Simple Flask Service 2
+# Author: Bhaskar S
+# Blog:   https://polarsparc.github.io
+#
+
+import socket
+import sys
+from datetime import datetime
+from flask import Flask
+import random
+
+app = Flask(__name__)
+PORT = 0
+
+
+@app.route('/second')
+def first():
+    return "{'Message': 'Greetings from %s:%d', 'Token': '%d', 'Timestamp': '%s'}" %\
+            (socket.gethostname(), PORT, random.randint(1, 100), datetime.now())
+
+
+if __name__ == '__main__':
+    if len(sys.argv) == 2:
+        PORT = int(sys.argv[1])
+        app.run(host='0.0.0.0', port=PORT)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the <span class="bold">Envoy</span> proxy configuration defined in an<span class="bold">
+        YAML</span> format:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">third.yaml</div>
+      <div class="gen-src-body">
+      <pre>static_resources:
+  listeners:
+  - name: third_listener
+    address:
+      socket_address: { address: 0.0.0.0, port_value: 8080 }
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          stat_prefix: all_http_ingress
+          route_config:
+            name: all_http_route
+            virtual_hosts:
+            - name: all_http_cluster
+              domains: ["*"]
+              routes:
+              - match: { prefix: "/first" }
+                route: { cluster: first_cluster }
+              - match: { prefix: "/second" }
+                route: { cluster: second_cluster }
+              - match: { prefix: "/" }
+                direct_response: { status: 403, body: { inline_string: "{'Message': 'Not Allowed'}" } }
+          http_filters:
+          - name: envoy.filters.http.router
+  clusters:
+  - name: first_cluster
+    connect_timeout: 0.5s
+    type: STRICT_DNS
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: first_cluster
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 192.168.1.42
+                port_value: 8081
+        - endpoint:
+            address:
+              socket_address:
+                address: 192.168.1.43
+                port_value: 8081
+  - name: second_cluster
+    connect_timeout: 0.5s
+    type: STRICT_DNS
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: second_cluster
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 192.168.1.44
+                port_value: 8082
+        - endpoint:
+            address:
+              socket_address:
+                address: 192.168.1.45
+                port_value: 8082</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>To start the other simple <span class="bold">Python</span> service, execute the following command in the Terminals for
+        <span class="bold">my-n2-4</span> and <span class="bold">my-n2-5</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ python3 ServiceApp2.py 8082</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre> * Serving Flask app "ServiceApp2" (lazy loading)
+ * Environment: production
+    WARNING: This is a development server. Do not use it in a production deployment.
+    Use a production WSGI server instead.
+ * Debug mode: off
+ * Running on http://0.0.0.0:8082/ (Press CTRL+C to quit)</pre>
+    </div>
+    <div id="para-div">
+      <p>To start the <span class="bold">Envoy</span> proxy, execute the following command in the Terminal for <span class="bold">
+        my-n2-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name envoy -p 8080:8080 -v $HOME/third.yaml:/etc/envoy/envoy.yaml envoyproxy/envoy:v1.16.0</p>
+    </div>
+    <div id="para-div">
+      <p>The output would be similar to the one in Output.6 above.</p>
+    </div>
+    <div id="para-div">
+      <p>In this third demonstration, we have configured <span class="bold">Envoy</span> such that it forwards any incoming requests
+        on the url prefix <span class="hi-blue">/first</span> to the <span class="bold">Python</span> services on <span class="bold">
+        my-n2-2:8081</span> and <span class="bold">my-n2-3:8081</span> in a round-robin fashion, while the requests on the url prefix
+        <span class="hi-blue">/second</span> are forwarded to the <span class="bold">Python</span> services on <span class="bold">
+        my-n2-4:8082</span> and <span class="bold">my-n2-5:8082</span> in a round-robin fashion. Request on any other prefix gets the
+        <span class="hi-red">Not Allowed</span> message.</p>
+    </div>
+    <div id="para-div">
+      <p>To access the url prefix <span class="bold">/second</span> (through the proxy), execute the following command from another
+        host:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl -v http://192.168.1.41:8080/second</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>*   Trying 192.168.1.41:8080...
+* TCP_NODELAY set
+* Connected to 192.168.1.41 (192.168.1.41) port 8080 (#0)
+&gt; GET /second HTTP/1.1
+&gt; Host: 192.168.1.41:8080
+&gt; User-Agent: curl/7.68.0
+&gt; Accept: */*
+&gt; 
+* Mark bundle as not supporting multiuse
+&lt; HTTP/1.1 200 OK
+&lt; content-type: text/html; charset=utf-8
+&lt; content-length: 81
+&lt; server: envoy
+&lt; date: Sat, 24 Oct 2020 16:26:49 GMT
+&lt; x-envoy-upstream-service-time: 5
+&lt; 
+* Connection #0 to host 192.168.1.41 left intact
+{'Message': 'Greetings from my-n2-4:8082', 'Token': '14', 'Timestamp': '2020-10-24 12:26:49.530510'}</pre>
+    </div>
+    <div id="para-div">
+      <p>Retrying the above command one more time, we would get the following typical output </p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>*   Trying 192.168.1.41:8080...
+* TCP_NODELAY set
+* Connected to 192.168.1.41 (192.168.1.41) port 8080 (#0)
+&gt; GET /second HTTP/1.1
+&gt; Host: 192.168.1.41:8080
+&gt; User-Agent: curl/7.68.0
+&gt; Accept: */*
+&gt; 
+* Mark bundle as not supporting multiuse
+&lt; HTTP/1.1 200 OK
+&lt; content-type: text/html; charset=utf-8
+&lt; content-length: 81
+&lt; server: envoy
+&lt; date: Sat, 24 Oct 2020 16:26:53 GMT
+&lt; x-envoy-upstream-service-time: 6
+&lt; 
+* Connection #0 to host 192.168.1.41 left intact
+{'Message': 'Greetings from my-n2-5:8082', 'Token': '54', 'Timestamp': '2020-10-24 12:26:53.858827'}</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">WALLA</span> !!! The setup works as expected and round-robins between the two sets of services based on
+        the url prefixes <span class="bold">/first</span> or <span class="bold">/second</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>We need to collect some load statistics before we move on to the next demonstration. We will use the HTTP load testing tool
+        called <a href="https://github.com/tsenart/vegeta" target="_blank"><span class="hi-yellow">Vegeta</span></a>  for collecting
+        some metrics.</p>
+    </div>
+    <div id="para-div">
+      <p>For this, we pick a host different from our cluster nodes. Assuming <a href="https://golang.org/" target="_blank">
+        <span class="hi-yellow">Golang</span></a> is installed on that host, execute the following command to install
+        <span class="bold">Vegeta</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ go get -u github.com/tsenart/vegeta</p>
+    </div>
+    <div id="para-div">
+      <p>To run a load test through the <span class="bold">Envoy</span> proxy, execute the following command in the host:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ echo "GET http://192.168.1.41:8080/first" | vegeta attack -rate=500 -duration=0 | vegeta report</p>
+    </div>
+    <div id="para-div">
+      <p>After a few seconds, press CTRL-C to stop the load test.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>Requests      [total, rate, throughput]         6515, 500.08, 499.92
+Duration      [total, attack, wait]             13.032s, 13.028s, 4.154ms
+Latencies     [min, mean, 50, 90, 95, 99, max]  3.118ms, 3.956ms, 3.646ms, 4.911ms, 5.435ms, 7.229ms, 15.481ms
+Bytes In      [total, mean]                     527715, 81.00
+Bytes Out     [total, mean]                     0, 0.00
+Success       [ratio]                           100.00%
+Status Codes  [code:count]                      200:6515  
+Error Set:</pre>
+    </div>
+    <div id="para-div">
+      <p>To stop the <span class="bold">Envoy</span> proxy, execute the following command in the Terminal for <span class="bold">
+        my-n2-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker stop envoy</p>
+    </div>
+    <div id="para-div">
+      <p>Now, on to the fourth demonstration, we will re-use the same setup as the previous one with few changes.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the <span class="bold">Envoy</span> proxy configuration defined in an<span class="bold">
+        YAML</span> format:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">fourth.yaml</div>
+      <div class="gen-src-body">
+      <pre>static_resources:
+  listeners:
+  - name: fourth_listener
+    address:
+      socket_address: { address: 0.0.0.0, port_value: 8080 }
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          stat_prefix: all_http_ingress
+          route_config:
+            name: all_http_route
+            virtual_hosts:
+            - name: all_http_cluster
+              domains: ["*"]
+              routes:
+              - match: { prefix: "/first" }
+                route: { cluster: first_cluster }
+              - match: { prefix: "/second" }
+                route: { cluster: second_cluster }
+              - match: { prefix: "/" }
+                direct_response: { status: 403, body: { inline_string: "{'Message': 'Not Allowed'}" } }
+          http_filters:
+          - name: envoy.filters.http.router
+  clusters:
+  - name: first_cluster
+    connect_timeout: 0.5s
+    type: STRICT_DNS
+    lb_policy: ROUND_ROBIN
+    circuit_breakers:
+      thresholds:
+        max_connections: 1
+        max_pending_requests: 1
+        max_requests: 1
+    load_assignment:
+      cluster_name: first_cluster
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 192.168.1.42
+                port_value: 8081
+        - endpoint:
+            address:
+              socket_address:
+                address: 192.168.1.43
+                port_value: 8081
+  - name: second_cluster
+    connect_timeout: 0.5s
+    type: STRICT_DNS
+    lb_policy: ROUND_ROBIN
+    circuit_breakers:
+      thresholds:
+        max_connections: 1
+        max_pending_requests: 1
+        max_requests: 1
+    load_assignment:
+      cluster_name: second_cluster
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 192.168.1.44
+                port_value: 8082
+        - endpoint:
+            address:
+              socket_address:
+                address: 192.168.1.45
+                port_value: 8082</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>Notice the use of <span class="hi-yellow">circuit_breakers</span> for both the <span class="bold">Cluster</span>s. Circuit
+        breaking is very important component of any distributed systems. It is better to fail quickly and apply back pressure on the
+        <span class="bold">Downstream</span> systems as soon as possible. <span class="bold">Envoy</span> enforces circuit breaking
+        limits at the network level thereby protecting <span class="bold">Upstream</span> endpoints.</p>
+      <p>The following section explains some of the elements from the <span class="bold">fourth.yaml</span> configuration file:</p>
+      <ul id="blue-arw-ul">
+        <li>
+          <p><span class="hi-yellow">thresholds</span> :: indicates the various limits used for circuit breaking</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">max_connections</span> :: the maximum number of connections that proxy will establish to all
+            endpoints in the associated <span class="bold">Cluster</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">max_pending_requests</span> :: the maximum number of requests that will be queued while waiting
+            for a ready connection from the pool connection</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">max_requests</span> :: the maximum number of parallel requests that the proxy will make to the
+            associated <span class="bold">Cluster</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To start the <span class="bold">Envoy</span> proxy, execute the following command in the Terminal for <span class="bold">
+        my-n2-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name envoy -p 8080:8080 -v $HOME/fourth.yaml:/etc/envoy/envoy.yaml envoyproxy/envoy:v1.16.0</p>
+    </div>
+    <div id="para-div">
+      <p>The output would be similar to the one in Output.6 above.</p>
+    </div>
+    <div id="para-div">
+      <p>In this fourth demonstration, we have configured <span class="bold">Envoy</span> to apply back pressure (circuit break) if
+        there are too many parallel incoming requests.</p>
+    </div>
+    <div id="para-div">
+      <p>Tp re-run the load test through the <span class="bold">Envoy</span> proxy, execute the following command in the host:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ echo "GET http://192.168.1.41:8080/first" | vegeta attack -rate=500 -duration=0 | vegeta report</p>
+    </div>
+    <div id="para-div">
+      <p>After a few seconds, press CTRL-C to stop the load test.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>Requests      [total, rate, throughput]         7607, 500.07, 257.47
+Duration      [total, attack, wait]             15.213s, 15.212s, 1.375ms
+Latencies     [min, mean, 50, 90, 95, 99, max]  466.599µs, 2.433ms, 2.545ms, 4.427ms, 4.779ms, 5.48ms, 10.285ms
+Bytes In      [total, mean]                     616167, 81.00
+Bytes Out     [total, mean]                     0, 0.00
+Success       [ratio]                           51.49%
+Status Codes  [code:count]                      200:3917  503:3690  
+Error Set:
+503 Service Unavailable</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.15 above, we observe about 50% of the requests are rejected with a 503 status code implying the circuit
+        breaking thresolds in the proxy are taking effect.</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">EUREKA</span> !!! The setup works as expected and the circuit breakers are effective in protecting the
+        associated <span class="bold">Cluster</span>s.</p>
+    </div>
+    <div id="para-div">
+      <p>To stop the <span class="bold">Envoy</span> proxy, execute the following command in the Terminal for <span class="bold">
+        my-n2-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker stop envoy</p>
+    </div>
+    <div id="para-div">
+      <p>Now, for the final demonstration, we will re-use the same setup as the previous one, except that we will enable the secure
+        layer (TLS) for making requests via HTTPS.</p>
+    </div>
+    <div id="para-div">
+      <p>To create a test certificate (and the corresponding private key) using <span class="hi-yellow">openssl</span>, execute the
+        following command in the Terminal for <span class="bold">my-n2-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ openssl req -nodes -new -x509 -keyout all-domains.key -out all-domains.crt -days 365 -subj '/CN=*/O=polarsparc/C=US'</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>Generating a RSA private key
+.........+++++
+................................................+++++
+writing new private key to 'all-domains.key'
+-----</pre>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>!! ATTENTION !!</h4>
+      <pre>The permissions of the private key file <span class="bold">all-domains.key</span> needs to be changed so it can be accessed by docker. Else we will encounter an error</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To change the permissions of the private key file <span class="bold">all-domains.key</span>, execute the following command
+        in the Terminal for <span class="bold">my-n2-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ chmod 644 all-domains.key</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the <span class="bold">Envoy</span> proxy configuration defined in an<span class="bold">
+        YAML</span> format:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">fifth.yaml</div>
+      <div class="gen-src-body">
+      <pre>static_resources:
+  listeners:
+  - name: fifth_listener
+    address:
+      socket_address: { address: 0.0.0.0, port_value: 8443 }
+    filter_chains:
+    - filters:
+      - name: envoy.filters.network.http_connection_manager
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+          stat_prefix: all_http_ingress
+          route_config:
+            name: all_http_route
+            virtual_hosts:
+            - name: all_http_cluster
+              domains: ["*"]
+              routes:
+              - match: { prefix: "/first" }
+                route: { cluster: first_cluster }
+              - match: { prefix: "/second" }
+                route: { cluster: second_cluster }
+              - match: { prefix: "/" }
+                direct_response: { status: 403, body: { inline_string: "{'Message': 'Not Allowed'}" } }
+          http_filters:
+          - name: envoy.filters.http.router
+      tls_context:
+        common_tls_context:
+          tls_certificates:
+            - certificate_chain:
+                filename: "/etc/ssl/certs/all-domains.crt"
+              private_key:
+                filename: "/etc/ssl/certs/all-domains.key"
+  clusters:
+  - name: first_cluster
+    connect_timeout: 0.5s
+    type: STRICT_DNS
+    lb_policy: ROUND_ROBIN
+    circuit_breakers:
+      thresholds:
+        max_connections: 1
+        max_pending_requests: 1
+        max_requests: 1
+    load_assignment:
+      cluster_name: first_cluster
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 192.168.1.42
+                port_value: 8081
+        - endpoint:
+            address:
+              socket_address:
+                address: 192.168.1.43
+                port_value: 8081
+  - name: second_cluster
+    connect_timeout: 0.5s
+    type: STRICT_DNS
+    lb_policy: ROUND_ROBIN
+    circuit_breakers:
+      thresholds:
+        max_connections: 1
+        max_pending_requests: 1
+        max_requests: 1
+    load_assignment:
+      cluster_name: second_cluster
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 192.168.1.44
+                port_value: 8082
+        - endpoint:
+            address:
+              socket_address:
+                address: 192.168.1.45
+                port_value: 8082</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>Notice the use of <span class="hi-yellow">tls_context</span> for the <span class="bold">Listener</span>.</p>
+      <p>The following section explains some of the elements from the <span class="bold">fifth.yaml</span> configuration file:</p>
+      <ul id="blue-arw-ul">
+        <li>
+          <p><span class="hi-yellow">tls_certificates</span> :: indicates the TLS certificates to be used by the proxy</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">certificate_chain</span> :: indicates the certificate chain used by the proxy for the associated
+            <span class="bold">Listener</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">private_key</span> :: indicates the preivate key of the certificate used by the proxy for the
+            associated <span class="bold">Listener</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To start the <span class="bold">Envoy</span> proxy, execute the following command in the Terminal for <span class="bold">
+        my-n2-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name envoy -p 8443:8443 -v $HOME/all-domains.crt:/etc/ssl/certs/all-domains.crt -v $HOME/all-domains.key:/etc/ssl/certs/all-domains.key -v $HOME/fifth.yaml:/etc/envoy/envoy.yaml envoyproxy/envoy:v1.16.0</p>
+    </div>
+    <div id="para-div">
+      <p>The output would be similar to the one in Output.6 above.</p>
+    </div>
+    <div id="para-div">
+      <p>Launch a browser (like <span class="bold">Chrome</span>) to open the url <span class="bold">https://192.168.1.41:8443</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the view on the <span class="bold">Chrome</span> browser:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/envoy-7.png" class="img-cls" alt="Chrome TLS Demo" />
+      <div class="img-cap">Figure-6</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Since we are using a self-signed TLS certificate for this demo, the <span class="bold">Chrome</span> browser is highlighting
+        the risk of the Certificate Authority being invalid.</p>
+    </div>
+    <div id="para-div">
+      <p>Click on the <span class="bold">Advanced</span> button as highlighted in the Figure-6 above.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the next view on the <span class="bold">Chrome</span> browser:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/envoy-8.png" class="img-cls" alt="TLS Untrusted" />
+      <div class="img-cap">Figure-7</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Click on the link as highlighted in the Figure-7 above to accept the risk and proceed.</p>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the final view on the <span class="bold">Chrome</span> browser:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/envoy-9.png" class="img-cls" alt="TLS Success" />
+      <div class="img-cap">Figure-8</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">BINGO</span> !!! The setup works as expected and we have successfully demonstrated a secure connectivity
+        to the proxy using a self-signed certificate.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://www.envoyproxy.io/docs/envoy/v1.16.0/" target="_blank"><span class="bold">Official Envoy Documentation</span></a></p>
+      <p><a href="https://www.envoyproxy.io/docs/envoy/v1.16.0/intro/life_of_a_request" target="_blank"><span class="bold">Life of a Request</span></a></p>
+      <p><a href="https://github.com/bhaskars-repo/Envoy" target="_blank"><span class="bold">GitHub Repo</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
