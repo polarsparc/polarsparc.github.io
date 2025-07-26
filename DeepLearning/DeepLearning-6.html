@@ -1,0 +1,695 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Introduction to Deep Learning - Part 6">
+    <meta name="subject" content="Introduction to Deep Learning - Part 6">
+    <meta name="keywords" content="artificial-intelligence, deep-learning, neural-network, pytorch">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Introduction to Deep Learning - Part 6</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+      MathJax = {
+        tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+      };
+    </script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.0.5/es5/tex-chtml.js"></script>
+    <!-- script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script -->
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="gen-home"></span></td>
+        <td valign="bottom"><span id="gen-home-a"><a id="gen-home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="gen-title-div">
+      <p>Introduction to Deep Learning - Part 6</p>
+    </div>
+    <br />
+    <table id="gen-ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">07/22/2023</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="gen-line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Introduction</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/DeepLearning/DeepLearning-5.html" target="_blank"><span class="bold">Introduction
+        to Deep Learning - Part 5</span></a> of this series, we continued our journey with <span class="bold">PyTorch</span>, covering
+        the following topics:</p>
+      <ul id="gen-sqr-ul">
+        <li><p>Tensor Shape Manipulation</p></li>
+        <li><p>Autograd Feature</p></li>
+        <li><p>Building Basic Linear Models (with and without GPU)</p></li>
+      </ul>
+      <p>In this article, we will continue the journey further in building a non-linear <span class="bold">PyTorch</span> model.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on PyTorch</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will now move onto the next section on building a non-linear <span class="bold">Binary Classification</span> model.</p>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>Binary Classification Loss Function</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/DeepLearning/DeepLearning-2.html" target="_blank"><span class="bold">Introduction
+        to Deep Learning - Part 2</span></a> of this series, we described the <span class="bold">Loss Function</span> as a measure
+        of the deviation of the predicted value from the actual target value.</p>
+      <p>For <span class="bold">Regression</span> problems, one would either use the <span class="bold">Mean Absolute Error</span>
+        (also known as the <span class="bold">L1 Loss</span>) or the <span class="bold">Mean Squared Error</span> loss.</p>
+      <p>However, for <span class="bold">Classification</span> problems, one would typically use the <span class="hi-yellow">Cross
+        Entropy</span> loss, in particular the <span class="hi-yellow">Binary Cross Entropy</span> loss for the <span class="bold">
+        Binary Classification</span> problems.</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="hi-yellow">Binary Cross Entropy</span> loss $L(x, W, b)$ is defined as follows:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$L(x, W, b) = -[y.log(\sigma(x, W, b)) + (1 - y).log(1-\sigma(x, W, b))]$</p>
+      <p>where, $x$ is the input, $W$ is the <span class="bold">weights</span>, $b$ is the <span class="bold">biases</span>, $\sigma$
+        is the <span class="bold">activation function</span> with its output as the predicted value, and $y$ is the actual target
+        prediction class.</p>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>PyTorch Model Basics - Part 2</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the non-linear <span class="bold">Binary Classification</span> use-case, we will leverage one of the <span class="bold">
+        Scikit-Learn</span> capabilities to create the non-linear synthetic data.</p>
+    </div>
+    <div id="para-div">
+      <p>To import the necessary <span class="bold">Python</span> module(s), execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.datasets import make_moons
+from sklearn.metrics import accuracy_score
+import torch
+from torch import nn</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create the non-linear synthetic data for the <span class="bold">Binary Classification</span> with two features, execute
+        the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>num_samples = 500
+
+np_Xcp, np_ycp = make_moons(num_samples, noise=0.15, random_state=101)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create the tensor dataset, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>Xcp = torch.tensor(np_Xcp, dtype=torch.float)
+ycp = torch.tensor(np_ycp, dtype=torch.float).unsqueeze(dim=1)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create the training and testing samples, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>Xc_train, Xc_test, yc_train, yc_test = train_test_split(Xc, yc, test_size=0.2, random_state=101)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration shows the plot for the training set:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Non-Linear Binary" class="gen-img-cls" src="./images/deep-learning-38.png">
+        <div class="gen-img-cap">Figure.1</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To initialize variables for the number of features, number of target, and the number of epoch, execute the following code
+        snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>num_features_3 = 2
+num_target_3 = 1
+num_epochs_3 = 2001</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a simple non-linear <span class="bold">Binary Classification</span> model without any hidden layers for the above
+        case, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>class BinaryClassNonLinearModel(nn.Module):
+  def __init__(self):
+    super(BinaryClassNonLinearModel, self).__init__()
+    self.nn_layers = nn.Sequential(
+      nn.Linear(num_features_3, num_target_3),
+      nn.Sigmoid()
+    )
+
+  def forward(self, cx: torch.Tensor) -> torch.Tensor:
+    return self.nn_layers(cx)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an instance of <span class="hi-yellow">BinaryClassNonLinearModel</span>, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nl_model = BinaryClassNonLinearModel()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an instance of the <span class="bold">Binary Cross Entropy</span> loss function, execute the following code
+        snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nl_criterion = nn.BCELoss()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an instance of the <span class="bold">gradient descent</span> function, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nl_optimizer = torch.optim.SGD(nl_model.parameters(), lr=0.05)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To implement the iterative training loop for the forward pass to predict, compute the loss, and execute the backward pass
+        to adjust the parameters, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>for epoch in range(1, num_epochs_3):
+  nl_model.train()
+  nl_optimizer.zero_grad()
+  ycp_predict = nl_model(Xcp_train)
+  loss = nl_criterion(ycp_predict, ycp_train)
+  if epoch % 100 == 0:
+    print(f'Non-Linear Model [1] -> Epoch: {epoch}, Loss: {loss}')
+  loss.backward()
+  nl_optimizer.step()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Non-Linear Model [1] -> Epoch: 100, Loss: 0.4583107829093933
+Non-Linear Model [1] -> Epoch: 200, Loss: 0.38705599308013916
+Non-Linear Model [1] -> Epoch: 300, Loss: 0.35396769642829895
+Non-Linear Model [1] -> Epoch: 400, Loss: 0.333740770816803
+Non-Linear Model [1] -> Epoch: 500, Loss: 0.3197369873523712
+Non-Linear Model [1] -> Epoch: 600, Loss: 0.3093145191669464
+Non-Linear Model [1] -> Epoch: 700, Loss: 0.30119335651397705
+Non-Linear Model [1] -> Epoch: 800, Loss: 0.29466748237609863
+Non-Linear Model [1] -> Epoch: 900, Loss: 0.2893083989620209
+Non-Linear Model [1] -> Epoch: 1000, Loss: 0.2848363220691681
+Non-Linear Model [1] -> Epoch: 1100, Loss: 0.28105801343917847
+Non-Linear Model [1] -> Epoch: 1200, Loss: 0.27783405780792236
+Non-Linear Model [1] -> Epoch: 1300, Loss: 0.27506041526794434
+Non-Linear Model [1] -> Epoch: 1400, Loss: 0.2726573050022125
+Non-Linear Model [1] -> Epoch: 1500, Loss: 0.2705625891685486
+Non-Linear Model [1] -> Epoch: 1600, Loss: 0.26872673630714417
+Non-Linear Model [1] -> Epoch: 1700, Loss: 0.2671099007129669
+Non-Linear Model [1] -> Epoch: 1800, Loss: 0.26567962765693665
+Non-Linear Model [1] -> Epoch: 1900, Loss: 0.2644093632698059
+Non-Linear Model [1] -> Epoch: 2000, Loss: 0.26327699422836304</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To predict the target values using the trained model, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nl_model.eval()
+with torch.no_grad():
+  y_predict_nl = nl_model(Xcp_test)
+  y_predict_nl = torch.round(y_predict_nl)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the model prediction accuracy, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>print(f'Non-Linear Model [1] -> Accuracy: {accuracy_score(y_predict_nl, ycp_test)}')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Non-Linear Model [1] -> Accuracy: 0.86</pre>
+    </div>
+    <br/>    
+    <div id="para-div">
+      <p>A visual plot of the decision boundary that segregates the two classes would be very useful.</p>
+    </div>
+    <div id="para-div">
+      <p>To define the method to display the decision boundary along with the scatter plot, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>def plot_with_decision_boundary(model, X, y):
+  margin = 0.1
+  # Set the grid bounds - identify min and max values with some margin
+  x_min, x_max = X[:, 0].min() - margin, X[:, 0].max() + margin
+  y_min, y_max = X[:, 1].min() - margin, X[:, 1].max() + margin
+  # Create the x and y scale with spacing
+  space = 0.1
+  x_scale = np.arange(x_min, x_max, space)
+  y_scale = np.arange(y_min, y_max, space)
+  # Create the x and y grid
+  x_grid, y_grid = np.meshgrid(x_scale, y_scale)
+  # Flatten the x and y grid to vectors
+  x_flat = x_grid.ravel()
+  y_flat = y_grid.ravel()
+  # Predict using the model for the combined x and y vectors
+  y_p = model(torch.tensor(np.c_[x_flat, y_flat], dtype=torch.float)).numpy()
+  y_p = y_p.reshape(x_grid.shape)
+  # Plot the contour to display the boundary
+  plt.contourf(x_grid, y_grid, y_p, cmap=plt.cm.RdBu, alpha=0.3)
+  plt.scatter(X[:, 0], X[:, 1], c=y, cmap=plt.cm.RdBu, alpha=0.5)
+  plt.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To plot the decision boundary along with the scatter plot on the training data using the model we just created above, execute
+        the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nl_model.eval()
+with torch.no_grad():
+  plot_with_decision_boundary(nl_model, Xcp_train, ycp_train)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration depicts the scatter plot with the decision boundary as predicted by the model:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Model One Decision" class="gen-img-cls" src="./images/deep-learning-39.png">
+        <div class="gen-img-cap">Figure.2</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Given that the model uses a linear layer it is not surprising to see a linear demarcation between the two classes from the
+        plot in <span class="bold">Figure.2</span> above.</p>
+    </div>
+    <div id="para-div">
+      <p>Let us see if we can improve the model by adding a hidden layer.</p>
+    </div>
+    <div id="para-div">
+      <p>To create a non-linear <span class="bold">Binary Classification</span> model with one hidden layer consisting of <span class=
+        "bold">8</span> neurons, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>num_hidden_3 = 8
+
+class BinaryClassNonLinearModel_2(nn.Module):
+  def __init__(self):
+    super(BinaryClassNonLinearModel_2, self).__init__()
+    self.nn_layers = nn.Sequential(
+      nn.Linear(num_features_3, num_hidden_3),
+      nn.ReLU(),
+      nn.Linear(num_hidden_3, num_target_3),
+      nn.Sigmoid()
+    )
+  
+  def forward(self, cx: torch.Tensor) -> torch.Tensor:
+    return self.nn_layers(cx)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an instance of <span class="hi-yellow">BinaryClassNonLinearModel_2</span>, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nl_model_2 = BinaryClassNonLinearModel_2()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an instance of the <span class="bold">Binary Cross Entropy</span> loss function, execute the following code
+        snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nl_criterion_2 = nn.BCELoss()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an instance of the <span class="bold">gradient descent</span> function, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nl_optimizer_2 = torch.optim.SGD(nl_model_2.parameters(), lr=0.05)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To implement the iterative training loop for the forward pass to predict, compute the loss, and execute the backward pass
+        to adjust the parameters, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>for epoch in range(1, num_epochs_3):
+  nl_model_2.train()
+  nl_optimizer_2.zero_grad()
+  ycp_predict = nl_model_2(Xcp_train)
+  loss = nl_criterion_2(ycp_predict, ycp_train)
+  if epoch % 100 == 0:
+    print(f'Non-Linear Model [2] -> Epoch: {epoch}, Loss: {loss}')
+  loss.backward()
+  nl_optimizer_2.step()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>Non-Linear Model [2] -> Epoch: 200, Loss: 0.3945632874965668
+Non-Linear Model [2] -> Epoch: 300, Loss: 0.33575549721717834
+Non-Linear Model [2] -> Epoch: 400, Loss: 0.3044913411140442
+Non-Linear Model [2] -> Epoch: 500, Loss: 0.2857321798801422
+Non-Linear Model [2] -> Epoch: 600, Loss: 0.27366170287132263
+Non-Linear Model [2] -> Epoch: 700, Loss: 0.26533225178718567
+Non-Linear Model [2] -> Epoch: 800, Loss: 0.2591221332550049
+Non-Linear Model [2] -> Epoch: 900, Loss: 0.2543095052242279
+Non-Linear Model [2] -> Epoch: 1000, Loss: 0.2502143681049347
+Non-Linear Model [2] -> Epoch: 1100, Loss: 0.24629908800125122
+Non-Linear Model [2] -> Epoch: 1200, Loss: 0.24235355854034424
+Non-Linear Model [2] -> Epoch: 1300, Loss: 0.23860971629619598
+Non-Linear Model [2] -> Epoch: 1400, Loss: 0.23535583913326263
+Non-Linear Model [2] -> Epoch: 1500, Loss: 0.23240886628627777
+Non-Linear Model [2] -> Epoch: 1600, Loss: 0.2295774221420288
+Non-Linear Model [2] -> Epoch: 1700, Loss: 0.22672024369239807
+Non-Linear Model [2] -> Epoch: 1800, Loss: 0.2237909436225891
+Non-Linear Model [2] -> Epoch: 1900, Loss: 0.22083352506160736
+Non-Linear Model [2] -> Epoch: 2000, Loss: 0.21780216693878174</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To predict the target values using the trained model, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nl_model_2.eval()
+with torch.no_grad():
+  y_predict_nl_2 = nl_model_2(Xcp_test)
+  y_predict_nl_2 = torch.round(y_predict_nl_2)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the model prediction accuracy, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>print(f'Non-Linear Model [2] -> Accuracy: {accuracy_score(y_predict_nl_2, ycp_test)}')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>Non-Linear Model [2] -> Accuracy: 0.89</pre>
+    </div>
+    <br/>    
+    <div id="para-div">
+      <p>To plot the decision boundary along with the scatter plot on the training data using the model we just created above, execute
+        the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nl_model_2.eval()
+with torch.no_grad():
+  plot_with_decision_boundary(nl_model_2, Xcp_train, ycp_train)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration depicts the scatter plot with the decision boundary as predicted by the model:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Model Two Decision" class="gen-img-cls" src="./images/deep-learning-40.png">
+        <div class="gen-img-cap">Figure.3</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The prediction accuracy has improved a little bit. Also, we observe a better demarcation between the two classes from the
+        plot in <span class="bold">Figure.3</span> above.</p>
+    </div>
+    <div id="para-div">
+      <p>One last time, let us see if we can improve the model by adding one more hidden layer for a total of two.</p>
+    </div>
+    <div id="para-div">
+      <p>To create a non-linear <span class="bold">Binary Classification</span> model with two hidden layers - the first hidden layer
+        consisting of <span class="bold">16</span> neurons and the second hidden layer consisting of <span class="bold">8</span> neurons,
+        execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>num_hidden_1_3 = 16
+num_hidden_2_3 = 8
+
+class BinaryClassNonLinearModel_3(nn.Module):
+  def __init__(self):
+    super(BinaryClassNonLinearModel_3, self).__init__()
+    self.hidden_layer = nn.Sequential(
+      nn.Linear(num_features_3, num_hidden_1_3),
+      nn.ReLU(),
+      nn.Linear(num_hidden_1_3, num_hidden_2_3),
+      nn.ReLU(),
+      nn.Linear(num_hidden_2_3, num_target_3),
+      nn.Sigmoid()
+    )
+
+  def forward(self, cx: torch.Tensor) -> torch.Tensor:
+    return self.hidden_layer(cx)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an instance of <span class="hi-yellow">BinaryClassNonLinearModel_3</span>, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nl_model_3 = BinaryClassNonLinearModel_3()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an instance of the <span class="bold">Binary Cross Entropy</span> loss function, execute the following code
+        snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nl_criterion_3 = nn.BCELoss()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an instance of the <span class="bold">gradient descent</span> function, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nl_optimizer_3 = torch.optim.SGD(nl_model_3.parameters(), lr=0.05)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To implement the iterative training loop for the forward pass to predict, compute the loss, and execute the backward pass
+        to adjust the parameters, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>for epoch in range(1, num_epochs_3):
+  nl_model_3.train()
+  nl_optimizer_3.zero_grad()
+  ycp_predict = nl_model_3(Xcp_train)
+  loss = nl_criterion_3(ycp_predict, ycp_train)
+  if epoch % 100 == 0:
+    print(f'Non-Linear Model [3] -> Epoch: {epoch}, Loss: {loss}')
+  loss.backward()
+  nl_optimizer_3.step()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>Non-Linear Model [3] -> Epoch: 200, Loss: 0.32728901505470276
+Non-Linear Model [3] -> Epoch: 300, Loss: 0.26362675428390503
+Non-Linear Model [3] -> Epoch: 400, Loss: 0.2460920661687851
+Non-Linear Model [3] -> Epoch: 500, Loss: 0.23748859763145447
+Non-Linear Model [3] -> Epoch: 600, Loss: 0.22980321943759918
+Non-Linear Model [3] -> Epoch: 700, Loss: 0.2213612049818039
+Non-Linear Model [3] -> Epoch: 800, Loss: 0.21136374771595
+Non-Linear Model [3] -> Epoch: 900, Loss: 0.1993836611509323
+Non-Linear Model [3] -> Epoch: 1000, Loss: 0.1850656270980835
+Non-Linear Model [3] -> Epoch: 1100, Loss: 0.1690329909324646
+Non-Linear Model [3] -> Epoch: 1200, Loss: 0.15195232629776
+Non-Linear Model [3] -> Epoch: 1300, Loss: 0.1345341056585312
+Non-Linear Model [3] -> Epoch: 1400, Loss: 0.1175856664776802
+Non-Linear Model [3] -> Epoch: 1500, Loss: 0.10193011909723282
+Non-Linear Model [3] -> Epoch: 1600, Loss: 0.08826065808534622
+Non-Linear Model [3] -> Epoch: 1700, Loss: 0.07683814316987991
+Non-Linear Model [3] -> Epoch: 1800, Loss: 0.06754428148269653
+Non-Linear Model [3] -> Epoch: 1900, Loss: 0.060103677213191986
+Non-Linear Model [3] -> Epoch: 2000, Loss: 0.05398537218570709</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>From the <span class="bold">Output.5</span> above, we see the loss reduce quite a bit, which is great !!!</p>
+    </div>
+    <div id="para-div">
+      <p>To predict the target values using the trained model, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nl_model_3.eval()
+with torch.no_grad():
+  y_predict_nl_3 = nl_model_3(Xcp_test)
+  y_predict_nl_3 = torch.round(y_predict_nl_3)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the model prediction accuracy, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>print(f'Non-Linear Model [3] -> Accuracy: {accuracy_score(y_predict_nl_3, ycp_test)}')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>Non-Linear Model [3] -> Accuracy: 0.96</pre>
+    </div>
+    <br/>    
+    <div id="para-div">
+      <p>From the <span class="bold">Output.6</span> above, we clearly see a <span class="underbold">BETTER</span> performing model.</p>
+    </div>
+    <div id="para-div">
+      <p>To plot the decision boundary along with the scatter plot on the training data using the model we just created above, execute
+        the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nl_model_3.eval()
+with torch.no_grad():
+  plot_with_decision_boundary(nl_model_3, Xcp_train, ycp_train)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration depicts the scatter plot with the decision boundary as predicted by the model:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Model Three Decision" class="gen-img-cls" src="./images/deep-learning-41.png">
+        <div class="gen-img-cap">Figure.4</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">WALLA !!!</span> We observe a much better demarcation between the two classes from the plot in
+        <span class="bold">Figure.4</span> above.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://pytorch.org/docs/stable/index.html" target="_blank"><span class="bold">PyTorch Documentation</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-5.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 5</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-4.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 4</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-3.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 3</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-2.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 2</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-1.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 1</span></a></p>
+    </div>
+    <hr class="gen-line-hr" />
+    <div>
+      <a id="gen-footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

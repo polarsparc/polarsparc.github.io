@@ -1,0 +1,545 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Deep Learning - Word Embeddings with Word2Vec">
+    <meta name="subject" content="Deep Learning - Word Embeddings with Word2Vec">
+    <meta name="keywords" content="artificial-intelligence, deep-learning, neural-network, word2vec, gensim">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Deep Learning - Word Embeddings with Word2Vec</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+      MathJax = {
+        tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+      };
+    </script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.0.5/es5/tex-chtml.js"></script>
+    <!-- script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script -->
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="gen-home"></span></td>
+        <td valign="bottom"><span id="gen-home-a"><a id="gen-home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="gen-title-div">
+      <p>Deep Learning - Word Embeddings with Word2Vec</p>
+    </div>
+    <br />
+    <table id="gen-ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">09/04/2023</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="gen-line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Introduction</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Great progress has been made in the field of <span class="bold">Natural Language Processing</span> (or <span class="bold">
+        NLP</span> for short) due to the various advances in <span class="bold">Deep Learning</span>. Modern <span class="bold">NLP
+        </span> models can be trained using vast amounts of textual content and they in turn are able to generate new text content,
+        translate text from one langauge to another, engage in a conversational dialog, and a lot more.</p>
+      <p>At the heart of all the <span class="bold">Deep Learning</span> models lies the complex mathematical machinery which takes
+        in numbers, processes them via the mathematical machinery, and in the end spits out numbers. So, how are the vast amounts of
+        text data consumed by the <span class="bold">Deep Learning</span> models ???</p>
+      <p>This is where the concept of <span class="hi-yellow">Word Embedding</span>s comes into play, which enables one to map words
+        from the text corpus (referred to as the <span class="hi-blue">vocabulary</span>) into corresponding numerical vectors in an
+        n-dimensional space. One of the benefits of representing the words as vectors in an n-dimensional space for the given text
+        corpus is that the surrounding $N$ words to the left or right (known as the <span class="hi-blue">context window</span>) of
+        any word from the corpus tend to appear close to one another in the n-dimensional space.</p>
+      <p><span class="hi-yellow">Word to Vector</span> (or <span class="hi-yellow">Word2Vec</span> for short) is an approach for
+        creating <span class="bold">Word Embedding</span>s from any given text corpus.</p>
+      <p>There are two <span class="bold">Word2Vec</span> techniques for creating <span class="bold">Word Embedding</span>s which
+        are as follows:</p>
+      <ul id="gen-sqr-ul">
+        <li>
+          <p><span class="bold">Skip Gram</span></p>
+        </li>
+        <li>
+          <p><span class="bold">Continuous Bag of Words</span> (or <span class="hi-yellow">CBOW</span> for short)</p>
+        </li>
+      </ul>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Word2Vec in Detail</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the rest of the sections in this article, let us consider the following three senetences to be the text corpus:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>[
+  'Alice drinks a glass of water after her exercise',
+  'Bob likes to drink orange juice in the morning',
+  'Charlie enjoys a cup of Expresso for breakfast'
+]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The vocabulary from the text corpus after taking out all the stop words will be following set of unique words:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>[
+  'alice', 'drinks', 'glass', 'water', 'exercise', 'bob', 'likes', 'drink', 'orange', 'juice', 'morning', 'charlie', 'enjoys', 'cup',
+  'expresso', 'breakfast'
+]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Given that any <span class="bold">Deep Neural Network</span> model only works with numbers, how do we translate the words
+        in the vocabulary to numbers ???</p>
+      <p>In order to translate words to numbers, we use the technique of <span class="hi-yellow">One-Hot Encoding</span>. We assign
+        a unique index position to each of the words in our vocabulary as shown below:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>{
+  'breakfast': 0,
+  'expresso': 1,
+  'cup': 2,
+  'enjoys': 3,
+  'charlie': 4,
+  'morning': 5,
+  'juice': 6,
+  'orange': 7,
+  'drink': 8,
+  'likes': 9,
+  'bob': 10,
+  'exercise': 11,
+  'water': 12,
+  'glass': 13,
+  'drinks': 14,
+  'alice': 15
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a <span class="bold">One-Hot Encoded</span> vector for any word, we create a vector of size 16, with a '1' in the
+        index position corresponding to the word, and '0' in the other positions.</p>
+    </div>
+    <div id="para-div">
+      <p>For example, the <span class="bold">One-Hot Encoded</span> vector for the word 'morning' would be as follows:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>[0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Similarly, the <span class="bold">One-Hot Encoded</span> vector for the word 'expresso' would be as follows:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>[0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>At this point, a question may arise in ones mind - we just encoded words from the corpus to corresponding numerical vectors
+        using the simple <span class="bold">One-Hot Encoding</span> approach. Is this not good enough ???</p>
+      <p>Well, one of the challenges with a <span class="bold">One-Hot Encoded</span> vector is that it <span class="underbold">DOES
+        NOT</span> capture any context of the word. In other words, there is no information about the possible surrounding words or
+        similarities from the corpus captured.</p>
+    </div>
+    <div id="para-div">
+      <p>The next question that may pop in ones mind - what does it mean for two numerical vectors to be close to each other in the
+        n-dimensional space.</p>
+      <p>To get an intuition on this, let us consider two numerical vectors in a 2-dimensional coordinate space, which is easier to
+        visualize.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration depicts two numerical vectors $u$ and $v$ (of size $2$) in a 2-dimensional coordinate space:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Close Vectors" class="gen-img-cls" src="./images/word2vec-1.png">
+        <div class="gen-img-cap">Figure.1</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The dot product $u.v^T$ of the vectors $u$ and $v$ indicates the strength of the closeness or similarity between the two
+        vectors.</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$u.v^T = \begin{bmatrix} 2.5 & 1.0 \end{bmatrix} * \begin{bmatrix} 2.0 \\ 2.0 \end{bmatrix} = 2.5*
+        2.0 + 1.0*2.0 = 5.0 + 2.0 = 7.0$ $..... \color{red}\textbf{(1)}$</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration depicts two numerical vectors $u$ and $w$ (of size $2$) in a 2-dimensional coordinate space:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Distant Vectors" class="gen-img-cls" src="./images/word2vec-2.png">
+        <div class="gen-img-cap">Figure.2</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The dot product $u.w^T$ of the vectors $u$ and $w$ can be computed as follows:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$u.w^T = \begin{bmatrix} 2.5 & 1.0 \end{bmatrix} * \begin{bmatrix} -2.0 \\ 1.5 \end{bmatrix} = 2.5*
+        (-2.0) + 1.0*1.5 = -5.0 + 1.5 = -3.5$ $..... \color{red}\textbf{(2)}$</p>
+    </div>
+    <div id="para-div">
+      <p>Comparing equations $\color{red}\textbf{(1)}$ and $\color{red}\textbf{(2)}$, we notice that the value of equation $\color
+        {red}\textbf{(1)}$ is greater than the value of $\color{red}\textbf{(2)}$. Hence the vectors $u$ and $v$ are closer, which
+        is obvious by visually looking at <span class="bold">Figure.1</span> above.</p>
+      <p>This same argument can be extended to vectors in the n-dimensional space.</p>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>Skip Gram</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the following sections, we will explain the <span class="hi-yellow">Skip Gram</span> model for <span class="bold">Word
+        Embedding</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration depicts the <span class="bold">Neural Network</span> model with one <span class="bold">hidden
+        layer</span> that is used by the <span class="bold">Skip Gram</span> technique:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Skip Gram" class="gen-img-cls" src="./images/word2vec-3.png">
+        <div class="gen-img-cap">Figure.3</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We need to create a data set for training the <span class="bold">Neural Network</span> model for <span class="bold">Skip
+        Gram</span>. Assuming we choose a window size of $2$, for every sentence in the corpus, we pick a word at random, referred
+        to as the <span class="hi-blue">context</span> word, and then find the surrounding left and right words of the window size
+        from the context word.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration depicts the scenario of picking the word 'glass' at random from the first sentence of our text
+        corpus and the identifying the surrounding words to generate the corresponding training data (table on right):</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Training Set 1" class="gen-img-cls" src="./images/word2vec-4.png">
+        <div class="gen-img-cap">Figure.4</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Similarly, the following illustration depicts the scenario of picking the word 'orange' at random from the second sentence
+        of our text corpus and the identifying the surrounding words to generate the corresponding training data (table on right):</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Training Set 2" class="gen-img-cls" src="./images/word2vec-5.png">
+        <div class="gen-img-cap">Figure.5</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In essence, with the <span class="bold">Skip Gram</span> technique, we are trying to predict the surrounding words given a
+        context word.</p>
+    </div>
+    <div id="para-div">
+      <p>To train the <span class="bold">Neural Network</span> model for <span class="bold">Skip Gram</span>, we feed the training
+        data of the <span class="bold">One-Hot Encoded</span> context word vectors to the <span class="bold">input layer</span> (of
+        size $V$), which passes through a single <span class="bold">hidden layer</span> consisting of $N$ neurons, before finally
+        producing outcomes from the <span class="bold">output layer</span> via the <span class="bold">softmax activation function
+        </span> (of size $V$). If the the predicted outcome is not the surrounding target words, we adjust the <span class="bold">
+        weights</span> of the <span class="bold">Neural Network</span> through <span class="bold">backpropagation</span>.</p>
+      <p>Once the <span class="bold">Neural Network</span> model for <span class="bold">Skip Gram</span> is trained well enough,
+        the <span class="bold">weight</span>s from the <span class="bold">hidden layer</span> to the <span class="bold">output
+        layer</span> capture the <span class="bold">word embedding</span>s for the text corpus.</p>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>Continuous Bag of Words</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the following sections, we will explain the <span class="hi-yellow">Continuous Bag of Words</span> model (<span class=
+        "hi-yellow">CBOW</span> for short) for <span class="bold">Word Embedding</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration depicts the <span class="bold">Neural Network</span> model with one <span class="bold">hidden
+        layer</span> that is used by the <span class="bold">CBOW</span> technique:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Continuous Bag" class="gen-img-cls" src="./images/word2vec-6.png">
+        <div class="gen-img-cap">Figure.6</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We need to create a data set for training the <span class="bold">Neural Network</span> model for <span class="bold">CBOW
+        </span>. Assuming we choose a window size of $2$, for every sentence in the corpus, we pick a word at random, referred to
+        as the <span class="hi-blue">target</span> word, and then find the surrounding left words (referred to as the <span class=
+        "hi-blue">context</span> words) of the window size from the target word.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration depicts the scenario of picking the word 'glass' at random from the first sentence of our text
+        corpus and the identifying the surrounding context words to generate the corresponding training data (table on right):</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Training Set 1" class="gen-img-cls" src="./images/word2vec-7.png">
+        <div class="gen-img-cap">Figure.7</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Next, we select the word to the right of the target word to be the new target word and then find the surrounding context
+        words to the left of the target word to generate the corresponding training data (table on right):</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Training Set 2" class="gen-img-cls" src="./images/word2vec-8.png">
+        <div class="gen-img-cap">Figure.8</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We continue this process until we reach the last word as the target word in the first sentence.</p>
+      <p>Next, we pick a random from the next sentence and so on to continue the process till we have identified all the sets from
+        the text corpus.</p>
+    </div>
+    <div id="para-div">
+      <p>In essence, with the <span class="bold">CBOW</span> technique, we are trying to predict the target word given the context
+        words.</p>
+    </div>
+    <div id="para-div">
+      <p>The training of the <span class="bold">Neural Network</span> model for <span class="bold">CBOW</span> is similar to that of
+        <span class="bold">Skip Gram</span>, except that the <span class="bold">input layer</span> takes multiple context words as
+        input as depicted in <span class="bold">Figure.6</span> above.</p>
+    </div>
+
+    <br/>
+    <div id="section-div">
+      <p>Hands-on Word2Vec Using Gensim</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the hands-on demonstration of <span class="bold">Word Embedding</span>s, we will make use of the popular Python library
+        called <span class="hi-yellow">Gensim</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The installation and setup of <span class="bold">Gensim</span> will be performed on a <span class="bold">Ubuntu 22.04 LTS
+        </span> Linux desktop with the <span class="bold">Python 3</span> programming language installed.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a <span class="bold">Terminal</span> window to perform the necessary installation step(s).</p>
+    </div>
+    <div id="para-div">
+      <p>To install <span class="bold">Gensim</span>, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ sudo pip3 install gensim</p>
+    </div>
+    <div id="para-div">
+      <p>This above command will install all the required dependencies along with the desired <span class="bold">Gensim</span>
+        package.</p>
+    </div>
+    <div id="para-div">
+      <p>All the code snippets will be executed in a <span class="hi-yellow">Jupyter Notebook</span> code cell.</p>
+    </div>
+    <div id="para-div">
+      <p>To import the necessary Python module, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>import nltk
+from gensim.models import Word2Vec
+from nltk.corpus import stopwords
+from nltk.tokenize import WordPunctTokenizer</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Assuming the logged in user is <span class="bold">alice</span>, to set the correct path to the nltk data packages, execute
+        the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nltk.data.path.append("/home/alice/nltk_data")</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an instance of the stop words and the word tokenizer, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>stop_words = stopwords.words('english')
+word_tokenizer = WordPunctTokenizer()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To cleanse the sentences from our text corpus by removing the punctuations, stop words, two-letter words, etc., execute the
+        following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>cleansed_corpus_tokens = []
+for txt in text_corpus:
+  tokens = word_tokenizer.tokenize(txt)
+  final_words = [word.lower() for word in tokens if word.isalpha() and len(word) > 2 and word not in stop_words]
+  cleansed_corpus_tokens.append(final_words)
+cleansed_corpus_tokens[:5]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>[['alice', 'drinks', 'glass', 'water', 'exercise'],
+ ['bob', 'likes', 'drink', 'orange', 'juice', 'morning'],
+ ['charlie', 'enjoys', 'cup', 'expresso', 'breakfast']]</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The <span class="bold">gensim</span> module implements both the <span class="bold">Word2Vec</span> models.</p>
+    </div>
+    <div id="para-div">
+      <p>To create an instance of the <span class="bold">Skip Gram</span> model, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>word2vec_model = Word2Vec(sg=1, alpha=0.05, window=3, min_count=0, workers=2)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>When the parameter <span class="hi-blue">sg=1</span>, the <span class="bold">Skip Gram</span> model is used. The parameter
+        <span class="hi-blue">min_count=0</span> indicates that the model ignore words with total frequency lower that the specified
+        value. The parameter <span class="hi-blue">workers=2</span> indicates the number of threads to use for faster training.</p>
+    </div>
+    <div id="para-div">
+      <p>To build the vocabulary for the text corpus, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>word2vec_model.build_vocab(cleansed_corpus_tokens)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To train the <span class="bold">Word2Vec</span> model for <span class="bold">Skip Gram</span>, execute the following code
+        snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>word2vec_model.train(cleansed_corpus_tokens, total_examples=word2vec_model.corpus_count, epochs=2500)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The parameter <span class="hi-blue">total_examples=word2vec_model.corpus_count</span> indicates the count of sentences in
+        the text corpus.</p>
+      <p>Given the text corpus is very small, we need to train the model for a number of iterations, which is controlled by the
+        parameter <span class="hi-blue">epochs=2500</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Once the <span class="bold">Word2Vec</span> model is trained, the <span class="bold">Word Embedding</span>s are stored in
+        the object <span class="hi-red">word2vec_model.wv</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To save the trained model to disk at location '/home/alice/models', execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>model_loc = '/home/alice/models/w2v-sg.model'
+word2vec_model.save(model_loc)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To load the previously saved model from disk at location '/home/alice/models', execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>w2v_model = Word2Vec.load(model_loc)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To retrieve and display the top three words in the vicinity of the word 'juice', execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>w2v_model.wv.most_similar('juice', topn=3)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>[('bob', 0.9977365732192993),
+ ('drink', 0.9975760579109192),
+ ('orange', 0.997246265411377)]</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice the model has predicted with great accuracy the surrounding words for the given word 'juice'.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://radimrehurek.com/gensim/auto_examples/index.html" target="_blank"><span class="bold">Gensim Documentation</span></a></p>
+      <p><a href="https://arxiv.org/pdf/1310.4546.pdf" target="_blank"><span class="bold">Original Google Paper on Word2Vec</span></a></p>
+      <p><a href="https://polarsparc.github.io/xhtml/Document-Similarity-NLP.html" target="_blank"><span class="bold">Document Similarity using NLTK and Scikit-Learn</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-3.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 3</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-2.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 2</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-1.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 1</span></a></p>
+    </div>
+    <hr class="gen-line-hr" />
+    <div>
+      <a id="gen-footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,461 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Deep Learning - Bidirectional Recurrent Neural Network">
+    <meta name="subject" content="Deep Learning - Bidirectional Recurrent Neural Network">
+    <meta name="keywords" content="artificial-intelligence, deep-learning, neural-network, pytorch, bidirectional-rnn">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Deep Learning - Bidirectional Recurrent Neural Network</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+      MathJax = {
+        tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+      };
+    </script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.0.5/es5/tex-chtml.js"></script>
+    <!-- script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script -->
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="gen-home"></span></td>
+        <td valign="bottom"><span id="gen-home-a"><a id="gen-home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="gen-title-div">
+      <p>Deep Learning - Bidirectional Recurrent Neural Network</p>
+    </div>
+    <br />
+    <table id="gen-ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">09/16/2023</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="gen-line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Introduction</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the previous article <a href="https://polarsparc.github.io/DeepLearning/DL-RecurrentNN.html" target="_blank"><span class
+        ="bold">Recurrent Neural Network</span></a> of this series, we provided an explanation of the inner workings and a practical
+        demo of <span class="bold">RNN</span> for the restaurant reviews sentiment prediction.</p>
+    </div>
+    <div id="para-div">
+      <p>The typical <span class="bold">RNN</span> model processes a sequence of text tokens in the forward direction (that is from
+        the first to the last) at each time step during training and later during prediction.</p>
+      <p>In other words, the typical <span class="bold">RNN</span> model looks at the text token at the current time step and the
+        text tokens from the past time steps (via the <span class="bold">hidden state</span>) to train and later to predict.</p>
+      <p>The <span class="bold">RNN</span> model could learn better if the model could also see the text tokens from the future time
+        step.</p>
+      <p>For example consider the following sentences:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$The\;food\;was\;not\;\textbf{bad}$</p>
+      <p>and</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$The\;food\;was\;not\;\textbf{good}$</p>
+      <p>As is evident from the two sentences above, the sentiment of the sentences above can be determined only after seeing the
+        last word from the sentences.</p>
+    </div>
+    <div id="para-div">
+      <p>This is where the <span class="hi-yellow">Bidirectional Recurrent Neural Network</span> comes into play, which looks at
+        both the past and the future text tokens to learn and predict better.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Bidirectional Recurrent Neural Network</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration shows the typical <span class="bold">Recurrent Neural Network</span> unfolded over time for $3$
+        input tokens $x_1, x_2, x_3$:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Typical RNN" class="gen-img-cls" src="./images/bidirectional-rnn-1.png">
+        <div class="gen-img-cap">Figure.1</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that the parameters $H^f_0$ through $H^f_3$ are the <span class="bold">hidden state</span>s which captures the historical
+        sequence of input tokens going in the forward direction.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration shows the high-level view of a <span class="bold">Bidirectional Recurrent Neural Network</span>:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Bidirectional RNN" class="gen-img-cls" src="./images/bidirectional-rnn-2.png">
+        <div class="gen-img-cap">Figure.2</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>As can be inferred from <span class="bold">Figure.2</span> above, the <span class="bold">Bidirectional RNN</span> model is
+        nothing more than two independent <span class="bold">RNN</span> models - one processing input tokens from first to last and
+        the other processing input tokens in the reverse order from last to first.</p>
+    </div>
+    <div id="para-div">
+      <p>The parameters $H^f_0$ through $H^f_3$ are the <span class="bold">hidden state</span>s associated with the forward processing
+        <span class="bold">RNN</span> model, while the parameters $H^r_0$ through $H^r_3$ are the <span class="bold">hidden state</span>s
+        associated with the backward processing <span class="bold">RNN</span> model.</p>
+    </div>
+    <div id="para-div">
+      <p>$y_1$ through $y_3$ are the outputs from the <span class="bold">Bidirectional RNN</span> model, each of which is a concatenation
+        of the corresponding outputs from the two independent <span class="bold">RNN</span> models.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on Bidirectional RNN Using PyTorch</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To perform sentiment analysis using the <span class="bold">Bidirectional RNN</span> model, we will be leveraging the
+        <a href="https://www.kaggle.com/datasets/d4rklucif3r/restaurant-reviews" target="_blank"><span class="bold">Restaurant
+        Reviews</span></a> data set from Kaggle.</p>
+    </div>
+    <div id="para-div">
+      <p>To import the necessary <span class="bold">Python</span> module(s), execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>import numpy as np
+import pandas as pd
+import nltk
+import torch
+from collections import Counter
+from nltk.corpus import stopwords
+from nltk.tokenize import WordPunctTokenizer
+from sklearn.model_selection import train_test_split
+from torch import nn
+from torchmetrics import Accuracy</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Assuming the logged in user is <span class="bold">alice</span>, to set the correct path to the nltk data packages, execute
+        the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nltk.data.path.append("/home/alice/nltk_data")</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Download the <span class="bold">Kaggle Restaurant Reviews</span> data set to the directory /home/alice/txt_data.</p>
+    </div>
+    <div id="para-div">
+      <p>To load the tab-separated restaurant reviews data set into pandas and display the first few rows, execute the following code
+        snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>reviews_df = pd.read_csv('./txt_data/Restaurant_Reviews.tsv', sep='\t')
+reviews_df.head()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Reviews Dataframe" class="gen-img-cls" src="./images/recurrent-nn-8.png">
+        <div class="gen-img-cap">Figure.3</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an instance of the stop words, the word tokenizer, and the lemmatizer, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>stop_words = stopwords.words('english')
+word_tokenizer = WordPunctTokenizer()
+word_lemmatizer = nltk.WordNetLemmatizer()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To extract all the text reviews as a list of sentences (corpus), execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>reviews_txt = reviews_df.Review.values.tolist()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To cleanse the sentences from the corpus by removing the punctuations, stop words, two-letter words, converting words to
+        their roots, collecting all the unique words from the reviews corpus, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>vocabulary_counter = Counter()
+cleansed_review_txt = []
+for review in reviews_txt:
+  tokens = word_tokenizer.tokenize(review)
+  alpha_words = [word.lower() for word in tokens if word.isalpha() and len(word) > 2 and word not in stop_words]
+  final_words = [word_lemmatizer.lemmatize(word) for word in alpha_words]
+  vocabulary_counter.update(final_words)
+  cleansed_review = ' '.join(final_words)
+  cleansed_review_txt.append(cleansed_review)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To update the original reviews in the reviews pandas dataframe with the cleansed restaurant reviews display the first few
+        rows, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>reviews_df['Review'] = cleansed_review_txt
+reviews_df.head()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Cleansed Dataframe" class="gen-img-cls" src="./images/recurrent-nn-9.png">
+        <div class="gen-img-cap">Figure.4</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We need an index position for each word in the corpus. For this demonstration, we will use $500$ of the most common words.
+        To create a word to index dictionary for the most common words, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>one_hot_size = 500
+common_vocabulary = vocabulary_counter.most_common(one_hot_size)
+word_to_index = {word:idx for idx, (word, count) in enumerate(common_vocabulary)}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will use the word to index dictionary from above to convert each of the restaurant reviews (in text form) to a one-hot
+        encoded vector (of numbers - ones for word present or zeros for absent). To create a list of one-hot encoded vector for each
+        of the reviews, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>clean_reviews_txt = reviews_df.Review.values.tolist()
+clean_reviews_labels = reviews_df.Liked.values.tolist()
+one_hot_reviews_list = []
+for review in clean_reviews_txt:
+  tokens = word_tokenizer.tokenize(review)
+  one_hot_review = np.zeros((one_hot_size), dtype=np.float32)
+  for word in tokens:
+    if word in word_to_index:
+      one_hot_review[word_to_index[word]] = 1
+  one_hot_reviews_list.append(one_hot_review)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create the tensor objects for the input and the corresponding labels, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>X = torch.tensor(np.array(one_hot_reviews_list), dtype=torch.float)
+y = torch.tensor(np.array(clean_reviews_labels), dtype=torch.float).unsqueeze(dim=1)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create the training and testing data sets, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=101)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To initialize variables for the number of input features, the size of the <span class="bold">hidden state</span>, number of
+        <span class="bold">hidden layer</span>s and the number of outputs, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>input_size = one_hot_size
+hidden_size = 32
+no_layers = 2
+output_size = 1</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a <span class="bold">Bidirectional RNN</span> model for the reviews sentiment analysis using a single hidden layer,
+        execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>class SentimentalBiRNN(nn.Module):
+  def __init__(self, input_sz, hidden_sz, output_sz):
+    super(SentimentalBiRNN, self).__init__()
+    self.rnn = nn.RNN(input_size=input_sz, hidden_size=hidden_sz, num_layers=no_layers, bidirectional=True)
+    self.linear = nn.Linear(hidden_size*2, output_sz) # hidden_state*2 for bidirectional
+
+  def forward(self, x_in: torch.Tensor):
+    output, _ = self.rnn(x_in)
+    output = self.linear(output)
+    return output</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an instance of the <span class="hi-yellow">SentimentalBiRNN</span> model, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>snt_model = SentimentalBiRNN(input_size, hidden_size, output_size)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Since the sentiments can either be positive or negative (binary), we will create an instance of the <span class="bold">
+        Binary Cross Entropy</span> loss function by executing the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>criterion = nn.BCEWithLogitsLoss()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that the <span class="hi-yellow">BCEWithLogitsLoss</span> loss function combines both the <span class="bold">sigmoid
+        activation</span> function and the <span class="bold">binary cross entropy</span> loss function into a single function.</p>
+    </div>
+    <div id="para-div">
+      <p>To create an instance of the <span class="bold">gradient descent</span> function, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>optimizer = torch.optim.Adam(snt_model.parameters(), lr=0.05)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To implement the iterative training loop for the forward pass to predict, compute the loss, and execute the backward pass
+        to adjust the parameters, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>num_epochs = 1001
+for epoch in range(1, num_epochs):
+  snt_model.train()
+  optimizer.zero_grad()
+  y_predict = snt_model(X_train)
+  loss = criterion(y_predict, y_train)
+  if epoch % 100 == 0:
+    print(f'Sentiment Model RNN (Bidirectional) -> Epoch: {epoch}, Loss: {loss}')
+  loss.backward()
+  optimizer.step()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Sentiment Model RNN (Bidirectional) -> Epoch: 10, Loss: 0.613365888595581
+Sentiment Model RNN (Bidirectional) -> Epoch: 20, Loss: 0.4955539405345917
+Sentiment Model RNN (Bidirectional) -> Epoch: 30, Loss: 0.46131765842437744
+Sentiment Model RNN (Bidirectional) -> Epoch: 40, Loss: 0.3915174901485443
+Sentiment Model RNN (Bidirectional) -> Epoch: 50, Loss: 0.3410133123397827
+Sentiment Model RNN (Bidirectional) -> Epoch: 60, Loss: 0.21461406350135803
+Sentiment Model RNN (Bidirectional) -> Epoch: 70, Loss: 0.14015011489391327
+Sentiment Model RNN (Bidirectional) -> Epoch: 80, Loss: 0.08907901495695114
+Sentiment Model RNN (Bidirectional) -> Epoch: 90, Loss: 0.029370827600359917
+Sentiment Model RNN (Bidirectional) -> Epoch: 100, Loss: 0.011738807894289494</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To predict the target values using the trained model, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>snt_model.eval()
+with torch.no_grad():
+  y_predict, _ = snt_model(X_test)
+  y_predict = torch.round(y_predict)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the model prediction accuracy, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>accuracy = Accuracy(task='binary', num_classes=2)
+
+print(f'Sentiment Model RNN (Bidirectional) -> Accuracy: {accuracy(y_predict, y_test)}')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Sentiment Model RNN (Bidirectional) -> Accuracy: 0.7649999856948853</pre>
+    </div>
+    <br/>    
+    <div id="para-div">
+      <p>This concludes the explanation and demonstration of the <span class="bold">Bidirectional Recurrent Neural Network</span>
+        model.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://pytorch.org/docs/stable/index.html" target="_blank"><span class="bold">PyTorch Documentation</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DL-RecurrentNN.html" target="_blank"><span class="bold">Deep Learning - Recurrent Neural Network</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DL-VanishingGradient.html" target="_blank"><span class="bold">Deep Learning - The Vanishing Gradient</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-7.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 7</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-6.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 6</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-5.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 5</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-4.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 4</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-3.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 3</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-2.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 2</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-1.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 1</span></a></p>
+    </div>
+    <hr class="gen-line-hr" />
+    <div>
+      <a id="gen-footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

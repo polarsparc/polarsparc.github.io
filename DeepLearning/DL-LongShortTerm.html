@@ -1,0 +1,637 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Deep Learning - Long Short Term Memory">
+    <meta name="subject" content="Deep Learning - Long Short Term Memory">
+    <meta name="keywords" content="artificial-intelligence, deep-learning, neural-network, pytorch, lstm">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Deep Learning - Long Short Term Memory Network</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+      MathJax = {
+        tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+      };
+    </script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.0.5/es5/tex-chtml.js"></script>
+    <!-- script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script -->
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="gen-home"></span></td>
+        <td valign="bottom"><span id="gen-home-a"><a id="gen-home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="gen-title-div">
+      <p>Deep Learning - Long Short Term Memory</p>
+    </div>
+    <br />
+    <table id="gen-ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">08/25/2023</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="gen-line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Introduction</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the previous article <a href="https://polarsparc.github.io/DeepLearning/DL-RecurrentNN.html" target="_blank"><span class
+        ="bold">Recurrent Neural Network</span></a> of this series, we provided an explanation of the inner workings and a practical
+        demo of <span class="bold">RNN</span> for the restaurant reviews sentiment prediction.</p>
+      <p>For a long sequence of text input, the <span class="bold">RNN</span> model tends to forget the text context from earlier on
+        due to the <a href="https://polarsparc.github.io/DeepLearning/DL-VanishingGradient.html" target="_blank"><span class="bold">
+        Vanishing Gradient</span></a> problem, resulting in a poor prediction performance.</p>
+      <p>To address the long term memory retention in <span class="bold">RNN</span> is where the <span class="hi-yellow">Long Short
+        Term Memory</span> (or <span class="hi-yellow">LSTM</span> for short) comes into play.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Long Short Term Memory</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">LSTM</span> is basically an enhanced version of <span class="bold">RNN</span> with an additional memory
+        state to remember longer term historical context.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration shows the high-level abstraction of a <span class="bold">Long Short Term Memory</span> cell:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="LSTM Cell" class="gen-img-cls" src="./images/long-short-term-1.png">
+        <div class="gen-img-cap">Figure.1</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The output from the <span class="bold">LSTM</span> model is the <span class="underbold">hidden state</span> $h$ for the
+        current time step. $x$ is the next input into the model. The parameter $C$ is the <span class="hi-yellow">cell state</span>
+        which captures the long term context from the sequence of inputs that has been processed until the current time step.</p>
+      <p>Notice that the <span class="bold">LSTM Cell</span> does not show any <span class="bold">weight</span> parameters and that
+        is intentional as the computations in the <span class="bold">LSTM Cell</span> are more complex than the <span class="bold">
+        RNN Cell</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration shows the <span class="bold">Long Short Term Memory</span> network unfolded over time for a
+        sequence of $3$ inputs:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Unfolded LSTM" class="gen-img-cls" src="./images/long-short-term-2.png">
+        <div class="gen-img-cap">Figure.2</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now, for the question on what magic happens inside the <span class="bold">LSTM Cell</span> with the next input $x$ in the
+        sequence, the previous value of the <span class="bold">cell state</span> $C$, and the previous value of the <span class=
+        "bold">hidden state</span> $h$ to generate the output ???</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration depicts the computation graph inside the <span class="bold">LSTM Cell</span>:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="LSTM Computations" class="gen-img-cls" src="./images/long-short-term-3.png">
+        <div class="gen-img-cap">Figure.3</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Looks complicated and <span class="underbold">SCARY</span> ??? Don't sweat it - <span class="underbold">RELAX</span> !!!
+        In the following paragraphs, we will unpack each of the blocks and explain, so it becomes more clear.</p>
+    </div>
+    <div id="para-div">
+      <p>The first block in <span class="bold">Figure.3</span> above is referred to as the <span class="hi-yellow">Forget Gate</span>
+        and controls what percentage of the information from the <span class="bold">cell state</span> (long term memory) needs to be
+        forgotten or remembered.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration focuses on the <span class="bold">Forget Gate</span> block:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Forget Gate" class="gen-img-cls" src="./images/long-short-term-4.png">
+        <div class="gen-img-cap">Figure.4</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The <span class="bold">Forget Gate</span> uses the input $x_t$ from the current time step along with the output $h_{t-1}$
+        from the previous time step and applies the <span class="hi-green">Sigmoid</span> activation function to generate a numeric
+        value between $0.0$ and $1.0$, which acts like the percentage knob to control the retention in the long term memory from the
+        current time step.</p>
+      <p>In mathematical terms, the computation that happen inside the <span class="bold">Forget Gate</span> is as follows:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$f_t = sigmoid(W_{fx} * x_t + W_{fh} * h_{t-1} + b_f)$</p>
+      <p>where $W_{fx}$ and $W_{fh}$ are the <span class="bold">weight</span>s associated with the input $x_t$ and the previous
+        output $h_{t-1}$ respectively, while $b_f$ is the <span class="bold">bias</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The next block in <span class="bold">Figure.3</span> above is referred to as the <span class="hi-yellow">Input Gate</span>
+        and controls what percentage of the information from the current input needs to be preserved and stored in the <span class=
+        "bold">cell state</span> (long term memory) along with the <span class="bold">cell state</span> from the previous time step.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration focuses on first section of the <span class="bold">Input Gate</span> block, with the second section
+        greyed out:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Input Gate" class="gen-img-cls" src="./images/long-short-term-5.png">
+        <div class="gen-img-cap">Figure.5</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The first section of the <span class="bold">Input Gate</span> uses the input $x_t$ from the current time step along with
+        the output $h_{t-1}$ from the previous time step and applies the <span class="hi-green">Sigmoid</span> activation function
+        to generate a numeric value between $0.0$ and $1.0$, which acts like the percentage knob to control how much information from
+        the current time step needs to be retained.</p>
+      <p>In mathematical terms, the computation that happen inside the first section of the <span class="bold">Input Gate</span> is
+        as follows:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$i_t = sigmoid(W_{ix} * x_t + W_{ih} * h_{t-1} + b_i)$</p>
+      <p>where $W_{ix}$ and $W_{ih}$ are the <span class="bold">weight</span>s associated with the input $x_t$ and the previous
+        output $h_{t-1}$ respectively, while $b_i$ is the <span class="bold">bias</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration focuses on second section of the <span class="bold">Input Gate</span> block, with the first section
+        greyed out:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Cell Proposal" class="gen-img-cls" src="./images/long-short-term-6.png">
+        <div class="gen-img-cap">Figure.6</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The second section of the <span class="bold">Input Gate</span> is creating a <span class="bold">cell state</span> from the
+        input $x_t$ in the current time step along with the output $h_{t-1}$ from the previous time step and applies the <span class
+        ="hi-green">Tanh</span> activation function to generate a numeric value between $-1.0$ and $1.0$, which determines how much
+        of the information from the current time step to remove or add from the next <span class="bold">cell state</span>.</p>
+      <p>In mathematical terms, the computation that happen inside the second section of the <span class="bold">Input Gate</span> is
+        as follows:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$\tilde{c_t} = tanh(W_{cx} * x_t + W_{ch} * h_{t-1} + b_c)$</p>
+      <p>where $W_{cx}$ and $W_{ch}$ are the <span class="bold">weight</span>s associated with the input $x_t$ and the previous
+        output $h_{t-1}$ respectively, while $b_c$ is the <span class="bold">bias</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration focuses on the outputs from the <span class="bold">Forget Gate</span> and <span class="bold">Input
+        Gate</span> blocks:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="New Cell" class="gen-img-cls" src="./images/long-short-term-7.png">
+        <div class="gen-img-cap">Figure.7</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The outputs from the <span class="bold">Forget Gate</span> and <span class="bold">Input Gate</span> blocks are used along
+        with the <span class="bold">cell state</span> $c_{t-1}$ from the previous time step to generate the next <span class="bold">
+        cell state</span> $c_t$.</p>
+      <p>In mathematical terms, the computation that happens to update the next <span class="bold">cell state</span> $c_t$ is as
+        follows:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$c_t = c_{t-1} \odot f_t + i_t \odot \tilde{c_t}$</p>
+      <p>where $\odot$ is the element-wise vector multiplication.</p>
+    </div>
+    <div id="para-div">
+      <p>Given that there is <span class="underbold">NO</span> <span class="bold">weight</span> or <span class="bold">bias</span>
+        involved in the computation of $c_t$, it is <span class="underbold">NOT</span> effected by the <span class="bold">Vanishing
+        Gradient</span> problem.</p>
+    </div>
+    <div id="para-div">
+      <p>The final block in <span class="bold">Figure.3</span> above is referred to as the <span class="hi-yellow">Output Gate</span>
+        and determines the next output based on the current adjusted <span class="bold">cell state</span> $c_t$ (long term memory)
+        along with the previous <span class="bold">hidden state</span> $h_{t-1}$ (short term memory).</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration focuses on first section of the <span class="bold">Output Gate</span> block, with the second section
+        greyed out:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Outputput Gate" class="gen-img-cls" src="./images/long-short-term-8.png">
+        <div class="gen-img-cap">Figure.8</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The first section of the <span class="bold">Output Gate</span> uses the input $x_t$ from the current time step along with
+        the output $h_{t-1}$ from the previous time step and applies the <span class="hi-green">Sigmoid</span> activation function
+        to generate a numeric value between $0.0$ and $1.0$, which acts like the percentage knob to control how much information
+        from the current time step needs to be retained in the next output.</p>
+      <p>In mathematical terms, the computation that happen inside the first section of the <span class="bold">Output Gate</span>
+        is as follows:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$o_t = sigmoid(W_{ox} * x_t + W_{oh} * h_{t-1} + b_o)$</p>
+      <p>where $W_{ox}$ and $W_{oh}$ are the <span class="bold">weight</span>s associated with the input $x_t$ and the previous
+        output $h_{t-1}$ respectively, while $b_o$ is the <span class="bold">bias</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration focuses on the second section of the <span class="bold">Output Gate</span> block:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="New Output" class="gen-img-cls" src="./images/long-short-term-9.png">
+        <div class="gen-img-cap">Figure.9</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The output from the <span class="bold">Output Gate</span> block is consumed along with the current computed <span class=
+        "bold">cell state</span> $c_t$ to generate the next <span class="bold">hidden state</span> $h_t$, which also happens to be
+        the output.</p>
+      <p>In mathematical terms, the computation that happens to update the next <span class="bold">hidden state</span> $h_t$ is as
+        follows:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$h_t = o_t \odot tanh(c_t)$</p>
+      <p>where $\odot$ is the element-wise vector multiplication.</p>
+    </div>
+    <div id="para-div">
+      <p><span class="underbold">PHEW</span> !!! Hopefully the unpacking of each of the blocks helped clarify on what is going
+        inside the <span class="bold">LSTM Cell</span>.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Dropout Regularization</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>When training <span class="bold">neural network</span> models with lots of <span class="bold">hidden layer</span>s using
+        a small training dataset, the model generally tends to <span class="underbold">OVERFIT</span>. As a result, the trained
+        <span class="bold">neural network</span> model performs poorly during evaluation.</p>
+      <p>One way to deal with overfitting would be to train an <span class="underbold">ENSEMBLE</span> of <span class="bold">neural
+        network</span> models and take their average. For very large <span class="bold">neural network</span> models, this approach
+        is not always practical due to resource and time constraints.</p>
+      <p>This is where the concept of <span class="hi-yellow">Dropout</span> comes in handy, which performs corrections by randomly
+        "<span class="bold">dropping</span>" (or disabling) some nodes from an <span class="bold">input layer</span> and/or a <span
+        class="bold">hidden layer</span> temporarily. This behavior has the same "effect" as running an <span class="bold">ensemble
+        </span> model.</p>
+      <p>To perform the <span class="bold">Dropout</span> Regularization, one must specify a "dropout" rate, which typically is a
+        value between $0.2$ and $0.5$.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on LSTM Using PyTorch</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To perform sentiment analysis using the <span class="bold">LSTM</span> model, we will be leveraging the
+        <a href="https://www.kaggle.com/datasets/d4rklucif3r/restaurant-reviews" target="_blank"><span class="bold">Restaurant
+        Reviews</span></a> data set from Kaggle.</p>
+    </div>
+    <div id="para-div">
+      <p>To import the necessary <span class="bold">Python</span> module(s), execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>import numpy as np
+import pandas as pd
+import nltk
+import torch
+from collections import Counter
+from nltk.corpus import stopwords
+from nltk.tokenize import WordPunctTokenizer
+from sklearn.model_selection import train_test_split
+from torch import nn
+from torchmetrics import Accuracy</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Assuming the logged in user is <span class="bold">alice</span>, to set the correct path to the nltk data packages, execute
+        the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nltk.data.path.append("/home/alice/nltk_data")</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Download the <span class="bold">Kaggle Restaurant Reviews</span> data set to the directory /home/alice/txt_data.</p>
+    </div>
+    <div id="para-div">
+      <p>To load the tab-separated restaurant reviews data set into pandas and display the first few rows, execute the following code
+        snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>reviews_df = pd.read_csv('./txt_data/Restaurant_Reviews.tsv', sep='\t')
+reviews_df.head()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Reviews Dataframe" class="gen-img-cls" src="./images/recurrent-nn-8.png">
+        <div class="gen-img-cap">Figure.10</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an instance of the stop words, the word tokenizer, and the lemmatizer, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>stop_words = stopwords.words('english')
+word_tokenizer = WordPunctTokenizer()
+word_lemmatizer = nltk.WordNetLemmatizer()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To extract all the text reviews as a list of sentences (corpus), execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>reviews_txt = reviews_df.Review.values.tolist()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To cleanse the sentences from the corpus by removing the punctuations, stop words, two-letter words, converting words to
+        their roots, collecting all the unique words from the reviews corpus, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>vocabulary_counter = Counter()
+cleansed_review_txt = []
+for review in reviews_txt:
+  tokens = word_tokenizer.tokenize(review)
+  alpha_words = [word.lower() for word in tokens if word.isalpha() and len(word) > 2 and word not in stop_words]
+  final_words = [word_lemmatizer.lemmatize(word) for word in alpha_words]
+  vocabulary_counter.update(final_words)
+  cleansed_review = ' '.join(final_words)
+  cleansed_review_txt.append(cleansed_review)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To update the original reviews in the reviews pandas dataframe with the cleansed restaurant reviews display the first few
+        rows, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>reviews_df['Review'] = cleansed_review_txt
+reviews_df.head()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Cleansed Dataframe" class="gen-img-cls" src="./images/recurrent-nn-9.png">
+        <div class="gen-img-cap">Figure.11</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We need an index position for each word in the corpus. For this demonstration, we will use $500$ of the most common words.
+        To create a word to index dictionary for the most common words, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>one_hot_size = 500
+common_vocabulary = vocabulary_counter.most_common(one_hot_size)
+word_to_index = {word:idx for idx, (word, count) in enumerate(common_vocabulary)}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will use the word to index dictionary from above to convert each of the restaurant reviews (in text form) to a one-hot
+        encoded vector (of numbers - ones for word present or zeros for absent). To create a list of one-hot encoded vector for each
+        of the reviews, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>clean_reviews_txt = reviews_df.Review.values.tolist()
+clean_reviews_labels = reviews_df.Liked.values.tolist()
+one_hot_reviews_list = []
+for review in clean_reviews_txt:
+  tokens = word_tokenizer.tokenize(review)
+  one_hot_review = np.zeros((one_hot_size), dtype=np.float32)
+  for word in tokens:
+    if word in word_to_index:
+      one_hot_review[word_to_index[word]] = 1
+  one_hot_reviews_list.append(one_hot_review)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create the tensor objects for the input and the corresponding labels, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>X = torch.tensor(np.array(one_hot_reviews_list), dtype=torch.float)
+y = torch.tensor(np.array(clean_reviews_labels), dtype=torch.float).unsqueeze(dim=1)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create the training and testing data sets, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=101)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To initialize variables for the number of input features, the size of both the <span class="bold">cell state</span> and the
+        <span class="bold">hidden state</span>, and the number of outputs, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>input_size = one_hot_size
+hidden_size = 128
+no_layers = 1
+output_size = 1</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an <span class="bold">LSTM</span> model for the reviews sentiment analysis using a single hidden layer, execute
+        the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>class SentimentLSTM(nn.Module):
+  def __init__(self, input_sz, hidden_sz, output_sz):
+    super(SentimentLSTM, self).__init__()
+    self.lstm = nn.LSTM(input_size=input_sz, hidden_size=hidden_sz, num_layers=no_layers)
+    self.linear = nn.Linear(hidden_size, output_sz)
+    self.dropout = nn.Dropout(0.2)
+
+  def forward(self, x_in: torch.Tensor):
+    output, _ = self.lstm(x_in)
+    output = self.linear(output)
+    output = self.dropout(output)
+    return output</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an instance of the <span class="hi-yellow">SentimentLSTM</span> model, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>snt_model = SentimentLSTM(input_size, hidden_size, output_size)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Since the sentiments can either be positive or negative (binary), we will create an instance of the <span class="bold">
+        Binary Cross Entropy</span> loss function by executing the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>criterion = nn.BCEWithLogitsLoss()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that the <span class="hi-yellow">BCEWithLogitsLoss</span> loss function combines both the <span class="bold">sigmoid
+        activation</span> function and the <span class="bold">binary cross entropy</span> loss function into a single function.</p>
+    </div>
+    <div id="para-div">
+      <p>To create an instance of the <span class="bold">gradient descent</span> function, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>optimizer = torch.optim.SGD(snt_model.parameters(), lr=0.05)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To implement the iterative training loop for the forward pass to predict, compute the loss, and execute the backward pass
+        to adjust the parameters, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>num_epochs = 5001
+for epoch in range(1, num_epochs):
+  snt_model.train()
+  optimizer.zero_grad()
+  y_predict = snt_model(X_train)
+  loss = criterion(y_predict, y_train)
+  if epoch % 500 == 0:
+    print(f'Sentiment Model LSTM -> Epoch: {epoch}, Loss: {loss}')
+  loss.backward()
+  optimizer.step()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Sentiment Model LSTM -> Epoch: 500, Loss: 0.6887498497962952
+Sentiment Model LSTM -> Epoch: 1000, Loss: 0.6818993091583252
+Sentiment Model LSTM -> Epoch: 1500, Loss: 0.6695456504821777
+Sentiment Model LSTM -> Epoch: 2000, Loss: 0.6460920572280884
+Sentiment Model LSTM -> Epoch: 2500, Loss: 0.6167201995849609
+Sentiment Model LSTM -> Epoch: 3000, Loss: 0.5674394965171814
+Sentiment Model LSTM -> Epoch: 3500, Loss: 0.5004092454910278
+Sentiment Model LSTM -> Epoch: 4000, Loss: 0.4361661672592163
+Sentiment Model LSTM -> Epoch: 4500, Loss: 0.36369624733924866
+Sentiment Model LSTM -> Epoch: 5000, Loss: 0.29472610354423523</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To predict the target values using the trained model, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>snt_model.eval()
+with torch.no_grad():
+  y_predict = snt_model(X_test)
+  y_predict = torch.round(y_predict)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the model prediction accuracy, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>accuracy = Accuracy(task='binary', num_classes=2)
+
+print(f'Sentiment Model LSTM -> Accuracy: {accuracy(y_predict, y_test)}')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Sentiment Model LSTM -> Accuracy: 0.7699999809265137</pre>
+    </div>
+    <br/>    
+    <div id="para-div">
+      <p>This concludes the explanation and demonstration of a <span class="bold">Long Short Term Memory</span> model.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://pytorch.org/docs/stable/index.html" target="_blank"><span class="bold">PyTorch Documentation</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DL-RecurrentNN.html" target="_blank"><span class="bold">Deep Learning - Recurrent Neural Network</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DL-VanishingGradient.html" target="_blank"><span class="bold">Deep Learning - The Vanishing Gradient</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-7.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 7</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-6.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 6</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-5.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 5</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-4.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 4</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-3.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 3</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-2.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 2</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DeepLearning-1.html" target="_blank"><span class="bold">Introduction to Deep Learning - Part 1</span></a></p>
+    </div>
+    <hr class="gen-line-hr" />
+    <div>
+      <a id="gen-footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

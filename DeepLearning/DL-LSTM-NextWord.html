@@ -1,0 +1,687 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Deep Learning - Predict Next Word Using LSTM">
+    <meta name="subject" content="Deep Learning - Predict Next Word Using LSTM">
+    <meta name="keywords" content="artificial-intelligence, deep-learning, neural-network, pytorch, lstm">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Deep Learning - Predict Next Word Using LSTM</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+      MathJax = {
+        tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+      };
+    </script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.0.5/es5/tex-chtml.js"></script>
+    <!-- script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script -->
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="gen-home"></span></td>
+        <td valign="bottom"><span id="gen-home-a"><a id="gen-home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="gen-title-div">
+      <p>Deep Learning - Predict Next Word Using LSTM</p>
+    </div>
+    <br />
+    <table id="gen-ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">09/29/2023</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="gen-line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Introduction</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the article <a href="https://polarsparc.github.io/DeepLearning/DL-LongShortTerm.html" target="_blank"><span class="bold">
+        Long Short Term Memory</span></a> of this deep learning series, we provided an explanation of the inner workings and a practical
+        demo of the <span class="bold">LSTM</span> model for the restaurant reviews sentiment prediction.</p>
+    </div>
+    <div id="para-div">
+      <p>In this article, we will demonstrate how one could leverage the <span class="bold">LSTM</span> model for predicting the
+        <span class="underbold">Next Word</span> following a sequence using a toy corpus.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on LSTM Using PyTorch</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To predict the <span class="bold">next word</span> following a sequence of input words, we will train the <span class="bold">
+        LSTM</span> model using the popular <span class="bold">Aesop's Fable</span> found here <a href="https://read.gov/aesop/091.html"
+        target="_blank"><span class="bold">The Goose &amp; the Golden Egg</span></a>.</p>
+    </div>
+    <div id="para-div">
+      <p>To import the necessary <span class="bold">Python</span> module(s), execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>import numpy as np
+import random
+import torch
+from nltk.tokenize import WordPunctTokenizer
+from torch import nn</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In order to ensure reproducibility, we need to set the <span class="bold">seed</span> to a constant value by executing the
+        following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>seed_value = 101
+
+torch.manual_seed(seed_value)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Copy the contents of the <span class="bold">The Goose &amp; the Golden Egg</span> fable into a variable by executing the
+        following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>corpus_text = '''There was once a Countryman who possessed the most wonderful Goose you can imagine, for every day when he visited the nest, the Goose had laid a beautiful, glittering, golden egg. The Countryman took the eggs to market and soon began to get rich. But
+it was not long before he grew impatient with the Goose because she gave him only a single golden egg a day. He was not getting rich fast enough.
+Then one day, after he had finished counting his money, the idea came to him that he could get all the golden eggs at once by killing the Goose and cutting it open. But when the deed was done, not a single golden egg did he find, and his precious Goose was dead.'''</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the length of the corpus, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>len(corpus_text)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>659</pre>
+    </div>
+    <br/>    
+    <div id="para-div">
+      <p>To define a function to extract all the word tokens from the corpus, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>def extract_corpus_words(corpus):
+  word_tokenizer = WordPunctTokenizer()
+  tokens = word_tokenizer.tokenize(corpus)
+  all_tokens = [word.lower() for word in tokens if word.isalpha()]
+  return all_tokens</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To extract all the word tokens from the given corpus and display the first 10 words, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>corpus_tokens = extract_corpus_words(corpus_text)
+corpus_tokens[:10]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>['there',
+ 'was',
+ 'once',
+ 'a',
+ 'countryman',
+ 'who',
+ 'possessed',
+ 'the',
+ 'most',
+ 'wonderful']</pre>
+    </div>
+    <br/>    
+    <div id="para-div">
+      <p>To define a function to extract all the unique words (vocabulary) from the corpus, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>def extract_corpus_vocab(all_words):
+  vocab_words = list(set(all_words))
+  vocab_words.sort()
+  return vocab_words</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To extract all the unique words (vocabulary) from the given corpus and display the first 10 words, execute the following
+        code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>vocab_words_list = extract_corpus_vocab(corpus_tokens)
+vocab_words_list[:10]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>['a',
+ 'after',
+ 'all',
+ 'and',
+ 'at',
+ 'beautiful',
+ 'because',
+ 'before',
+ 'began',
+ 'but']</pre>
+    </div>
+    <br/>    
+    <div id="para-div">
+      <p>To display the number of unique words (vocabulary), execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>len(vocab_words_list)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>76</pre>
+    </div>
+    <br/>    
+    <div id="para-div">
+      <p>We know that <span class="bold">neural network</span> models only deal with numbers. To define a function to assign a numeric
+        value to each of the unique words (vocabulary) from the corpus, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>def assign_word_number(words):
+  words_index = {}
+  for idx, word in enumerate(words):
+    words_index[word] = idx
+  return words_index</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To assign a numeric value to each of the unique words (vocabulary) from the given corpus, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>word_to_nums = assign_word_number(vocab_words_list)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For our training set, we will consider 3-grams, meaning a sequence of three words from the corpus. To define a function to
+        generate the training set of 3-grams from the corpus, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>ngram_size = 3
+
+def create_ngram_sequences(tokens):
+  ngrams_list = []
+  for i in range(ngram_size, len(tokens) + 1):
+    ngrams = tokens[i - ngram_size:i]
+    ngrams_list.append(ngrams)
+  return ngrams_list</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To generate the training set of 3-grams from the corpus and display the first 10 sequences, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>ngram_sequences = create_ngram_sequences(corpus_tokens)
+ngram_sequences[:10]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>[['there', 'was', 'once'],
+ ['was', 'once', 'a'],
+ ['once', 'a', 'countryman'],
+ ['a', 'countryman', 'who'],
+ ['countryman', 'who', 'possessed'],
+ ['who', 'possessed', 'the'],
+ ['possessed', 'the', 'most'],
+ ['the', 'most', 'wonderful'],
+ ['most', 'wonderful', 'goose'],
+ ['wonderful', 'goose', 'you']]</pre>
+    </div>
+    <br/>    
+    <div id="para-div">
+      <p>To display the number of training sequences, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>len(ngram_sequences)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>125</pre>
+    </div>
+    <br/>    
+    <div id="para-div">
+      <p>To define a function to convert the sequence of words to the sequence of their corresponding assigned numeric values, execute
+        the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>def ngram_sequences_to_numbers(seq_list):
+  ngram_numbers_list = []
+  for ngrams in seq_list:
+    num_seq = []
+    for word in ngrams:
+      num_seq.append(word_to_nums.get(word))
+    ngram_numbers_list.append(num_seq)
+  return ngram_numbers_list</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To convert the sequence of words from the training set to the corresponding sequence of numbers and display the first 10 set
+        of numerical sequences, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>ngram_seq_nums = ngram_sequences_to_numbers(ngram_sequences)
+ngram_seq_nums[:10]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>[[66, 70, 53],
+ [70, 53, 0],
+ [53, 0, 15],
+ [0, 15, 72],
+ [15, 72, 57],
+ [72, 57, 64],
+ [57, 64, 50],
+ [64, 50, 74],
+ [50, 74, 35],
+ [74, 35, 75]]</pre>
+    </div>
+    <br/>    
+    <div id="para-div">
+      <p>For training the <span class="bold">neural network</span> model, one should do so on a <span class="bold">GPU</span> device
+        for efficiency. To select the <span class="bold">GPU</span> device if available, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>device = 'cuda' if torch.cuda.is_available() else 'cpu'</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a tensor object from the numeric sequences and display the first 10 items, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>ngram_nums = torch.tensor(ngram_seq_nums, device=device)
+ngram_nums[:10]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>tensor([[66, 70, 53],
+       [70, 53,  0],
+       [53,  0, 15],
+       [ 0, 15, 72],
+       [15, 72, 57],
+       [72, 57, 64],
+       [57, 64, 50],
+       [64, 50, 74],
+       [50, 74, 35],
+       [74, 35, 75]], device='cuda:0')</pre>
+    </div>
+    <br/>    
+    <div id="para-div">
+      <p>To create the feature and target tensors from the training set, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>X_train = ngram_nums[:, :-1]
+y_target = ngram_nums[:, -1]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To define a function to convert the target numeric values to one-hot representation, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>one_hot_size = len(vocab_words_list)
+
+def word_num_to_onehot(target):
+  one_hot_list = []
+  for idx in target:
+    one_hot = np.zeros(one_hot_size, dtype=np.float32)
+    one_hot[idx] = 1.0
+    one_hot_list.append(one_hot)
+  return one_hot_list</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To convert the target tensor object to equivaled one-hot representation and display the first 5 items, execute the following
+        code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>y_one_hot = word_num_to_onehot(y_target)
+y_one_hot_target = torch.tensor(np.asarray(y_one_hot), device=device)
+y_one_hot_target[:5]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>tensor([[0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0.],
+        [1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         1., 0., 0., 0.],
+        [0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+         0., 0., 0., 0.]], device='cuda:0')</pre>
+    </div>
+    <br/>    
+    <div id="para-div">
+      <p>To create the <span class="bold">LTSM</span> model to predict the next word given a sequence of two input words, execute the
+        following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>num_features = X_train.shape[1]
+vocab_size = one_hot_size
+embed_size = 128
+hidden_size = 128
+layers_sz = 2
+output_size = one_hot_size
+dropout_rate = 0.2
+
+class NextWordLSTM(nn.Module):
+  def __init__(self, vocab_sz, embed_sz, hidden_sz, output_sz):
+    super(NextWordLSTM, self).__init__()
+    self.embed = nn.Embedding(vocab_sz, embed_sz)
+    self.lstm = nn.LSTM(input_size=embed_sz, hidden_size=hidden_sz, num_layers=layers_sz)
+    self.dropout = nn.Dropout(dropout_rate)
+    self.linear = nn.Linear(hidden_size*num_features, output_sz)
+
+  def forward(self, x_in: torch.Tensor):
+    embedded = self.embed(x_in)
+    output, _ = self.lstm(embedded)
+    output = output.view(output.size(0), -1)
+    output = self.dropout(output)
+    output = self.linear(output)
+    return output</pre>
+      </div>
+    </div>
+    <br/>
+    <br/>
+    <div id="info-div">
+      <h4>PyTorch nn.Embedding</h4>
+      <pre>Converts an input of numerical word sequences to a word embedding vector. One can think of them as a simple lookup table which stores embeddings. It is implemented as an Embedding Layer which takes two parameters - an input dimension (vocabulary size) and an output dimension (size of the embedding vectors)</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an instance of the <span class="hi-yellow">NextWordLSTM</span> model, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nw_model = NextWordLSTM(vocab_size, embed_size, hidden_size, output_size)
+nw_model.to(device)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Since the next word can be anyone from the vocabulary, we will create an instance of the <span class="bold">Cross Entropy
+        </span> loss function by executing the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>criterion = nn.CrossEntropyLoss()
+criterion.to(device)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an instance of the <span class="bold">gradient descent</span> function, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>learning_rate = 0.01
+
+optimizer = torch.optim.Adam(nw_model.parameters(), lr=learning_rate)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To implement the iterative training loop for the forward pass to predict, compute the loss, and execute the backward pass
+        to adjust the parameters, execute the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>num_epochs = 251
+
+for epoch in range(1, num_epochs):
+  nw_model.train()
+  optimizer.zero_grad()
+  y_predict = nw_model(X_train)
+  loss = criterion(y_predict, y_one_hot_target)
+  if epoch % 25 == 0:
+    print(f'Next Word Model LSTM -> Epoch: {epoch}, Loss: {loss}')
+  loss.backward()
+  optimizer.step()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>Next Word Model LSTM -> Epoch: 25, Loss: 0.06104771047830582
+Next Word Model LSTM -> Epoch: 50, Loss: 0.0036871880292892456
+Next Word Model LSTM -> Epoch: 75, Loss: 0.0012845182791352272
+Next Word Model LSTM -> Epoch: 100, Loss: 0.00109785923268646
+Next Word Model LSTM -> Epoch: 125, Loss: 0.0007362875039689243
+Next Word Model LSTM -> Epoch: 150, Loss: 0.0006809093174524605
+Next Word Model LSTM -> Epoch: 175, Loss: 0.0004766415513586253
+Next Word Model LSTM -> Epoch: 200, Loss: 0.00041738327126950026
+Next Word Model LSTM -> Epoch: 225, Loss: 0.0003595583839341998
+Next Word Model LSTM -> Epoch: 250, Loss: 0.0002960583078674972</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Given that we have completed the model training, we can bring the model back to the <span class="bold">CPU</span> device by
+        executing the following code snippet:</p>
+    </div>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>device_cpu = 'cpu'
+
+nw_model.to(device_cpu)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To define a function to randomly pick a sequence from the training set, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>def pick_ngram_sub_sequence(seq_list):
+  idx = random.randint(0, len(seq_list))
+  return seq_list[idx], seq_list[idx][:-1]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To evaluate the trained model, we will run about $10$ trials. In each trial, we randomly pick a word sequence, convert the
+        selected word sequence to numeric sequence, create a tensor object for the converted numeric sequence, and then predict the
+        next word for the selected numeric sequence. To run the trials, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>num_trials = 10
+
+for i in range(1, num_trials+1):
+  ngram_seq_pick, ngram_sub_seq = pick_ngram_sub_sequence(ngram_sequences)
+  print(f'Trial #{i} - Picked sequence: {ngram_seq_pick}, Test sub-sequence: {ngram_sub_seq}')
+  ngram_sub_seq_num = ngram_sequences_to_numbers([ngram_sub_seq])
+  X_test = torch.tensor(ngram_sub_seq_num)
+  print(f'Trial #{i} - X_test: {X_test}')
+  nw_model.eval()
+  with torch.no_grad():
+    y_predict = nw_model(X_test)
+    idx = torch.argmax(y_predict)
+    print(f'Trial #{i} - idx: {idx}, next word: {vocab_words_list[idx]}')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>Trial #1 - Picked sequence: ['he', 'visited', 'the'], Test sub-sequence: ['he', 'visited']
+Trial #1 - X_test: tensor([[38, 69]])
+Trial #1 - idx: 64, next word: the
+Trial #2 - Picked sequence: ['was', 'once', 'a'], Test sub-sequence: ['was', 'once']
+Trial #2 - X_test: tensor([[70, 53]])
+Trial #2 - idx: 0, next word: a
+Trial #3 - Picked sequence: ['the', 'idea', 'came'], Test sub-sequence: ['the', 'idea']
+Trial #3 - X_test: tensor([[64, 41]])
+Trial #3 - idx: 67, next word: to
+Trial #4 - Picked sequence: ['egg', 'a', 'day'], Test sub-sequence: ['egg', 'a']
+Trial #4 - X_test: tensor([[22,  0]])
+Trial #4 - idx: 17, next word: day
+Trial #5 - Picked sequence: ['single', 'golden', 'egg'], Test sub-sequence: ['single', 'golden']
+Trial #5 - X_test: tensor([[61, 34]])
+Trial #5 - idx: 22, next word: egg
+Trial #6 - Picked sequence: ['once', 'by', 'killing'], Test sub-sequence: ['once', 'by']
+Trial #6 - X_test: tensor([[53, 10]])
+Trial #6 - idx: 64, next word: the
+Trial #7 - Picked sequence: ['was', 'not', 'long'], Test sub-sequence: ['was', 'not']
+Trial #7 - X_test: tensor([[70, 52]])
+Trial #7 - idx: 47, next word: long
+Trial #8 - Picked sequence: ['was', 'not', 'long'], Test sub-sequence: ['was', 'not']
+Trial #8 - X_test: tensor([[70, 52]])
+Trial #8 - idx: 47, next word: long
+Trial #9 - Picked sequence: ['day', 'he', 'was'], Test sub-sequence: ['day', 'he']
+Trial #9 - X_test: tensor([[17, 38]])
+Trial #9 - idx: 37, next word: had
+Trial #10 - Picked sequence: ['done', 'not', 'a'], Test sub-sequence: ['done', 'not']
+Trial #10 - X_test: tensor([[21, 52]])
+Trial #10 - idx: 0, next word: a</pre>
+    </div>
+    <br/>    
+    <div id="para-div">
+      <p>As can be inferred from the <span class="bold">Output.11</span> above, the success rate is about $70\%$.</p>
+    </div>
+    <div id="para-div">
+      <p>With this, we concludes the explanation and demonstration of the <span class="bold">LTSM</span> model for predicting the
+        next word from a given corpus.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://pytorch.org/docs/stable/index.html" target="_blank"><span class="bold">PyTorch Documentation</span></a></p>
+      <p><a href="https://polarsparc.github.io/DeepLearning/DL-LongShortTerm.html" target="_blank"><span class="bold">Deep Learning - Long Short Term Memory</span></a></p>
+    </div>
+    <hr class="gen-line-hr" />
+    <div>
+      <a id="gen-footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
