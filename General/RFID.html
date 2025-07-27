@@ -1,0 +1,602 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Hands-On with RFID/NFC">
+    <meta name="subject" content="Hands-On with RFID/NFC">
+    <meta name="keywords" content="arm, rfid, nfc, python">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Hands-On with RFID/NFC</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Hands-On with RFID/NFC</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">09/08/2024</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-vanila">Radio Frequency Identification</span> (or <span class="hi-yellow">RFID</span> for short) is a form
+        of contactless communication technology that uses electromagnetic radio waves to communicate or identify objects wirelessly,
+        which can be used in a wide variety of use-cases such as Access Control, Asset Tracking, Inventory Management, Transit Pass,
+        etc.</p>
+      <p>The <span class="bold">RFID</span> ecosystem basically consists of the following two entities:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">Target</span> :: referred to as the <span class="hi-vanila">RFID Tag</span>, it consists of an
+            <span class="bold">Antenna</span> connected to an RFID <span class="bold">Microchip</span> with a small amount of internal
+            storage memory of about 1 Kb</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Initiator</span> :: referred to as the <span class="hi-vanila">RFID Reader/Writer</span>, it
+            consists of an <span class="bold">Antenna</span> connected to an RFID <span class="bold">Microcontroller</span> that emits
+            signals using radio waves and processes the received data from an RFID Tag. Note that an RFID Reader/Writer can also write
+            data to an RFID Tag</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>When an RFID Tag comes in close proximity to an RFID Reader/Writer, it responds back to the RFID Initiator with the data
+        stored in its internal memory.</p>
+      <p>Note that An RFID Tag can either be <span class="hi-yellow">Active</span> or <span class="hi-yellow">Passive</span>.</p>
+      <p>Active RFID Tags have an attached power source (in the form of a battery) enabling them to send data over longer distance
+        (around 100 metres).</p>
+      <p>Passive RFID Tags have no attached power source and are activated or energized by the radio waves emitted by the RFID
+        Reader/Writer. As a result, Passive Tags have limited range and lower performance.</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-vanila">Near Field Communication</span> (or <span class="hi-yellow">NFC</span> for short) is an extension
+        of RFID that operates in the High Frequency range of 13.56 MHz, has more capabilities, and has wider applications especially
+        in the Tap-and-Go Payments space.</p>
+      <p>RFID works over distances of 20 metres or more (for Active Tags), while NFC has limited range of up to 20 cms.</p>
+    </div>
+    <div id="para-div">
+      <p>The data exchanged between a NFC Initiator and a NFC Target is using the <span class="hi-vanila">NFC Data Exchange Format</span>
+        (or <span class="hi-yellow">NDEF</span> for short).</p>
+      <p>Every NDEF message contains one or more NDEF Records. Each NDEF Record has a particular record type, a unique ID, a length,
+        and a payload for custom UTF-8 string data. Note that the RFID Targets <span class="underbold">DO NOT</span> format their
+        data exchange in NDEF format.</p>
+    </div>
+    <div id="para-div">
+      <p>The internal storage memory is arranged as <span class="hi-yellow">Sector</span>s and <span class="hi-yellow">Block</span>s.
+        There are 16 sectors and each sector consists of 4 blocks. Each block can hold up to 16 bytes of data. Hence, the internal
+        memory size is 1 Kb (16 sectors x 4 blocks x 16 bytes).</p>
+      <p>One restriction - the first block of the first sector and the last block of each sector is <span class="underbold">NOT</span>
+        writeable.</p>
+      <p>The first block of the first sector contains the unique identifier set by the manufacturer.</p>
+      <p>The last block of each sector is the <span class="hi-yellow">Trailer</span> block that contains information about the sector,
+        such as the sector number, the number of blocks in the sector, and the checksum, etc.</p>
+    </div>
+    <div id="para-div">
+      <p>For the hands-on demonstration in this article, we will make use of a <span class="bold">Raspberry Pi 4</span> along the
+        <a href="https://www.amazon.com/SunFounder-Mifare-Reader-Arduino-Raspberry/dp/B07KGBJ9VG" target="_blank"><span class="bold">
+        Mifare RC522 Module</span></a> as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/RFID-1.png" class="img-cls" alt="MFRC522" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The Mifare RC522 is a very low-cost RFID (Radio-frequency identification) reader and writer that is based on the MFRC522
+        microcontroller.</p>
+      <p>Mifare RC522 exchanges data using the <span class="hi-vanila">Serial Peripheral Interface</span> (or <span class="hi-yellow">
+        SPI</span> for short) protocol to communicate with RFID Tags.</p>
+      <p>Mifare RC522 does support a two-way data transmission rate up to 424 Kbps as well as a rapid CRYPTO1 encryption algorithm
+        to verify Mifare products.</p>
+    </div>
+    <div id="para-div">
+      <p>Serial Peripheral Interface (or SPI for short) is a synchronous data bus that is commonly used for exchanging data between
+        microcontrollers and small peripheral devices such as shift registers, sensors, etc.</p>
+      <p>SPI is a synchronous data bus meaning it uses separate lines for data and a clock in order to keep both the sender and the
+        receiver in perfect sync. The clock is an oscillating signal that tells the receiver exactly when to sample the bits on the
+        data line.</p>
+      <p>With SPI, only the controller (or the Master) generates the clock signal (marked as <span class="hi-yellow">SCK</span> for
+        Serial ClocK) to send to the peripheral (or the Slave).</p>
+      <p>When data is sent from the controller to a peripheral, it is sent on a data line referred to as <span class="hi-yellow">
+        MOSI</span> (Master Out/Slave In). If the peripheral needs to send a response back to the controller, the controller will
+        continue to generate a pre-arranged number of clock cycles, and the peripheral will put the data another data line referred
+        to as <span class="hi-yellow">MISO</span> (Master In/Slave Out).</p>
+    </div>
+    <div id="section-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The setup will use a <span class="bold">Raspberry Pi 4</span> running <span class="bold">Raspbian OS</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Once the Raspberry Pi 4 boots up, open a terminal window and execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo raspi-config</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This will launch the configuration tool and navigate to <span class="bold">Interface Options</span> as shown below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/RFID-2.png" class="img-cls" alt="Interface Options" />
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Press the ENTER key on the <span class="bold">Interface Options</span> and navigate to <span class="bold">SPI</span> as
+        shown below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/RFID-3.png" class="img-cls" alt="SPI" />
+      <div class="img-cap">Figure.3</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Select &lt;Yes&gt; to enable SPI and press the ENTER key as shown below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/RFID-4.png" class="img-cls" alt="SPI Yes" />
+      <div class="img-cap">Figure.4</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>One would be taken back to the main screen. Select &lt;Finish&gt; and press the ENTER key as shown below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/RFID-5.png" class="img-cls" alt="Finish" />
+      <div class="img-cap">Figure.5</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>At this point, the SPI option should be enabled on the <span class="bold">Raspberry Pi 4</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To validate SPI has been enabled, open a terminal window and execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ lsmod | grep spi</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>spidev                 16384  0
+spi_bcm2835            20480  0</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a directory and a <span class="bold">Python</span> virtual environment for the hands-on demo, execute the following
+        commands in the Terminal:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME</p>
+      <p>$ mkdir -p Projects/RFID</p>
+      <p>$ cd Projects/RFID</p>
+      <p>$ python3 -m venv venv</p>
+      <p>$ source venv/bin/activate</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To install the Python module for interfacing with devices using SPI, execute the following command in the Terminal:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python3 -m pip install spidev</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Looking in indexes: https://pypi.org/simple, https://www.piwheels.org/simple
+Collecting spidev
+  Downloading spidev-3.6.tar.gz (11 kB)
+  Installing build dependencies ... done
+  Getting requirements to build wheel ... done
+  Preparing metadata (pyproject.toml) ... done
+Building wheels for collected packages: spidev
+  Building wheel for spidev (pyproject.toml) ... done
+  Created wheel for spidev: filename=spidev-3.6-cp311-cp311-linux_aarch64.whl size=42607 sha256=27f4da897dbd68370bad077cedbcb422fe176733bb90821d9be81e6636bcbd06
+  Stored in directory: /home/bswamina/.cache/pip/wheels/44/f9/7b/01bb1f281eedaaa562943e27c78dee683ee6e7f3bf2f437101
+Successfully built spidev
+Installing collected packages: spidev
+Successfully installed spidev-3.6</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To install the Python module for interacting with the <span class="bold">Raspberry Pi 4</span> GPIO interface, execute the
+        following command in the Terminal:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python3 -m pip install RPi.GPIO</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>Looking in indexes: https://pypi.org/simple, https://www.piwheels.org/simple
+Collecting RPi.GPIO
+  Using cached RPi.GPIO-0.7.1.tar.gz (29 kB)
+  Preparing metadata (setup.py) ... done
+Installing collected packages: RPi.GPIO
+  DEPRECATION: RPi.GPIO is being installed using the legacy 'setup.py install' method, because it does not have a 'pyproject.toml' and the 'wheel' package is not installed. pip 23.1 will enforce this behaviour change. A possible replacement is to enable the '--use-pep517' option. Discussion can be found at https://github.com/pypa/pip/issues/8559
+  Running setup.py install for RPi.GPIO ... done
+Successfully installed RPi.GPIO-0.7.1</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To install the Python module for interacting with Mifare RC522, execute the following command in the Terminal:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python3 -m pip install mfrc522</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>Looking in indexes: https://pypi.org/simple, https://www.piwheels.org/simple
+Collecting mfrc522
+  Using cached https://www.piwheels.org/simple/mfrc522/mfrc522-0.0.7-py3-none-any.whl (18 kB)
+Requirement already satisfied: RPi.GPIO in ./venv/lib/python3.11/site-packages (from mfrc522) (0.7.1)
+Requirement already satisfied: spidev in ./venv/lib/python3.11/site-packages (from mfrc522) (3.6)
+Installing collected packages: mfrc522
+Successfully installed mfrc522-0.0.7</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This completes the necessary software setup.</p>
+      <p>Shutdown the <span class="bold">Raspberry Pi 4</span> in order to make the hardware connection with Mifare RC522.</p>
+    </div>
+    <div id="para-div">
+      <p>To connect the <span class="bold">Raspberry Pi 4</span> to Mifare RC522, we will make use of a breadboard with the <a href
+        ="https://www.canakit.com/raspberry-pi-gpio-breakout.html" target="_blank"><span class="bold">GPIO Cobbler Connector</span>
+        </a> as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/RFID-6.png" class="img-cls" alt="Cobber Connector" />
+      <div class="img-cap">Figure.6</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration depicts how the <span class="bold">Raspberry Pi 4</span> is connected to the breadboard via the
+        <span class="bold">GPIO Cobbler Connector</span>:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/RFID-7.png" class="img-cls" alt="Pi 4 Cobbler" />
+      <div class="img-cap">Figure.7</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>From the Mifare RC522 picture in <span class="bold">Figure.1</span>, we observe it has 8 pins which are as follows (from
+        right to left):</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-vanila">SDA</span> :: the <span class="bold">Serial Data Adapter</span> pin used as the data exchange
+          bus</p></li>
+        <li><p><span class="hi-vanila">SCK</span> :: the <span class="bold">Serial Clock</span> pin used to connect to the controller
+          clock</p></li>
+        <li><p><span class="hi-vanila">MOSI</span> :: the <span class="bold">Master Out/Slave In</span> pin used for clock signal out
+          of the controller to the peripheral</p></li>
+        <li><p><span class="hi-vanila">MISO</span> :: the <span class="bold">Master In/Salve Out</span> pin used as drive clock signal
+          into the controller</p></li>
+        <li><p><span class="hi-vanila">IRQ</span> :: the <span class="bold">Interrupt Request</span> pin used to generate interrupts</p></li>
+        <li><p><span class="hi-vanila">GND</span> :: the <span class="bold">Ground</span> pin used for ground</p></li>
+        <li><p><span class="hi-vanila">RST</span> :: the <span class="bold">Reset</span> pin</p></li>
+        <li><p><span class="hi-vanila">3.3v</span> :: the <span class="bold">3.3 volt</span> pin for power</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To make a proper connection between Mifare RC522 and <span class="bold">Raspberry Pi 4</span>, the pins from Mifare RC522
+        must be connected to the following GPIO pins using jumper wires:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="bold">SDA</span> pin to GPIO pin <span class="hi-grey">24</span></p></li>
+        <li><p><span class="bold">SCK</span> pin to GPIO pin <span class="hi-grey">23</span></p></li>
+        <li><p><span class="bold">MOSI</span> pin to GPIO pin <span class="hi-grey">19</span></p></li>
+        <li><p><span class="bold">MISO</span> pin to GPIO pin <span class="hi-grey">21</span></p></li>
+        <li><p><span class="bold">GND</span> pin to GPIO pin <span class="hi-grey">24</span></p></li>
+        <li><p><span class="bold">RST</span> pin to GPIO pin <span class="hi-grey">22</span></p></li>
+        <li><p><span class="bold">3.3v</span> pin to GPIO pin <span class="hi-grey">1</span></p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following illustration depicts how the Mifare RC522 is connected to the breadboard via the <span class="bold">GPIO Cobbler
+        Connector</span> and the jumper wires:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/RFID-8.png" class="img-cls" alt="RC522 Cobbler" />
+      <div class="img-cap">Figure.8</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>With all the connections complete, it is time to power-up the <span class="bold">Raspberry Pi 4</span>. Note that if the
+        wires are connected correct, the LED on the Mifare RC522 will turn on <span class="hi-red">RED</span>.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with RFID/NFC</p>
+    </div>
+    <div id="para-div">
+      <p>To perform a basic RFID Tag read test, execute the following code snippet in a new Terminal:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>import time
+
+import RPi.GPIO as GPIO
+
+from mfrc522 import SimpleMFRC522
+
+def setup():
+    GPIO.setwarnings(False)
+    reader = SimpleMFRC522()
+    return reader
+
+def cleanup():
+    GPIO.cleanup()
+
+def main():
+    while True:
+        print('Hold Tag near Reader =>')
+
+        id, txt = reader.read()
+
+        print(f'ID -> {id}')
+        print(f'Text = {txt}')
+
+        time.sleep(1)
+
+if __name__ == '__main__':
+    reader = setup()
+
+    try:
+        main()
+    except KeyboardInterrupt:
+        cleanup()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>By holding the provided card near the RFID Reader, one would see the following output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>Hold Tag near Reader =>
+ID -> 632189491926
+Text =</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Trying to hold any other card, such as a credit card near the RFID Reader, one would see the following output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>Hold Tag near Reader =>
+AUTH ERROR!!
+AUTH ERROR(status2reg & 0x08) != 0
+ID -> 584208502871
+Text =</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The code snippet above uses the <span class="hi-green">SimpleMFRC522</span> class to get started quickly. For more control
+        of the various steps, one can use the <span class="hi-green">MFRC522</span> class.</p>
+    </div>
+    <div id="para-div">
+      <p>To perform a more fine-grained RFID Tag read test, execute the following code snippet in a new Terminal:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>import signal
+import sys
+import time
+
+import RPi.GPIO as GPIO
+
+from mfrc522 import MFRC522
+
+loop = True
+trailer_block = 3
+auth_key = [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]
+block_nums = [0, 1, 2]
+
+def uid_to_num(uid):
+  n = 0
+  for i in range(0, 5):
+      n = n * 256 + uid[i]
+  return n
+      
+def handle_ctrl_c(signal, frame):
+    global loop
+    loop = False
+    cleanup()
+    sys.exit()
+
+def setup():
+    GPIO.setwarnings(False)
+    signal.signal(signal.SIGINT, handle_ctrl_c)
+    reader = MFRC522()
+    return reader
+
+def cleanup():
+    GPIO.cleanup()
+
+def read_tag(rdr):
+    while loop:
+        st, tt = rdr.MFRC522_Request(reader.PICC_REQIDL)
+        if st != rdr.MI_OK:
+            continue
+        st, id = rdr.MFRC522_Anticoll()
+        if st != rdr.MI_OK:
+            continue
+        break
+    return tt, id
+
+###
+#
+# Sectors => 0 through 15
+#
+# Each Sector -> Blocks => 0 through 3
+#
+# Each Block -> 16 bytes => 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+#                           -----------------             -----------------
+#                           ----&gt; Key A &lt;----             ----&gt; Key B &lt;----
+#
+# Sector 00 -> Block => 00, 01, 02, 03
+# Sector 01 -> Block => 04, 05, 06, 07
+# Sector 02 -> Block => 08, 09, 10, 11
+# ...
+# Sector 15 -> Block => 60, 61, 62, 63
+#
+# Trailer Blocks -> 03, 07, 11, ... 63
+#
+# Read a Block -> (3 * Sector + Sector + Block) => Sector 0 to 15, Block 0 to 3
+#
+###
+
+def main():
+    while loop:
+        print('Hold Tag near Reader =>')
+        print('Read Tag ...')
+        
+        tag_type, uid = read_tag(reader)
+            
+        print(f'Tag ID -> {uid_to_num(uid)}')
+        print(f'Tag Type -> {tag_type}')
+
+        print('Set Tag ID ...')
+        
+        reader.MFRC522_SelectTag(uid)
+        
+        print('Auth ...')
+        
+        ### To Read blocks from a particular sector, provide the appropriate trailer block number
+
+        status = reader.MFRC522_Auth(reader.PICC_AUTHENT1A, trailer_block, auth_key, uid)
+        if status != reader.MI_OK:
+            print('Auth Failed !!!')
+            reader.Close_MFRC522()
+            break
+        
+        print(f'Read Blocks -> {block_nums}')
+            
+        buf = []
+        txt = ''
+        for block_num in block_nums:
+            buf = reader.MFRC522_Read(block_num) 
+            if buf:
+                txt = ', '.join(hex(b) for b in buf)
+                print(f'Block {block_num} => {txt}')
+        
+        print('Stop Crypto1 ...')
+            
+        reader.MFRC522_StopCrypto1()
+
+        time.sleep(1)
+
+if __name__ == '__main__':
+    reader = setup()
+
+    try:
+        main()
+    except:
+        cleanup()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>By holding the provided card near the RFID Reader, one would see the following output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>Hold Tag near Reader =>
+Read Tag ...
+Tag ID -> 632189491926
+Tag Type -> 16
+Set Tag ID ...
+Auth ...
+Read Blocks -> [0, 1, 2]
+Block 0 => 0x93, 0x31, 0x6e, 0x1a, 0xd6, 0x8, 0x4, 0x0, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69
+Block 1 => 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0
+Block 2 => 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0
+Stop Crypto1 ...</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Trying to hold any other card, such as a credit card near the RFID Reader, one would see the following output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>Hold Tag near Reader =>
+Read Tag ...
+Tag ID -> 641863306785
+Tag Type -> 16
+Set Tag ID ...
+Auth ...
+AUTH ERROR!!
+AUTH ERROR(status2reg & 0x08) != 0
+Auth Failed !!!</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The reason we are getting the <span class="hi-red">AUTH ERROR!!</span> is because the default authentication key does not
+        match the actual authentication key programmed into the RFID/NFC internal memory.</p>
+      <p>With this, we conclude the hands-on demonstration of the setup and the test of RFID/NFC !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://pypi.org/project/RPi.GPIO/" target="_blank"><span class="bold">Python RPi.GPIO Module</span></a></p>
+      <p><a href="https://pypi.org/project/spidev/" target="_blank"><span class="bold">Python spidev Module</span></a></p>
+      <p><a href="https://pypi.org/project/mfrc522/" target="_blank"><span class="bold">Python mfrc522 Module</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

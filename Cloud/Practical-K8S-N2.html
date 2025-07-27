@@ -1,0 +1,1884 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Practical Kubernetes on ODroid-N2 Cluster (ARM Edition)">
+    <meta name="subject" content="Practical Kubernetes on ODroid-N2 Cluster (ARM Edition)">
+    <meta name="keywords" content="kubernetes, odroid-n2, arm64">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Practical Kubernetes on ODroid-N2 Cluster (ARM Edition)</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Practical Kubernetes on ODroid-N2 Cluster (ARM Edition)</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">12/15/2019</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">Kubernetes</span> (or <span class="hi-yellow">k8s</span> for short) is an extensible open
+        source container orchestration platform designed for managing containerized workloads and services at scale. It helps
+        in automated deployment, scaling, and management of container centric application workloads across a cluster of nodes
+        (bare-metal, virtual, or cloud) by orchestrating compute, network, and storage infrastructure on behalf of those user
+        workloads.</p>
+      <p>The two main types of nodes in a <span class="bold">Kubernetes</span> cluster are:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-green">Master</span> :: the node that acts as the <span class="bold">Control Plane</span> for the
+            cluster. It is responsible for all application workload deployment, scheduling, and placement decisions as well as
+            detecting and managing changes to the state of deployed applications. It is comprised of a <span class="hi-yellow">
+            Key-Value Store</span>, an <span class="hi-yellow">API Server</span>, a <span class="hi-yellow">Scheduler</span>,
+            and a <span class="hi-yellow">Controller Manager</span></p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Worker Node</span>(s) :: node(s) that actually run the application containers. They are also
+            on occasions referred to as <span class="hi-yellow">Minion</span>(s). The <span class="bold">Master</span> is also a
+            node, but is not targeted for application deployment. It is comprised of an agent called <span class="hi-yellow">
+            kubelet</span>, a network proxy called <span class="hi-yellow">kube-proxy</span>, and a <span class="hi-yellow">
+            Container Engine</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following Figure-1 illustrates the high-level architectural overview of <span class="bold">Kubernetes</span>:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/Kubernetes-3.png" class="img-cls" alt="Kubernetes" />
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <div id="para-div">
+      <p>The core components that make <span class="bold">Kubernetes</span> cluster are described as follows:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">KV Store</span> :: a highly reliable, distributed, and consistent key-value data store used for
+            persisting and maintaining state information about the various components of the <span class="bold">Kubernetes</span>
+            cluster. By default, <span class="bold">Kubernetes</span> uses <span class="hi-blue">etcd</span> as the key-value
+            store</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">API Server</span> :: acts as the entry point for the <span class="bold">Control Plane</span>
+            by exposing an API endpoint for all interactions with and within the <span class="bold">Kubernetes</span> cluster. It
+            is through the <span class="bold">API Server</span> that requests are made for deployment, administration, management,
+            and operation of container based applications. It uses the key-value <span class="bold">store</span> to persist and
+            maintain state information about all the components of the <span class="bold">Kubernetes</span> cluster</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Pod</span>(s) :: it is the smallest unit of deployment in <span class="bold">Kubernetes
+            </span>. One or more containers run inside it. Think of it as a logical host with shared network and storage.
+            Application <span class="bold">pod</span>s are scheduled to run on different <span class="bold">worker node</span>s
+            of the <span class="bold">Kubernetes</span> cluster based on the resource needs and application constraints. Every
+            <span class="bold">pod</span> within the cluster gets its own unique <span class="hi-vanila">ip-address</span>. The
+            application containers within a <span class="bold">pod</span> communicate with each other using <span class="hi-blue">
+            localhost</span>. <span class="bold">Pod</span>(s) are also the smallest unit of scaling in <span class="bold">
+            Kubernetes</span>. In addition, <span class="bold">Pod</span>(s) are ephemeral - they can come and go at any time</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Scheduler</span> :: responsible for scheduling application <span class="bold">pod</span>(s)
+            to run on the selected <span class="bold">worker node</span>(s) of the <span class="bold">Kubernetes</span> cluster
+            based on the application resource requirements as well as application specific affinity constraints</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Service</span> :: provides a stable, logical networking endpoint for a group of <span class="bold">
+            pod</span>(s) (based on a label related to an application <span class="bold">pod</span>) running on the <span class="bold">
+            wokrker node</span>(s) of the <span class="bold">Kubernetes</span> cluster. They enable access to an application via
+            service-discovery and spread the requests through simple load-balancing. To access an application, each <span class="bold">
+            service</span> is assigned a cluster-wide internal ip-address:port</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Controller Manager</span> :: manages different types of controllers that are responsible for
+            monitoring and detecting changes to the state of the <span class="bold">Kubernetes</span> cluster (via the
+            <span class="bold">API server</span>) and ensuring that the cluster is moved to the desired state. The different
+            types of controllers are:</p>
+          <ul>
+            <li>
+              <p><span class="hi-blue">Node Controller</span> =&gt; responsible for monitoring and detecting the state &amp;
+                health (up or down) of the <span class="bold">worker node</span>(s) in the <span class="bold">Kubernetes</span>
+                cluster</p>
+            </li>
+            <li>
+              <p><span class="hi-blue">ReplicaSet</span> =&gt; previously referred to as the <span class="hi-blue">Replication
+                Controller</span> and is responsible for maintaining the desired number of <span class="bold">pod</span>
+                replicas in the cluster</p>
+            </li>
+            <li>
+              <p><span class="hi-blue">Endpoints Controller</span> =&gt; responsible for detecting and managing changes to the
+                application <span class="bold">service</span> access endpoints (list of ip-address:port)</p>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Plugin Network</span> :: acts as the bridge (overlay network) that enables communication
+            between the <span class="bold">pod</span>(s) running on different <span class="bold">worker node</span>(s) of the
+            cluster. There are different implementations of this component by various 3rd-parties such as
+            <a href="https://docs.projectcalico.org/v2.0/getting-started/kubernetes/"><span class="hi-blue">calico</span></a>,
+            <a href="https://github.com/coreos/flannel"><span class="hi-blue">flannel</span></a>,
+            <a href="https://www.weave.works/docs/net/latest/kubernetes/kube-addon/"><span class="hi-blue">weave-net</span></a>,
+            etc. They all need to adhere to a common specification called the <span class="hi-vanila">Container Network Interface
+            </span> or <span class="hi-vanila">CNI</span> for short</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">kubelet</span> :: an agent that runs on every <span class="bold">worker node</span> of the
+            <span class="bold">Kubernetes</span> cluster. It is responsible for creating and starting an application
+            <span class="bold">pod</span> on the <span class="bold">worker node</span> and making sure all the application containers
+            are up and running within the <span class="bold">pod</span>. In addition, it is also responsible for reporting the
+            state and health of the <span class="bold">worker node</span>, as well as all the running <span class="bold">pod</span>s
+            to the <span class="bold">master</span> via the <span class="bold">API server</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">kube-proxy</span> :: a network proxy that runs on each of the <span class="bold">worker node
+            </span>(s) of the <span class="bold">Kubernetes</span> cluster and acts as an entry point for access to the various
+            application <span class="bold">service</span> endpoints. It routes requests to the appropriate <span class="bold">pod
+            </span>(s) in the cluster</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Container Engine</span> :: a container runtime that runs on each of the <span class="bold">
+            worker node</span>(s) to manage the lifecycle of containers such as getting the images, starting and stopping containers,
+            etc. The commonly used <span class="bold">container engine</span> is <a href="https://polarsparc.github.io/xhtml/Docker.html"
+            target="_blank"><span class="bold">Docker</span></a></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">kubectl</span> :: command line tool used for interfacing with the <span class="bold">
+            API Server</span>. Used by administrators (or operators) for deployment and scaling of applications, as well as for
+            management of the <span class="bold">Kubernetes</span> cluster</p>
+        </li>
+      </ul>
+    </div>
+    <div id="section-div">
+      <p>Installation and System Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The installation will be on a 5-node <a href="https://polarsparc.github.io/General/N2-Cluster.html" target="_blank">
+        <span class="bold">ODroid-N2 Cluster</span></a> running <a href="https://www.armbian.com/" target="_blank">Armbian Ubuntu
+        Linux</a>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Figure-2 illustrates the 5-node <span class="bold">ODroid-N2</span> cluster in operation:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/Kubernetes-4.png" class="img-cls" alt="ODroid N2 Cluster" />
+      <div class="img-cap">Figure-2</div>
+    </div>
+    <div id="para-div">
+      <p>For this tutorial, let us assume the 5-nodes in the cluster to have the following host names and ip addresses:</p>
+    </div>
+    <table id="col2-table">
+    <thead>
+    <tr>
+      <th>Host name</th>
+      <th>IP Address</th>
+    </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="col2-c1-odd">my-n2-1</td>
+        <td class="col2-c2-odd">192.168.1.51</td>
+      </tr>
+      <tr>
+        <td class="col2-c1-even">my-n2-2</td>
+        <td class="col2-c2-even">192.168.1.52</td>
+      </tr>
+      <tr>
+        <td class="col2-c1-odd">my-n2-3</td>
+        <td class="col2-c2-odd">192.168.1.53</td>
+      </tr>
+      <tr>
+        <td class="col2-c1-even">my-n2-4</td>
+        <td class="col2-c2-even">192.168.1.54</td>
+      </tr>
+      <tr>
+        <td class="col2-c1-odd">my-n2-5</td>
+        <td class="col2-c2-odd">192.168.1.55</td>
+      </tr>
+    </tbody>
+    </table>
+    <div id="para-div">
+      <p>Open a Terminal window and open a tab for each of the 5 nodes my-n2-1 thru my-n2-5. In each of the Terminal tabs,
+        <span class="bold">ssh</span> into the corresponding node.</p>
+    </div>
+    <div id="para-div">
+      <p>Each of the nodes my-n2-1 thru my-n2-5 need to have a unique identifier for the cluster to operate without any
+        collisions. The unique node identifier is located in the file <span class="hi-yellow">/etc/machine-id</span> and
+        we see all the nodes my-n2-1 thru my-n2-5 having the same value. This needs to be *<span class="underbold">
+        FIXED</span>*. On each of the nodes my-n2-1 thru my-n2-5, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo rm -f /etc/machine-id</p>
+      <p>$ sudo dbus-uuidgen --ensure=/etc/machine-id</p>
+      <p>$ sudo rm /var/lib/dbus/machine-id</p>
+      <p>$ sudo dbus-uuidgen --ensure</p>
+      <p>$ sudo reboot now</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, in each of the Terminal tabs, <span class="bold">ssh</span> into the corresponding node.</p>
+    </div>
+    <div id="para-div">
+      <p>Next, we need to setup the package repository for <span class="bold">Docker</span>. On each of the nodes my-n2-1
+        thru my-n2-5, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt-get update</p>
+      <p>$ sudo apt-get install apt-transport-https ca-certificates curl software-properties-common -y</p>
+      <p>$ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -</p>
+      <p>$ sudo apt-get update</p>
+      <p>$ sudo add-apt-repository "deb [arch=arm64] https://download.docker.com/linux/ubuntu xenial stable"</p>
+      <p>$ sudo apt-get update</p>
+    </div>
+    <div id="para-div">
+      <p>For version <span class="bold">1.16</span> of <span class="bold">Kubernetes</span> (the version at the time of this
+        article), the recommendeded <span class="bold">Docker</span> version is <span class="bold">18.09</span>.</p>
+    </div>
+    <div id="error-div">
+      <h4>ATTENTION: For Docker CE 19.xx (and above)</h4>
+      <pre><span class="underbold">Ensure</span> the version of <span class="bold">Docker</span> installed is *<span class="underbold">18.09</span>*. Else will encounter the following error:<br/><br/><span class="bold">[ERROR SystemVerification]: unsupported docker version: 19.xx</span></pre>
+    </div>
+    <div id="para-div">
+      <p>We need to check for the latest package of <span class="bold">Docker 18.09</span> in the repository. On any of the
+        nodes (we will pick my-n2-1), execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ apt-cache madison docker-ce</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>docker-ce | 5:19.03.5~3-0~ubuntu-xenial | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 5:19.03.4~3-0~ubuntu-xenial | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 5:19.03.3~3-0~ubuntu-xenial | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 5:19.03.2~3-0~ubuntu-xenial | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 5:19.03.1~3-0~ubuntu-xenial | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 5:19.03.0~3-0~ubuntu-xenial | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 5:18.09.9~3-0~ubuntu-xenial | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 5:18.09.8~3-0~ubuntu-xenial | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 5:18.09.7~3-0~ubuntu-xenial | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 5:18.09.6~3-0~ubuntu-xenial | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 5:18.09.5~3-0~ubuntu-xenial | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 5:18.09.4~3-0~ubuntu-xenial | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 5:18.09.3~3-0~ubuntu-xenial | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 5:18.09.2~3-0~ubuntu-xenial | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 5:18.09.1~3-0~ubuntu-xenial | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 5:18.09.0~3-0~ubuntu-xenial | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 18.06.3~ce~3-0~ubuntu | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 18.06.2~ce~3-0~ubuntu | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 18.06.1~ce~3-0~ubuntu | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 18.06.0~ce~3-0~ubuntu | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 18.03.1~ce-0~ubuntu | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 18.03.0~ce-0~ubuntu | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 17.12.1~ce-0~ubuntu | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 17.12.0~ce-0~ubuntu | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 17.09.1~ce-0~ubuntu | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages
+docker-ce | 17.09.0~ce-0~ubuntu | https://download.docker.com/linux/ubuntu xenial/stable arm64 Packages</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.1 above, we see the latest package for <span class="bold">Docker 18.09</span> is <span class="hi-green">
+        5:18.09.9~3-0~ubuntu-xenial</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Next, we need to install the choosen version of <span class="bold">Docker</span>. On each of the nodes my-n2-1
+        thru my-n2-5, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt-get install docker-ce=5:18.09.9~3-0~ubuntu-xenial -y</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Reading package lists... Done
+Building dependency tree       
+Reading state information... Done
+The following additional packages will be installed:
+  aufs-tools cgroupfs-mount containerd.io docker-ce-cli git git-man liberror-perl pigz
+Suggested packages:
+  git-daemon-run | git-daemon-sysvinit git-doc git-el git-email git-gui gitk gitweb git-cvs git-mediawiki git-svn
+The following NEW packages will be installed:
+  aufs-tools cgroupfs-mount containerd.io docker-ce docker-ce-cli git git-man liberror-perl pigz
+0 upgraded, 9 newly installed, 0 to remove and 0 not upgraded.
+Need to get 61.3 MB of archives.
+After this operation, 325 MB of additional disk space will be used.
+Get:1 https://download.docker.com/linux/ubuntu xenial/stable arm64 containerd.io arm64 1.2.10-3 [14.5 MB]
+Get:2 http://ports.ubuntu.com/ubuntu-ports bionic/universe arm64 pigz arm64 2.4-1 [47.8 kB]
+Get:3 http://ports.ubuntu.com/ubuntu-ports bionic/universe arm64 aufs-tools arm64 1:4.9+20170918-1ubuntu1 [101 kB]
+Get:4 http://ports.ubuntu.com/ubuntu-ports bionic/universe arm64 cgroupfs-mount all 1.4 [6320 B]
+Get:5 http://ports.ubuntu.com/ubuntu-ports bionic/main arm64 liberror-perl all 0.17025-1 [22.8 kB]
+Get:6 http://ports.ubuntu.com/ubuntu-ports bionic-updates/main arm64 git-man all 1:2.17.1-1ubuntu0.4 [803 kB]
+Get:7 http://ports.ubuntu.com/ubuntu-ports bionic-updates/main arm64 git arm64 1:2.17.1-1ubuntu0.4 [2941 kB]
+Get:8 https://download.docker.com/linux/ubuntu xenial/stable arm64 docker-ce-cli arm64 5:19.03.5~3-0~ubuntu-xenial [29.6 MB]
+Get:9 https://download.docker.com/linux/ubuntu xenial/stable arm64 docker-ce arm64 5:18.09.9~3-0~ubuntu-xenial [13.3 MB]
+Fetched 61.3 MB in 5s (11.6 MB/s)    
+Selecting previously unselected package pigz.
+(Reading database ... 156190 files and directories currently installed.)
+Preparing to unpack .../0-pigz_2.4-1_arm64.deb ...
+Unpacking pigz (2.4-1) ...
+Selecting previously unselected package aufs-tools.
+Preparing to unpack .../1-aufs-tools_1%3a4.9+20170918-1ubuntu1_arm64.deb ...
+Unpacking aufs-tools (1:4.9+20170918-1ubuntu1) ...
+Selecting previously unselected package cgroupfs-mount.
+Preparing to unpack .../2-cgroupfs-mount_1.4_all.deb ...
+Unpacking cgroupfs-mount (1.4) ...
+Selecting previously unselected package containerd.io.
+Preparing to unpack .../3-containerd.io_1.2.10-3_arm64.deb ...
+Unpacking containerd.io (1.2.10-3) ...
+Selecting previously unselected package docker-ce-cli.
+Preparing to unpack .../4-docker-ce-cli_5%3a19.03.5~3-0~ubuntu-xenial_arm64.deb ...
+Unpacking docker-ce-cli (5:19.03.5~3-0~ubuntu-xenial) ...
+Selecting previously unselected package docker-ce.
+Preparing to unpack .../5-docker-ce_5%3a18.09.9~3-0~ubuntu-xenial_arm64.deb ...
+Unpacking docker-ce (5:18.09.9~3-0~ubuntu-xenial) ...
+Selecting previously unselected package liberror-perl.
+Preparing to unpack .../6-liberror-perl_0.17025-1_all.deb ...
+Unpacking liberror-perl (0.17025-1) ...
+Selecting previously unselected package git-man.
+Preparing to unpack .../7-git-man_1%3a2.17.1-1ubuntu0.4_all.deb ...
+Unpacking git-man (1:2.17.1-1ubuntu0.4) ...
+Selecting previously unselected package git.
+Preparing to unpack .../8-git_1%3a2.17.1-1ubuntu0.4_arm64.deb ...
+Unpacking git (1:2.17.1-1ubuntu0.4) ...
+Setting up aufs-tools (1:4.9+20170918-1ubuntu1) ...
+Setting up git-man (1:2.17.1-1ubuntu0.4) ...
+Setting up containerd.io (1.2.10-3) ...
+Created symlink /etc/systemd/system/multi-user.target.wants/containerd.service → /lib/systemd/system/containerd.service.
+Setting up liberror-perl (0.17025-1) ...
+Setting up cgroupfs-mount (1.4) ...
+Setting up docker-ce-cli (5:19.03.5~3-0~ubuntu-xenial) ...
+Setting up pigz (2.4-1) ...
+Setting up git (1:2.17.1-1ubuntu0.4) ...
+Setting up docker-ce (5:18.09.9~3-0~ubuntu-xenial) ...
+update-alternatives: using /usr/bin/dockerd-ce to provide /usr/bin/dockerd (dockerd) in auto mode
+Created symlink /etc/systemd/system/multi-user.target.wants/docker.service → /lib/systemd/system/docker.service.
+Created symlink /etc/systemd/system/sockets.target.wants/docker.socket → /lib/systemd/system/docker.socket.
+Processing triggers for systemd (237-3ubuntu10.33) ...
+Processing triggers for man-db (2.8.3-2ubuntu0.1) ...
+Processing triggers for libc-bin (2.27-3ubuntu1) ...</pre>
+    </div>
+    <div id="para-div">
+      <p>Next, we need to ensure we are able to execute the <span class="bold">Docker</span> commands as the logged in user
+        without the need for <span class="bold">sudo</span>. On each of the nodes my-n2-1 thru my-n2-5, execute the following
+        commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo usermod -aG docker $USER</p>
+      <p>$ sudo reboot now</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, in each of the Terminal tabs, <span class="bold">ssh</span> into the corresponding node.</p>
+    </div>
+    <div id="para-div">
+      <p>To verify the <span class="bold">Docker</span> installation, on each of the nodes my-n2-1 thru my-n2-5, execute the
+        following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker info</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>Client:
+ Debug Mode: false
+
+Server:
+ Containers: 0
+  Running: 0
+  Paused: 0
+  Stopped: 0
+ Images: 0
+ Server Version: 18.09.9
+ Storage Driver: overlay2
+  Backing Filesystem: extfs
+  Supports d_type: true
+  Native Overlay Diff: true
+ Logging Driver: json-file
+ Cgroup Driver: cgroupfs
+ Plugins:
+  Volume: local
+  Network: bridge host macvlan null overlay
+  Log: awslogs fluentd gcplogs gelf journald json-file local logentries splunk syslog
+ Swarm: inactive
+ Runtimes: runc
+ Default Runtime: runc
+ Init Binary: docker-init
+ containerd version: b34a5c8af56e510852c35414db4c1f4fa6172339
+ runc version: 3e425f80a8c931f88e6d94a8c831b9d5aa481657
+ init version: fec3683
+ Security Options:
+  seccomp
+   Profile: default
+ Kernel Version: 4.9.196-meson64
+ Operating System: Ubuntu 18.04.3 LTS
+ OSType: linux
+ Architecture: aarch64
+ CPUs: 6
+ Total Memory: 3.623GiB
+ Name: my-n2-1
+ ID: QF32:QDZN:IQDM:34HX:NK3C:O3AP:Y6JZ:74DV:XXXL:KCBL:7K5D:36B4
+ Docker Root Dir: /var/lib/docker
+ Debug Mode: false
+ Registry: https://index.docker.io/v1/
+ Labels:
+ Experimental: false
+ Insecure Registries:
+  127.0.0.0/8
+ Live Restore Enabled: false
+ Product License: Community Engine</pre>
+    </div>
+    <div id="para-div">
+      <p>Next, we need to setup the package repository for <span class="bold">Kubernetes</span>. On each of the nodes
+        my-n2-1 thru my-n2-5, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -</p>
+      <p>$ echo "deb http://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list</p>
+      <p>$ sudo apt-get update</p>
+    </div>
+    <div id="para-div">
+      <p>Next, we need to install <span class="bold">Kubernetes</span>. On each of the nodes my-n2-1 thru my-n2-5, execute
+        the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt-get install -y kubeadm</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>Reading package lists... Done
+Building dependency tree       
+Reading state information... Done
+The following additional packages will be installed:
+  conntrack cri-tools ebtables kubectl kubelet kubernetes-cni socat
+The following NEW packages will be installed:
+  conntrack cri-tools ebtables kubeadm kubectl kubelet kubernetes-cni socat
+0 upgraded, 8 newly installed, 0 to remove and 1 not upgraded.
+Need to get 48.3 MB of archives.
+After this operation, 280 MB of additional disk space will be used.
+Get:2 http://ports.ubuntu.com/ubuntu-ports bionic/main arm64 conntrack arm64 1:1.4.4+snapshot20161117-6ubuntu2 [27.3 kB]
+Get:7 http://ports.ubuntu.com/ubuntu-ports bionic-updates/main arm64 ebtables arm64 2.0.10.4-3.5ubuntu2.18.04.3 [74.2 kB]
+Get:8 http://ports.ubuntu.com/ubuntu-ports bionic/main arm64 socat arm64 1.7.3.2-2ubuntu2 [322 kB]
+Get:1 https://packages.cloud.google.com/apt kubernetes-xenial/main arm64 cri-tools arm64 1.13.0-00 [7965 kB]
+Get:3 https://packages.cloud.google.com/apt kubernetes-xenial/main arm64 kubernetes-cni arm64 0.7.5-00 [5808 kB]
+Get:4 https://packages.cloud.google.com/apt kubernetes-xenial/main arm64 kubelet arm64 1.16.3-00 [18.5 MB]
+Get:5 https://packages.cloud.google.com/apt kubernetes-xenial/main arm64 kubectl arm64 1.16.3-00 [8025 kB]
+Get:6 https://packages.cloud.google.com/apt kubernetes-xenial/main arm64 kubeadm arm64 1.16.3-00 [7652 kB]
+Fetched 48.3 MB in 5s (9383 kB/s)  
+Selecting previously unselected package conntrack.
+(Reading database ... 157399 files and directories currently installed.)
+Preparing to unpack .../0-conntrack_1%3a1.4.4+snapshot20161117-6ubuntu2_arm64.deb ...
+Unpacking conntrack (1:1.4.4+snapshot20161117-6ubuntu2) ...
+Selecting previously unselected package cri-tools.
+Preparing to unpack .../1-cri-tools_1.13.0-00_arm64.deb ...
+Unpacking cri-tools (1.13.0-00) ...
+Selecting previously unselected package ebtables.
+Preparing to unpack .../2-ebtables_2.0.10.4-3.5ubuntu2.18.04.3_arm64.deb ...
+Unpacking ebtables (2.0.10.4-3.5ubuntu2.18.04.3) ...
+Selecting previously unselected package kubernetes-cni.
+Preparing to unpack .../3-kubernetes-cni_0.7.5-00_arm64.deb ...
+Unpacking kubernetes-cni (0.7.5-00) ...
+Selecting previously unselected package socat.
+Preparing to unpack .../4-socat_1.7.3.2-2ubuntu2_arm64.deb ...
+Unpacking socat (1.7.3.2-2ubuntu2) ...
+Selecting previously unselected package kubelet.
+Preparing to unpack .../5-kubelet_1.16.3-00_arm64.deb ...
+Unpacking kubelet (1.16.3-00) ...
+Selecting previously unselected package kubectl.
+Preparing to unpack .../6-kubectl_1.16.3-00_arm64.deb ...
+Unpacking kubectl (1.16.3-00) ...
+Selecting previously unselected package kubeadm.
+Preparing to unpack .../7-kubeadm_1.16.3-00_arm64.deb ...
+Unpacking kubeadm (1.16.3-00) ...
+Setting up conntrack (1:1.4.4+snapshot20161117-6ubuntu2) ...
+Setting up kubernetes-cni (0.7.5-00) ...
+Setting up cri-tools (1.13.0-00) ...
+Setting up socat (1.7.3.2-2ubuntu2) ...
+Setting up ebtables (2.0.10.4-3.5ubuntu2.18.04.3) ...
+Created symlink /etc/systemd/system/multi-user.target.wants/ebtables.service → /lib/systemd/system/ebtables.service.
+update-rc.d: warning: start and stop actions are no longer supported; falling back to defaults
+Setting up kubectl (1.16.3-00) ...
+Setting up kubelet (1.16.3-00) ...
+Created symlink /etc/systemd/system/multi-user.target.wants/kubelet.service → /lib/systemd/system/kubelet.service.
+Setting up kubeadm (1.16.3-00) ...
+Processing triggers for man-db (2.8.3-2ubuntu0.1) ...
+Processing triggers for systemd (237-3ubuntu10.33) ...</pre>
+    </div>
+    <div id="para-div">
+      <p>We need to reboot all the nodes. On each of the nodes my-n2-1 thru my-n2-5, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo reboot now</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, in each of the Terminal tabs, <span class="bold">ssh</span> into the corresponding node.</p>
+    </div>
+    <div id="para-div">
+      <p>To verify the <span class="bold">Kubernetes</span> installation, on each of the nodes my-n2-1 thru my-n2-5,
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubeadm version</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>kubeadm version: &version.Info{Major:"1", Minor:"16", GitVersion:"v1.16.3", GitCommit:"b3cbbae08ec52a7fc73d334838e18d17e8512749", GitTreeState:"clean", BuildDate:"2019-11-13T11:20:25Z", GoVersion:"go1.12.12", Compiler:"gc", Platform:"linux/arm64"}</pre>
+    </div>
+    <div id="para-div">
+      <p>Next, we need to ensure the packages for <span class="bold">Docker</span> and <span class="bold">Kubernetes</span>
+        are not updated in the future by the software update process. On each of the nodes my-n2-1 thru my-n2-5, execute
+        the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt-mark hold kubelet kubeadm kubectl docker-ce</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>kubelet set on hold.
+kubeadm set on hold.
+kubectl set on hold.
+docker-ce set on hold.</pre>
+    </div>
+    <div id="para-div">
+      <p>By default, <span class="bold">Docker</span> uses <span class="hi-yellow">cgroupfs</span> as the cgroup driver.
+        <span class="bold">Kubernetes</span> prefers <span class="hi-green">systemd</span> as the cgroup driver. We need
+        to modify the <span class="bold">Docker</span> daemon configuration by specifying options in a JSON file called
+        <span class="hi-vanila">/etc/docker/daemon.json</span>. On each of the nodes my-n2-1 thru my-n2-5, create the
+        configuration file <span class="bold">/etc/docker/daemon.json</span> with the following contents:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">/etc/docker/daemon.json</div>
+      <div class="gen-src-body">
+      <pre>{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "100m"
+  },
+  "storage-driver": "overlay2"
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>Next, we need to restart the <span class="bold">Docker</span> daemon for the configuration to take effect. On each
+        of the nodes my-n2-1 thru my-n2-5, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo mkdir -p /etc/systemd/system/docker.service.d</p>
+      <p>$ sudo systemctl daemon-reload</p>
+      <p>$ sudo systemctl restart docker</p>
+    </div>
+    <br/>
+    <div id="error-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>Not using the <span class="underbold">systemd</span> cgroup driver will cause the following error:<br/><br/><span class="bold">[preflight] Running pre-flight checks</span>
+    <span class="bold">[WARNING IsDockerSystemdCheck]: detected "cgroupfs" as the Docker cgroup driver. The recommended driver is "systemd". Please follow the guide at https://kubernetes.io/docs/setup/cri/</span></pre>
+    </div>
+    <div id="para-div">
+      <p>To verify the <span class="bold">Docker</span> daemon started ok, on each of the nodes my-n2-1 thru my-n2-5, execute
+        the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ journalctl -u docker</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>-- Logs begin at Sat 2019-12-14 21:14:19 EST, end at Sat 2019-12-14 21:49:26 EST. --
+Dec 14 21:14:26 my-n2-1 systemd[1]: Starting Docker Application Container Engine...
+Dec 14 21:14:27 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:27.806496732-05:00" level=info msg="systemd-resolved is running, so using resolvconf: /run/systemd/res
+Dec 14 21:14:27 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:27.821800611-05:00" level=info msg="parsed scheme: \"unix\"" module=grpc
+Dec 14 21:14:27 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:27.822661404-05:00" level=info msg="scheme \"unix\" not registered, fallback to default scheme" module
+Dec 14 21:14:27 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:27.824226106-05:00" level=info msg="parsed scheme: \"unix\"" module=grpc
+Dec 14 21:14:27 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:27.824838344-05:00" level=info msg="scheme \"unix\" not registered, fallback to default scheme" module
+Dec 14 21:14:27 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:27.828116839-05:00" level=info msg="ccResolverWrapper: sending new addresses to cc: [{unix:///run/cont
+Dec 14 21:14:27 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:27.828945714-05:00" level=info msg="ClientConn switching balancer to \"pick_first\"" module=grpc
+Dec 14 21:14:27 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:27.828101672-05:00" level=info msg="ccResolverWrapper: sending new addresses to cc: [{unix:///run/cont
+Dec 14 21:14:27 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:27.830093104-05:00" level=info msg="ClientConn switching balancer to \"pick_first\"" module=grpc
+Dec 14 21:14:27 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:27.832076285-05:00" level=info msg="pickfirstBalancer: HandleSubConnStateChange: 0x400014e610, CONNECT
+Dec 14 21:14:27 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:27.844251802-05:00" level=info msg="pickfirstBalancer: HandleSubConnStateChange: 0x40001343a0, CONNECT
+Dec 14 21:14:27 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:27.846949059-05:00" level=info msg="pickfirstBalancer: HandleSubConnStateChange: 0x40001343a0, READY" 
+Dec 14 21:14:27 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:27.851896887-05:00" level=info msg="pickfirstBalancer: HandleSubConnStateChange: 0x400014e610, READY" 
+Dec 14 21:14:27 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:27.857097768-05:00" level=info msg="[graphdriver] using prior storage driver: overlay2"
+Dec 14 21:14:27 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:27.886090322-05:00" level=info msg="Graph migration to content-addressability took 0.00 seconds"
+Dec 14 21:14:27 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:27.893602818-05:00" level=info msg="Loading containers: start."
+Dec 14 21:14:28 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:28.821256841-05:00" level=info msg="Default bridge (docker0) is assigned with an IP address 172.17.0.0
+Dec 14 21:14:29 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:29.134364234-05:00" level=info msg="Loading containers: done."
+Dec 14 21:14:29 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:29.374311397-05:00" level=info msg="Docker daemon" commit=039a7df graphdriver(s)=overlay2 version=18.0
+Dec 14 21:14:29 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:29.376444960-05:00" level=info msg="Daemon has completed initialization"
+Dec 14 21:14:29 my-n2-1 systemd[1]: Started Docker Application Container Engine.
+Dec 14 21:14:29 my-n2-1 dockerd[3347]: time="2019-12-14T21:14:29.444607195-05:00" level=info msg="API listen on /var/run/docker.sock"
+Dec 14 21:49:11 my-n2-1 dockerd[3347]: time="2019-12-14T21:49:11.323542665-05:00" level=info msg="Processing signal 'terminated'"
+Dec 14 21:49:11 my-n2-1 dockerd[3347]: time="2019-12-14T21:49:11.328379659-05:00" level=info msg="stopping event stream following graceful shutdown" error="<nil>" m
+Dec 14 21:49:11 my-n2-1 systemd[1]: Stopping Docker Application Container Engine...
+Dec 14 21:49:11 my-n2-1 systemd[1]: Stopped Docker Application Container Engine.
+Dec 14 21:49:11 my-n2-1 systemd[1]: Starting Docker Application Container Engine...
+Dec 14 21:49:11 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:11.499488062-05:00" level=info msg="systemd-resolved is running, so using resolvconf: /run/systemd/res
+Dec 14 21:49:11 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:11.502141612-05:00" level=info msg="parsed scheme: \"unix\"" module=grpc
+Dec 14 21:49:11 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:11.502209240-05:00" level=info msg="scheme \"unix\" not registered, fallback to default scheme" module
+Dec 14 21:49:11 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:11.502278577-05:00" level=info msg="parsed scheme: \"unix\"" module=grpc
+Dec 14 21:49:11 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:11.502295786-05:00" level=info msg="scheme \"unix\" not registered, fallback to default scheme" module
+Dec 14 21:49:11 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:11.505887217-05:00" level=info msg="ccResolverWrapper: sending new addresses to cc: [{unix:///run/cont
+Dec 14 21:49:11 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:11.506035600-05:00" level=info msg="ClientConn switching balancer to \"pick_first\"" module=grpc
+Dec 14 21:49:11 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:11.506181190-05:00" level=info msg="ccResolverWrapper: sending new addresses to cc: [{unix:///run/cont
+Dec 14 21:49:11 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:11.506446245-05:00" level=info msg="ClientConn switching balancer to \"pick_first\"" module=grpc
+Dec 14 21:49:11 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:11.506671465-05:00" level=info msg="pickfirstBalancer: HandleSubConnStateChange: 0x40007a2230, CONNECT
+Dec 14 21:49:11 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:11.506255319-05:00" level=info msg="pickfirstBalancer: HandleSubConnStateChange: 0x40008b0710, CONNECT
+Dec 14 21:49:11 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:11.509814706-05:00" level=info msg="pickfirstBalancer: HandleSubConnStateChange: 0x40008b0710, READY" 
+Dec 14 21:49:11 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:11.511738887-05:00" level=info msg="pickfirstBalancer: HandleSubConnStateChange: 0x40007a2230, READY" 
+Dec 14 21:49:11 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:11.525913142-05:00" level=info msg="Graph migration to content-addressability took 0.00 seconds"
+Dec 14 21:49:11 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:11.529808838-05:00" level=info msg="Loading containers: start."
+Dec 14 21:49:12 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:12.258591473-05:00" level=info msg="Default bridge (docker0) is assigned with an IP address 172.17.0.0
+Dec 14 21:49:12 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:12.540886055-05:00" level=info msg="Loading containers: done."
+Dec 14 21:49:12 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:12.614462758-05:00" level=info msg="Docker daemon" commit=039a7df graphdriver(s)=overlay2 version=18.0
+Dec 14 21:49:12 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:12.614718313-05:00" level=info msg="Daemon has completed initialization"
+Dec 14 21:49:12 my-n2-1 dockerd[9629]: time="2019-12-14T21:49:12.640530153-05:00" level=info msg="API listen on /var/run/docker.sock"
+Dec 14 21:49:12 my-n2-1 systemd[1]: Started Docker Application Container Engine.</pre>
+    </div>
+    <div id="para-div">
+      <p>Next, we need to disable disk based <span class="hi-yellow">swap</span>. For that we need to perform two actions.</p>
+    </div>
+    <div id="para-div">
+      <p>First action, on each of the nodes my-n2-1 thru my-n2-5, edit the file <span class="hi-yellow">/etc/default/armbian-zram-config
+        </span> and change the line <span class="bold">ENABLED=true</span> to <span class="hi-green">ENABLED=false</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Second action, on each of the nodes my-n2-1 thru my-n2-5, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo systemctl disable armbian-zram-config</p>
+      <p>$ sudo reboot now</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, in each of the Terminal tabs, <span class="bold">ssh</span> into the corresponding node.</p>
+    </div>
+    <div id="para-div">
+      <p>This completes the installation and system setup of the cluster nodes. Next stop - <span class="bold">Kubernetes</span>
+        setup.</p>
+    </div>
+    <div id="section-div">
+      <p>Kubernetes Setup</p>
+    </div>
+    <div id="para-div">
+      <p>To get started, we will designate the node <span class="bold">my-n2-1</span> as the <span class="bold">master</span>
+        node and setup the control plane. To do that, execute the following command on <span class="bold">my-n2-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo kubeadm init</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>[init] Using Kubernetes version: v1.16.3
+[preflight] Running pre-flight checks
+[preflight] Pulling images required for setting up a Kubernetes cluster
+[preflight] This might take a minute or two, depending on the speed of your internet connection
+[preflight] You can also perform this action in beforehand using 'kubeadm config images pull'
+[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+[kubelet-start] Starting the kubelet
+[certs] Using certificateDir folder "/etc/kubernetes/pki"
+[certs] Generating "ca" certificate and key
+[certs] Generating "apiserver" certificate and key
+[certs] apiserver serving cert is signed for DNS names [my-n2-1 kubernetes kubernetes.default kubernetes.default.svc kubernetes.default.svc.cluster.local] and IPs [10.96.0.1 192.168.1.51]
+[certs] Generating "apiserver-kubelet-client" certificate and key
+[certs] Generating "front-proxy-ca" certificate and key
+[certs] Generating "front-proxy-client" certificate and key
+[certs] Generating "etcd/ca" certificate and key
+[certs] Generating "etcd/server" certificate and key
+[certs] etcd/server serving cert is signed for DNS names [my-n2-1 localhost] and IPs [192.168.1.51 127.0.0.1 ::1]
+[certs] Generating "etcd/peer" certificate and key
+[certs] etcd/peer serving cert is signed for DNS names [my-n2-1 localhost] and IPs [192.168.1.51 127.0.0.1 ::1]
+[certs] Generating "etcd/healthcheck-client" certificate and key
+[certs] Generating "apiserver-etcd-client" certificate and key
+[certs] Generating "sa" key and public key
+[kubeconfig] Using kubeconfig folder "/etc/kubernetes"
+[kubeconfig] Writing "admin.conf" kubeconfig file
+[kubeconfig] Writing "kubelet.conf" kubeconfig file
+[kubeconfig] Writing "controller-manager.conf" kubeconfig file
+[kubeconfig] Writing "scheduler.conf" kubeconfig file
+[control-plane] Using manifest folder "/etc/kubernetes/manifests"
+[control-plane] Creating static Pod manifest for "kube-apiserver"
+[control-plane] Creating static Pod manifest for "kube-controller-manager"
+W1215 11:58:08.359442    4811 manifests.go:214] the default kube-apiserver authorization-mode is "Node,RBAC"; using "Node,RBAC"
+[control-plane] Creating static Pod manifest for "kube-scheduler"
+W1215 11:58:08.366477    4811 manifests.go:214] the default kube-apiserver authorization-mode is "Node,RBAC"; using "Node,RBAC"
+[etcd] Creating static Pod manifest for local etcd in "/etc/kubernetes/manifests"
+[wait-control-plane] Waiting for the kubelet to boot up the control plane as static Pods from directory "/etc/kubernetes/manifests". This can take up to 4m0s
+[apiclient] All control plane components are healthy after 25.513764 seconds
+[upload-config] Storing the configuration used in ConfigMap "kubeadm-config" in the "kube-system" Namespace
+[kubelet] Creating a ConfigMap "kubelet-config-1.17" in namespace kube-system with the configuration for the kubelets in the cluster
+[upload-certs] Skipping phase. Please see --upload-certs
+[mark-control-plane] Marking the node my-n2-1 as control-plane by adding the label "node-role.kubernetes.io/master=''"
+[mark-control-plane] Marking the node my-n2-1 as control-plane by adding the taints [node-role.kubernetes.io/master:NoSchedule]
+[bootstrap-token] Using token: zcp5a6.w03lcuhx068wvkqv
+[bootstrap-token] Configuring bootstrap tokens, cluster-info ConfigMap, RBAC Roles
+[bootstrap-token] configured RBAC rules to allow Node Bootstrap tokens to post CSRs in order for nodes to get long term certificate credentials
+[bootstrap-token] configured RBAC rules to allow the csrapprover controller automatically approve CSRs from a Node Bootstrap Token
+[bootstrap-token] configured RBAC rules to allow certificate rotation for all node client certificates in the cluster
+[bootstrap-token] Creating the "cluster-info" ConfigMap in the "kube-public" namespace
+[kubelet-finalize] Updating "/etc/kubernetes/kubelet.conf" to point to a rotatable kubelet client certificate and key
+[addons] Applied essential addon: CoreDNS
+[addons] Applied essential addon: kube-proxy
+
+Your Kubernetes control-plane has initialized successfully!
+
+To start using your cluster, you need to run the following as a regular user:
+
+  mkdir -p $HOME/.kube
+  sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+  sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+You should now deploy a pod network to the cluster.
+Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
+  https://kubernetes.io/docs/concepts/cluster-administration/addons/
+
+Then you can join any number of worker nodes by running the following on each as root:
+
+kubeadm join 192.168.1.51:6443 --token zcp5a6.w03lcuhx068wvkqv \
+    --discovery-token-ca-cert-hash sha256:d2e38957f46a9eb089671924bca78ac4e02cdcc8db27e89677a014fe587b67c6</pre>
+    </div>
+    <div id="para-div">
+      <p>In order to use the <span class="bold">kubectl</span> command-line tool as a non-<span class="bold">root</span>
+        user on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>), execute the following
+        commands on <span class="bold">my-n2-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/.kube</p>
+      <p>$ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config</p>
+      <p>$ sudo chown $(id -u):$(id -g) $HOME/.kube/config</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the node(s) in <span class="bold">Kubernetes</span> cluster, execute the following command on
+        the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl get nodes</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>NAME      STATUS     ROLES    AGE     VERSION
+my-n2-1   NotReady   master   2m37s   v1.16.3</pre>
+    </div>
+    <div id="para-div">
+      <p>To verify the <span class="bold">Kubernetes</span> cluster started ok, execute the following command on the
+        <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl get pods -n kube-system -o wide</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>NAME                              READY   STATUS    RESTARTS   AGE     IP             NODE      NOMINATED NODE   READINESS GATES
+coredns-6955765f44-4gk4f          1/1     Running   0          40m     10.32.0.3      my-n2-1   &lt;none&gt;           &lt;none&gt;
+coredns-6955765f44-wskl4          1/1     Running   0          40m     10.32.0.2      my-n2-1   &lt;none&gt;           &lt;none&gt;
+etcd-my-n2-1                      1/1     Running   0          40m     192.168.1.51   my-n2-1   &lt;none&gt;           &lt;none&gt;
+kube-apiserver-my-n2-1            1/1     Running   0          40m     192.168.1.51   my-n2-1   &lt;none&gt;           &lt;none&gt;
+kube-controller-manager-my-n2-1   1/1     Running   0          40m     192.168.1.51   my-n2-1   &lt;none&gt;           &lt;none&gt;
+kube-proxy-tklp7                  1/1     Running   0          40m     192.168.1.51   my-n2-1   &lt;none&gt;           &lt;none&gt;
+kube-scheduler-my-n2-1            1/1     Running   0          40m     192.168.1.51   my-n2-1   &lt;none&gt;           &lt;none&gt;</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.10 above, we can see all the core components (api server, controller manager, etcd, and scheduler)
+        are all up and running.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, we need to install an overlay <span class="bold">Plugin Network</span> for inter-<span class="bold">pod</span>
+        communication. For our cluster, we will choose the <span class="bold">weave-net</span> implementation. To install
+        the overlay network on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>), execute the
+        following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>serviceaccount/weave-net created
+clusterrole.rbac.authorization.k8s.io/weave-net created
+clusterrolebinding.rbac.authorization.k8s.io/weave-net created
+role.rbac.authorization.k8s.io/weave-net created
+rolebinding.rbac.authorization.k8s.io/weave-net created
+daemonset.apps/weave-net created</pre>
+    </div>
+    <div id="para-div">
+      <p>To verify the <span class="bold">Weave</span> overlay network started ok, execute the following command on the
+        <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl get pods -n kube-system -l name=weave-net -o wide</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>NAME              READY   STATUS    RESTARTS   AGE   IP             NODE      NOMINATED NODE   READINESS GATES
+weave-net-2sjh4   2/2     Running   0          10m   192.168.1.51   my-n2-1   &lt;none&gt;           &lt;none&gt;</pre>
+    </div>
+    <div id="para-div">
+      <p>Additionally, to check the logs for the <span class="bold">Weave</span> overlay network, execute the following
+        command on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl logs -n kube-system weave-net-ktjnv weave</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>INFO: 2019/12/08 17:07:12.422554 Command line options: map[conn-limit:200 datapath:datapath db-prefix:/weavedb/weave-net docker-api: expect-npc:true host-root:/host http-addr:127.0.0.1:6784 ipalloc-init:consensus=0 ipalloc-range:10.32.0.0/12 metrics-addr:0.0.0.0:6782 name:9a:59:d0:9a:83:f0 nickname:my-n2-1 no-dns:true port:6783]
+INFO: 2019/12/08 17:07:12.422876 weave  2.6.0
+INFO: 2019/12/08 17:07:12.780249 Bridge type is bridged_fastdp
+INFO: 2019/12/08 17:07:12.780350 Communication between peers is unencrypted.
+INFO: 2019/12/08 17:07:12.804023 Our name is 9a:59:d0:9a:83:f0(my-n2-1)
+INFO: 2019/12/08 17:07:12.804267 Launch detected - using supplied peer list: []
+INFO: 2019/12/08 17:07:12.844222 Unable to fetch ConfigMap kube-system/weave-net to infer unique cluster ID
+INFO: 2019/12/08 17:07:12.844324 Checking for pre-existing addresses on weave bridge
+INFO: 2019/12/08 17:07:12.853900 [allocator 9a:59:d0:9a:83:f0] No valid persisted data
+INFO: 2019/12/08 17:07:12.866497 [allocator 9a:59:d0:9a:83:f0] Initialising via deferred consensus
+INFO: 2019/12/08 17:07:12.866684 Sniffing traffic on datapath (via ODP)
+INFO: 2019/12/08 17:07:12.872570 Listening for HTTP control messages on 127.0.0.1:6784
+INFO: 2019/12/08 17:07:12.873074 Listening for metrics requests on 0.0.0.0:6782
+INFO: 2019/12/08 17:07:13.540248 [kube-peers] Added myself to peer list &{[{9a:59:d0:9a:83:f0 my-n2-1}]}
+DEBU: 2019/12/08 17:07:13.558983 [kube-peers] Nodes that have disappeared: map[]
+INFO: 2019/12/08 17:07:13.661165 Assuming quorum size of 1
+10.32.0.1
+DEBU: 2019/12/08 17:07:13.911144 registering for updates for node delete events</pre>
+    </div>
+    <div id="para-div">
+      <p>For this tutorial, we designate that nodes <span class="bold">my-n2-2</span> thru <span class="bold">my-n2-5</span> to
+        be the <span class="bold">worker node</span>s of this <span class="bold">Kubernetes</span> cluster. From Output.8 above,
+        we can determine the <span class="hi-green">kubeadm join</span> command to use on each <span class="bold">worker node
+        </span>. For each of the nodes <span class="bold">my-n2-2</span> thru <span class="bold">my-n2-5</span> (in their
+        respective Terminal tab), execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo kubeadm join 192.168.1.51:6443 --token zcp5a6.w03lcuhx068wvkqv --discovery-token-ca-cert-hash sha256:d2e38957f46a9eb089671924bca78ac4e02cdcc8db27e89677a014fe587b67c6</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>[preflight] Running pre-flight checks
+[preflight] Reading configuration from the cluster...
+[preflight] FYI: You can look at this config file with 'kubectl -n kube-system get cm kubeadm-config -oyaml'
+[kubelet-start] Downloading configuration for the kubelet from the "kubelet-config-1.17" ConfigMap in the kube-system namespace
+[kubelet-start] Writing kubelet configuration to file "/var/lib/kubelet/config.yaml"
+[kubelet-start] Writing kubelet environment file with flags to file "/var/lib/kubelet/kubeadm-flags.env"
+[kubelet-start] Starting the kubelet
+[kubelet-start] Waiting for the kubelet to perform the TLS Bootstrap...
+
+This node has joined the cluster:
+* Certificate signing request was sent to apiserver and a response was received.
+* The Kubelet was informed of the new secure connection details.
+
+Run 'kubectl get nodes' on the control-plane to see this node join the cluster.</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the active nodes in this <span class="bold">Kubernetes</span> cluster, execute the following command
+        on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>) (after waiting for about 30 secs
+        ):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl get nodes -o wide</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>NAME      STATUS   ROLES    AGE     VERSION   INTERNAL-IP    EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION    CONTAINER-RUNTIME
+my-n2-1   Ready    master   51m     v1.17.0   192.168.1.51   &lt;none&gt;        Ubuntu 18.04.3 LTS   4.9.196-meson64   docker://18.9.9
+my-n2-2   Ready    &lt;none&gt;   2m58s   v1.17.0   192.168.1.52   &lt;none&gt;        Ubuntu 18.04.3 LTS   4.9.196-meson64   docker://18.9.9
+my-n2-3   Ready    &lt;none&gt;   2m38s   v1.17.0   192.168.1.53   &lt;none&gt;        Ubuntu 18.04.3 LTS   4.9.196-meson64   docker://18.9.9
+my-n2-4   Ready    &lt;none&gt;   2m35s   v1.17.0   192.168.1.54   &lt;none&gt;        Ubuntu 18.04.3 LTS   4.9.196-meson64   docker://18.9.9
+my-n2-5   Ready    &lt;none&gt;   2m21s   v1.17.0   192.168.1.55   &lt;none&gt;        Ubuntu 18.04.3 LTS   4.9.196-meson64   docker://18.9.9</pre>
+    </div>
+    <div id="para-div">
+      <p>Thats it !!! This completes all the necessary setup for this <span class="bold">Kubernetes</span> cluster.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Kubernetes</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the <span class="bold">pod</span>(s) running in <span class="bold">Kubernetes</span> cluster (including
+        the system <span class="bold">pod</span>s), execute the following command on the <span class="bold">master</span> node
+        (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl get pods --all-namespaces -o wide</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>NAMESPACE     NAME                              READY   STATUS    RESTARTS   AGE     IP             NODE      NOMINATED NODE   READINESS GATES
+kube-system   coredns-6955765f44-4gk4f          1/1     Running   0          52m     10.32.0.3      my-n2-1   &lt;none&gt;           &lt;none&gt;
+kube-system   coredns-6955765f44-wskl4          1/1     Running   0          52m     10.32.0.2      my-n2-1   &lt;none&gt;           &lt;none&gt;
+kube-system   etcd-my-n2-1                      1/1     Running   0          52m     192.168.1.51   my-n2-1   &lt;none&gt;           &lt;none&gt;
+kube-system   kube-apiserver-my-n2-1            1/1     Running   0          52m     192.168.1.51   my-n2-1   &lt;none&gt;           &lt;none&gt;
+kube-system   kube-controller-manager-my-n2-1   1/1     Running   0          52m     192.168.1.51   my-n2-1   &lt;none&gt;           &lt;none&gt;
+kube-system   kube-proxy-9zxfj                  1/1     Running   0          3m36s   192.168.1.55   my-n2-5   &lt;none&gt;           &lt;none&gt;
+kube-system   kube-proxy-c7mns                  1/1     Running   0          3m53s   192.168.1.53   my-n2-3   &lt;none&gt;           &lt;none&gt;
+kube-system   kube-proxy-dv52p                  1/1     Running   0          4m13s   192.168.1.52   my-n2-2   &lt;none&gt;           &lt;none&gt;
+kube-system   kube-proxy-mpwkb                  1/1     Running   0          3m50s   192.168.1.54   my-n2-4   &lt;none&gt;           &lt;none&gt;
+kube-system   kube-proxy-tklp7                  1/1     Running   0          52m     192.168.1.51   my-n2-1   &lt;none&gt;           &lt;none&gt;
+kube-system   kube-scheduler-my-n2-1            1/1     Running   0          52m     192.168.1.51   my-n2-1   &lt;none&gt;           &lt;none&gt;
+kube-system   weave-net-2sjh4                   2/2     Running   0          21m     192.168.1.51   my-n2-1   &lt;none&gt;           &lt;none&gt;
+kube-system   weave-net-68lcd                   2/2     Running   0          3m50s   192.168.1.54   my-n2-4   &lt;none&gt;           &lt;none&gt;
+kube-system   weave-net-7fh98                   2/2     Running   1          4m13s   192.168.1.52   my-n2-2   &lt;none&gt;           &lt;none&gt;
+kube-system   weave-net-krdtz                   2/2     Running   1          3m36s   192.168.1.55   my-n2-5   &lt;none&gt;           &lt;none&gt;
+kube-system   weave-net-ljm6k                   2/2     Running   0          3m53s   192.168.1.53   my-n2-3   &lt;none&gt;           &lt;none&gt;</pre>
+    </div>
+    <div id="para-div">
+      <p>As is evident from Output.16 above, we see an instance for <span class="bold">API Server</span>, <span class="bold">
+        etcd</span>, <span class="bold">Controller Manager</span>, <span class="bold">Scheduler</span>, and <span class="bold">
+        Plugin Network</span> (<span class="bold">weave-net</span>) all up and running.</p>
+    </div>
+    <div id="para-div">
+      <p>To display detailed information about any <span class="bold">pod</span> (say the <span class="bold">Controller Manager</span>)
+        in the <span class="bold">Kubernetes</span> cluster, execute the following command on the <span class="bold">master</span> node
+        (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl describe pod kube-controller-manager-my-n2-1 -n kube-system</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.17</h4>
+      <pre>Name:                 kube-controller-manager-my-n2-1
+Namespace:            kube-system
+Priority:             2000000000
+Priority Class Name:  system-cluster-critical
+Node:                 my-n2-1/192.168.1.51
+Start Time:           Sun, 15 Dec 2019 11:58:39 -0500
+Labels:               component=kube-controller-manager
+                      tier=control-plane
+Annotations:          kubernetes.io/config.hash: 536dc7132dfd0d2ca1d968c9ede1e024
+                      kubernetes.io/config.mirror: 536dc7132dfd0d2ca1d968c9ede1e024
+                      kubernetes.io/config.seen: 2019-12-15T11:58:35.86446527-05:00
+                      kubernetes.io/config.source: file
+Status:               Running
+IP:                   192.168.1.51
+IPs:
+  IP:           192.168.1.51
+Controlled By:  Node/my-n2-1
+Containers:
+  kube-controller-manager:
+    Container ID:  docker://63b0d105457f52849afa38d2e914b53e68b7e21786fc41cda322bb21bc5b86a4
+    Image:         k8s.gcr.io/kube-controller-manager:v1.17.0
+    Image ID:      docker-pullable://k8s.gcr.io/kube-controller-manager@sha256:0438efb5098a2ca634ea8c6b0d804742b733d0d13fd53cf62c73e32c659a3c39
+    Port:          &lt;none&gt;
+    Host Port:     &lt;none&gt;
+    Command:
+      kube-controller-manager
+      --authentication-kubeconfig=/etc/kubernetes/controller-manager.conf
+      --authorization-kubeconfig=/etc/kubernetes/controller-manager.conf
+      --bind-address=127.0.0.1
+      --client-ca-file=/etc/kubernetes/pki/ca.crt
+      --cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt
+      --cluster-signing-key-file=/etc/kubernetes/pki/ca.key
+      --controllers=*,bootstrapsigner,tokencleaner
+      --kubeconfig=/etc/kubernetes/controller-manager.conf
+      --leader-elect=true
+      --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt
+      --root-ca-file=/etc/kubernetes/pki/ca.crt
+      --service-account-private-key-file=/etc/kubernetes/pki/sa.key
+      --use-service-account-credentials=true
+    State:          Running
+      Started:      Sun, 15 Dec 2019 11:58:22 -0500
+    Ready:          True
+    Restart Count:  0
+    Requests:
+      cpu:        200m
+    Liveness:     http-get https://127.0.0.1:10257/healthz delay=15s timeout=15s period=10s #success=1 #failure=8
+    Environment:  &lt;none&gt;
+    Mounts:
+      /etc/ca-certificates from etc-ca-certificates (ro)
+      /etc/kubernetes/controller-manager.conf from kubeconfig (ro)
+      /etc/kubernetes/pki from k8s-certs (ro)
+      /etc/ssl/certs from ca-certs (ro)
+      /usr/libexec/kubernetes/kubelet-plugins/volume/exec from flexvolume-dir (rw)
+      /usr/local/share/ca-certificates from usr-local-share-ca-certificates (ro)
+      /usr/share/ca-certificates from usr-share-ca-certificates (ro)
+Conditions:
+  Type              Status
+  Initialized       True 
+  Ready             True 
+  ContainersReady   True 
+  PodScheduled      True 
+Volumes:
+  ca-certs:
+    Type:          HostPath (bare host directory volume)
+    Path:          /etc/ssl/certs
+    HostPathType:  DirectoryOrCreate
+  etc-ca-certificates:
+    Type:          HostPath (bare host directory volume)
+    Path:          /etc/ca-certificates
+    HostPathType:  DirectoryOrCreate
+  flexvolume-dir:
+    Type:          HostPath (bare host directory volume)
+    Path:          /usr/libexec/kubernetes/kubelet-plugins/volume/exec
+    HostPathType:  DirectoryOrCreate
+  k8s-certs:
+    Type:          HostPath (bare host directory volume)
+    Path:          /etc/kubernetes/pki
+    HostPathType:  DirectoryOrCreate
+  kubeconfig:
+    Type:          HostPath (bare host directory volume)
+    Path:          /etc/kubernetes/controller-manager.conf
+    HostPathType:  FileOrCreate
+  usr-local-share-ca-certificates:
+    Type:          HostPath (bare host directory volume)
+    Path:          /usr/local/share/ca-certificates
+    HostPathType:  DirectoryOrCreate
+  usr-share-ca-certificates:
+    Type:          HostPath (bare host directory volume)
+    Path:          /usr/share/ca-certificates
+    HostPathType:  DirectoryOrCreate
+QoS Class:         Burstable
+Node-Selectors:    &lt;none&gt;
+Tolerations:       :NoExecute
+Events:            &lt;none&gt;</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the application <span class="bold">pod</span>(s) running in <span class="bold">Kubernetes</span> cluster,
+        execute the following command on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl get pods</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.18</h4>
+      <pre>No resources found in default namespace.</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the <span class="bold">service</span>(s) running in <span class="bold">Kubernetes</span> cluster, execute
+        the following command on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl get services</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.19</h4>
+      <pre>NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+kubernetes   ClusterIP   10.96.0.1    &lt;none&gt;        443/TCP   64m</pre>
+    </div>
+    <div id="para-div">
+      <p>We will create a simple <span class="bold">Python</span> web application to display the host name as well as the
+        ip-address when invoked via HTTP. The following are the contents of the simple <span class="bold">Python</span> web
+        application stored under the <span class="bold">/tmp</span> directory on the <span class="bold">master</span> node
+        (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">web-echo.py</div>
+      <div class="gen-src-body">
+      <pre>from flask import Flask
+import socket
+
+app = Flask(__name__)
+
+@app.route("/")
+def index():
+    host_name = socket.gethostname()
+    host_ip = socket.gethostbyname(host_name)
+    return 'Hello from container -> ' + host_name + ' [' + host_ip + ']'
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=8888)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the <span class="bold">Dockerfile</span> to create a <span class="bold">Docker</span>
+        image for the the simple <span class="bold">Python</span> web application stored under the <span class="bold">/tmp</span>
+        directory on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Dockerfile</div>
+      <div class="gen-src-body">
+      <pre>FROM python:3.7.5-alpine3.9
+
+RUN pip install flask
+
+ADD web-echo.py /web-echo.py
+
+CMD ["python", "/web-echo.py"]</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>To build a <span class="bold">Docker</span> image called <span class="hi-yellow">py-web-echo</span> with the tag
+        <span class="hi-green">v1.0</span>, execute the following commands on the <span class="bold">master</span> node (
+        <span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>cd /tmp</p>
+      <p>docker build -t "py-web-echo:v1.0" .</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.20</h4>
+      <pre>Sending build context to Docker daemon  3.072kB
+Step 1/4 : FROM python:3.7.5-alpine3.9
+3.7.5-alpine3.9: Pulling from library/python
+0362ad1dd800: Pull complete 
+9b941924aae3: Pull complete 
+fd7b3613915d: Pull complete 
+078d60b9b97e: Pull complete 
+7059e1dd9bc4: Pull complete 
+Digest: sha256:064d9ce3e91a59535c528bc3c38888023791d9fc78ba9e5070f5064833f326ff
+Status: Downloaded newer image for python:3.7.5-alpine3.9
+ ---> 578ec6233872
+Step 2/4 : RUN pip install flask
+ ---> Running in d248e23dd161
+Collecting flask
+  Downloading https://files.pythonhosted.org/packages/9b/93/628509b8d5dc749656a9641f4caf13540e2cdec85276964ff8f43bbb1d3b/Flask-1.1.1-py2.py3-none-any.whl (94kB)
+Collecting Jinja2>=2.10.1
+  Downloading https://files.pythonhosted.org/packages/65/e0/eb35e762802015cab1ccee04e8a277b03f1d8e53da3ec3106882ec42558b/Jinja2-2.10.3-py2.py3-none-any.whl (125kB)
+Collecting Werkzeug>=0.15
+  Downloading https://files.pythonhosted.org/packages/ce/42/3aeda98f96e85fd26180534d36570e4d18108d62ae36f87694b476b83d6f/Werkzeug-0.16.0-py2.py3-none-any.whl (327kB)
+Collecting itsdangerous>=0.24
+  Downloading https://files.pythonhosted.org/packages/76/ae/44b03b253d6fade317f32c24d100b3b35c2239807046a4c953c7b89fa49e/itsdangerous-1.1.0-py2.py3-none-any.whl
+Collecting click>=5.1
+  Downloading https://files.pythonhosted.org/packages/fa/37/45185cb5abbc30d7257104c434fe0b07e5a195a6847506c074527aa599ec/Click-7.0-py2.py3-none-any.whl (81kB)
+Collecting MarkupSafe>=0.23
+  Downloading https://files.pythonhosted.org/packages/b9/2e/64db92e53b86efccfaea71321f597fa2e1b2bd3853d8ce658568f7a13094/MarkupSafe-1.1.1.tar.gz
+Building wheels for collected packages: MarkupSafe
+  Building wheel for MarkupSafe (setup.py): started
+  Building wheel for MarkupSafe (setup.py): finished with status 'done'
+  Created wheel for MarkupSafe: filename=MarkupSafe-1.1.1-cp37-none-any.whl size=12629 sha256=8a200864ca113d03b4de2d951ae4a1d0806a3ff84128349770dfe3fb018a6458
+  Stored in directory: /root/.cache/pip/wheels/f2/aa/04/0edf07a1b8a5f5f1aed7580fffb69ce8972edc16a505916a77
+Successfully built MarkupSafe
+Installing collected packages: MarkupSafe, Jinja2, Werkzeug, itsdangerous, click, flask
+Successfully installed Jinja2-2.10.3 MarkupSafe-1.1.1 Werkzeug-0.16.0 click-7.0 flask-1.1.1 itsdangerous-1.1.0
+Removing intermediate container d248e23dd161
+ ---> 4ee40e66a655
+Step 3/4 : ADD web-echo.py /web-echo.py
+ ---> 31a0341bf9d7
+Step 4/4 : CMD ["python", "/web-echo.py"]
+ ---> Running in 1ee52ea10ad3
+Removing intermediate container 1ee52ea10ad3
+ ---> 7cd037d24ef7
+Successfully built 7cd037d24ef7
+Successfully tagged py-web-echo:v1.0</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the <span class="bold">Docker</span> images on the <span class="bold">master</span> node
+        (<span class="bold">my-n2-1</span>), execute the following command on the <span class="bold">master</span>
+        node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker images</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.21</h4>
+      <pre>REPOSITORY                           TAG                 IMAGE ID            CREATED             SIZE
+py-web-echo                          v1.0                7cd037d24ef7        3 minutes ago       119MB
+k8s.gcr.io/kube-proxy                v1.17.0             ac19e9cffff5        7 days ago          114MB
+k8s.gcr.io/kube-apiserver            v1.17.0             aca151bf3e90        7 days ago          166MB
+k8s.gcr.io/kube-controller-manager   v1.17.0             7045158f92f8        7 days ago          156MB
+k8s.gcr.io/kube-scheduler            v1.17.0             0d5c120f87f3        7 days ago          93.7MB
+python                               3.7.5-alpine3.9     578ec6233872        4 weeks ago         109MB
+weaveworks/weave-npc                 2.6.0               1c672c2f5870        5 weeks ago         36.6MB
+weaveworks/weave-kube                2.6.0               81393394d17d        5 weeks ago         111MB
+k8s.gcr.io/coredns                   1.6.5               f96217e2532b        5 weeks ago         39.3MB
+k8s.gcr.io/etcd                      3.4.3-0             ab707b0a0ea3        7 weeks ago         363MB
+k8s.gcr.io/pause                     3.1                 6cf7c80fe444        24 months ago       525kB</pre>
+    </div>
+    <div id="para-div">
+      <p>Note that we built the <span class="bold">Docker</span> image on the <span class="bold">master</span> node
+        (<span class="bold">my-n2-1</span>). Since the <span class="bold">pod</span>(s) will be deployed on the
+        <span class="bold">worker node</span>(s), we need to ensure the requisite docker images are present in the
+        <span class="bold">worker node</span>(s).</p>
+    </div>
+    <div id="para-div">
+      <p>For each of the worker nodes <span class="bold">my-n2-2</span> thru <span class="bold">my-n2-5</span> (in their
+        respective Terminal tab), execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker pull python:3.7.5-alpine3.9</p>
+    </div>
+    <div id="para-div">
+      <p>For each of the worker nodes <span class="bold">my-n2-2</span> thru <span class="bold">my-n2-5</span>, execute
+        the following command on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker save py-web-echo:v1.0 | bzip2 | ssh polarsparc@192.168.1.52 'bunzip2 | docker load'</p>
+      <p>$ docker save py-web-echo:v1.0 | bzip2 | ssh polarsparc@192.168.1.53 'bunzip2 | docker load'</p>
+      <p>$ docker save py-web-echo:v1.0 | bzip2 | ssh polarsparc@192.168.1.54 'bunzip2 | docker load'</p>
+      <p>$ docker save py-web-echo:v1.0 | bzip2 | ssh polarsparc@192.168.1.55 'bunzip2 | docker load'</p>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! WARNING !!!</h4>
+      <pre>Not having the <span class="bold">Docker</span> images in the worker node(s) will cause the pod(s) to be stuck in the <span class="underbold">ContainerCreating</span> status</pre>
+    </div>
+    <div id="para-div">
+      <p>In <span class="bold">Kubernetes</span>, a <span class="bold">pod</span> is what encapsulates <span class="bold">
+        Docker</span> container(s). To deploy our web application <span class="bold">Docker</span> image <span class="bold">
+        py-web-echo:v1.0</span> in our <span class="bold">Kubernetes</span> cluster, we need a <span class="bold">pod</span>
+        manifest file in <a href="https://www.tutorialspoint.com/yaml/yaml_introduction.htm" target="_blank">YAML</a> format
+        .</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the <span class="bold">pod</span> manifest file called <span class="hi-yellow">
+        web-echo-pod.yaml</span> stored under the <span class="bold">/tmp</span> directory on the <span class="bold">master
+        </span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">web-echo-pod.yaml</div>
+      <div class="gen-src-body">
+      <pre>---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: web-echo-pod
+  labels:
+    app: web-echo
+spec:
+  containers:
+  - name: web-echo
+    image: py-web-echo:v1.0
+    imagePullPolicy: Never
+    ports:
+    - containerPort: 8888</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following section explains the elements of the <span class="bold">web-echo-pod.yaml</span> manifest file:</p>
+      <ul id="blue-arw-ul">
+        <li>
+          <p><span class="hi-yellow">apiVersion</span> :: specifies the version of the API (<span class="bold">v1</span>
+            in this example)</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">kind</span> :: specifies the type of <span class="bold">Kubernetes</span> object to
+            deploy (<span class="bold">Pod</span> in this example)</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">metadata</span> :: associates a <span class="bold">name</span> (<span class="bold">
+            web-echo-pod</span> in this example) with the type of <span class="bold">Kubernetes</span> object. Also, allows
+            one to tag some <span class="bold">labels</span>, which are simple key-value pairs, with the <span class="bold">
+            Kubernetes</span> object. In this example, we have one label with the key <span class="bold">app</span> that
+            has a value of <span class="bold">web-echo</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">spec</span> :: specifies what is in the <span class="bold">pod</span>. In this example,
+            we want to deploy the <span class="bold">Docker</span> image <span class="bold">py-web-echo:v1.0</span> which is
+            exposed via the network port 8888</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">imagePullPolicy</span> :: indicates to <span class="bold">Kubernetes</span> not to pull
+            the container image
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To deploy the <span class="bold">pod</span> to our <span class="bold">Kubernetes</span> cluster, execute the
+        following command on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl apply -f /tmp/web-echo-pod.yaml</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.22</h4>
+      <pre>pod/web-echo-pod created</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the application <span class="bold">pod</span>(s) running in <span class="bold">Kubernetes</span> cluster,
+        execute the following command on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl get pods -o wide</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.23</h4>
+      <pre>NAME           READY   STATUS    RESTARTS   AGE     IP          NODE      NOMINATED NODE   READINESS GATES
+web-echo-pod   1/1     Running   0          2m26s   10.44.0.1   my-n2-2   &lt;none&gt;           &lt;none&gt;</pre>
+    </div>
+    <div id="para-div">
+      <p>From Output.23, we see that our application <span class="bold">pod</span> have been deployed on the node
+        <span class="bold">my-n2-2</span> of our <span class="bold">Kubernetes</span> cluster.</p>
+    </div>
+
+    <div id="para-div">
+      <p>To display detailed information about the deployed application pod <span class="bold">web-echo-pod</span>,
+        execute the following command on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl describe pods web-echo-pod</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.24</h4>
+      <pre>Name:         web-echo-pod
+Namespace:    default
+Priority:     0
+Node:         my-n2-2/192.168.1.52
+Start Time:   Sun, 15 Dec 2019 14:58:21 -0500
+Labels:       app=web-echo
+Annotations:  kubectl.kubernetes.io/last-applied-configuration:
+                {"apiVersion":"v1","kind":"Pod","metadata":{"annotations":{},"labels":{"app":"web-echo"},"name":"web-echo-pod","namespace":"default"},"spe...
+Status:       Running
+IP:           10.44.0.1
+IPs:
+  IP:  10.44.0.1
+Containers:
+  web-echo:
+    Container ID:   docker://0af2c99fd074b5ee3c0b9876eb9ad44ca446400c2190b4af6fa1a18543bff723
+    Image:          py-web-echo:v1.0
+    Image ID:       docker://sha256:7cd037d24ef7c842ffe005cfcb548a802fc13661c08c8bb4635c365f77e5a3aa
+    Port:           8888/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Sun, 15 Dec 2019 14:58:23 -0500
+    Ready:          True
+    Restart Count:  0
+    Environment:    &lt;none&gt;
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-tvl5x (ro)
+Conditions:
+  Type              Status
+  Initialized       True 
+  Ready             True 
+  ContainersReady   True 
+  PodScheduled      True 
+Volumes:
+  default-token-tvl5x:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-tvl5x
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  &lt;none&gt;
+Tolerations:     node.kubernetes.io/not-ready:NoExecute for 300s
+                 node.kubernetes.io/unreachable:NoExecute for 300s
+Events:
+  Type    Reason     Age    From               Message
+  ----    ------     ----   ----               -------
+  Normal  Scheduled  7m39s  default-scheduler  Successfully assigned default/web-echo-pod to my-n2-2
+  Normal  Pulled     7m38s  kubelet, my-n2-2   Container image "py-web-echo:v1.0" already present on machine
+  Normal  Created    7m38s  kubelet, my-n2-2   Created container web-echo
+  Normal  Started    7m37s  kubelet, my-n2-2   Started container web-echo</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.23 (as well as Output.24) above, we see the ip-address of the deployed web application to be
+        <span class="bold">10.44.0.1</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To test the deployed web application using the <span class="bold">curl</span> command, execute the following
+        command on any of the nodes <span class="bold">my-n2-1</span> through <span class="bold">my-n2-5</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl http://10.44.0.1:8888</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.25</h4>
+      <pre>Hello from container -> web-echo-pod [10.44.0.1]</pre>
+    </div>
+    <div id="para-div">
+      <p>To display the logs of the deployed web application <span class="bold">web-echo-pod</span>, execute the following
+        command on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl logs web-echo-pod</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.26</h4>
+      <pre> * Serving Flask app "web-echo" (lazy loading)
+ * Environment: production
+   WARNING: This is a development server. Do not use it in a production deployment.
+   Use a production WSGI server instead.
+ * Debug mode: off
+ * Running on http://0.0.0.0:8888/ (Press CTRL+C to quit)
+10.32.0.1 - - [15/Dec/2019 20:11:33] "GET / HTTP/1.1" 200 -
+10.36.0.0 - - [15/Dec/2019 20:11:58] "GET / HTTP/1.1" 200 -</pre>
+    </div>
+    <div id="para-div">
+      <p>To delete the deployed web application <span class="bold">web-echo-pod</span>, execute the following command on the
+        <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl delete pod web-echo-pod</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.27</h4>
+      <pre>pod "web-echo-pod" deleted</pre>
+    </div>
+    <div id="para-div">
+      <p>It is *<span class="underbold">NOT</span>* that common to deploy a single <span class="bold">Pod</span>. It is more
+        common to deploy a higher level <span class="bold">Kubernetes</span> object called a <span class="hi-yellow">ReplicaSet
+        </span>. A <span class="bold">ReplicaSet</span> defines how many replicas of a <span class="bold">Pod</span> need to be
+        deployed and maintained in the <span class="bold">Kubernetes</span> cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the <span class="bold">ReplicaSet</span> manifest file called <span class="hi-yellow">
+        web-echo-rs.yaml</span> stored under the <span class="bold">/tmp</span> directory on the <span class="bold">master
+        </span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">web-echo-rs.yaml</div>
+      <div class="gen-src-body">
+      <pre>---
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: web-echo-rs
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-echo
+  template:
+    metadata:
+      labels:
+        app: web-echo
+    spec:
+      containers:
+      - name: web-echo
+        image: py-web-echo:v1.0
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8888</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following section explains some of the elements of the <span class="bold">web-echo-rs.yaml</span> manifest file:</p>
+      <ul id="blue-arw-ul">
+        <li>
+          <p><span class="hi-yellow">apiVersion</span> :: specifies the version of the API (<span class="bold">apps/v1</span>
+            in this example)</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">replicas</span> :: indicates the desired instances of the <span class="bold">Pod</span> to
+            be running in the <span class="bold">Kubernetes</span> cluster</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">selector</span> :: identifies and selects a group of <span class="bold">Kubernetes</span>
+            objects with the same key-value label (key <span class="bold">app</span> and value <span class="bold">web-echo</span>
+            in this example)</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">template</span> :: is the embedded specification for a <span class="bold">Pod</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To deploy the <span class="bold">ReplicaSet</span> to our <span class="bold">Kubernetes</span> cluster, execute the
+        following command on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl apply -f /tmp/web-echo-rs.yaml</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.28</h4>
+      <pre>replicaset.apps/web-echo-rs created</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the deployed <span class="bold">ReplicaSet</span>(s) running in <span class="bold">Kubernetes</span>
+        cluster, execute the following command on the <span class="bold">master</span> node (<span class="bold">my-n2-1
+        </span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl get replicasets -o wide</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.29</h4>
+      <pre>NAME          DESIRED   CURRENT   READY   AGE   CONTAINERS   IMAGES             SELECTOR
+web-echo-rs   3         3         3       7m    web-echo     py-web-echo:v1.0   app=web-echo</pre>
+    </div>
+    <div id="para-div">
+      <p>To display detailed information about the deployed <span class="bold">ReplicaSet</span> named <span class="bold">
+        web-echo-rs</span>, execute the following command on the <span class="bold">master</span> node (<span class="bold">
+        my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl describe replicasets web-echo-rs</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.30</h4>
+      <pre>Name:         web-echo-rs
+Namespace:    default
+Selector:     app=web-echo
+Labels:       &lt;none&gt;
+Annotations:  kubectl.kubernetes.io/last-applied-configuration:
+                {"apiVersion":"apps/v1","kind":"ReplicaSet","metadata":{"annotations":{},"name":"web-echo-rs","namespace":"default"},"spec":{"replicas":3,...
+Replicas:     3 current / 3 desired
+Pods Status:  3 Running / 0 Waiting / 0 Succeeded / 0 Failed
+Pod Template:
+  Labels:  app=web-echo
+  Containers:
+   web-echo:
+    Image:        py-web-echo:v1.0
+    Port:         8888/TCP
+    Host Port:    0/TCP
+    Environment:  &lt;none&gt;
+    Mounts:       &lt;none&gt;
+  Volumes:        &lt;none&gt;
+Events:
+  Type    Reason            Age   From                   Message
+  ----    ------            ----  ----                   -------
+  Normal  SuccessfulCreate  14m   replicaset-controller  Created pod: web-echo-rs-xn94l
+  Normal  SuccessfulCreate  14m   replicaset-controller  Created pod: web-echo-rs-9x9b9
+  Normal  SuccessfulCreate  14m   replicaset-controller  Created pod: web-echo-rs-tbd49</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the application <span class="bold">pod</span>(s) running in <span class="bold">Kubernetes</span> cluster,
+        execute the following command on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl get pods -o wide</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.31</h4>
+      <pre>NAME                READY   STATUS    RESTARTS   AGE   IP          NODE      NOMINATED NODE   READINESS GATES
+web-echo-rs-9x9b9   1/1     Running   0          63s   10.42.0.1   my-n2-4   &lt;none&gt;           &lt;none&gt;
+web-echo-rs-tbd49   1/1     Running   0          63s   10.44.0.1   my-n2-2   &lt;none&gt;           &lt;none&gt;
+web-echo-rs-xn94l   1/1     Running   0          63s   10.36.0.1   my-n2-3   &lt;none&gt;           &lt;none&gt;</pre>
+    </div>
+    <div id="para-div">
+      <p>From Output.31, we see that our application <span class="bold">pod</span>(s) have been deployed on the 3 nodes
+        <span class="bold">my-n2-2</span>, <span class="bold">my-n2-3</span>, and <span class="bold">my-n2-4</span> with
+        unique ip-addresses of <span class="bold">10.44.0.1</span>, <span class="bold">10.36.0.1</span>, and
+        <span class="bold">10.42.0.1</span> respectively.</p>
+    </div>
+    <div id="para-div">
+      <p>As indicated early on, application <span class="bold">pod</span>(s) are ephemeral. They can come up and go at any
+        time. This means their ip-address(es) can change any time. We need a higher level abstraction that provides a
+        stable ip-address for other application <span class="bold">pod</span>(s) to use. This is where a <span class="bold">
+        Service</span> object comes in handy. It provides a single stable ip-address for other applications to use and
+        distributes the load across the different backend application <span class="bold">pod</span>(s) it is fronting.</p>
+    </div>
+    <div id="para-div">
+      <p>There are 3 types of <span class="bold">Service</span>(s) in <span class="bold">Kubernetes</span>:</p>
+      <ul id="blue-arw-ul">
+        <li>
+          <p><span class="hi-yellow">ClusterIP</span> :: exposes the <span class="bold">Service</span> on an ip-address that
+            is internal to the <span class="bold">Kubernetes</span> cluster. This means the <span class="bold">Service</span>
+            is accessible from *<span class="underbold">ONLY</span>* within the <span class="bold">Kubernetes</span> cluster.
+            This is the default type</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">NodePort</span> :: exposes the <span class="bold">Service</span> on each worker node's
+            ip-address at a high port in the range 30000 to 32767. Applications external to the <span class="bold">Kubernetes
+            </span> cluster are be able to access the <span class="bold">Service</span> at the worker node's ip-address and
+            the assigned node port</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">LoadBalancer</span> :: exposes the <span class="bold">Service</span> externally using a
+          cloud providers Load Balancer such as AWS, Azure, or Google Cloud</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the <span class="bold">ClusterIP</span> based <span class="bold">Service</span>
+        manifest file called <span class="hi-yellow">web-echo-svc-cip.yaml</span> stored under the <span class="bold">/tmp
+        </span> directory on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">web-echo-svc-cip.yaml</div>
+      <div class="gen-src-body">
+      <pre>---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-echo-svc-cip
+spec:
+  selector:
+    app: web-echo
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8888</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>To deploy the <span class="bold">Service</span> to our <span class="bold">Kubernetes</span> cluster, execute the
+        following command on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl apply -f /tmp/web-echo-svc-cip.yaml</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.32</h4>
+      <pre>service/web-echo-svc created</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the <span class="bold">Service</span>(s) running in <span class="bold">Kubernetes</span> cluster, execute
+        the following command on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl get services -o wide</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.33</h4>
+      <pre>NAME           TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)    AGE    SELECTOR
+kubernetes     ClusterIP   10.96.0.1      &lt;none&gt;        443/TCP    9h     &lt;none&gt;
+web-echo-svc   ClusterIP   10.96.238.16   &lt;none&gt;        8888/TCP   105s   app=web-echo</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.33 above, we see the application <span class="bold">web-echo</span> can be accessed from anywhere in
+        the cluster via the ip-address <span class="hi-green">10.96.238.16</span> and port <span class="hi-green">8888</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To test the deployed <span class="bold">Service</span> endpoint using the <span class="bold">curl</span> command,
+        execute the following command 5 times on any of the nodes <span class="bold">my-n2-1</span> through <span class="bold">
+        my-n2-5</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl http://10.96.238.16:8888</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.34</h4>
+      <pre>Hello from container -> web-echo-rs-xn94l [10.36.0.1]
+Hello from container -> web-echo-rs-9x9b9 [10.42.0.1]
+Hello from container -> web-echo-rs-tbd49 [10.44.0.1]
+Hello from container -> web-echo-rs-9x9b9 [10.42.0.1]
+Hello from container -> web-echo-rs-tbd49 [10.44.0.1]</pre>
+    </div>
+    <div id="para-div">
+      <p>To display detailed information about the <span class="bold">Service</span> endpoint labeled <span class="bold">
+        web-echo-svc</span>, execute the following command on the <span class="bold">master</span> node (<span class="bold">
+        my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl describe service web-echo-svc</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.35</h4>
+      <pre>Name:              web-echo-svc
+Namespace:         default
+Labels:            &lt;none&gt;
+Annotations:       kubectl.kubernetes.io/last-applied-configuration:
+                     {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"web-echo-svc","namespace":"default"},"spec":{"ports":[{"name":"ht...
+Selector:          app=web-echo
+Type:              ClusterIP
+IP:                10.96.238.16
+Port:              http  8888/TCP
+TargetPort:        8888/TCP
+Endpoints:         10.36.0.1:8888,10.42.0.1:8888,10.44.0.1:8888
+Session Affinity:  None
+Events:            &lt;none&gt;</pre>
+    </div>
+    <div id="para-div">
+      <p>To delete the deployed <span class="bold">web-echo-svc</span> object, execute the following command on the
+        <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl delete service web-echo-svc</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.36</h4>
+      <pre>service "web-echo-svc" deleted</pre>
+    </div>
+
+    <div id="para-div">
+      <p>The following are the contents of the <span class="bold">NodePort</span> based <span class="bold">Service</span>
+        manifest file called <span class="hi-yellow">web-echo-svc-nop.yaml</span> stored under the <span class="bold">/tmp
+        </span> directory on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">web-echo-svc-nop.yaml</div>
+      <div class="gen-src-body">
+      <pre>---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-echo-svc
+spec:
+  type: NodePort
+  selector:
+    app: web-echo
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8888</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>To deploy the <span class="bold">Service</span> to our <span class="bold">Kubernetes</span> cluster, execute the
+        following command on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl apply -f /tmp/web-echo-svc-nop.yaml</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.37</h4>
+      <pre>service/web-echo-svc created</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the <span class="bold">Service</span>(s) running in <span class="bold">Kubernetes</span> cluster, execute
+        the following command on the <span class="bold">master</span> node (<span class="bold">my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl get services -o wide</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.38</h4>
+      <pre>NAME           TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)          AGE   SELECTOR
+kubernetes     ClusterIP   10.96.0.1      &lt;none&gt;        443/TCP          9h    &lt;none&gt;
+web-echo-svc   NodePort    10.96.144.75   &lt;none&gt;        8888:32546/TCP   38m   app=web-echo</pre>
+    </div>
+    <div id="para-div">
+      <p>To display detailed information about the <span class="bold">Service</span> endpoint labeled <span class="bold">
+        web-echo-svc</span>, execute the following command on the <span class="bold">master</span> node (<span class="bold">
+        my-n2-1</span>):</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ kubectl describe service web-echo-svc</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.39</h4>
+      <pre>Name:                     web-echo-svc
+Namespace:                default
+Labels:                   &lt;none&gt;
+Annotations:              kubectl.kubernetes.io/last-applied-configuration:
+                            {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"web-echo-svc","namespace":"default"},"spec":{"ports":[{"name":"ht...
+Selector:                 app=web-echo
+Type:                     NodePort
+IP:                       10.96.144.75
+Port:                     http  8888/TCP
+TargetPort:               8888/TCP
+NodePort:                 http  32546/TCP
+Endpoints:                10.36.0.1:8888,10.42.0.1:8888,10.44.0.1:8888
+Session Affinity:         None
+External Traffic Policy:  Cluster
+Events:                   &lt;none&gt;</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.39 above, we see the deployed <span class="bold">Service</span> node port is <span class="hi-green">
+        32546</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a browser and access the url <span class="bold">http://192.168.1.53:32546</span>. The following illustration in
+        Figure-3 below would be a typical browser display:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/Kubernetes-5.png" class="img-cls" alt="Node Port in Browser" />
+      <div class="img-cap">Figure-3</div>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">BINGO</span> - works as expected !!!</p>
+    </div>
+    <div id="para-div">
+      <p>With this, we conclude the basic exercises we performed on our <span class="bold">Kubernetes</span> cluster.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://kubernetes.io/docs/home/?path=browse" target="_blank"><span class="bold">Official Kubernetes Documentation</span></a></p>
+      <p><a href="https://www.weave.works/docs/net/latest/overview/" target="_blank"><span class="bold">Official Weave Net Documentation</span></a></p>
+      <p><a href="https://docs.docker.com/" target="_blank"><span class="bold">Official Docker Documentation</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

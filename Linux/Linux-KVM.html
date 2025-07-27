@@ -1,0 +1,618 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="Introduction to Linux Virtualization using KVM" content="author: Bhaskar.S, category: linux, virualization, qemu, kvm">
+    <title>Introduction to Linux Virtualization using KVM</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Introduction to Linux Virtualization using KVM</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">12/28/2018</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>A <span class="hi-yellow">Hypervisor</span> (also known as the Virtual Machine Manager) is a computer supervisor
+        software that allows one to create and run one or more <span class="bold">Virtual Machine</span>s (running their
+        own operating system). The host on which the hypervisor runs is referred to has the <span class="bold">Host</span>
+        machine, while each of the virtual machine(s) are referred to as the <span class="bold">Guest</span> machine(s).
+        The hypervisor gives each virtual machine the illusion that it is running on its own physical hardware through
+        virtualization of the underlying physical hardware resources, such as the disk, network, video, etc.</p>
+      <p>There are two types of hypervisors:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-blue">Type-1</span> :: Also referred to as the <span class="bold">Bare-Metal</span> or the
+            <span class="bold">Native</span> hypervisor. They run directly on top of the host machine's hardware to
+            control the hardware and manage the guest machine operating system. Examples include Microsoft
+            <span class="bold">Hyper-V</span>, Linux <span class="bold">KVM</span>, and VMware <span class="bold">ESXi
+            </span></p>
+        </li>
+        <li>
+          <p><span class="hi-blue">Type-2</span> :: Also referred to as the <span class="bold">Hosted</span> hypervisor.
+            Runs on top of the host machine's operating system. The guest machine operating systems run as processes
+            on the host machine's operating system. Examples include Oracle <span class="bold">VirtualBox</span>,
+            VMware <span class="bold">Player</span>, and <span class="bold">QEMU</span> (pronounced kee-mu)</p>
+        </li>
+      </ul>
+      <p><span class="hi-yellow">KVM</span> (short for <span class="underbold">K</span>ernel-based <span class="underbold">
+        V</span>irtual <span class="underbold">M</span>achine) is an open source Linux kernel module that only works on the
+        <span class="bold">x86</span> hardware platform containing the virtualization extensions (Intel VT and AMD-V) and
+        makes the Linux operating system behave like a <span class="bold">Type-1</span> hypervisor.</p>
+      <p><span class="hi-yellow">QEMU</span> (short for <span class="underbold">Q</span>uick <span class="underbold">EMU</span>
+        lator) is a generic, open-source, standalone, software-based, full system emulator and virtualizer. As an emulator,
+        it supports emulation of different target computing platforms such as <span class="bold">arm</span>, <span class="bold">
+        powerpc</span>, <span class="bold">sparc</span>, etc. Full target system emulation is performed using an approach
+        called Dynamic Binary Translation that translates the target processor's opcode to a compatible host processor opcode.
+        As a virtualizer, it is a <span class="bold">Type-2</span> hypervisor, running in the user-space of the Linux operating
+        system, performing virtual hardware emulation.</p>
+      <p>Now, a question may pop in one's mind - what is the relationship between <span class="bold">KVM</span> and
+        <span class="bold">QEMU</span> ???</p>
+    </div>
+    <div id="para-div">
+      <p>As indicated earlier, <span class="bold">KVM</span> is a kernel module and resides in the Linux kernel space. It
+        provides an interface to create and run virtual machines. There needs to be some entity in the Linux user space
+        that interacts with <span class="bold">KVM</span> for provisioning and managing virtual machines. That is where
+        <span class="bold">QEMU</span>, which resides in the Linux user space, comes into the picture.</p>
+    </div>
+    <div id="para-div">
+      <p>Note that <span class="bold">QEMU</span> is a standalone piece of software and can provide virtualization on
+        its own (without <span class="bold">KVM</span>). However, it would perform poorly and slow due to the software
+        emulation.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Figure-1 illustrates the high-level architecture view of <span class="bold">KVM</span> with
+        <span class="bold">QEMU</span>:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/kvm-01.png" class="img-cls" alt="QEMU-KVM"/>
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <div id="section-div">
+      <p>Pre-requisites</p>
+    </div>
+    <div id="para-div">
+      <p>The installation, setup, and tests will be on a <span class="bold">Ubuntu 18.04 (bionic) LTS</span> based Linux desktop.</p>
+    </div>
+    <div id="error-div">
+      <h4>ATTENTION: AMD Ryzen Users</h4>
+      <pre><span class="underbold">Ensure</span> virtualization (<span class="bold">SVM</span>) is *<span class="underbold">Enabled</span>* in the BIOS. In <span class="bold">ASRock AB350M Pro4</span> virtualization is <span class="underbold">disabled</span> by default</pre>
+    </div>
+    <div id="para-div">
+      <p>Open a <span class="bold">Terminal</span> window as we will be executing all the commands in that window.</p>
+    </div>
+    <div id="para-div">
+      <p>Check to sure that the desktop CPU has the virtualization extensions enabled by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ egrep '(vmx|svm)' /proc/cpuinfo</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output on an Intel based platform:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>flags    : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf pni pclmulqdq dtes64 monitor ds_cpl <strong>vmx</strong> est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb invpcid_single pti tpr_shadow vnmi flexpriority ept vpid fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap intel_pt xsaveopt dtherm ida arat pln pts
+flags   : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf pni pclmulqdq dtes64 monitor ds_cpl <strong>vmx</strong> est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb invpcid_single pti tpr_shadow vnmi flexpriority ept vpid fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap intel_pt xsaveopt dtherm ida arat pln pts
+flags   : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf pni pclmulqdq dtes64 monitor ds_cpl <strong>vmx</strong> est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb invpcid_single pti tpr_shadow vnmi flexpriority ept vpid fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap intel_pt xsaveopt dtherm ida arat pln pts
+flags   : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf pni pclmulqdq dtes64 monitor ds_cpl <strong>vmx</strong> est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb invpcid_single pti tpr_shadow vnmi flexpriority ept vpid fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid rdseed adx smap intel_pt xsaveopt dtherm ida arat pln pts</pre>
+    </div>
+    <div id="para-div">
+      <p>Next, check the <span class="bold">KVM</span> kernel module is loaded by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ lsmod | grep kvm</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output on an Intel based platform:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>kvm_intel             204800  0
+kvm                   593920  1 kvm_intel
+irqbypass              16384  1 kvm</pre>
+    </div>
+    <div id="para-div">
+      <p>On most modern desktops running Linux, the <span class="bold">KVM</span> kernel module should be loaded by default.</p>
+    </div>
+    <div id="section-div">
+      <p>Installation</p>
+    </div>
+    <div id="para-div">
+      <p>In order to create and manage virtual machine(s), we need to install <span class="bold">QEMU</span> along with some
+        additional software tools.</p>
+      <p>To install <span class="bold">QEMU</span> and the additional tools, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt-get install qemu-kvm libvirt-bin virt-manager bridge-utils</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="hi-yellow">qemu-kvm</span> package installs all the necessary system binaries related to <span class="bold">
+        QEMU</span>.</p>
+      <p>The <span class="hi-yellow">libvirt-bin</span> package installs the software pieces that include a virtualization API library,
+        a daemon (<span class="hi-yellow">libvirtd</span>), and a command line utility called <span class="bold">virsh</span>. The
+        primary goal of <span class="bold">libvirt</span> is to provide an unified way to manage the different hypervisors.</p>
+      <p>The <span class="hi-yellow">virt-manager</span> package installs a graphical interface tool to create and manage virtual
+        machines on <span class="bold">KVM</span>. It is a Python based GUI tool that interacts with <span class="bold">libvirt</span>.</p>
+      <p>The <span class="hi-yellow">bridge-utils</span> package installs a utility that will be used to create and manage bridge network
+        devices.</p>
+    </div>
+    <div id="section-div">
+      <p>Setup 1</p>
+    </div>
+    <div id="para-div">
+      <p>Assume we are logged in as the user <span class="bold">polarsparc</span> with the home directory located at
+        <span class="bold">/home/polarsparc</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Create a directory called <span class="bold">VMs</span> under <span class="bold">/home/polarsparc/Downloads</span>
+        by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p /home/polarsparc/Downloads/VMs</p>
+    </div>
+    <div id="para-div">
+      <p>Now, we need to enable the <span class="bold">libvirt</span> daemon <span class="bold">libvirtd</span>. To do that,
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo systemctl enable libvirtd</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>Synchronizing state of libvirtd.service with SysV service script with /lib/systemd/systemd-sysv-install.
+Executing: /lib/systemd/systemd-sysv-install enable libvirtd</pre>
+    </div>
+    <div id="para-div">
+      <p>Next, we need to start the <span class="bold">libvirt</span> daemon. To do that, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo systemctl start libvirtd</p>
+    </div>
+    <div id="para-div">
+      <p>To check the status of the <span class="bold">libvirt</span> daemon, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ systemctl status libvirtd</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>libvirtd.service - Virtualization daemon
+   Loaded: loaded (/lib/systemd/system/libvirtd.service; enabled; vendor preset: enabled)
+   Active: active (running) since Thu 2018-12-27 17:04:58 EST; 3min 24s ago
+     Docs: man:libvirtd(8)
+           https://libvirt.org
+ Main PID: 12495 (libvirtd)
+    Tasks: 17 (limit: 32768)
+   CGroup: /system.slice/libvirtd.service
+           |--12495 /usr/sbin/libvirtd</pre>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on with KVM</p>
+    </div>
+    <div id="para-div">
+      <p>For our tests, we will download the latest version of Ubuntu 18.04 desktop ISO image from <a target="_blank"
+        href="https://www.ubuntu.com/#download"><span class="bold">www.ubuntu.com</span></a> to the directory
+        <span class="bold">/home/polarsparc</span>.</p>
+      <p>Before we can create a virtual machine in <span class="bold">KVM</span>, we need to allocate storage for the
+        virtual guest machine. For our tests, the storage will be on a file (called the disk image) on the local disk
+        of the host machine. The storage disk image can be in one of the following two formats:</p>
+    </div>
+    <ul id="blue-sqr-ul">
+      <li>
+        <p><span class="hi-yellow">raw</span> :: Also referred to as <span class="bold">Thick</span> provisioning.
+          Uses the full allocated disk space</p>
+      </li>
+      <li>
+        <p><span class="hi-yellow">qcow2</span> :: Also referred to as <span class="bold">Thin</span> provisioning.
+          Short name for <span class="underbold">q</span>emu <span class="underbold">c</span>opy <span class="underbold">
+          o</span>n <span class="underbold">w</span>rite. Uses space efficiently - only upto what is consumed</p>
+      </li>
+    </ul>
+    <div id="para-div">
+      <p>For our tests, we will use the <span class="bold">raw</span> format.</p>
+    </div>
+    <div id="para-div">
+      <p>To create a <span class="bold">raw</span> storage disk image of size 16G named <span class="bold">vm-disk-1.raw
+        </span> under the directory <span class="bold">/home/polarsparc/Downloads/VMs</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ qemu-img create -f raw /home/polarsparc/Downloads/VMs/vm-disk-1.raw 16G</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>Formatting '/home/polarsparc/Downloads/VMs/vm-disk-1.raw', fmt=raw size=17179869184</pre>
+    </div>
+    <div id="para-div">
+      <p>To create a new virtual guest machine in <span class="bold">KVM</span> using the storage disk image just created,
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo qemu-system-x86_64 -cdrom /home/polarsparc/ubuntu-18.04.1-desktop-amd64.iso -drive format=raw,file=/home/polarsparc/Downloads/VMs/vm-disk-1.raw -enable-kvm -m 2G -name vm-ubuntu-1</p>
+    </div>
+    <div id="para-div">
+      <p>Since we are creating a virtual guest machine based on the 64-bit x86 architecture, we are using the <span class="hi-yellow">
+        qemu-system-x86_64</span> command. There are different <span class="bold">qemu-system-*</span> commands for the different
+        CPU architectures. The option <span class="hi-blue">-cdrom</span> specifies the full path to the Ubuntu ISO. The option
+        <span class="hi-blue">-drive</span> specifies the format and full path to the storage disk image. The option <span class="hi-blue">
+        -enable-kvm</span> enables the <span class="bold">KVM</span> mode for virtualization. The option <span class="hi-blue">-m</span>
+        indicates the amount of memory allocated to the virtual guest machine, which is 2G in our case. Finally, the option
+        <span class="hi-blue">-name</span> specifies a name for the virtual guest machine.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>qemu-system-x86_64: warning: host doesn't support requested feature: CPUID.80000001H:ECX.svm [bit 2]</pre>
+    </div>
+    <div id="para-div">
+      <p>Ignore the warning message. This will launch a new window, prompting the user with various options for completing
+        the Ubuntu installation in the virtual guest machine. Once the installation completes, close the window.</p>
+    </div>
+    <div id="para-div">
+      <p>To launch the newly created Ubuntu based virtual guest machine, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo qemu-system-x86_64 -drive format=raw,file=/home/polarsparc/Downloads/VMs/vm-disk-1.raw -enable-kvm -m 2G -name vm-ubuntu-1</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>qemu-system-x86_64: warning: host doesn't support requested feature: CPUID.80000001H:ECX.svm [bit 2]</pre>
+    </div>
+    <div id="para-div">
+      <p>Ignore the warning message. This will launch a new window and start the Ubuntu based virtual guest machine.</p>
+    </div>
+    <div id="para-div">
+      <p>By default, a virtual guest machine is created with <span class="bold">NAT</span> networking. This means the virtual
+        guest machine can communicate with the internet (the outside world), but cannot communicate with other virtual guest
+        machines or the host machine and vice versa. Even the basic <span class="bold">ping</span> command will fail since
+        <span class="bold">ICMP</span> is disabled as illustrated in Figure-2 below:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/kvm-02.png" class="img-cls" alt="Ping Fail"/>
+      <div class="img-cap">Figure-2</div>
+    </div>
+    <div id="para-div">
+      <p>If we desire that the virtual guest machine(s) be able to communicate both internal and external, we need to setup
+        a bridge network on the host machine.</p>
+      <p>Shutdown the virtual guest machine so we can re-launch it later.</p>
+    </div>
+    <div id="section-div">
+      <p>Setup 2</p>
+    </div>
+    <div id="para-div">
+      <p>To check the current contents of the file <span class="hi-yellow">/etc/network/interfaces</span>, execute the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cat /etc/network/interfaces</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre># interfaces(5) file used by ifup(8) and ifdown(8)
+auto lo
+iface lo inet loopback</pre>
+    </div>
+    <div id="para-div">
+      <p>Modify the contents of the file <span class="bold">/etc/network/interfaces</span> with the following content:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">/etc/network/interfaces</div>
+      <div class="gen-src-body">
+      <pre># interfaces(5) file used by ifup(8) and ifdown(8)
+auto lo
+iface lo inet loopback
+
+# Bridge network
+auto br0
+iface br0 inet dhcp
+        bridge_ports enp2s0
+        bridge_fd 0
+        bridge_stp off
+        bridge_maxwait 0</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>Note you will need to <span class="bold">sudo</span> in order to modify the contents of the system config file
+        <span class="bold">/etc/network/interfaces</span>.</p>
+      <p>We are setting a new bridge network called <span class="hi-blue">br0</span> using the wired ethernet interface
+        <span class="hi-green">enp2s0</span>. Once caveat - the bridge network will <span class="hi-orange">*NOT*</span>
+        work with a wireless interface.</p>
+    </div>
+    <div id="para-div">
+      <p>We need to restart the networking stack since we added a new bridge network. To do that, execute the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo /etc/init.d/networking restart</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>[ ok ] Restarting networking (via systemctl): networking.service.</pre>
+    </div>
+    <div id="para-div">
+      <p>To check the status of the bridge network, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ brctl show</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>bridge name  bridge id   STP enabled interfaces
+br0   8000.f0761cdb285f no        enp2s0</pre>
+    </div>
+    <div id="para-div">
+      <p>To display the IP link layer information, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ip link show</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: enp2s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel master br0 state UP mode DEFAULT group default qlen 1000
+    link/ether aa:bb:cc:dd:ee:ff brd ff:ff:ff:ff:ff:ff
+3: wlp3s0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP mode DORMANT group default qlen 1000
+    link/ether 11:22:33:44:55:66 brd ff:ff:ff:ff:ff:ff
+6: br0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default qlen 1000
+    link/ether f0:e1:d2:c3:b4:a5 brd ff:ff:ff:ff:ff:ff</pre>
+    </div>
+    <div id="para-div">
+      <p>The bridge network has been successfully setup on the host machine.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with KVM 2</p>
+    </div>
+    <div id="para-div">
+      <p>To re-launch the Ubuntu based virtual guest machine (vm-ubuntu-1) with the bridge network, execute the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo qemu-system-x86_64 -drive format=raw,file=/home/polarsparc/Downloads/VMs/vm-disk-1.raw -enable-kvm -m 2G -name vm-ubuntu-1 -net bridge -net nic,model=virtio,macaddr=00:00:00:00:00:01</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>failed to parse default acl file `/etc/qemu/bridge.conf'
+qemu-system-x86_64: -net bridge: bridge helper failed</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Huh</span> ??? What happened here ???</p>
+    </div>
+    <div id="para-div">
+      <p>We intentinally missed a step in <span class="hi-vanila">Setup 2</span> after creating the bridge network to illustrate
+        this error.</p>
+    </div>
+    <div id="para-div">
+      <p>We need to create the directory <span class="hi-yellow">/etc/qemu</span>. To do that, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo mkdir -p /etc/qemu</p>
+    </div>
+    <div id="para-div">
+      <p>Next, we need to create the file <span class="hi-yellow">/etc/qemu/bridge.conf</span> with the contents <span class="hi-green">
+        allow br0</span>. To do that, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ echo 'allow br0' | sudo tee -a /etc/qemu/bridge.conf</p>
+    </div>
+    <div id="para-div">
+      <p>Now we should be able to launch the Ubuntu based virtual guest machine (vm-ubuntu-1) with bridge networking by
+        executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo qemu-system-x86_64 -drive format=raw,file=/home/polarsparc/Downloads/VMs/vm-disk-1.raw -enable-kvm -m 2G -name vm-ubuntu-1 -net bridge -net nic,model=virtio,macaddr=00:00:00:00:00:01</p>
+    </div>
+    <div id="para-div">
+      <p>Ignore the warning message. This will launch a new window with the Ubuntu based virtual guest machine (vm-ubuntu-1)
+        started.</p>
+    </div>
+    <div id="para-div">
+      <p>Login to the Ubuntu based virtual guest machine, launch a <span class="bold">Terminal</span> window, and we will
+        be able to <span class="bold">ping</span> both the internal and external network as illustrated in Figure-3 below:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/kvm-03.png" class="img-cls" alt="Ping Okay"/>
+      <div class="img-cap">Figure-3</div>
+    </div>
+    <div id="para-div">
+      <p>We will notice that the launched virtual guest machine window is of a lower resolution (probably 640x480). To
+        fix this we should specify the <span class="bold">-vga</span> option with the value <span class="bold">virtio</span>.
+        In addition, we may want to specify the <span class="bold">-daemonize</span> option so the launched virtual guest
+        machine is detached from the <span class="bold">Terminal</span> that launched the command.</p>
+    </div>
+    <div id="para-div">
+      <p>The modified command-line would be as follows:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo qemu-system-x86_64 -drive format=raw,file=/home/polarsparc/Downloads/VMs/vm-disk-1.raw -enable-kvm -m 2G -name vm-ubuntu-1 -net bridge -net nic,model=virtio,macaddr=00:00:00:00:00:01 -vga virtio -daemonize</p>
+    </div>
+    <div id="para-div">
+      <p>As we can see, the command-line is getting very complicated and messy. This is where the GUI tool <span class="bold">
+        virt-manager</span> comes in handy, hiding all the complexities behind the scenes.</p>
+    </div>
+    <div id="section-div">
+      <p>Setup 3</p>
+    </div>
+    <div id="para-div">
+      <p>Before we start leveraging <span class="hi-yellow">virt-manager</span>, we have one more setup step to complete.</p>
+    </div>
+    <div id="para-div">
+      <p>Execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt-get install gir1.2-spiceclientgtk-3.0</p>
+    </div>
+    <div id="para-div">
+      <p>This package (and its dependents) are needed for the GUI tool <span class="bold">virt-manager</span> to connect
+        to any launched virtual guest machine(s).</p>
+    </div>
+    <div id="error-div">
+      <h4>CAUTION</h4>
+      <pre>Not installing the <span class="bold">spiceclientgtk</span> package will result in the following error from <span class="bold">virt-manager</span>:<br/>Error connecting to graphical console: Error opening Spice console, SpiceClientGtk missing</pre>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on with KVM 3</p>
+    </div>
+    <div id="para-div">
+      <p>Launch <span class="bold">virt-manager</span> by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ virt-manager</p>
+    </div>    
+    <div id="para-div">
+      <p>This will launch the virtual machine management GUI tool as illustrated in Figure-3 below:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/kvm-04.png" class="img-cls" alt="virt-manager"/>
+      <div class="img-cap">Figure-3</div>
+    </div>
+    <div id="para-div">
+      <p>Select <span class="bold">QEMU/KVM</span> and then click on the computer icon (with a sparkle) to create a new
+        virtual guest machine.</p>
+    </div>
+    <div id="para-div">
+      <p>Select the first <span class="bold">Local install media</span> option as illustrated in Figure-4 below:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/kvm-05.png" class="img-cls" alt="New Virtual Machine"/>
+      <div class="img-cap">Figure-4</div>
+    </div>
+    <div id="para-div">
+      <p>Select the second <span class="bold">Use ISO image</span> option as well as <span class="bold">
+        Automatically detect</span> option as illustrated in Figure-5 below:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/kvm-06.png" class="img-cls" alt="ISO Image"/>
+      <div class="img-cap">Figure-5</div>
+    </div>
+    <div id="para-div">
+      <p>By default, <span class="bold">virt-manager</span> looks for images in the directory <span class="bold">
+        /var/lib/libvirt/images</span>. We need to browse to our local directory <span class="bold">/home/polarsparc</span>
+        to select our Ubuntu ISO image. Click on <span class="bold">Browse local</span> to select the ISO image as
+        illustrated in Figure-6 below:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/kvm-07.png" class="img-cls" alt="Browse ISO"/>
+      <div class="img-cap">Figure-6</div>
+    </div>
+    <div id="para-div">
+      <p>Select the Ubuntu ISO image and then click on <span class="bold">Open</span> as illustrated in Figure-7 below:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/kvm-08.png" class="img-cls" alt="Select ISO"/>
+      <div class="img-cap">Figure-7</div>
+    </div>
+    <div id="para-div">
+      <p>Having selected the Ubuntu ISO image, click on <span class="bold">Forward</span> to move to the next step as
+        illustrated in Figure-8 below:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/kvm-09.png" class="img-cls" alt="Forward"/>
+      <div class="img-cap">Figure-8</div>
+    </div>
+    <div id="para-div">
+      <p>Change the value of <span class="bold">Memory (RAM)</span> to 2048, leave the value of <span class="bold">CPUs
+        </span> at 1, and then click on <span class="bold">Forward</span> as illustrated in Figure-9 below:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/kvm-10.png" class="img-cls" alt="Select Memory CPU"/>
+      <div class="img-cap">Figure-9</div>
+    </div>
+    <div id="para-div">
+      <p>Check the <span class="bold">Enable storage</span> option, ensure <span class="bold">Select or create custom
+        storage</span> is selected, choose the directory location <span class="bold">/home/polarsparc/Downloads/VMs</span>
+        for the storage disk image, enter the storage disk image name <span class="bold">vm-disk-3</span>, and then click
+        on <span class="bold">Forward</span> as illustrated in Figure-10 below:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/kvm-11.png" class="img-cls" alt="Select Storage"/>
+      <div class="img-cap">Figure-10</div>
+    </div>
+    <div id="para-div">
+      <p>Enter the virtual guest machine name of <span class="bold">vm-ubuntu-3</span>, select <span class="bold">
+        Bridge br0</span> under <span class="bold">Network selection</span>, and then click on <span class="bold">
+        Finish</span> as illustrated in Figure-11 below:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/kvm-12.png" class="img-cls" alt="Select Network"/>
+      <div class="img-cap">Figure-11</div>
+    </div>
+    <div id="para-div">
+      <p>This will launch a new window, prompting the user with various options for completing the Ubuntu installation
+        in the virtual guest machine. The Ubuntu installation will progress as illustrated in Figure-12 below:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/kvm-13.png" class="img-cls" alt="OS Installation"/>
+      <div class="img-cap">Figure-12</div>
+    </div>
+    <div id="para-div">
+      <p>Once the installation completes and the virtual guest machine reboots, one will be able to operate in the
+        virtual guest machine as illustrated in Figure-13 below:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/kvm-14.png" class="img-cls" alt="Guest Machine"/>
+      <div class="img-cap">Figure-13</div>
+    </div>
+    <div id="para-div">
+      <p>Shutting down the virtual guest machine <span class="bold">vm-ubuntu-3</span> closes the guest machine window
+        and <span class="bold">virt-manager</span> will reflect the status of virtual guest machine <span class="bold">
+        vm-ubuntu-3</span> as illustrated in Figure-14 below:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/kvm-15.png" class="img-cls" alt="VM Shutdown"/>
+      <div class="img-cap">Figure-14</div>
+    </div>
+    <div id="para-div">
+      <p>As is obvious, working with <span class="bold">virt-manager</span> to create and manage virtual guest machines
+        using <span class="bold">KVM</span> is a breeze.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://help.ubuntu.com/community/KVM/Installation" target="_blank"><span class="bold">KVM/Installation</span></a></p>
+      <p><a href="http://manpages.ubuntu.com/manpages/bionic/man1/qemu-system.1.html" target="_blank"><span class="bold">QEMU version 2.11.1 User Documentation</span></a></p>
+      <p><a href="https://help.ubuntu.com/lts/serverguide/libvirt.html.en" target="_blank"><span class="bold">libvirt Documentation</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

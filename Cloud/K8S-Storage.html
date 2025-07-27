@@ -1,0 +1,1397 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Hands-on Kubernetes Storage">
+    <meta name="subject" content="Hands-on Kubernetes Storage">
+    <meta name="keywords" content="kubernetes, minikube">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Hands-on Kubernetes Storage</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="gen-home"></span></td>
+        <td valign="bottom"><span id="gen-home-a"><a id="gen-home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="gen-title-div">
+      <p>Hands-on Kubernetes Storage</p>
+    </div>
+    <br />
+    <table id="gen-ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">03/03/2023</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="gen-line-hr"/>
+    <br/>
+    <div id="gen-step-div">
+      <p>Overview</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the article <a href="https://polarsparc.github.io/Cloud/Practical-K8S-N2.html" target="_blank"><span class="bold">Practical
+        Kubernetes on ODroid-N2 Cluster</span></a>, we covered the fundamentals of <span class="hi-yellow">Kubernetes</span>.</p>
+      <p>Container(s) inside <span class="bold">Pod</span>s are ephemeral, in the sense, they can come and go at will and any data
+        they write to their own filesystem is lost if they crash or restart. Workloads in the real world are stateful and need the
+        data to persist beyond those crashes or restarts. This is why the concept of <span class="hi-yellow">Persistent Volumes</span>
+        is critical for the real world Enterprise applications running on <span class="bold">Kubernetes</span>.</p>
+      <p><span class="bold">Volumes</span> are an abstraction layer in <span class="bold">Kubernetes</span> that allow containers
+        access an external storage, such as, the local host storage, or <span class="bold">NFS</span>, or public cloud storage.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the core <span class="bold">Kubernetes</span> storage objects:</p>
+    </div>
+    <div id="para-div">
+      <ul id="gen-sqr-ul">
+        <li><p><span class="hi-yellow">Storage Class</span> :: an abstraction which encapsulates the details of storage provisioning
+          and storage management of the underlying external storage provider</p></li>
+        <li><p><span class="hi-yellow">Persistent Volume</span> :: an instance of the storage volume that is provisioned using the
+          associated <span class="bold">Storage Class</span> and attached as a volume to the <span class="bold">Kubernetes</span>
+          cluster</p></li>
+        <li><p><span class="hi-yellow">Persistent Volume Claim</span> :: a request for storage by an application container from the
+          the attached <span class="bold">Persistent Volume</span></p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the high-level relationship between the different <span class="bold">Kubernetes</span> storage
+        objects:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Storage Objects" class="gen-img-cls" src="./images/k8s-storage.png">
+      </div>
+    </div>
+    <br/>
+    <br/>
+    <div id="gen-step-div">
+      <p>Installation and Setup</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will perform the installation and setup on a <span class="hi-yellow">VirtualBox</span> VM running Ubuntu 22.04 LTS.</p>
+      <p>Also, the logged in username will be <span class="hi-yellow">alice</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a <span class="bold">Terminal</span> window to perform the various steps.</p>
+    </div>
+    <div id="para-div">
+      <p>To perform a system update and install the prerequisite software, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ sudo apt update && sudo apt install apt-transport-https ca-certificates curl software-properties-common -y</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical trimmed output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>...[ SNIP ]...
+ca-certificates is already the newest version (20211016ubuntu0.22.04.1).
+ca-certificates set to manually installed.
+The following additional packages will be installed:
+  python3-software-properties software-properties-gtk
+The following NEW packages will be installed:
+  apt-transport-https curl
+The following packages will be upgraded:
+  python3-software-properties software-properties-common software-properties-gtk
+3 upgraded, 2 newly installed, 0 to remove and 14 not upgraded.
+...[ SNIP ]...</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To add the <span class="bold">Docker</span> package repository, execute the following commands:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg</p>
+      <p>$ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu jammy stable</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To install <span class="bold">docker</span>, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ sudo apt update && sudo apt install docker-ce -y</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical trimmed output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>...[ SNIP ]...
+Get:5 https://download.docker.com/linux/ubuntu jammy InRelease [48.9 kB]  
+Get:6 https://download.docker.com/linux/ubuntu jammy/stable amd64 Packages [13.6 kB]
+...[ SNIP ]...</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To add the logged in user <span class="bold">alice</span> to the group <span class="bold">docker</span>, execute the following
+        command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ sudo usermod -aG docker ${USER}</p>
+    </div>
+    <div id="para-div">
+      <p><span class="underbold">Reboot</span> the Ubuntu 22.04 LTS VM for the changes to take effect.</p>
+    </div>
+    <div id="para-div">
+      <p>To verify <span class="bold">docker</span> installation was ok, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ docker info</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>Client:
+  Context:    default
+  Debug Mode: false
+  Plugins:
+    buildx: Docker Buildx (Docker Inc.)
+      Version:  v0.10.2
+      Path:     /usr/libexec/docker/cli-plugins/docker-buildx
+    compose: Docker Compose (Docker Inc.)
+      Version:  v2.16.0
+      Path:     /usr/libexec/docker/cli-plugins/docker-compose
+    scan: Docker Scan (Docker Inc.)
+      Version:  v0.23.0
+      Path:     /usr/libexec/docker/cli-plugins/docker-scan
+
+Server:
+  Containers: 0
+    Running: 0
+    Paused: 0
+    Stopped: 0
+  Images: 0
+  Server Version: 23.0.1
+  Storage Driver: overlay2
+    Backing Filesystem: extfs
+    Supports d_type: true
+    Using metacopy: false
+    Native Overlay Diff: true
+    userxattr: false
+  Logging Driver: json-file
+  Cgroup Driver: systemd
+  Cgroup Version: 2
+  Plugins:
+    Volume: local
+    Network: bridge host ipvlan macvlan null overlay
+    Log: awslogs fluentd gcplogs gelf journald json-file local logentries splunk syslog
+  Swarm: inactive
+  Runtimes: runc io.containerd.runc.v2
+  Default Runtime: runc
+  Init Binary: docker-init
+  containerd version: 2456e983eb9e37e47538f59ea18f2043c9a73640
+  runc version: v1.1.4-0-g5fd4c4d
+  init version: de40ad0
+  Security Options:
+    apparmor
+    seccomp
+    Profile: builtin
+    cgroupns
+  Kernel Version: 5.19.0-32-generic
+  Operating System: Ubuntu 22.04.2 LTS
+  OSType: linux
+  Architecture: x86_64
+  CPUs: 2
+  Total Memory: 3.832GiB
+  Name: xubuntu-vm-1
+  ID: 859dad55-839f-4a1a-90de-9212fab79df8
+  Docker Root Dir: /var/lib/docker
+  Debug Mode: false
+  Registry: https://index.docker.io/v1/
+  Experimental: false
+  Insecure Registries:
+    127.0.0.0/8
+  Live Restore Enabled: false</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To download and install the <span class="hi-blue">kubectl</span> binary, execute the following commands:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ cd $HOME/Downloads</p>
+      <p>$ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"</p>
+      <p>$ sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl</p>
+      <p>$ rm -f kubectl*</p>
+    </div>
+    <div id="para-div">
+      <p>To verify the version of the <span class="bold">kubectl</span> binary, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl version --output=yaml</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>clientVersion:
+  buildDate: "2023-02-22T13:39:03Z"
+  compiler: gc
+  gitCommit: fc04e732bb3e7198d2fa44efa5457c7c6f8c0f5b
+  gitTreeState: clean
+  gitVersion: v1.26.2
+  goVersion: go1.19.6
+  major: "1"
+  minor: "26"
+  platform: linux/amd64
+kustomizeVersion: v4.5.7
+
+The connection to the server localhost:8080 was refused - did you specify the right host or port?</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the hands-on demonstration, we will setup a single node development cluster using the lightweight implementation of
+        <span class="bold">Kubernetes</span> called the <span class="hi-yellow">Minikube</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To download and install the <span class="hi-blue">minikube</span> binary, execute the following commands:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ cd $HOME/Downloads</p>
+      <p>$ curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64</p>
+      <p>$ sudo install -o root -g root -m 0755 minikube-linux-amd64 /usr/local/bin/minikube</p>
+      <p>$ rm -f minikube*</p>
+    </div>
+    <div id="para-div">
+      <p>To verify the version of the <span class="bold">minikube</span> binary, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ minikube version</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>minikube version: v1.29.0
+commit: ddac20b4b34a9c8c857fc602203b6ba2679794d3</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To start a single node <span class="bold">minikube</span> cluster on the VM, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ minikube start</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>minikube v1.29.0 on Ubuntu 22.04
+Automatically selected the docker driver
+Using Docker driver with root privileges
+Starting control plane node minikube in cluster minikube
+Pulling base image ...
+Downloading Kubernetes v1.26.1 preload ...
+&gt; gcr.io/k8s-minikube/kicbase...:  407.19 MiB / 407.19 MiB  100.00% 52.15 M
+&gt; preloaded-images-k8s-v18-v1...:  397.05 MiB / 397.05 MiB  100.00% 6.52 Mi
+Creating docker container (CPUs=2, Memory=2200MB) ...
+Preparing Kubernetes v1.26.1 on Docker 20.10.23 ...
+* Generating certificates and keys ...
+* Booting up control plane ...
+* Configuring RBAC rules ...
+Configuring bridge CNI (Container Networking Interface) ...
+* Using image gcr.io/k8s-minikube/storage-provisioner:v5
+Verifying Kubernetes components...
+Enabled addons: default-storageclass, storage-provisioner
+Done! kubectl is now configured to use "minikube" cluster and "default" namespace by default</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note <span class="bold">Minikube</span> by default uses docker as the virtual machine and a bridge network as the overlay
+        network to run the single node <span class="bold">Kubernetes</span> cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>To verify the status of the <span class="bold">minikube</span> cluster, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ minikube status</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>minikube
+type: Control Plane
+host: Running
+kubelet: Running
+apiserver: Running
+kubeconfig: Configured</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">YIPPEE !!!</span> - with this we have completed the necessary setup for the demonstration.</p>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>Hands-on Kubernetes Storage</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the details of the available <span class="bold">Storage Class</span>, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl get storageclass</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>NAME                 PROVISIONER                RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
+standard (default)   k8s.io/minikube-hostpath   Delete          Immediate           false                  9h</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>As indicated earlier, a <span class="bold">Storage Class</span> encapsulates details such as, the storage provisioner that
+        is used to create/delete the storage volume from the underlying storage provider, the storage reclaim policy that manages
+        the lifecycle of the storage volume that is no longer needed, the storage volume binding mode - whether to bind the storage
+        volume immediately or wait till a storage volume request, etc.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the supported reclaim policies for a <span class="bold">Storage Class</span>:</p>
+    </div>
+    <div id="para-div">
+      <ul id="gen-sqr-ul">
+        <li><p><span class="hi-blue">Delete</span> :: deletes the storage volume from both <span class="bold">Kubernetes</span> as
+          well as the attached <span class="bold">Persistent Volume</span>, returning back to the external storage provider</p></li>
+        <li><p><span class="hi-blue">Retain</span> :: allows for an administrator to manually release the storage volume back to the
+          external storage provider</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>As can be inferred from Output.9 above, the reclaim policy for the default <span class="bold">Storage Class</span> (known
+        as  <span class="hi-yellow">standard</span>) is set to <span class="bold">Delete</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>In the following sections, we will demonstrate the use of <span class="bold">Kubernetes</span> storage using two types of
+        storage - <span class="hi-yellow">Local Storage</span> and <span class="hi-yellow">Network File System</span>.</p>
+    </div>
+    <div id="step-div">
+      <p>Local Storage</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>A <span class="hi-yellow">Local Storage</span> is the storage that is attached to the host on a certain directory path that
+        is running the <span class="bold">Kubernetes</span> node.</p>
+    </div>
+    <div id="para-div">
+      <p>On the host VM, we will create a shared persistent directory called <span class="hi-blue">$HOME/Downloads/pv-storage</span>
+        that will be attached to the <span class="bold">Kubernetes</span> cluster (single node cluster) at the mount point directory
+        called <span class="hi-blue">/pv-storage</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To create the shared persistent directory on the host VM, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ mkdir -p $HOME/Downloads/pv-storage</p>
+    </div>
+    <div id="para-div">
+      <p>Open a new <span class="bold">Terminal</span> window on the host VM and execute the following command to mount the shared
+        persistent directory on the <span class="bold">minikube</span> cluster:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ minikube mount $HOME/Downloads/pv-storage:/pv-storage</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>Mounting host path /home/alice/Downloads/pv-storage into VM as /pv-storage ...
+  * Mount type:   
+  * User ID:      docker
+  * Group ID:     docker
+  * Version:      9p2000.L
+  * Message Size: 262144
+  * Options:      map[]
+  * Bind Address: 192.168.49.1:34935
+  Userspace file server: ufs starting
+  Successfully mounted /home/alice/Downloads/pv-storage to /pv-storage
+
+  NOTE: This process must stay alive for the mount to be accessible ...</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To login to the <span class="bold">minikube</span> single node cluster, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ minikube ssh</p>
+    </div>
+    <div id="para-div">
+      <p>The shell prompt will change to indicate we are in <span class="bold">minikube</span> environment and the following would
+        be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>Last login: Thu Mar  3 20:33:01 2023 from 192.168.49.1
+docker@minikube:~$</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Execute the following commands in the <span class="bold">minikube</span> environment to create a simple HTML file called
+        <span class="hi-blue">index.html</span> in the shared storage volume and then exit:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>docker@minikube:~$ echo 'HOORAY - From Persistent Volume (local) !!!' &gt; /pv-storage/index.html</p>
+      <p>docker@minikube:~$ exit</p>
+    </div>
+    <div id="para-div">
+      <p>To display the details of the available <span class="bold">Persistent Volume</span>s, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl get persistentvolumes</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>No resources found</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Before a container running in a <span class="bold">Pod</span> can request storage, a <span class="bold">Persistent Volume
+        </span> instance must be deployed to the <span class="bold">Kubernetes</span> cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the definition of the <span class="bold">Persistent Volume</span> YAML that refers to the mounted shared
+        storage on the <span class="bold">minikube</span> cluster:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-cap">pv-storage.yaml</div>
+      <div class="gen-src-body">
+<pre>apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-storage
+spec:
+  storageClassName: standard
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Delete
+  hostPath:
+    path: "/pv-storage"</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>A question that may arise at this point - how does one know what fields to define in the YAML file ???</p>
+    </div>
+    <div id="para-div">
+      <p>To display the list of all the fields for a <span class="bold">Persistent Volume</span> YAML definition, execute the following
+        command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl explain PersistentVolume</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>KIND:     PersistentVolume
+VERSION:  v1
+
+DESCRIPTION:
+      PersistentVolume (PV) is a storage resource provisioned by an
+      administrator. It is analogous to a node. More info:
+      https://kubernetes.io/docs/concepts/storage/persistent-volumes
+
+FIELDS:
+    apiVersion	&lt;string&gt;
+      APIVersion defines the versioned schema of this representation of an
+      object. Servers should convert recognized schemas to the latest internal
+      value, and may reject unrecognized values. More info:
+      https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+
+    kind	&lt;string&gt;
+      Kind is a string value representing the REST resource this object
+      represents. Servers may infer this from the endpoint the client submits
+      requests to. Cannot be updated. In CamelCase. More info:
+      https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+
+    metadata	&lt;Object&gt;
+      Standard object's metadata. More info:
+      https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+
+    spec	&lt;Object&gt;
+      spec defines a specification of a persistent volume owned by the cluster.
+      Provisioned by an administrator. More info:
+      https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistent-volumes
+
+    status	&lt;Object&gt;
+      status represents the current information/status for the persistent volume.
+      Populated by the system. Read-only. More info:
+      https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistent-volumes</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To further drill-down into the list of all the fields for the <span class="bold">spec</span> field, execute the following
+        command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl explain PersistentVolume.spec</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical trimmed output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>KIND:     PersistentVolume
+VERSION:  v1
+
+RESOURCE: spec &lt;Object&gt;
+
+DESCRIPTION:
+      spec defines a specification of a persistent volume owned by the cluster.
+      Provisioned by an administrator. More info:
+      https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistent-volumes
+
+      PersistentVolumeSpec is the specification of a persistent volume.
+
+FIELDS:
+    accessModes	&lt;[]string&gt;
+      accessModes contains all ways the volume can be mounted. More info:
+      https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes
+
+...[ SNIP ]...
+
+    capacity	&lt;map[string]string&gt;
+      capacity is the description of the persistent volume's resources and
+      capacity. More info:
+      https://kubernetes.io/docs/concepts/storage/persistent-volumes#capacity
+
+...[ SNIP ]...
+
+    hostPath	&lt;Object&gt;
+      hostPath represents a directory on the host. Provisioned by a developer or
+      tester. This is useful for single-node development and testing only!
+      On-host storage is not supported in any way and WILL NOT WORK in a
+      multi-node cluster. More info:
+      https://kubernetes.io/docs/concepts/storage/volumes#hostpath
+
+...[ SNIP ]...
+
+    persistentVolumeReclaimPolicy	&lt;string&gt;
+      persistentVolumeReclaimPolicy defines what happens to a persistent volume
+      when released from its claim. Valid options are Retain (default for
+      manually created PersistentVolumes), Delete (default for dynamically
+      provisioned PersistentVolumes), and Recycle (deprecated). Recycle must be
+      supported by the volume plugin underlying this PersistentVolume. More info:
+      https://kubernetes.io/docs/concepts/storage/persistent-volumes#reclaiming
+
+      Possible enum values:
+      - `"Delete"` means the volume will be deleted from Kubernetes on release
+      from its claim. The volume plugin must support Deletion.
+      - `"Recycle"` means the volume will be recycled back into the pool of
+      unbound persistent volumes on release from its claim. The volume plugin
+      must support Recycling.
+      - `"Retain"` means the volume will be left in its current phase (Released)
+      for manual reclamation by the administrator. The default policy is Retain.
+
+...[ SNIP ]...</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To deploy our local storage definition <span class="bold">pv-storage.yaml</span> to the <span class="bold">minikube</span>
+        cluster, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl create -f ./pv-storage.yaml</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>persistentvolume/pv-storage created</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the details of the available <span class="bold">Persistent Volume</span>s, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl get pv</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>NAME         CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   REASON   AGE
+pv-storage   2Gi        RWO            Delete           Available           standard                8s</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">COOL !!!</span> - we have successfully deployed the local storage to our <span class="bold">minikube
+        </span> cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the details of the available <span class="bold">Persistent Volume Claim</span>s, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl get persistentvolumeclaim</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.17</h4>
+      <pre>No resources found in default namespace.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Before a container running in a <span class="bold">Pod</span> can request storage, a <span class="bold">Persistent Volume
+        Claim</span> definition must be deployed to the <span class="bold">Kubernetes</span> cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the definition of the <span class="bold">Persistent Volume Claim</span> YAML that refers to the deployed
+        local storage volume on the <span class="bold">minikube</span> cluster:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-cap">pv-storage-claim.yaml</div>
+      <div class="gen-src-body">
+<pre>apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pv-storage-claim
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+  volumeName: "pv-storage"</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the list of all the fields for a <span class="bold">Persistent Volume Claim</span> YAML definition, execute the
+        following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl explain PersistentVolumeClaim</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical trimmed output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.18</h4>
+      <pre>KIND:     PersistentVolumeClaim
+VERSION:  v1
+
+DESCRIPTION:
+      PersistentVolumeClaim is a user's request for and claim to a persistent
+      volume
+
+FIELDS:
+    apiVersion	&lt;string&gt;
+      APIVersion defines the versioned schema of this representation of an
+      object. Servers should convert recognized schemas to the latest internal
+      value, and may reject unrecognized values. More info:
+      https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+
+    kind	&lt;string&gt;
+      Kind is a string value representing the REST resource this object
+      represents. Servers may infer this from the endpoint the client submits
+      requests to. Cannot be updated. In CamelCase. More info:
+      https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+
+    metadata	&lt;Object&gt;
+      Standard object's metadata. More info:
+      https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+
+    spec	&lt;Object&gt;
+      spec defines the desired characteristics of a volume requested by a pod
+      author. More info:
+      https://kubernetes.io/docs/concepts/storage/persistent-volumes#persistentvolumeclaims
+
+...[ SNIP ]...</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To deploy our local storage request definition <span class="bold">pv-storage-claim.yaml</span> to the <span class="bold">
+        minikube</span> cluster, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl create -f ./pv-storage-claim.yaml</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.19</h4>
+      <pre>persistentvolumeclaim/pv-storage-claim created</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the details of the available <span class="bold">Persistent Volume Claim</span>s, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl get pvc</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.20</h4>
+      <pre>NAME               STATUS   VOLUME       CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+pv-storage-claim   Bound    pv-storage   2Gi        RWO            standard       6s</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">GOOD !!!</span> - we have successfully deployed the storage request definition to our <span class="bold">
+        minikube</span> cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>We need to deploy a simple application container to request storage via <span class="bold">pv-storage-claim</span> from our
+        <span class="bold">minikube</span> cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the YAML definition for an <span class="bold">nginx</span> webserver application which will access the HTML
+        file residing on the local storage volume attached to the <span class="bold">minikube</span> cluster:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-cap">nginx-deploy.yaml</div>
+      <div class="gen-src-body">
+<pre>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deploy
+  labels:
+    app: nginx-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-server
+  template:
+    metadata:
+      labels:
+        app: nginx-server
+    spec:
+      containers:
+        - name: nginx-server
+          image: nginx:1.23.3
+          ports:
+            - name: "nginx-server"
+              containerPort: 80
+          volumeMounts:
+            - name: nginx-storage
+              mountPath: "/usr/share/nginx/html"
+      volumes:
+        - name: nginx-storage
+          persistentVolumeClaim:
+            claimName: pv-storage-claim</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the details of the application deployments on our cluster, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl get deployments</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.21</h4>
+      <pre>No resources found in default namespace.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To deploy our webserver application <span class="bold">nginx-deploy.yaml</span> to the <span class="bold">minikube</span>
+        cluster, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl create -f ./nginx-deploy.yaml</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.22</h4>
+      <pre>pod/nginx-deploy created</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the details of the application deployments, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl get deploy</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.23</h4>
+      <pre>NAME           READY   UP-TO-DATE   AVAILABLE   AGE
+nginx-deploy   1/1     1            1           9s</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the details of the underlying application pods, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl get po</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.24</h4>
+      <pre>NAME                           READY   STATUS    RESTARTS   AGE
+nginx-deploy-79d489487-45ldf   1/1     Running   0          16s</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">GREAT !!!</span> - we have successfully deployed the webserver application to our <span class="bold">
+        minikube</span> cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>Now is the time to test if our webserver container is able to serve the <span class="bold">index.html</span> file from the
+        local storage volume attached to the <span class="bold">minikube</span> cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>To access the webserver from the deployed pod, execute the following commands:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl exec -it nginx-deploy-79d489487-45ldf -- /bin/bash</p>
+      <p>root@nginx-deploy-79d489487-45ldf:/# curl http://localhost</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.25</h4>
+      <pre>HOORAY - From Persistent Volume (local) !!!</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">YIPPEE !!!</span> - we have successfully tested the access to the local storage volume attached to our
+        <span class="bold">minikube</span> cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>To exit from the webserver pod, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>root@nginx-deploy-79d489487-45ldf:/# exit</p>
+    </div>
+    <div id="para-div">
+      <p>It is time to perform clean-up by deleting all the deployed resources from our <span class="bold">minikube</span> cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>To delete the webserver deployment, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl delete deploy nginx-deploy</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.26</h4>
+      <pre>deployment.apps "nginx-deploy" deleted</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To delete the storage request definition, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl delete pvc pv-storage-claim</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.27</h4>
+      <pre>persistentvolumeclaim "pv-storage-claim" deleted</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To delete the local storage definition, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl delete pv pv-storage</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.28</h4>
+      <pre>persistentvolume "pv-storage" deleted</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Finally, stop the <span class="bold">minikube</span> mount running in a <span class="bold">Terminal</span>.</p>
+    </div>
+    <div id="step-div">
+      <p>Network File System Storage</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>A <span class="hi-yellow">Network File System</span> (or <span class="hi-yellow">NFS</span> for short) is a distributed
+        file system, which allows clients on a network to access a shared storage via a directory.</p>
+    </div>
+    <div id="para-div">
+      <p>We will need to setup an NFS server to share the directory <span class="hi-blue">$HOME/Downloads/pv-storage</span> on the
+        host VM as a network storage via the directory <span class="hi-blue">/nfs-storage</span>.</p>
+      <p>We will download and use a pre-build <span class="bold">docker</span> image for the NFS server.</p>
+    </div>
+    <div id="para-div">
+      <p>To download the <span class="bold">docker</span> image <span class="hi-blue">erichough/nfs-server:2.2.1</span>, execute the
+        following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ docker pull erichough/nfs-server:2.2.1</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.29</h4>
+      <pre>2.2.1: Pulling from erichough/nfs-server
+c9b1b535fdd9: Pull complete 
+996ff6ad91f1: Pull complete 
+09b7a13e0642: Pull complete 
+37e0e43fb719: Pull complete 
+Digest: sha256:1efd4ece380c5ba27479417585224ef857006daa46ab84560a28c1224bc71e9e
+Status: Downloaded newer image for erichough/nfs-server:2.2.1
+docker.io/erichough/nfs-server:2.2.1</pre>
+    </div>
+    <br/>
+    <br/>
+    <div id="warn-div">
+      <h4>*** ATTENTION ***</h4>
+      <pre>Tried the docker images <span class="underbold">itsthenetwork/nfs-server-alpine</span> and <span class="underbold">gists/nfs-server</span> for the NFS server and they did *NOT* work as expected</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To export the directory <span class="hi-blue">/nfs-storage</span> as a network directory, create an exports definition file
+        called <span class="hi-blue">$HOME/Downloads/exports.txt</span> with the following text content:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-cap">exports.txt</div>
+      <div class="gen-src-body">
+<pre>/nfs-storage *(rw,fsid=0,sync,nohide,no_subtree_check,no_auth_nlm,insecure,no_root_squash)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To start the NFS server on the host VM, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ docker run --rm --name nfs-server --privileged -v $HOME/Downloads/exports.txt:/etc/exports:ro -v $HOME/Downloads/pv-storage:/nfs-storage -p 2049:2049 erichough/nfs-server:2.2.1</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.30</h4>
+      <pre>==================================================================
+      SETTING UP ...
+==================================================================
+----&gt; setup complete
+
+==================================================================
+      STARTING SERVICES ...
+==================================================================
+----&gt; starting rpcbind
+----&gt; starting exportfs
+----&gt; starting rpc.mountd on port 32767
+----&gt; starting rpc.statd on port 32765 (outgoing from port 32766)
+----&gt; starting rpc.nfsd on port 2049 with 2 server thread(s)
+----&gt; all services started normally
+
+==================================================================
+      SERVER STARTUP COMPLETE
+==================================================================
+----&gt; list of enabled NFS protocol versions: 4.2, 4.1, 4, 3
+----&gt; list of container exports:
+----&gt;   /nfs-storage *(rw,fsid=0,sync,nohide,no_subtree_check,no_auth_nlm,insecure,no_root_squash)
+----&gt; list of container ports that should be exposed:
+----&gt;   111 (TCP and UDP)
+----&gt;   2049 (TCP and UDP)
+----&gt;   32765 (TCP and UDP)
+----&gt;   32767 (TCP and UDP)
+
+==================================================================
+      READY AND WAITING FOR NFS CLIENT CONNECTIONS
+==================================================================</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Since the NFS server is running in a <span class="bold">docker</span> container that is external to the <span class="bold">
+        minikube</span> cluster, the two networks will need to be connected.</p>
+    </div>
+    <div id="para-div">
+      <p>To connect the <span class="bold">nfs-server</span> network to the <span class="bold">minikube</span> network, execute the
+        following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ docker network connect minikube nfs-server</p>
+    </div>
+    <div id="para-div">
+      <p>To login to the <span class="bold">minikube</span> single node cluster, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ minikube ssh</p>
+    </div>
+    <div id="para-div">
+      <p>The shell prompt will change to indicate we are in <span class="bold">minikube</span> environment and the following would
+        be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.31</h4>
+      <pre>Last login: Thu Mar  3 21:14:21 2023 from 192.168.49.1
+docker@minikube:~$</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To verify <span class="bold">minikube</span> is able to connect to the <span class="bold">nfs-server</span>, execute the
+        following command in <span class="bold">minikube</span> environment:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>docker@minikube:~$ ping -c 3 nfs-server</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.32</h4>
+      <pre>PING nfs-server (192.168.49.3) 56(84) bytes of data.
+64 bytes from nfs-server.minikube (192.168.49.3): icmp_seq=1 ttl=64 time=0.057 ms
+64 bytes from nfs-server.minikube (192.168.49.3): icmp_seq=2 ttl=64 time=0.037 ms
+64 bytes from nfs-server.minikube (192.168.49.3): icmp_seq=3 ttl=64 time=0.055 ms
+
+--- nfs-server ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2047ms
+rtt min/avg/max/mdev = 0.037/0.049/0.057/0.009 ms</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Execute the following commands in the <span class="bold">minikube</span> environment to create a simple HTML file called
+        <span class="hi-blue">index.html</span> in the NFS shared storage and then exit:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>docker@minikube:~$ sudo mkdir /nfs-storage</p>
+      <p>sudo mount -t nfs -o vers=4,port=2049 nfs-server:/nfs-storage /nfs-storage</p>
+      <p>docker@minikube:~$ echo 'HOORAY - Loaded from NFS storage !!!' &gt; /nfs-storage/index.html</p>
+      <p>docker@minikube:~$ exit</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the definition of the <span class="bold">Persistent Volume</span> YAML that refers to the NFS storage on
+        the <span class="bold">minikube</span> cluster:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-cap">nfs-pv-storage.yaml</div>
+      <div class="gen-src-body">
+<pre>apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-storage
+  labels:
+    type: nfs
+spec:
+  storageClassName: standard
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: nfs-server
+    path: "/nfs-storage"</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To deploy our NFS storage definition <span class="bold">nfs-pv-storage.yaml</span> to the <span class="bold">minikube</span>
+        cluster, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl create -f ./nfs-pv-storage.yaml</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.33</h4>
+      <pre>persistentvolume/nfs-storage created</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the details of the available <span class="bold">Persistent Volume</span>s, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl get pv</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.34</h4>
+      <pre>NAME          CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   REASON   AGE
+nfs-storage   2Gi        RWX            Retain           Available           standard                7s</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the definition of the <span class="bold">Persistent Volume Claim</span> YAML that refers to the deployed
+        NFS storage volume on the <span class="bold">minikube</span> cluster:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-cap">nfs-pv-storage-claim.yaml</div>
+      <div class="gen-src-body">
+<pre>apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-storage-claim
+spec:
+  storageClassName: standard
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 2Gi
+  volumeName: "nfs-storage"</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To deploy our NFS storage request definition <span class="bold">nfs-pv-storage-claim.yaml</span> to the <span class="bold">
+        minikube</span> cluster, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl create -f ./nfs-pv-storage-claim.yaml</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.35</h4>
+      <pre>persistentvolumeclaim/nfs-storage-claim created</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the details of the available <span class="bold">Persistent Volume Claim</span>s, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl get pvc</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.36</h4>
+      <pre>NAME                STATUS   VOLUME        CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+nfs-storage-claim   Bound    nfs-storage   2Gi        RWX            standard       8s</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the YAML definition for an <span class="bold">nginx</span> webserver application which will access the HTML
+        file residing on the NFS storage volume attached to the <span class="bold">minikube</span> cluster:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-cap">nginx-nfs-deploy.yaml</div>
+      <div class="gen-src-body">
+<pre>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-nfs-deploy
+  labels:
+    app: nginx-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-server
+  template:
+    metadata:
+      labels:
+        app: nginx-server
+    spec:
+      containers:
+        - name: nginx-server
+          image: nginx:1.23.3
+          ports:
+            - name: "nginx-server"
+              containerPort: 80
+          volumeMounts:
+            - name: nginx-nfs-storage
+              mountPath: "/usr/share/nginx/html"
+      volumes:
+        - name: nginx-nfs-storage
+          persistentVolumeClaim:
+            claimName: nfs-storage-claim</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To deploy our webserver application <span class="bold">nginx-nfs-deploy.yaml</span> to the <span class="bold">minikube</span>
+        cluster, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl create -f ./nginx-nfs-deploy.yaml</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.37</h4>
+      <pre>pod/nginx-nfs-deploy created</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the details of the application deployments, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl get deploy</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.38</h4>
+      <pre>NAME               READY   UP-TO-DATE   AVAILABLE   AGE
+nginx-nfs-deploy   1/1     1            1           9s</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the details of the underlying application pods, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl get po</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.39</h4>
+      <pre>NAME                                READY   STATUS    RESTARTS   AGE
+nginx-nfs-deploy-5db89c4848-qxl59   1/1     Running   0          53s</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To access the webserver from the deployed pod, execute the following commands:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl exec -it nginx-nfs-deploy-5db89c4848-qxl59 -- /bin/bash</p>
+      <p>root@nginx-nfs-deploy-5db89c4848-qxl59:/# curl http://localhost</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.40</h4>
+      <pre>HOORAY - Loaded from NFS storage !!!</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">BINGO !!!</span> - we have successfully tested the access to the NFS storage volume attached to our
+        <span class="bold">minikube</span> cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>To exit from the webserver pod, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>root@nginx-nfs-deploy-5db89c4848-qxl59:/# exit</p>
+    </div>
+    <div id="para-div">
+      <p>It is time to perform clean-up by deleting all the deployed resources from our <span class="bold">minikube</span> cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>To delete the webserver deployment, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl delete deploy nginx-nfs-deploy</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.41</h4>
+      <pre>deployment.apps "nginx-nfs-deploy" deleted</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To delete the storage request definition, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl delete pvc nfs-storage-claim</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.42</h4>
+      <pre>persistentvolumeclaim "nfs-storage-claim" deleted</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To delete the local storage definition, execute the following command:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ kubectl delete pv nfs-storage</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.43</h4>
+      <pre>persistentvolume "nfs-storage" deleted</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Finally, stop the NFS server <span class="bold">docker</span> container running in a <span class="bold">Terminal</span>.</p>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>References</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><a href="https://kubernetes.io/docs/concepts/storage/storage-classes/" target="_blank"><span class="bold">Storage Classes</span></a></p>
+      <p><a href="https://kubernetes.io/docs/concepts/storage/persistent-volumes/" target="_blank"><span class="bold">Persistent Volumes</span></a></p>
+    </div>
+    <br/>
+    <hr class="gen-line-hr" />
+    <div>
+      <a id="gen-footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
