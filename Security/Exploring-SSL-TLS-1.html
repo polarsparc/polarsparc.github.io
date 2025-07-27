@@ -1,0 +1,446 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <title>Exploring SSL/TLS - Part 1</title>
+    <link rel="stylesheet" type="text/css" href="../css/polarsparc-v2.0.css" />
+  </head>
+  <body> <br />
+    <div id="title-div">
+      <p>Exploring SSL/TLS - Part 1</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">10/15/2017</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="step-div">
+      <p>Introduction</p>
+    </div>
+    <div id="para-div">
+      <p>Secure Sockets Layer (<span class="bold">SSL</span>) and Transport Layer Security (<span class="bold">TLS</span>)
+        are industry standard protocols used to secure and encrypt the communication link between a client and a server.</p>
+      <p>SSL and TLS are used interchangeably to refer to the private and secure exchange of data between two parties, but
+        in fact SSL is the predecessor of TLS.</p>
+    </div>
+    <div id="para-div">
+      <p>SSL (or TLS) can operate in two modes - <span class="bold">Server</span> (referred to as one-way SSL
+        authentication) and <span class="bold">Mutual</span> (referred to as two-way SSL authentication).</p>
+      <p>The most commonly used mode is the <span class="bold">Server</span> authentication mode, where the server
+        certificate is used to identify and verify the server to the client.</p>
+      <p>In the <span class="bold">Mutual</span> authentication mode, the client certificate is verified by the server
+        in addition to the server certificate being verified by the client.</p>
+    </div>
+    <div id="step-div">
+      <p>Server Authentication</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the basic steps involved in the one-way SSL/TLS handshake:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>The SSL/TLS client sends a 'client hello' message to the SSL/TLS server, specifying the supported protocols
+            (SSLv3, TLSv1, TLSv1.1, TLSv1.2), and the supported list of cipher suites</p>
+        </li>
+        <li>
+          <p>The SSL/TLS server responds with a 'server hello' message, indicating the selected protocol and the cipher
+            suite from the choice presented by the SSL/TLS client. In addition, the SSL/TLS server also sends its
+            digital certificate</p>
+        </li>
+        <li>
+          <p>The SSL/TLS client verifies the digital certificate presented by the SSL/TLS server and extracts the
+            public key</p>
+        </li>
+        <li>
+          <p>Once the server certificate is verified by the client, the SSL/TLS client sends a session key (shared
+            secret key) that is encrypted with the server's public key</p>
+        </li>
+        <li>
+          <p>The SSL/TLS client sends a 'finished' message that is encrypted with the session key to the SSL/TLS server,
+            indicating the client side of the SSL/TLS handshake is completed</p>
+        </li>
+        <li>
+          <p>The SSL/TLS server sends a 'finished' message that is encrypted with the session key to the SSL/TLS client
+            signalling the server side of the SSL/TLS handshake is completed</p>
+        </li>
+        <li>
+          <p>The SSL/TLS client and server can now securely exchange data that is encrypted with the session key for
+            the duration of the session</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the above steps in a pictorial form:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/ssl-1-way.png" alt="One-Way SSL" />
+      <div class="img-cap">One-Way SSL/TLS</div>
+    </div>
+    <div id="step-div">
+      <p>Hands-on SSL/TLS using Java</p>
+    </div>
+    <div id="para-div">
+      <p>All the code is implemented using Oracle Java 8 SE (64-bit) and tested on a Ubuntu 16.04 Linux (64-bit) variant.</p>
+      <p>We will now show how one can implement a basic SSL/TLS client and server using the Java Secure Sockets Extensions
+        (<span class="bold">JSSE</span>).</p>
+      <p>The following is the simple SSL enabled echo server:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>SecureEchoServer.java</legend>
+      <pre>/*
+ *
+ *  Name:        SecureEchoServer
+ *  Description: Echo server that uses the secure sockets
+ *  
+ */
+
+package com.polarsparc.pki;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSocket;
+
+public class SecureEchoServer {
+    private static final int _SSL_PORT = 8443;
+    
+    public static void main(String[] args) {
+        try {
+            SSLServerSocketFactory factory = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
+            
+            SSLServerSocket server = (SSLServerSocket) factory.createServerSocket(_SSL_PORT);
+            
+            System.out.printf("Echo (server) started on %d\n", _SSL_PORT);
+            
+            for (;;) {
+                try (SSLSocket client = (SSLSocket) server.accept()) {
+                    try (BufferedReader input = new BufferedReader(new InputStreamReader(client.getInputStream()))) {
+                        String line = null;
+                        while ((line = input.readLine()) != null) {
+                            System.out.printf("-> Echo (server): %s\n", line);
+                            System.out.flush();
+                        }
+                    }
+                    catch (Exception inputEx) {
+                        inputEx.printStackTrace();
+                    }
+                }
+                catch (Exception sockEx) {
+                    sockEx.printStackTrace();
+                }
+            }
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Let us explain and understand some of the classes/methods used in the <span class="bold">SecureEchoServer</span>
+        code shown above.</p>
+      <p>The class <span class="hi-yellow">javax.net.ssl.SSLServerSocketFactory</span> extends the base server socket
+        factory class <span class="hi-yellow">javax.net.ServerSocketFactory</span> and is used for initializing and
+        creating a secure server socket endpoint. To get a default instance of the factory class, invoke the
+        <span class="hi-green">getDefault()</span> static method on the factory class.</p>
+      <p>The class <span class="hi-yellow">javax.net.ssl.SSLServerSocket</span> inherits from the base server socket
+        class <span class="hi-yellow">java.net.ServerSocket</span> for accepting connections from clients. This class
+        maintains the state for the supported protocols and cipher suites.</p>
+      <p>The method <span class="hi-green">createServerSocket()</span> on the factory class instance creates and
+        returns a secure server socket bound to the specified port.</p>
+      <p>The method <span class="hi-green">accept()</span> on the server socket class instance waits and blocks until
+        a client connection request is received. Upon accepting a connection, it returns an instance of the class
+        <span class="hi-yellow">javax.net.ssl.SSLSocket</span> which represents the socket endpoint for the client.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the simple SSL enabled echo client:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>SecureEchoClient.java</legend>
+      <pre>/*
+ *
+ *  Name:        SecureEchoClient
+ *  Description: Echo client that uses the secure sockets to communicate with the secure echo server
+ *  
+ */
+
+package com.polarsparc.pki;
+
+import java.io.BufferedWriter;
+import java.io.OutputStreamWriter;
+
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+
+public class SecureEchoClient {
+    private static final int _SSL_PORT = 8443;
+    private static final String _SSL_HOST = "localhost";
+    
+    public static void main(String[] args) {
+        if (args.length != 1) {
+            System.out.printf("Usage: java com.polarsparc.pki.SecureEchoClient &lt;message&gt;\n");
+            System.exit(1);
+        }
+        
+        try {
+            SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+            
+            SSLSocket socket = (SSLSocket) factory.createSocket(_SSL_HOST, _SSL_PORT);
+            
+            BufferedWriter output = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+            
+            output.write(args[0]+"\n");
+            output.flush();
+            
+            socket.close();
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Let us explain and understand some of the classes/methods used in the <span class="bold">SecureEchoClient</span>
+        code shown above.</p>
+      <p>The class <span class="hi-yellow">javax.net.ssl.SSLSocketFactory</span> extends the base socket factory class
+        <span class="hi-yellow">javax.net.SocketFactory</span> and is used for creating a secure socket endpoint. To get
+        a default instance of the factory class, invoke the <span class="hi-green">getDefault()</span> static method on
+        the factory class. The default instance is pre-configured with support for server authentication.</p>
+      <p>The class <span class="hi-yellow">javax.net.ssl.SSLSocket</span> inherits from the base socket class
+        <span class="hi-yellow">java.net.Socket</span> for creating connections with a secure server. This class
+        maintains the state for the supported protocols and cipher suites.</p>
+      <p>The method <span class="hi-green">createSocket()</span> on the factory class instance creates and returns
+        a secure socket endpoint that is connected to the specified server at the specified port.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a new <span class="bold">Terminal</span> window, and execute the following command to start the SSL/TLS
+        echo server:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -cp build/classes com.polarsparc.pki.SecureEchoServer</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Echo (server) started on 8443</pre>
+    </div>
+    <div id="para-div">
+      <p>Open another <span class="bold">Terminal</span> window, and execute the following command to start the SSL/TLS
+        echo client:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -cp build/classes com.polarsparc.pki.SecureEchoClient "Hello SSL/TLS World"</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>javax.net.ssl.SSLHandshakeException: Received fatal alert: handshake_failure
+  at sun.security.ssl.Alerts.getSSLException(Alerts.java:192)
+  at sun.security.ssl.Alerts.getSSLException(Alerts.java:154)
+  at sun.security.ssl.SSLSocketImpl.recvAlert(SSLSocketImpl.java:2033)
+  at sun.security.ssl.SSLSocketImpl.readRecord(SSLSocketImpl.java:1135)
+  at sun.security.ssl.SSLSocketImpl.performInitialHandshake(SSLSocketImpl.java:1385)
+  at sun.security.ssl.SSLSocketImpl.writeRecord(SSLSocketImpl.java:757)
+  at sun.security.ssl.AppOutputStream.write(AppOutputStream.java:123)
+  at sun.nio.cs.StreamEncoder.writeBytes(StreamEncoder.java:221)
+  at sun.nio.cs.StreamEncoder.implFlushBuffer(StreamEncoder.java:291)
+  at sun.nio.cs.StreamEncoder.implFlush(StreamEncoder.java:295)
+  at sun.nio.cs.StreamEncoder.flush(StreamEncoder.java:141)
+  at java.io.OutputStreamWriter.flush(OutputStreamWriter.java:229)
+  at java.io.BufferedWriter.flush(BufferedWriter.java:254)
+  at com.polarsparc.pki.SecureEchoClient.main(SecureEchoClient.java:35)</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">What happened here ???</span></p>
+      <p>From the terminal window where the server was started, we see the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>javax.net.ssl.SSLHandshakeException: no cipher suites in common
+  at sun.security.ssl.Alerts.getSSLException(Alerts.java:192)
+  at sun.security.ssl.SSLSocketImpl.fatal(SSLSocketImpl.java:1959)
+  at sun.security.ssl.Handshaker.fatalSE(Handshaker.java:302)
+  at sun.security.ssl.Handshaker.fatalSE(Handshaker.java:292)
+  at sun.security.ssl.ServerHandshaker.chooseCipherSuite(ServerHandshaker.java:1045)
+  at sun.security.ssl.ServerHandshaker.clientHello(ServerHandshaker.java:741)
+  at sun.security.ssl.ServerHandshaker.processMessage(ServerHandshaker.java:224)
+  at sun.security.ssl.Handshaker.processLoop(Handshaker.java:1026)
+  at sun.security.ssl.Handshaker.process_record(Handshaker.java:961)
+  at sun.security.ssl.SSLSocketImpl.readRecord(SSLSocketImpl.java:1072)
+  at sun.security.ssl.SSLSocketImpl.performInitialHandshake(SSLSocketImpl.java:1385)
+  at sun.security.ssl.SSLSocketImpl.readDataRecord(SSLSocketImpl.java:938)
+  at sun.security.ssl.AppInputStream.read(AppInputStream.java:105)
+  at sun.nio.cs.StreamDecoder.readBytes(StreamDecoder.java:284)
+  at sun.nio.cs.StreamDecoder.implRead(StreamDecoder.java:326)
+  at sun.nio.cs.StreamDecoder.read(StreamDecoder.java:178)
+  at java.io.InputStreamReader.read(InputStreamReader.java:184)
+  at java.io.BufferedReader.fill(BufferedReader.java:161)
+  at java.io.BufferedReader.readLine(BufferedReader.java:324)
+  at java.io.BufferedReader.readLine(BufferedReader.java:389)
+  at com.polarsparc.pki.SecureEchoServer.main(SecureEchoServer.java:33)</pre>
+    </div>
+    <div id="para-div">
+      <p>For both the client and the server, we have not specified any keystore that holds the private keys and digital
+        certificates. As a result, there are no cryptographically strong ciphers that could be negotiated between the
+        client and the server.</p>
+      <p><span class="bold">Is there a way to fix this ???</span></p>
+      <p>Sure there is, but use caution - one could enable all the supported ciphers including the ones that are
+        cryptographically weaker than the ones enabled by default. We need to do this on both the server and the
+        client side.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the simple SSL enabled echo server with the code that enables all the supported ciphers:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>SecureEchoServer2.java</legend>
+      <pre>/*
+ *
+ *  Name:        SecureEchoServer2
+ *  Description: Echo server that uses the secure sockets with all supported ciphers enabled
+ *  
+ */
+
+package com.polarsparc.pki;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSocket;
+
+public class SecureEchoServer2 {
+    private static final int _SSL_PORT = 8443;
+    
+    public static void main(String[] args) {
+        try {
+            SSLServerSocketFactory factory = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
+            
+            SSLServerSocket server = (SSLServerSocket) factory.createServerSocket(_SSL_PORT);
+            server.setEnabledCipherSuites(server.getSupportedCipherSuites());
+            
+            System.out.printf("Echo (server-2) started on %d\n", _SSL_PORT);
+            
+            for (;;) {
+                try (SSLSocket client = (SSLSocket) server.accept()) {
+                    try (BufferedReader input = new BufferedReader(new InputStreamReader(client.getInputStream()))) {
+                        String line = null;
+                        while ((line = input.readLine()) != null) {
+                            System.out.printf("-> Echo (server-2): %s\n", line);
+                            System.out.flush();
+                        }
+                    }
+                    catch (Exception inputEx) {
+                        inputEx.printStackTrace();
+                    }
+                }
+                catch (Exception sockEx) {
+                    sockEx.printStackTrace();
+                }
+            }
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The method <span class="hi-green">getSupportedCipherSuites()</span> on the server socket class instance returns
+        the names of all the crytographic ciphers that could be enabled for this SSL/TLS connection.</p>
+      <p>The method <span class="hi-green">setEnabledCipherSuites()</span> on the server socket class instance enables all
+        the specified crytographic ciphers to be used on this SSL/TLS connection.</p>
+    </div>
+    <div id="para-div">
+      <p>Similarly, the following is the simple SSL enabled echo client with the code that enables all the supported
+        ciphers:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>SecureEchoClient.java</legend>
+      <pre>/*
+ *
+ *  Name:        SecureEchoClient2
+ *  Description: Echo client that uses the secure sockets to communicate with the secure echo server with all supported
+ *               ciphers enabled
+ *  
+ */
+
+package com.polarsparc.pki;
+
+import java.io.BufferedWriter;
+import java.io.OutputStreamWriter;
+
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+
+public class SecureEchoClient2 {
+    private static final int _SSL_PORT = 8443;
+    private static final String _SSL_HOST = "localhost";
+    
+    public static void main(String[] args) {
+        if (args.length != 1) {
+            System.out.printf("Usage: java com.polarsparc.pki.SecureEchoClient2 &lt;message&gt;\n");
+            System.exit(1);
+        }
+        
+        try {
+            SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+            
+            SSLSocket socket = (SSLSocket) factory.createSocket(_SSL_HOST, _SSL_PORT);
+            socket.setEnabledCipherSuites(socket.getSupportedCipherSuites());
+            
+            BufferedWriter output = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+            
+            output.write(args[0]+"\n");
+            output.flush();
+            
+            socket.close();
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>From the terminal window where the server was started, re-execute the following command to start the
+        SSL/TLS echo server:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -cp build/classes com.polarsparc.pki.SecureEchoServer</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>Echo (server-2) started on 8443</pre>
+    </div>
+    <div id="para-div">
+      <p>From the terminal window where the client was started, re-execute the following command to start the
+        SSL/TLS echo client:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -cp build/classes com.polarsparc.pki.SecureEchoClient "Hello SSL/TLS World"</p>
+    </div>
+    <div id="para-div">
+      <p>From the terminal window where the server was started, we see the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>-> Echo (server-2): Hello SSL/TLS World</pre>
+    </div>
+    <br/>
+    <div id="attn-div">
+      <h4>!!! WARNING !!!</h4>
+      <p>***DO NOT*** enable cryptographically insecure ciphers using:</p>
+      <p>socket.setEnabledCipherSuites(socket.getSupportedCipherSuites())</p>
+    </div>
+  </body>
+</html>

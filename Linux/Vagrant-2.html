@@ -1,0 +1,605 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <title>Introduction to Vagrant - Part 2</title>
+    <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body> <br />
+    <div id="title-div">
+      <p>Introduction to Vagrant - Part 2</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">01/21/2017</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Hands-on with Vagrant - Continued</p>
+    </div>
+    <div id="para-div">
+      <p>When a virtual environment is booted up using a specified  <span class="bold">Box</span>,
+        it will not have the necessary software setup for development use. One could manually
+        install software after <span class="bold">ssh</span>ing into the virtual environment.</p>
+      <p>Could we not automate the installation and setup of the necessary software as well ???</p>
+      <p>The process of installing software in a newly booted virtual environment using
+      <span class="bold">Vagrant</span> is called <span class="hi-yellow">Provisioning</span>.</p>
+      <p>One could use any of the configuration management tools like <span class="bold">Ansible</span>,
+        <span class="bold">Chef</span>, <span class="bold">Puppet</span>, or even <span class="bold">Shell</span>
+        scripts to automate the provisioning process. In our demonstration, we will use <span class="bold">Shell</span>
+        scripts for software provisioning.</p>
+    </div>
+    <div id="para-div">
+      <p>Now we will create a virtual environment by automatically provisioning the open source
+        webserver <span class="hi-yellow">nginx</span>.</p>
+      <p>Three important points before we get started:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="bold">Vagrant</span> automatically shares the current folder from which
+            the <span class="bold">vagrant</span> commands are executed as the folder
+            <span class="hi-yellow">/vagrant</span> in the virtual environment guest machine</p>
+        </li>
+        <li>
+          <p>In <span class="bold">Vagrant</span>, one can forward network ports from the virtual
+            environment guest machine to a network port on the host machine</p>
+        </li>
+        <li>
+          <p><span class="bold">Vagrant</span> executes a <span class="bold">Shell</span> script as
+            a <span class="hi-yellow">root</span> user</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Create an <span class="bold">html</span> file called <span class="hi-yellow">index.html</span>
+        as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>&lt;html&gt;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&lt;head&gt;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;title&gt;index.html&lt;/title&gt;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&lt;/head&gt;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&lt;style&gt;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;h2 {</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;color: blue;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;font-style: bold;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;text-align: center;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&lt;/style&gt;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&lt;body&gt;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;br/&gt;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&lt;h2&gt;Welcome to Web Programming using NGINX !!!&lt;/h2&gt;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&lt;/body&gt;</p>
+      <p>&lt;/html&gt;</p>
+    </div>
+    <div id="para-div">
+      <p>Next, create a <span class="bold">Shell</span> script called <span class="hi-yellow">setup-web.sh</span>
+        in the current directory as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>#!/bin/bash</p>
+      <p>echo 'Ready to install NGINX .....'</p>
+      <p>agt-get update > /dev/null 2>&amp;1</p>
+      <p>apt-get install -y nginx</p>
+      <p>cp /vagrant/index.html /usr/share/nginx/html/</p>
+      <p>echo 'Install and setup of NGINX completed !!!'</p>
+    </div>
+    <div id="para-div">
+      <p>Finally, update the <span class="bold">Vagrantfile</span> in the current directory as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>Vagrant.configure(2) do |config|</p>
+      <p>&nbsp;&nbsp;config.vm.box = "ubuntu/trusty64"</p>
+      <p>&nbsp;&nbsp;config.vm.provider "virtualbox" do |vb|</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;vb.memory = "1024"</p>
+      <p>&nbsp;&nbsp;end</p>
+      <p>&nbsp;&nbsp;config.vm.provision "shell", path: "setup-web.sh"</p>
+      <p>&nbsp;&nbsp;config.vm.network "forwarded_port", guest: 80, host: 8080</p>
+      <p>end</p>
+    </div>
+    <div id="para-div">
+      <p>Now, let us create and configure the virtual environment by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ vagrant up</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Bringing machine 'default' up with 'virtualbox' provider...
+==> default: Importing base box 'ubuntu/trusty64'...
+==> default: Matching MAC address for NAT networking...
+==> default: Checking if box 'ubuntu/trusty64' is up to date...
+==> default: A newer version of the box 'ubuntu/trusty64' is available! You currently
+==> default: have version '20170110.0.0'. The latest is version '20170112.0.0'. Run
+==> default: `vagrant box update` to update.
+==> default: Setting the name of the VM: Vagrant_default_1485053881499_9345
+==> default: Clearing any previously set forwarded ports...
+==> default: Clearing any previously set network interfaces...
+==> default: Preparing network interfaces based on configuration...
+    default: Adapter 1: nat
+==> default: Forwarding ports...
+    default: 80 (guest) => 8080 (host) (adapter 1)
+    default: 22 (guest) => 2222 (host) (adapter 1)
+==> default: Running 'pre-boot' VM customizations...
+==> default: Booting VM...
+==> default: Waiting for machine to boot. This may take a few minutes...
+    default: SSH address: 127.0.0.1:2222
+    default: SSH username: vagrant
+    default: SSH auth method: private key
+    default:
+    default: Vagrant insecure key detected. Vagrant will automatically replace
+    default: this with a newly generated keypair for better security.
+    default:
+    default: Inserting generated public key within guest...
+    default: Removing insecure key from the guest if it's present...
+    default: Key inserted! Disconnecting and reconnecting using new SSH key...
+==> default: Machine booted and ready!
+==> default: Checking for guest additions in VM...
+    default: The guest additions on this VM do not match the installed version of
+    default: VirtualBox! In most cases this is fine, but in rare cases it can
+    default: prevent things such as shared folders from working properly. If you see
+    default: shared folder errors, please make sure the guest additions within the
+    default: virtual machine match the version of VirtualBox you have installed on
+    default: your host and reload your VM.
+    default:
+    default: Guest Additions Version: 4.3.36
+    default: VirtualBox Version: 5.0
+==> default: Mounting shared folders...
+    default: /vagrant => /home/bswamina/MyProjects/Vagrant
+==> default: Running provisioner: shell...
+    default: Running: /tmp/vagrant-shell20170121-21785-blxglw.sh
+==> default: stdin: is not a tty
+==> default: Ready to install NGINX .....
+==> default: Reading package lists...
+==> default: Building dependency tree...
+==> default: Reading state information...
+==> default: The following extra packages will be installed:
+==> default:   libxslt1.1 nginx-common nginx-core
+==> default: Suggested packages:
+==> default:   fcgiwrap nginx-doc
+==> default: The following NEW packages will be installed:
+==> default:   libxslt1.1 nginx nginx-common nginx-core
+==> default: 0 upgraded, 4 newly installed, 0 to remove and 0 not upgraded.
+==> default: Need to get 494 kB of archives.
+==> default: After this operation, 1,798 kB of additional disk space will be used.
+==> default: Get:1 http://archive.ubuntu.com/ubuntu/ trusty/main libxslt1.1 amd64 1.1.28-2build1 [145 kB]
+==> default: Get:2 http://archive.ubuntu.com/ubuntu/ trusty-updates/main nginx-common all 1.4.6-1ubuntu3.7 [19.0 kB]
+==> default: Get:3 http://archive.ubuntu.com/ubuntu/ trusty-updates/main nginx-core amd64 1.4.6-1ubuntu3.7 [325 kB]
+==> default: Get:4 http://archive.ubuntu.com/ubuntu/ trusty-updates/main nginx all 1.4.6-1ubuntu3.7 [5,352 B]
+==> default: dpkg-preconfigure: unable to re-open stdin: No such file or directory
+==> default: Fetched 494 kB in 0s (649 kB/s)
+==> default: Selecting previously unselected package libxslt1.1:amd64.
+==> default: (Reading database ... 63025 files and directories currently installed.)
+==> default: Preparing to unpack .../libxslt1.1_1.1.28-2build1_amd64.deb ...
+==> default: Unpacking libxslt1.1:amd64 (1.1.28-2build1) ...
+==> default: Selecting previously unselected package nginx-common.
+==> default: Preparing to unpack .../nginx-common_1.4.6-1ubuntu3.7_all.deb ...
+==> default: Unpacking nginx-common (1.4.6-1ubuntu3.7) ...
+==> default: Selecting previously unselected package nginx-core.
+==> default: Preparing to unpack .../nginx-core_1.4.6-1ubuntu3.7_amd64.deb ...
+==> default: Unpacking nginx-core (1.4.6-1ubuntu3.7) ...
+==> default: Selecting previously unselected package nginx.
+==> default: Preparing to unpack .../nginx_1.4.6-1ubuntu3.7_all.deb ...
+==> default: Unpacking nginx (1.4.6-1ubuntu3.7) ...
+==> default: Processing triggers for ufw (0.34~rc-0ubuntu2) ...
+==> default: Processing triggers for ureadahead (0.100.0-16) ...
+==> default: Processing triggers for man-db (2.6.7.1-1ubuntu1) ...
+==> default: Setting up libxslt1.1:amd64 (1.1.28-2build1) ...
+==> default: Setting up nginx-common (1.4.6-1ubuntu3.7) ...
+==> default: Processing triggers for ufw (0.34~rc-0ubuntu2) ...
+==> default: Processing triggers for ureadahead (0.100.0-16) ...
+==> default: Setting up nginx-core (1.4.6-1ubuntu3.7) ...
+==> default: Setting up nginx (1.4.6-1ubuntu3.7) ...
+==> default: Processing triggers for libc-bin (2.19-0ubuntu6.9) ...
+==> default: Install and setup of NGINX completed !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>From the above output, we see that the virtual environment guest network port
+        <span class="bold">80</span> is forwarded to the host network port <span class="bold">8080</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>If we launch a browser on the host machine and access the URL <span class="bold">http://localhost:8080</span>,
+        we should the browser render as follows:</p>
+        <div id="img-outer-div"> <img alt="Host Browser" class="img-cls" src="./images/Vagrant-1.png" />
+          <div class="img-cap">Host Browser</div>
+        </div>
+    </div>
+    <div id="para-div">
+      <p>A typical production application involves multiple tiers with different software stack(s) running
+        on different hosts. For example, a 3-tier web application may involve a webserver reverse proxying
+        to an application server, which in turn, accessing data on a database server.</p>
+      <p>Ideally, we want the development environment emulate the production environment as much as possible.</p>
+      <p>We will now demonstrate how to start-up and provision a virtual development environment with two
+        guest machines - one running an <span class="bold">nginx</span> webserver and another running a
+        <span class="bold">Python Flask</span> service. The <span class="bold">nginx</span> webserver
+        acts as a reverse proxy for the <span class="bold">Python Flask</span> service.</p>
+    </div>
+    <div id="para-div">
+      <p>An important point to keep in mind when dealing with multiple guest machines - networking using port
+        forwarding will not work. As each of the guest machines as well as the host machine need to communicate
+        with each other, we need to leverage private host networking. We will pick two unused IP addresses from
+        the private subnet <span class="bold">192.168.x.x</span> - <span class="hi-yellow">192.168.100.10</span>
+        for guest machine running <span class="bold">nginx</span> and <span class="hi-yellow">192.168.100.20</span>
+        for guest machine running <span class="bold">Python Flask</span> service.</p>
+    </div>
+    <div id="para-div">
+      <p>For <span class="bold">nginx</span> to acts as a reverse proxy, we need to make changes to the file
+        called <span class="hi-yellow">default</span> located in the directory
+        <span class="hi-yellow">/etc/nginx/sites-available/</span> as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>server {</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;listen 80 default_server;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;listen [::]:80 default_server ipv6only=on;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;root /usr/share/nginx/html;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;index index.html index.htm;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;location / {</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;try_files $uri $uri/ =404;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;}</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;location /app {</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;proxy_pass http://192.168.100.20:5000/;</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;}</p>
+      <p>}</p>
+    </div>
+    <div id="para-div">
+      <p>Modify the <span class="bold">Shell</span> script called <span class="bold">setup-web.sh</span>
+        in the current directory as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>#!/bin/bash</p>
+      <p>echo 'Ready to install NGINX .....'</p>
+      <p>agt-get update > /dev/null 2>&amp;1</p>
+      <p>apt-get install -y nginx</p>
+      <p>cp /vagrant/index.html /usr/share/nginx/html/</p>
+      <p>cp /vagrant/default /etc/nginx/sites-available/</p>
+      <p>/etc/init.d/nginx reload</p>
+      <p>echo 'Install and setup of NGINX completed !!!'</p>
+    </div>
+    <div id="para-div">
+      <p>Create a new <span class="bold">Shell</span> script called <span class="hi-yellow">setup-app.sh</span>
+        in the current directory as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>#!/bin/bash</p>
+      <p>echo 'Ready to install Flask .....'</p>
+      <p>agt-get update > /dev/null 2>&amp;1</p>
+      <p>apt-get install -y python-flask</p>
+      <p>mkdir /home/flask</p>
+      <p>cp /vagrant/MyFlaskApp.py /home/flask/</p>
+      <p>echo 'Install and setup Flask completed !!!'</p>
+      <p>python /home/flask/MyFlaskApp.py &amp;</p>
+      <p>echo 'Started the Flask service !!!'</p>
+    </div>
+    <div id="para-div">
+      <p>Create a simple <span class="bold">Python Flask</span> webservice script called
+        <span class="hi-yellow">MyFlaskApp.py</span> as shown below:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>MyFlaskApp.py</legend>
+    <pre>from flask import Flask
+
+app = Flask(__name__)
+
+txt = '''
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;title&gt;Flask Root&lt;/title&gt;
+    &lt;/head&gt;
+
+    &lt;style&gt;
+        h2 {
+            color: red;
+            font-style: bold;
+            text-align: center;
+        }
+    &lt;/style&gt;
+
+    &lt;body&gt;
+        &lt;br/&gt;
+        &lt;h2&gt;Welcome to Flask !!!&lt;/h2&gt;
+    &lt;/body&gt;
+&lt;/html&gt;
+'''
+
+@app.route('/')
+def index():
+    return txt
+
+if __name__ == '__main__':
+    app.run(host='192.168.100.20')</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Finally, modify the <span class="bold">Vagrantfile</span> in the current directory as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>Vagrant.configure(2) do |config|</p>
+      <p>&nbsp;&nbsp;config.vm.box = "ubuntu/trusty64"</p>
+      <p>&nbsp;&nbsp;config.vm.provider "virtualbox" do |vb|</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;vb.memory = "1024"</p>
+      <p>&nbsp;&nbsp;end</p>
+      <p>&nbsp;&nbsp;config.vm.define "app" do |app|</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;app.vm.hostname = 'node-app'</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;app.vm.network "private_network", ip: "192.168.100.20"</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;app.vm.provision "shell", path: "setup-app.sh"</p>
+      <p>&nbsp;&nbsp;end</p>
+      <p>&nbsp;&nbsp;config.vm.define "web" do |web|</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;web.vm.hostname = 'node-web'</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;web.vm.network "private_network", ip: "192.168.100.10"</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;web.vm.provision "shell", path: "setup-web.sh"</p>
+      <p>&nbsp;&nbsp;end</p>
+      <p>end</p>
+    </div>
+    <div id="para-div">
+      <p>Now, let us create and configure the multi-node virtual environment by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ vagrant up</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Bringing machine 'app' up with 'virtualbox' provider...
+Bringing machine 'web' up with 'virtualbox' provider...
+==> app: Importing base box 'ubuntu/trusty64'...
+==> app: Matching MAC address for NAT networking...
+==> app: Checking if box 'ubuntu/trusty64' is up to date...
+==> app: A newer version of the box 'ubuntu/trusty64' is available! You currently
+==> app: have version '20170110.0.0'. The latest is version '20170123.0.0'. Run
+==> app: `vagrant box update` to update.
+==> app: Setting the name of the VM: Vagrant_app_1485627550242_33702
+==> app: Clearing any previously set forwarded ports...
+==> app: Clearing any previously set network interfaces...
+==> app: Preparing network interfaces based on configuration...
+    app: Adapter 1: nat
+    app: Adapter 2: hostonly
+==> app: Forwarding ports...
+    app: 22 (guest) => 2222 (host) (adapter 1)
+==> app: Running 'pre-boot' VM customizations...
+==> app: Booting VM...
+==> app: Waiting for machine to boot. This may take a few minutes...
+    app: SSH address: 127.0.0.1:2222
+    app: SSH username: vagrant
+    app: SSH auth method: private key
+    app:
+    app: Vagrant insecure key detected. Vagrant will automatically replace
+    app: this with a newly generated keypair for better security.
+    app:
+    app: Inserting generated public key within guest...
+    app: Removing insecure key from the guest if it's present...
+    app: Key inserted! Disconnecting and reconnecting using new SSH key...
+==> app: Machine booted and ready!
+==> app: Checking for guest additions in VM...
+    app: The guest additions on this VM do not match the installed version of
+    app: VirtualBox! In most cases this is fine, but in rare cases it can
+    app: prevent things such as shared folders from working properly. If you see
+    app: shared folder errors, please make sure the guest additions within the
+    app: virtual machine match the version of VirtualBox you have installed on
+    app: your host and reload your VM.
+    app:
+    app: Guest Additions Version: 4.3.36
+    app: VirtualBox Version: 5.0
+==> app: Setting hostname...
+==> app: Configuring and enabling network interfaces...
+==> app: Mounting shared folders...
+    app: /vagrant => /home/bswamina/MyProjects/Vagrant
+==> app: Running provisioner: shell...
+    app: Running: /tmp/vagrant-shell20170128-8321-vtcc9a.sh
+==> app: stdin: is not a tty
+==> app: Ready to install Flask .....
+==> app: Reading package lists...
+==> app: Building dependency tree...
+==> app: Reading state information...
+==> app: The following extra packages will be installed:
+==> app:   python-blinker python-itsdangerous python-jinja2 python-markupsafe
+==> app:   python-pyinotify python-werkzeug
+==> app: Suggested packages:
+==> app:   python-flask-doc python-jinja2-doc python-pyinotify-doc ipython
+==> app:   python-genshi python-lxml python-greenlet python-redis python-pylibmc
+==> app:   python-memcache python-werkzeug-doc
+==> app: The following NEW packages will be installed:
+==> app:   python-blinker python-flask python-itsdangerous python-jinja2
+==> app:   python-markupsafe python-pyinotify python-werkzeug
+==> app: 0 upgraded, 7 newly installed, 0 to remove and 0 not upgraded.
+==> app: Need to get 529 kB of archives.
+==> app: After this operation, 2,987 kB of additional disk space will be used.
+==> app: Get:1 http://archive.ubuntu.com/ubuntu/ trusty/main python-blinker all 1.3.dfsg1-1ubuntu2 [29.8 kB]
+==> app: Get:2 http://archive.ubuntu.com/ubuntu/ trusty-updates/main python-werkzeug all 0.9.4+dfsg-1.1ubuntu2 [236 kB]
+==> app: Get:3 http://archive.ubuntu.com/ubuntu/ trusty/main python-markupsafe amd64 0.18-1build2 [14.3 kB]
+==> app: Get:4 http://archive.ubuntu.com/ubuntu/ trusty/main python-jinja2 all 2.7.2-2 [161 kB]
+==> app: Get:5 http://archive.ubuntu.com/ubuntu/ trusty/main python-itsdangerous all 0.22+dfsg1-1build1 [11.5 kB]
+==> app: Get:6 http://archive.ubuntu.com/ubuntu/ trusty/main python-flask all 0.10.1-2build1 [51.7 kB]
+==> app: Get:7 http://archive.ubuntu.com/ubuntu/ trusty/main python-pyinotify all 0.9.4-1build1 [24.5 kB]
+==> app: dpkg-preconfigure: unable to re-open stdin: No such file or directory
+==> app: Fetched 529 kB in 0s (556 kB/s)
+==> app: Selecting previously unselected package python-blinker.
+==> app: (Reading database ... 63025 files and directories currently installed.)
+==> app: Preparing to unpack .../python-blinker_1.3.dfsg1-1ubuntu2_all.deb ...
+==> app: Unpacking python-blinker (1.3.dfsg1-1ubuntu2) ...
+==> app: Selecting previously unselected package python-werkzeug.
+==> app: Preparing to unpack .../python-werkzeug_0.9.4+dfsg-1.1ubuntu2_all.deb ...
+==> app: Unpacking python-werkzeug (0.9.4+dfsg-1.1ubuntu2) ...
+==> app: Selecting previously unselected package python-markupsafe.
+==> app: Preparing to unpack .../python-markupsafe_0.18-1build2_amd64.deb ...
+==> app: Unpacking python-markupsafe (0.18-1build2) ...
+==> app: Selecting previously unselected package python-jinja2.
+==> app: Preparing to unpack .../python-jinja2_2.7.2-2_all.deb ...
+==> app: Unpacking python-jinja2 (2.7.2-2) ...
+==> app: Selecting previously unselected package python-itsdangerous.
+==> app: Preparing to unpack .../python-itsdangerous_0.22+dfsg1-1build1_all.deb ...
+==> app: Unpacking python-itsdangerous (0.22+dfsg1-1build1) ...
+==> app: Selecting previously unselected package python-flask.
+==> app: Preparing to unpack .../python-flask_0.10.1-2build1_all.deb ...
+==> app: Unpacking python-flask (0.10.1-2build1) ...
+==> app: Selecting previously unselected package python-pyinotify.
+==> app: Preparing to unpack .../python-pyinotify_0.9.4-1build1_all.deb ...
+==> app: Unpacking python-pyinotify (0.9.4-1build1) ...
+==> app: Setting up python-blinker (1.3.dfsg1-1ubuntu2) ...
+==> app: Setting up python-werkzeug (0.9.4+dfsg-1.1ubuntu2) ...
+==> app: Setting up python-markupsafe (0.18-1build2) ...
+==> app: Setting up python-jinja2 (2.7.2-2) ...
+==> app: Setting up python-itsdangerous (0.22+dfsg1-1build1) ...
+==> app: Setting up python-flask (0.10.1-2build1) ...
+==> app: Setting up python-pyinotify (0.9.4-1build1) ...
+==> app: Install and setup Flask completed !!!
+==> app: Started the Flask service !!!
+==> web: Importing base box 'ubuntu/trusty64'...
+==> web: Matching MAC address for NAT networking...
+==> web: Checking if box 'ubuntu/trusty64' is up to date...
+==> web: A newer version of the box 'ubuntu/trusty64' is available! You currently
+==> web: have version '20170110.0.0'. The latest is version '20170123.0.0'. Run
+==> web: `vagrant box update` to update.
+==> web: Setting the name of the VM: Vagrant_web_1485627602622_53522
+==> web: Clearing any previously set forwarded ports...
+==> web: Fixed port collision for 22 => 2222. Now on port 2200.
+==> web: Clearing any previously set network interfaces...
+==> web: Preparing network interfaces based on configuration...
+    web: Adapter 1: nat
+    web: Adapter 2: hostonly
+==> web: Forwarding ports...
+    web: 22 (guest) => 2200 (host) (adapter 1)
+==> web: Running 'pre-boot' VM customizations...
+==> web: Booting VM...
+==> web: Waiting for machine to boot. This may take a few minutes...
+    web: SSH address: 127.0.0.1:2200
+    web: SSH username: vagrant
+    web: SSH auth method: private key
+    web:
+    web: Vagrant insecure key detected. Vagrant will automatically replace
+    web: this with a newly generated keypair for better security.
+    web:
+    web: Inserting generated public key within guest...
+    web: Removing insecure key from the guest if it's present...
+    web: Key inserted! Disconnecting and reconnecting using new SSH key...
+==> web: Machine booted and ready!
+==> web: Checking for guest additions in VM...
+    web: The guest additions on this VM do not match the installed version of
+    web: VirtualBox! In most cases this is fine, but in rare cases it can
+    web: prevent things such as shared folders from working properly. If you see
+    web: shared folder errors, please make sure the guest additions within the
+    web: virtual machine match the version of VirtualBox you have installed on
+    web: your host and reload your VM.
+    web:
+    web: Guest Additions Version: 4.3.36
+    web: VirtualBox Version: 5.0
+==> web: Setting hostname...
+==> web: Configuring and enabling network interfaces...
+==> web: Mounting shared folders...
+    web: /vagrant => /home/bswamina/MyProjects/Vagrant
+==> web: Running provisioner: shell...
+    web: Running: /tmp/vagrant-shell20170128-8321-1fhn3xh.sh
+==> web: stdin: is not a tty
+==> web: Ready to install NGINX .....
+==> web: Reading package lists...
+==> web: Building dependency tree...
+==> web: Reading state information...
+==> web: The following extra packages will be installed:
+==> web:   libxslt1.1 nginx-common nginx-core
+==> web: Suggested packages:
+==> web:   fcgiwrap nginx-doc
+==> web: The following NEW packages will be installed:
+==> web:   libxslt1.1 nginx nginx-common nginx-core
+==> web: 0 upgraded, 4 newly installed, 0 to remove and 0 not upgraded.
+==> web: Need to get 494 kB of archives.
+==> web: After this operation, 1,798 kB of additional disk space will be used.
+==> web: Get:1 http://archive.ubuntu.com/ubuntu/ trusty/main libxslt1.1 amd64 1.1.28-2build1 [145 kB]
+==> web: Get:2 http://archive.ubuntu.com/ubuntu/ trusty-updates/main nginx-common all 1.4.6-1ubuntu3.7 [19.0 kB]
+==> web: Get:3 http://archive.ubuntu.com/ubuntu/ trusty-updates/main nginx-core amd64 1.4.6-1ubuntu3.7 [325 kB]
+==> web: Get:4 http://archive.ubuntu.com/ubuntu/ trusty-updates/main nginx all 1.4.6-1ubuntu3.7 [5,352 B]
+==> web: dpkg-preconfigure: unable to re-open stdin: No such file or directory
+==> web: Fetched 494 kB in 0s (659 kB/s)
+==> web: Selecting previously unselected package libxslt1.1:amd64.
+==> web: (Reading database ... 63025 files and directories currently installed.)
+==> web: Preparing to unpack .../libxslt1.1_1.1.28-2build1_amd64.deb ...
+==> web: Unpacking libxslt1.1:amd64 (1.1.28-2build1) ...
+==> web: Selecting previously unselected package nginx-common.
+==> web: Preparing to unpack .../nginx-common_1.4.6-1ubuntu3.7_all.deb ...
+==> web: Unpacking nginx-common (1.4.6-1ubuntu3.7) ...
+==> web: Selecting previously unselected package nginx-core.
+==> web: Preparing to unpack .../nginx-core_1.4.6-1ubuntu3.7_amd64.deb ...
+==> web: Unpacking nginx-core (1.4.6-1ubuntu3.7) ...
+==> web: Selecting previously unselected package nginx.
+==> web: Preparing to unpack .../nginx_1.4.6-1ubuntu3.7_all.deb ...
+==> web: Unpacking nginx (1.4.6-1ubuntu3.7) ...
+==> web: Processing triggers for ufw (0.34~rc-0ubuntu2) ...
+==> web: Processing triggers for ureadahead (0.100.0-16) ...
+==> web: Processing triggers for man-db (2.6.7.1-1ubuntu1) ...
+==> web: Setting up libxslt1.1:amd64 (1.1.28-2build1) ...
+==> web: Setting up nginx-common (1.4.6-1ubuntu3.7) ...
+==> web: Processing triggers for ufw (0.34~rc-0ubuntu2) ...
+==> web: Processing triggers for ureadahead (0.100.0-16) ...
+==> web: Setting up nginx-core (1.4.6-1ubuntu3.7) ...
+==> web: Setting up nginx (1.4.6-1ubuntu3.7) ...
+==> web: Processing triggers for libc-bin (2.19-0ubuntu6.9) ...
+==> web:  * Reloading nginx configuration nginx
+==> web:    ...done.
+==> web: Install and setup of NGINX completed !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>Launch a browser on the host machine and access the URL <span class="bold">http://192.168.100.10/app</span>,
+        we should the browser render as follows:</p>
+        <div id="img-outer-div"> <img alt="Browser 192.168.100.10" class="img-cls" src="./images/Vagrant-2.png" />
+          <div class="img-cap">Browser 192.168.100.10</div>
+        </div>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Hooray !!!</span> We have successfully demonstrated the automatic provisioning and
+        setup of multi-node virtual development environment using <span class="bold">Vagrant</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To login to the <span class="bold">VirtualBox</span> guest machine running <span class="bold">nginx</span>,
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ vagrant ssh web</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>Welcome to Ubuntu 14.04.5 LTS (GNU/Linux 3.13.0-107-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com/
+
+ System information disabled due to load higher than 1.0
+
+  Get cloud support with Ubuntu Advantage Cloud Guest:
+    http://www.ubuntu.com/business/services/cloud
+
+0 packages can be updated.
+0 updates are security updates.
+
+New release '16.04.1 LTS' available.
+Run 'do-release-upgrade' to upgrade to it.
+
+
+vagrant@node-web:~$</pre>
+    </div>
+    <div id="para-div">
+      <p>Similarly, to login to the <span class="bold">VirtualBox</span> guest machine running
+        <span class="bold">Python Flask</span> service, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ vagrant ssh app</p>
+    </div>
+    <div id="para-div">
+      <p>This concludes the topic on <span class="bold">Vagrant</span>.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="./Vagrant-1.html" target="_blank"><span class="bold">Introduction to Vagrant - Part 1</span></a></p>
+      <p><a href="https://www.vagrantup.com/docs/" target="_blank"><span class="bold">Official
+        Vagrant Documentation</span></a></p>
+    </div>
+  </body>
+</html>

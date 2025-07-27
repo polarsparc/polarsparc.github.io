@@ -1,0 +1,1440 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html><head>
+  <title>Quick Introduction to Java Persistence API (JPA)</title>
+
+  
+  
+  <link rel="stylesheet" type="text/css" href="../css/polarsparc-v1.0.css" />
+
+</head><body>
+<br />
+
+<div id="title-div">
+<p>Quick Introduction to Java Persistence API (JPA)</p>
+</div>
+
+<br />
+
+<table id="ad-table">
+
+  <tbody>
+    <tr>
+      <td class="author-td">Bhaskar S</td>
+      <td class="date-td">06/03/2012</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr class="line-hr" /> <br />
+
+<div id="section-div">
+<p>Introduction</p>
+</div>
+
+<div id="para-div">
+<p>Majority of the enterprise applications build using Java technology,
+an object-oriented programming platform, involves data persistence to a
+relational database in some way. The Java Persistence API (<span class="bold">JPA</span>) is a
+specification for persisting (storing and retrieving) application
+objects to relational store in a standard way. Note that <span class="bold">JPA</span> is just a
+specification and not an implementation. Hibernate, a popular open
+source persistence framework, implements the <span class="bold">JPA</span> specification.</p>
+</div>
+
+<div id="para-div">
+<p>For our quick introduction to <span class="bold">JPA</span>, we will need the following
+software:</p>
+<ul id="blue-sqr-ul">
+  <li><p>MySQL 5.x Database Server</p></li>
+  <li><p>Java SE 6 or above</p></li>
+  <li><p>Hibernate 4.x</p></li>
+  <li><p>MySQL 5.x JDBC Driver</p></li>
+</ul>
+</div>
+
+<br />
+
+<div id="section-div">
+<p>Hands-on with Java Persistence API (JPA)</p>
+</div>
+
+<div id="para-div">
+<p>Without much further ado, lets get started. In this example, we will
+show how to create, read, update, and delete a record in a MySQL
+database table using a Java POJO.</p>
+</div>
+
+<div id="para-div">
+<p>Create the <span class="bold">Contact</span> table in
+the MySQL database using the following
+SQL:</p>
+</div>
+
+<div id="cmd-div">
+<p>CREATE TABLE Contact (<br />
+&nbsp;&nbsp;&nbsp; contactId BIGINT NOT NULL PRIMARY KEY,<br />
+&nbsp;&nbsp;&nbsp; emailId VARCHAR(50) NOT NULL,<br />
+&nbsp;&nbsp;&nbsp; home VARCHAR(15),<br />
+&nbsp;&nbsp;&nbsp; mobile VARCHAR(15)<br />
+);</p>
+</div>
+
+<div id="para-div">
+<p>Create the corresponding <span class="bold">Contact01</span>
+class in Java as follows:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.1</legend>
+<pre>package com.polarsparc.jpa;<br /><br />public class Contact01 {<br />    private long contactId;<br />   <br />    private String emailId;<br />    private String home;<br />    private String mobile;<br />   <br />    public long getContactId() {<br />        return contactId;<br />    }<br />   <br />    public void setContactId(long contactId) {<br />        this.contactId = contactId;<br />    }<br /><br />    public String getEmailId() {<br />        return emailId;<br />    }<br /><br />    public void setEmailId(String emailId) {<br />        this.emailId = emailId;<br />    }<br /><br />    public String getHome() {<br />        return home;<br />    }<br /><br />    public void setHome(String home) {<br />        this.home = home;<br />    }<br /><br />    public String getMobile() {<br />        return mobile;<br />    }<br /><br />    public void setMobile(String mobile) {<br />        this.mobile = mobile;<br />    }<br />   <br />    @Override<br />    public String toString() {<br />        return "[" + emailId + ", " + home + ", " + mobile + "]";<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The <span class="bold">Contact01</span> class listed
+above is a regular Java POJO.</p>
+</div>
+
+<div id="para-div">
+<p>Next, let us create a Java class called <span class="bold">SimpleContactPersist</span> that will
+persist, query, update, and delete (CRUD) a Contact object using <span class="bold">JPA</span>:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.2</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import javax.persistence.EntityManagerFactory;<br />import javax.persistence.Persistence;<br />import javax.persistence.EntityManager;<br /><br />public class SimpleContactPersist {<br />    public static void main(String[] args) throws Exception {<br />        Contact01 c1 = new Contact01();<br />        c1.setContactId(1);<br />        c1.setEmailId("foo.bar@email.com");<br />        c1.setMobile("100-200-3000");<br />       <br />        EntityManagerFactory emf =<br />            Persistence.createEntityManagerFactory("PolarSparcJPA");<br />        EntityManager em = emf.createEntityManager();<br />       <br />        // Create a contact<br />        em.getTransaction().begin();<br />        em.persist(c1);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("CREATE: Contact %s\n", c1);<br /> <br />        // Retrieve the contact<br />        Contact01 c2 = em.find(Contact01.class, c1.getContactId());<br />       <br />        System.out.printf("READ: Contact: %s\n", c2);<br />       <br />        // Update the contact<br />        em.getTransaction().begin();<br />        c2.setHome("101-201-3001");<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("UPDATE: Contact: %s\n", c2);<br />       <br />        // Delete the contact<br />        em.getTransaction().begin();<br />        em.remove(c2);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("DELETE: Contact: %s\n", c2);<br />       <br />        em.close();<br />        emf.close();<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>We will need a <span class="bold">JPA</span> interface through which we can interact with the
+underlying database. This is where the <span class="hi-yellow">EntityManager</span>
+comes into play &#8211;
+it manages entity objects by providing methods for performing the CRUD
+operations.</p>
+</div>
+
+<div id="para-div">
+<p>How does one create an instance of the <span class="bold">EntityManager</span> ? This is where
+the <span class="hi-yellow">EntityManagerFactory</span>
+comes into play &#8211; it is a factory object for
+creating the <span class="bold">EntityManager</span>.</p>
+</div>
+
+<div id="para-div">
+<p>The next natural question is, how does one create an instance of the
+<span class="bold">EntityManagerFactory</span> ? This is
+where the bootstrap class called
+<span class="hi-yellow">Persistence</span>
+comes into play.</p>
+</div>
+
+<div id="para-div">
+<p>In the above class called <span class="bold">SimpleContactPersist</span>,
+we have not
+specified any information regarding the underlying database &#8211; where is
+that coming from ? That information is specified in the configuration
+file called <span class="hi-yellow">META-INF/persistence.xml</span>,
+which has to be in the classpath
+for the <span class="bold">JPA</span> bootstrap class <span class="bold">Persistence</span>
+to load and use during
+initialization.</p>
+</div>
+
+<div id="para-div">
+<p><span class="note">NOTE</span> :: The configuration file <span class="bold">persistence.xml</span> has to be in the
+directory <span class="bold">META-INF</span></p>
+</div>
+
+<div id="para-div">
+<p>The following is our <span class="bold">META-INF/persistence.xml</span>
+file:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.3</legend>
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;<br /><br />&lt;persistence version="1.0"<br />             xmlns="http://java.sun.com/xml/ns/persistence"<br />             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"<br />             xsi:schemaLocation="http://java.sun.com/xml/ns/persistence<br />                 http://java.sun.com/xml/ns/persistence/persistence_1_0.xsd"&gt;<br />            <br />    &lt;persistence-unit name="PolarSparcJPA" transaction-type="RESOURCE_LOCAL"&gt;<br />        &lt;provider&gt;org.hibernate.ejb.HibernatePersistence&lt;/provider&gt;<br />   <br />        &lt;properties&gt;<br />            &lt;property name="hibernate.show_sql" value="true" /&gt;<br />          <br />            &lt;property name="hibernate.dialect"<br />                value="org.hibernate.dialect.MySQL5Dialect" /&gt;<br />           <br />            &lt;property name="hibernate.connection.driver_class"<br />                value="com.mysql.jdbc.Driver" /&gt;<br />            &lt;property name="hibernate.connection.url"<br />                value="jdbc:mysql://localhost:3306/mydb" /&gt;<br />            &lt;property name="hibernate.connection.username" value="****" /&gt;<br />            &lt;property name="hibernate.connection.password" value="****" /&gt;<br />        &lt;/properties&gt;<br />    &lt;/persistence-unit&gt;<br />&lt;/persistence&gt;<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>Each instance of <span class="bold">EntityManagerFactory</span>
+is associated with a persistence-unit. A persistence-unit has a name
+and identifies the following pieces of information:</p>
+<ul id="blue-sqr-ul">
+  <li><p>JPA implementation provider (Hibernate in our example)</p></li>
+  <li><p>Database connection properties (MySQL in our example)</p></li>
+  <li><p>Java entity classes managed (Member class in our example)</p></li>
+</ul>
+</div>
+
+<div id="para-div">
+<p>In our example, we have named our persistence-unit &#8220;<span class="bold">PolarSparcJPA</span>&#8221;. In addition, we have
+specified the value for transaction-type attribute to be &#8220;<span class="bold">RESOURCE_LOCAL</span>&#8221; which indicates that
+the EntityManager is responsible for managing the transactions. In
+other words, we will explicitly manage transactions in the code.</p>
+</div>
+
+<div id="para-div">
+<p>There is one more piece of the <span class="bold">JPA</span> puzzle missing - we have not
+specified any information on how the <span class="bold">Contact01</span>
+object maps to the underlying database table named <span class="bold">Contact</span>. That piece of the
+information is specified in the object-relational mapping file called <span class="hi-yellow">META-INF/orm.xml</span>,
+which has to be in the classpath for JPA to load and use during runtime.</p>
+</div>
+
+<div id="para-div">
+<p>The following is our <span class="bold">META-INF/orm.xml</span>
+file:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.4</legend>
+<pre>&lt;?xml version="1.0" encoding="UTF-8" ?&gt;<br /><br />&lt;entity-mappings version="2.0"<br />                 xmlns="http://java.sun.com/xml/ns/persistence/orm"<br />                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"<br />                 xsi:schemaLocation="http://java.sun.com/xml/ns/persistence/orm<br />                     http://java.sun.com/xml/ns/persistence/orm_1_0.xsd"&gt;<br />    <br />    &lt;entity class="com.polarsparc.jpa.Contact01" name="Contact01"&gt;<br /><br />        &lt;table name="Contact"/&gt;<br />       <br />        &lt;attributes&gt;<br />            &lt;id name="contactId"&gt;<br />                &lt;column name="contactId" /&gt;<br />            &lt;/id&gt;<br />           <br />            &lt;basic name="emailId"&gt;<br />                &lt;column name="emailId" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="home"&gt;<br />                &lt;column name="home" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="mobile"&gt;<br />                &lt;column name="mobile" /&gt;<br />            &lt;/basic&gt;<br />        &lt;/attributes&gt;<br />    &lt;/entity&gt;       <br />  <br />&lt;/entity-mappings&gt;<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p><span class="note">NOTE</span> :: The configuration file orm.xml has
+to be in the directory META-INF</p>
+</div>
+
+<div id="para-div">
+<p>The <entity> element specifies a Java POJO to be an entity that can
+be persisted to a database. In our example, the Java POJO <span class="bold">Contact01</span> is defined as a
+persistence entity.</entity></p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">&lt;table&gt;</span>
+element specifies the underlying database table to which an entity is
+mapped. In our example, the Java POJO <span class="bold">Contact01</span>
+is mapped to the database table named <span class="bold">Contact</span>.
+</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">&lt;id&gt;</span>
+element specifies the primary key identifier for an
+entity. In our example, for the Java POJO <span class="bold">Contact01</span>, the data member
+<span class="bold">contactId</span> maps to the primary
+key column <span class="bold">contactId</span> of the
+table <span class="bold">Contact</span>.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">&lt;column&gt;</span>
+element specifies the name of the database column in
+the underlying database table that the Java POJO data member
+corresponds to.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">&lt;basic&gt;</span>
+element maps a non identifier data member of the Java
+POJO to a non-key database column in the underlying database table.</p>
+</div>
+
+<div id="para-div">
+<p>In order to test our example, let us create a script called
+<span class="bold">bin/contact.sh</span> as follows:</p>
+</div>
+
+<div id="cmd-div">
+<p>CP=.:build/classes:./META-INF<br />
+<br />
+for jar in $HOME/Products/hibernate-4.1.3/lib/required/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/hibernate-4.1.3/lib/jpa/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/mysql-connector-java-5.1.20/*.jar<br />
+do<br />
+&nbsp;&nbsp;&nbsp; CP=$CP:$jar<br />
+done<br />
+<br />
+java -cp $CP com.polarsparc.jpa.SimpleContactPersist</p>
+</div>
+
+<div id="para-div">
+<p>If we run the script <span class="bold">bin/contact.sh</span>,
+we see the following output:</p>
+</div>
+
+<div id="out-div">
+<h4>Output.1</h4>
+<pre>Jun 03, 2012 2:14:12 PM org.hibernate.annotations.common.Version &lt;clinit&gt;<br />INFO: HCANN000001: Hibernate Commons Annotations {4.0.1.Final}<br />Jun 03, 2012 2:14:12 PM org.hibernate.Version logVersion<br />INFO: HHH000412: Hibernate Core {4.1.3.Final}<br />Jun 03, 2012 2:14:12 PM org.hibernate.cfg.Environment &lt;clinit&gt;<br />INFO: HHH000206: hibernate.properties not found<br />Jun 03, 2012 2:14:12 PM org.hibernate.cfg.Environment buildBytecodeProvider<br />INFO: HHH000021: Bytecode provider name : javassist<br />Jun 03, 2012 2:14:12 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000402: Using Hibernate built-in connection pool (not for production use!)<br />Jun 03, 2012 2:14:12 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000115: Hibernate connection pool size: 20<br />Jun 03, 2012 2:14:12 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000006: Autocommit mode: true<br />Jun 03, 2012 2:14:12 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000401: using driver [com.mysql.jdbc.Driver] at URL [jdbc:mysql://localhost:3306/mydb]<br />Jun 03, 2012 2:14:12 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000046: Connection properties: {user=****, password=****, autocommit=true, release_mode=auto}<br />Jun 03, 2012 2:14:13 PM org.hibernate.dialect.Dialect &lt;init&gt;<br />INFO: HHH000400: Using dialect: org.hibernate.dialect.MySQL5Dialect<br />Jun 03, 2012 2:14:13 PM org.hibernate.engine.transaction.internal.TransactionFactoryInitiator initiateService<br />INFO: HHH000268: Transaction strategy: org.hibernate.engine.transaction.internal.jdbc.JdbcTransactionFactory<br />Jun 03, 2012 2:14:13 PM org.hibernate.hql.internal.ast.ASTQueryTranslatorFactory &lt;init&gt;<br />INFO: HHH000397: Using ASTQueryTranslatorFactory<br />Hibernate: insert into Contact (emailId, home, mobile, contactId) values (?, ?, ?, ?)<br />CREATE: Contact [foo.bar@email.com, null, 100-200-3000]<br />READ: Contact: [foo.bar@email.com, null, 100-200-3000]<br />Hibernate: update Contact set emailId=?, home=?, mobile=? where contactId=?<br />UPDATE: Contact: [foo.bar@email.com, 101-201-3001, 100-200-3000]<br />Hibernate: delete from Contact where contactId=?<br />DELETE: Contact: [foo.bar@email.com, 101-201-3001, 100-200-3000]<br />Jun 03, 2012 2:14:13 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl stop<br />INFO: HHH000030: Cleaning up connection pool [jdbc:mysql://localhost:3306/mydb]</pre>
+</div>
+
+<div id="para-div">
+<p>We have successfully demonstrated our first example on object
+persistence using <span class="bold">JPA</span>.</p>
+</div>
+
+<div id="para-div">
+<p>In the example above, we used the mapping XML <span class="bold">META-INF/orm.xml</span> to map our Java
+POJO <span class="bold">Contact01</span> to the database
+table <span class="bold">Contact</span>. We can also
+leverage Java Annotations in the POJO to map the object to an
+underlying database table and do away with the mapping XML <span class="bold">META-INF/orm.xml</span>. Let us explore
+that option in the following example.</p>
+</div>
+
+<div id="para-div">
+<p>Create the <span class="bold">Member</span> table in
+the MySQL database using the following
+SQL:</p>
+</div>
+
+<div id="cmd-div">
+<p>CREATE TABLE Member (<br />
+&nbsp;&nbsp;&nbsp; memberId BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,<br />
+&nbsp;&nbsp;&nbsp; firstName VARCHAR(30) NOT NULL,<br />
+&nbsp;&nbsp;&nbsp; lastName VARCHAR(30) NOT NULL,<br />
+&nbsp;&nbsp;&nbsp; zip VARCHAR(15)<br />
+);</p>
+</div>
+
+<div id="para-div">
+<p>Create the corresponding <span class="bold">Member01</span>
+class in Java as follows:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.5</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import javax.persistence.Column;<br />import javax.persistence.Entity;<br />import javax.persistence.Id;<br />import javax.persistence.GeneratedValue;<br />import javax.persistence.Table;<br /><br />@Entity<br />@Table(name="Member")<br />public class Member01 {<br />    @Id<br />    @GeneratedValue<br />    @Column(name="memberId")<br />    private long memberId;<br />   <br />    @Column(name="firstName")<br />    private String firstName;<br />   <br />    @Column(name="lastName")<br />    private String lastName;<br />   <br />    @Column(name="zip")<br />    private String zip;<br />   <br />    public long getMemberId() {<br />        return memberId;<br />    }<br /><br />    public String getFirstName() {<br />        return firstName;<br />    }<br /><br />    public void setFirstName(String firstName) {<br />        this.firstName = firstName;<br />    }<br /><br />    public String getLastName() {<br />        return lastName;<br />    }<br /><br />    public void setLastName(String lastName) {<br />        this.lastName = lastName;<br />    }<br /><br />    public String getZip() {<br />        return zip;<br />    }<br /><br />    public void setZip(String zip) {<br />        this.zip = zip;<br />    }<br />   <br />    @Override<br />    public String toString() {<br />        return "[" + firstName + ", " + lastName + ", " + zip + "]";<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The <span class="bold">Member01</span> class listed
+above is a regular Java POJO except for a few annotations.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">@Entity</span>
+annotation is specified at the class level and indicates that the <span class="bold">Member01</span> class is an entity which
+can be persisted to the database.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">@Table</span>
+annotation is specified at the class level and allows us to map the
+Java entity to a particular database table. In our example, we map the <span class="bold">Member01</span> entity to the <span class="bold">Member</span> database table.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">@Id</span>
+annotation is specified at the field level and identifies the primary
+key field of an entity. In the <span class="bold">Member01</span>
+class, the <span class="bold">@Id</span> annotation is
+specified for the <span class="bold">memberId</span>
+field which is the corresponding primary key column in the database
+table <span class="bold">Member</span>.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">@GeneratedValue</span>
+annotation is specified at the field level and indicates that the value
+for the field is generated from the database on persistence. In the <span class="bold">Member01</span> class, the <span class="bold">@GeneratedValue</span> annotation is
+specified for the <span class="bold">memberId</span>
+field. Notice that the primary key column <span class="bold">memberId</span> is an <span class="bold">auto_incremented</span> database column.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">@Column</span>
+annotation is specified at the field level and allows us to map a Java
+entity field to a particular database column. In our example, we map
+the <span class="bold">Member01</span> entity fields <span class="bold">memberId</span>, <span class="bold">firstName</span>, <span class="bold">lastName</span>, and <span class="bold">zip</span> to the columns of <span class="bold">Member</span> database table <span class="bold">memberId</span>, <span class="bold">firstName</span>, <span class="bold">lastName</span>, and <span class="bold">zip</span> respectively.</p>
+</div>
+
+<div id="para-div">
+<p>Next, create a Java class called <span class="bold">SimpleMemberPersist</span>
+that will persist, query, update, and delete (CRUD) a Member object
+using <span class="bold">JPA</span>:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.6</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import javax.persistence.EntityManagerFactory;<br />import javax.persistence.Persistence;<br />import javax.persistence.EntityManager;<br /><br />public class SimpleMemberPersist {<br />    public static void main(String[] args) throws Exception {<br />        Member01 m1 = new Member01();<br />        m1.setFirstName("Foo");<br />        m1.setLastName("Bar");<br />        m1.setZip("10001");<br />       <br />        EntityManagerFactory emf =<br />            Persistence.createEntityManagerFactory("PolarSparcJPA");<br />        EntityManager em = emf.createEntityManager();<br />       <br />        // Create a member<br />        em.getTransaction().begin();<br />        em.persist(m1);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("CREATE: Member %d, %s\n", m1.getMemberId(), m1);<br /> <br />        // Retrieve the member<br />        Member01 m2 = em.find(Member01.class, m1.getMemberId());<br />       <br />        System.out.printf("READ: Member: %s\n", m2);<br />       <br />        // Update the member<br />        em.getTransaction().begin();<br />        m2.setZip("10005");<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("UPDATE: Member: %s\n", m2);<br />       <br />        // Delete the member<br />        em.getTransaction().begin();<br />        em.remove(m2);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("DELETE: Member: %s\n", m2);<br />       <br />        em.close();<br />        emf.close();<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>In order to test our example, let us create a script called <span class="bold">bin/member.sh</span> as follows:</p>
+</div>
+
+<div id="cmd-div">
+<p>CP=.:build/classes:./META-INF<br />
+<br />
+for jar in $HOME/Products/hibernate-4.1.3/lib/required/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/hibernate-4.1.3/lib/jpa/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/mysql-connector-java-5.1.20/*.jar<br />
+do<br />
+&nbsp;&nbsp;&nbsp; CP=$CP:$jar<br />
+done<br />
+<br />
+java -cp $CP com.polarsparc.jpa.SimpleMemberPersist</p>
+</div>
+
+<div id="para-div">
+<p>If we run the script <span class="bold">bin/member.sh</span>,
+we see the following output:</p>
+</div>
+
+<div id="out-div">
+<h4>Output.2</h4>
+<pre>Jun 03, 2012 8:20:53 PM org.hibernate.annotations.common.Version &lt;clinit&gt;<br />INFO: HCANN000001: Hibernate Commons Annotations {4.0.1.Final}<br />Jun 03, 2012 8:20:53 PM org.hibernate.Version logVersion<br />INFO: HHH000412: Hibernate Core {4.1.3.Final}<br />Jun 03, 2012 8:20:53 PM org.hibernate.cfg.Environment &lt;clinit&gt;<br />INFO: HHH000206: hibernate.properties not found<br />Jun 03, 2012 8:20:53 PM org.hibernate.cfg.Environment buildBytecodeProvider<br />INFO: HHH000021: Bytecode provider name : javassist<br />Jun 03, 2012 8:20:54 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000402: Using Hibernate built-in connection pool (not for production use!)<br />Jun 03, 2012 8:20:54 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000115: Hibernate connection pool size: 20<br />Jun 03, 2012 8:20:54 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000006: Autocommit mode: true<br />Jun 03, 2012 8:20:54 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000401: using driver [com.mysql.jdbc.Driver] at URL [jdbc:mysql://localhost:3306/mydb]<br />Jun 03, 2012 8:20:54 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000046: Connection properties: {user=****, password=****, autocommit=true, release_mode=auto}<br />Jun 03, 2012 8:20:54 PM org.hibernate.dialect.Dialect &lt;init&gt;<br />INFO: HHH000400: Using dialect: org.hibernate.dialect.MySQL5Dialect<br />Jun 03, 2012 8:20:54 PM org.hibernate.engine.transaction.internal.TransactionFactoryInitiator initiateService<br />INFO: HHH000268: Transaction strategy: org.hibernate.engine.transaction.internal.jdbc.JdbcTransactionFactory<br />Jun 03, 2012 8:20:54 PM org.hibernate.hql.internal.ast.ASTQueryTranslatorFactory &lt;init&gt;<br />INFO: HHH000397: Using ASTQueryTranslatorFactory<br />Hibernate: insert into Member (firstName, lastName, zip) values (?, ?, ?)<br />CREATE: Member 1, [Foo, Bar, 10001]<br />READ: Member: [Foo, Bar, 10001]<br />Hibernate: update Member set firstName=?, lastName=?, zip=? where memberId=?<br />UPDATE: Member: [Foo, Bar, 10005]<br />Hibernate: delete from Member where memberId=?<br />DELETE: Member: [Foo, Bar, 10005]<br />Jun 03, 2012 8:20:55 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl stop<br />INFO: HHH000030: Cleaning up connection pool [jdbc:mysql://localhost:3306/mydb]</pre>
+</div>
+
+<div id="para-div">
+<p>We have successfully demonstrated an example of object persistence
+using <span class="bold">JPA</span> annotations.</p>
+</div>
+
+<div id="para-div">
+<p>Let us move on to explore how to handle entity relationships using
+<span class="bold">JPA</span>.</p>
+</div>
+
+<div id="para-div">
+<p>We will look at one-to-one relationship between a <span class="bold">Member</span> entity and a <span class="bold">Contact</span> entity. Every member has an
+associated contact information. In relational database, the one-to-one
+association between two entities is established with a join column.</p>
+</div>
+
+<div id="para-div">
+<p>The following illustration depicts the one-to-one relationship
+between a <span class="bold">Member</span> entity and a <span class="bold">Contact</span> entity:</p>
+</div>
+
+<div id="img-outer-div"> <img class="img-cls" src="./images/Member_Contact_01.png" alt="Member_Contact_01 Image" />
+<div class="img-cap">Figure.1</div>
+</div>
+
+<div id="para-div">
+<p>Drop and create the modified <span class="bold">Member</span>
+table in the MySQL database using the following SQL:</p>
+</div>
+
+<div id="cmd-div">
+<p>CREATE TABLE Member (<br />
+&nbsp;&nbsp;&nbsp; memberId BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,<br />
+&nbsp;&nbsp;&nbsp; firstName VARCHAR(30) NOT NULL,<br />
+&nbsp;&nbsp;&nbsp; lastName VARCHAR(30) NOT NULL,<br />
+&nbsp;&nbsp;&nbsp; zip VARCHAR(15)<br />
+);</p>
+</div>
+
+<div id="para-div">
+<p>We will demonstrate the one-to-one relationship between the <span class="bold">Member</span> entity and the <span class="bold">Contact</span> entity using the two
+approaches: XML mapping file (<span class="bold">META-INF/orm.xml</span>)
+and JPA Annotations.</p>
+</div>
+
+<div id="para-div">
+<p>Let us start with the XML mapping file (<span class="bold">META-INF/orm.xml</span>) approach.</p>
+</div>
+
+<div id="para-div">
+<p>Create the corresponding <span class="bold">Member02</span>
+class in Java as follows:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.7</legend>
+<pre>package com.polarsparc.jpa;<br /><br />public class Member02 {<br />    private long memberId;<br />   <br />    private String firstName;<br />    private String lastName;<br />    private String zip;<br />   <br />    private Contact01 contact;<br />   <br />    public long getMemberId() {<br />        return memberId;<br />    }<br />   <br />    public void setMemberId(long memberId) {<br />        this.memberId = memberId;<br />    }<br /><br />    public String getFirstName() {<br />        return firstName;<br />    }<br /><br />    public void setFirstName(String firstName) {<br />        this.firstName = firstName;<br />    }<br /><br />    public String getLastName() {<br />        return lastName;<br />    }<br /><br />    public void setLastName(String lastName) {<br />        this.lastName = lastName;<br />    }<br /><br />    public String getZip() {<br />        return zip;<br />    }<br /><br />    public void setZip(String zip) {<br />        this.zip = zip;<br />    }<br /><br />    public Contact01 getContact() {<br />        return contact;<br />    }<br /><br />    public void setContact(Contact01 contact) {<br />        this.contact = contact;<br />    }<br />   <br />    @Override<br />    public String toString() {<br />        return "[" + firstName + ", " + lastName + ", " + zip + ", &lt;" + contact + "&gt;]";<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The <span class="bold">Member02</span> class listed
+above is a regular Java POJO.</p>
+</div>
+
+<div id="para-div">
+<p>Next, we need to modify the object-relational mapping file <span class="bold">META-INF/orm.xml</span> to specify how the <span class="bold">Member02</span> object maps to the
+underlying database table named <span class="bold">Member</span>
+as well as to specify the one-to-one entity relationship between the <span class="bold">Member</span> entity and the <span class="bold">Contact</span> entity.</p>
+</div>
+
+<div id="para-div">
+<p>The following is our <span class="bold">META-INF/orm.xml</span>
+file:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.8</legend>
+<pre>&lt;?xml version="1.0" encoding="UTF-8" ?&gt;<br /><br />&lt;entity-mappings version="2.0"<br />                 xmlns="http://java.sun.com/xml/ns/persistence/orm"<br />                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"<br />                 xsi:schemaLocation="http://java.sun.com/xml/ns/persistence/orm<br />                     http://java.sun.com/xml/ns/persistence/orm_1_0.xsd"&gt;<br />    <br />    &lt;entity class="com.polarsparc.jpa.Contact01" name="Contact01"&gt;<br />        &lt;table name="Contact"/&gt;<br />       <br />        &lt;attributes&gt;<br />            &lt;id name="contactId"&gt;<br />                &lt;column name="contactId" /&gt;<br />            &lt;/id&gt;<br />           <br />            &lt;basic name="emailId"&gt;<br />                &lt;column name="emailId" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="home"&gt;<br />                &lt;column name="home" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="mobile"&gt;<br />                &lt;column name="mobile" /&gt;<br />            &lt;/basic&gt;<br />        &lt;/attributes&gt;<br />    &lt;/entity&gt;       <br />    <br />    &lt;entity class="com.polarsparc.jpa.Member02" name="Member02"&gt;<br />        &lt;table name="Member"/&gt;<br />       <br />        &lt;attributes&gt;<br />            &lt;id name="memberId"&gt;<br />                &lt;column name="memberId" /&gt;<br />                &lt;generated-value strategy="AUTO" /&gt;<br />            &lt;/id&gt;<br />           <br />            &lt;basic name="firstName"&gt;<br />                &lt;column name="firstName" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="lastName"&gt;<br />                &lt;column name="lastName" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="zip"&gt;<br />                &lt;column name="zip" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;one-to-one name="contact"&gt;<br />                &lt;join-column name="memberContactId" /&gt;<br />                &lt;cascade&gt;<br />                    &lt;cascade-all /&gt;<br />                &lt;/cascade&gt;<br />            &lt;/one-to-one&gt;<br />        &lt;/attributes&gt;<br />    &lt;/entity&gt;       <br />  <br />&lt;/entity-mappings&gt;<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">&lt;generated-value&gt;</span>
+element indicates that the value for the field is generated from the
+database on persistence.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">&lt;one-to-one&gt;</span>
+element specifies the one-to-one association between the <span class="bold">Member</span> entity and the <span class="bold">Contact</span> entity.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="bold">&lt;join-column&gt;</span>
+element indicates the foreign key column.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">&lt;cascade&gt;</span>
+element with <span class="hi-yellow">&lt;cascade-all&gt;</span>
+indicates that operations should automatically be cascaded across
+relationships, which in our case is between the <span class="bold">Member</span> and <span class="bold">Contact</span> entities.</p>
+</div>
+
+<div id="para-div">
+<p>Next, create a Java class called <span class="bold">MemberContactPersist01</span>
+that will persist, query, update, and delete (CRUD) both the Member and
+Contact objects using <span class="bold">JPA</span>:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.9</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import javax.persistence.EntityManagerFactory;<br />import javax.persistence.Persistence;<br />import javax.persistence.EntityManager;<br /><br />public class MemberContactPersist01 {<br />    public static void main(String[] args) throws Exception {<br />        Contact01 c1 = new Contact01();<br />        c1.setContactId(1);<br />        c1.setEmailId("foo.bar@email.com");<br />        c1.setMobile("100-200-3000");<br />       <br />        Member02 m1 = new Member02();<br />        m1.setFirstName("Foo");<br />        m1.setLastName("Bar");<br />        m1.setZip("10001");<br />        m1.setContact(c1);<br />       <br />        EntityManagerFactory emf =<br />            Persistence.createEntityManagerFactory("PolarSparcJPA");<br />        EntityManager em = emf.createEntityManager();<br />       <br />        // Create a member and contact<br />        em.getTransaction().begin();<br />        em.persist(m1);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("CREATE: Member+Contact %d, %s\n", m1.getMemberId(), m1);<br /> <br />        // Retrieve the member and contact<br />        Member02 m2 = em.find(Member02.class, m1.getMemberId());<br />       <br />        System.out.printf("READ: Member+Contact: %s\n", m2);<br />       <br />        // Update the member and contact<br />        em.getTransaction().begin();<br />        m2.setZip("10005");<br />        m2.getContact().setHome("101-201-3001");<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("UPDATE: Member+Contact: %s\n", m2);<br />       <br />        // Delete the member and contact<br />        em.getTransaction().begin();<br />        em.remove(m2);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("DELETE: Member+Contact: %s\n", m2);<br />       <br />        em.close();<br />        emf.close();<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>In order to test our example, let us create a script called <span class="bold">bin/memcon01.sh</span> as follows:</p>
+</div>
+
+<div id="cmd-div">
+<p>CP=.:build/classes:./META-INF<br />
+<br />
+for jar in $HOME/Products/hibernate-4.1.3/lib/required/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/hibernate-4.1.3/lib/jpa/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/mysql-connector-java-5.1.20/*.jar<br />
+do<br />
+&nbsp;&nbsp;&nbsp; CP=$CP:$jar<br />
+done<br />
+<br />
+java -cp $CP com.polarsparc.jpa.MemberContactPersist01</p>
+</div>
+
+<div id="para-div">
+<p>If we run the script <span class="bold">bin/memcon01.sh</span>,
+we see the following output:</p>
+</div>
+
+<div id="out-div">
+<h4>Output.3</h4>
+<pre>Jun 10, 2012 1:07:41 PM org.hibernate.annotations.common.Version &lt;clinit&gt;<br />INFO: HCANN000001: Hibernate Commons Annotations {4.0.1.Final}<br />Jun 10, 2012 1:07:41 PM org.hibernate.Version logVersion<br />INFO: HHH000412: Hibernate Core {4.1.3.Final}<br />Jun 10, 2012 1:07:41 PM org.hibernate.cfg.Environment &lt;clinit&gt;<br />INFO: HHH000206: hibernate.properties not found<br />Jun 10, 2012 1:07:41 PM org.hibernate.cfg.Environment buildBytecodeProvider<br />INFO: HHH000021: Bytecode provider name : javassist<br />Jun 10, 2012 1:07:42 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000402: Using Hibernate built-in connection pool (not for production use!)<br />Jun 10, 2012 1:07:42 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000115: Hibernate connection pool size: 20<br />Jun 10, 2012 1:07:42 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000006: Autocommit mode: true<br />Jun 10, 2012 1:07:42 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000401: using driver [com.mysql.jdbc.Driver] at URL [jdbc:mysql://localhost:3306/mydb]<br />Jun 10, 2012 1:07:42 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000046: Connection properties: {user=****, password=****, autocommit=true, release_mode=auto}<br />Jun 10, 2012 1:07:42 PM org.hibernate.dialect.Dialect &lt;init&gt;<br />INFO: HHH000400: Using dialect: org.hibernate.dialect.MySQL5Dialect<br />Jun 10, 2012 1:07:42 PM org.hibernate.engine.transaction.internal.TransactionFactoryInitiator initiateService<br />INFO: HHH000268: Transaction strategy: org.hibernate.engine.transaction.internal.jdbc.JdbcTransactionFactory<br />Jun 10, 2012 1:07:42 PM org.hibernate.hql.internal.ast.ASTQueryTranslatorFactory &lt;init&gt;<br />INFO: HHH000397: Using ASTQueryTranslatorFactory<br />Hibernate: insert into Contact (emailId, home, mobile, contactId) values (?, ?, ?, ?)<br />Hibernate: insert into Member (memberContactId, firstName, lastName, zip) values (?, ?, ?, ?)<br />CREATE: Member+Contact 6, [Foo, Bar, 10001, &lt;[foo.bar@email.com, null, 100-200-3000]&gt;]<br />READ: Member+Contact: [Foo, Bar, 10001, &lt;[foo.bar@email.com, null, 100-200-3000]&gt;]<br />Hibernate: update Member set memberContactId=?, firstName=?, lastName=?, zip=? where memberId=?<br />Hibernate: update Contact set emailId=?, home=?, mobile=? where contactId=?<br />UPDATE: Member+Contact: [Foo, Bar, 10005, &lt;[foo.bar@email.com, 101-201-3001, 100-200-3000]&gt;]<br />Hibernate: delete from Member where memberId=?<br />Hibernate: delete from Contact where contactId=?<br />DELETE: Member+Contact: [Foo, Bar, 10005, &lt;[foo.bar@email.com, 101-201-3001, 100-200-3000]&gt;]<br />Jun 10, 2012 1:07:43 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl stop<br />INFO: HHH000030: Cleaning up connection pool [jdbc:mysql://localhost:3306/mydb]</pre>
+</div>
+
+<div id="para-div">
+<p><span class="caution">CAUTION</span> :: If we omit the <span class="bold">&lt;cascade-all&gt;</span> element, we will
+encounter the following exception: <span class="error">Caused by:
+java.lang.IllegalStateException:
+org.hibernate.TransientPropertyValueException: object references an
+unsaved transient instance - save the transient instance before
+flushing: com.polarsparc.jpa.Member.contact -&gt;
+com.polarsparc.jpa.Contact</span></p>
+</div>
+
+<div id="para-div">
+<p>We have successfully demonstrated an example for one-to-one
+relationship using the XML mapping file approach in <span class="bold">JPA</span>.</p>
+</div>
+
+<div id="para-div">
+<p>Now let us demonstrate the same example using the <span class="bold">JPA</span> Annotations
+approach.</p>
+</div>
+
+<div id="para-div">
+<p>Create the corresponding <span class="bold">Member03</span>
+class in Java as follows:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.10</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import javax.persistence.Column;<br />import javax.persistence.Entity;<br />import javax.persistence.Id;<br />import javax.persistence.GeneratedValue;<br />import javax.persistence.Table;<br />import javax.persistence.OneToOne;<br />import javax.persistence.CascadeType;<br />import javax.persistence.JoinColumn;<br /><br />@Entity<br />@Table(name="Member")<br />public class Member03 {<br />    @Id<br />    @GeneratedValue<br />    @Column(name="memberId")<br />    private long memberId;<br />   <br />    @Column(name="firstName")<br />    private String firstName;<br />   <br />    @Column(name="lastName")<br />    private String lastName;<br />   <br />    @Column(name="zip")<br />    private String zip;<br /><br />    @OneToOne(cascade={CascadeType.ALL})<br />    @JoinColumn(name="memberContactId")<br />    private Contact01 contact;<br />   <br />    public long getMemberId() {<br />        return memberId;<br />    }<br /><br />    public String getFirstName() {<br />        return firstName;<br />    }<br /><br />    public void setFirstName(String firstName) {<br />        this.firstName = firstName;<br />    }<br /><br />    public String getLastName() {<br />        return lastName;<br />    }<br /><br />    public void setLastName(String lastName) {<br />        this.lastName = lastName;<br />    }<br /><br />    public String getZip() {<br />        return zip;<br />    }<br /><br />    public void setZip(String zip) {<br />        this.zip = zip;<br />    }<br /><br />    public Contact01 getContact() {<br />        return contact;<br />    }<br /><br />    public void setContact(Contact01 contact) {<br />        this.contact = contact;<br />    }<br />   <br />    @Override<br />    public String toString() {<br />        return "[" + firstName + ", " + lastName + ", " + zip + ", &lt;" + contact + "&gt;]";<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The new <span class="bold">Member03</span> class
+listed above introduces two new annotations.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">@OneToOne</span>
+annotation specifies the one-to-one association between the <span class="bold">Member</span> entity and the <span class="bold">Contact</span> entity. The <span class="hi-yellow">cascade={CascadeType.ALL}</span>
+attribute indicates that operations should automatically be cascaded
+across associations.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">@JoinColumn</span>
+annotation indicates the foreign key column. The <span class="hi-yellow">name=&#8221;memberContactId&#8221;</span>
+attribute specifies the join column.</p>
+</div>
+
+<div id="para-div">
+<p>Next, create a Java class called <span class="bold">MemberContactPersist02</span>
+that will persist, query, update, and delete (CRUD) both the <span class="bold">Member</span> and <span class="bold">Contact</span> objects using <span class="bold">JPA</span>:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.11</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import javax.persistence.EntityManagerFactory;<br />import javax.persistence.Persistence;<br />import javax.persistence.EntityManager;<br /><br />public class MemberContactPersist02 {<br />    public static void main(String[] args) throws Exception {<br />        Contact01 c1 = new Contact01();<br />        c1.setContactId(1);<br />        c1.setEmailId("foo.bar@email.com");<br />        c1.setMobile("100-200-3000");<br />       <br />        Member03 m1 = new Member03();<br />        m1.setFirstName("Foo");<br />        m1.setLastName("Bar");<br />        m1.setZip("10001");<br />        m1.setContact(c1);<br />       <br />        EntityManagerFactory emf =<br />            Persistence.createEntityManagerFactory("PolarSparcJPA");<br />        EntityManager em = emf.createEntityManager();<br />       <br />        // Create a member and contact<br />        em.getTransaction().begin();<br />        em.persist(m1);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("CREATE: Member+Contact %d, %s\n", m1.getMemberId(), m1);<br /> <br />        // Retrieve the member and contact<br />        Member03 m2 = em.find(Member03.class, m1.getMemberId());<br />       <br />        System.out.printf("READ: Member+Contact: %s\n", m2);<br />       <br />        // Update the member and contact<br />        em.getTransaction().begin();<br />        m2.setZip("10005");<br />        m2.getContact().setHome("101-201-3001");<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("UPDATE: Member+Contact: %s\n", m2);<br />       <br />        // Delete the member and contact<br />        em.getTransaction().begin();<br />        em.remove(m2);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("DELETE: Member+Contact: %s\n", m2);<br />       <br />        em.close();<br />        emf.close();<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>In order to test our example, let us create a script called <span class="bold">bin/memcon02.sh</span> as follows:</p>
+</div>
+
+<div id="cmd-div">
+<p>CP=.:build/classes:./META-INF<br />
+<br />
+for jar in $HOME/Products/hibernate-4.1.3/lib/required/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/hibernate-4.1.3/lib/jpa/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/mysql-connector-java-5.1.20/*.jar<br />
+do<br />
+&nbsp;&nbsp;&nbsp; CP=$CP:$jar<br />
+done<br />
+<br />
+java -cp $CP com.polarsparc.jpa.MemberContactPersist02</p>
+</div>
+
+<div id="para-div">
+<p>If we run the script <span class="bold">bin/memcon02.sh</span>,
+we see the following output:</p>
+</div>
+
+<div id="out-div">
+<h4>Output.4</h4>
+<pre>Jun 10, 2012 1:21:08 PM org.hibernate.annotations.common.Version &lt;clinit&gt;<br />INFO: HCANN000001: Hibernate Commons Annotations {4.0.1.Final}<br />Jun 10, 2012 1:21:08 PM org.hibernate.Version logVersion<br />INFO: HHH000412: Hibernate Core {4.1.3.Final}<br />Jun 10, 2012 1:21:08 PM org.hibernate.cfg.Environment &lt;clinit&gt;<br />INFO: HHH000206: hibernate.properties not found<br />Jun 10, 2012 1:21:08 PM org.hibernate.cfg.Environment buildBytecodeProvider<br />INFO: HHH000021: Bytecode provider name : javassist<br />Jun 10, 2012 1:21:09 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000402: Using Hibernate built-in connection pool (not for production use!)<br />Jun 10, 2012 1:21:09 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000115: Hibernate connection pool size: 20<br />Jun 10, 2012 1:21:09 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000006: Autocommit mode: true<br />Jun 10, 2012 1:21:09 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000401: using driver [com.mysql.jdbc.Driver] at URL [jdbc:mysql://localhost:3306/mydb]<br />Jun 10, 2012 1:21:09 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000046: Connection properties: {user=****, password=****, autocommit=true, release_mode=auto}<br />Jun 10, 2012 1:21:09 PM org.hibernate.dialect.Dialect &lt;init&gt;<br />INFO: HHH000400: Using dialect: org.hibernate.dialect.MySQL5Dialect<br />Jun 10, 2012 1:21:09 PM org.hibernate.engine.transaction.internal.TransactionFactoryInitiator initiateService<br />INFO: HHH000268: Transaction strategy: org.hibernate.engine.transaction.internal.jdbc.JdbcTransactionFactory<br />Jun 10, 2012 1:21:09 PM org.hibernate.hql.internal.ast.ASTQueryTranslatorFactory &lt;init&gt;<br />INFO: HHH000397: Using ASTQueryTranslatorFactory<br />Hibernate: insert into Contact (emailId, home, mobile, contactId) values (?, ?, ?, ?)<br />Hibernate: insert into Member (memberContactId, firstName, lastName, zip) values (?, ?, ?, ?)<br />CREATE: Member+Contact 8, [Foo, Bar, 10001, &lt;[foo.bar@email.com, null, 100-200-3000]&gt;]<br />READ: Member+Contact: [Foo, Bar, 10001, &lt;[foo.bar@email.com, null, 100-200-3000]&gt;]<br />Hibernate: update Member set memberContactId=?, firstName=?, lastName=?, zip=? where memberId=?<br />Hibernate: update Contact set emailId=?, home=?, mobile=? where contactId=?<br />UPDATE: Member+Contact: [Foo, Bar, 10005, &lt;[foo.bar@email.com, 101-201-3001, 100-200-3000]&gt;]<br />Hibernate: delete from Member where memberId=?<br />Hibernate: delete from Contact where contactId=?<br />DELETE: Member+Contact: [Foo, Bar, 10005, &lt;[foo.bar@email.com, 101-201-3001, 100-200-3000]&gt;]<br />Jun 10, 2012 1:21:09 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl stop<br />INFO: HHH000030: Cleaning up connection pool [jdbc:mysql://localhost:3306/mydb]</pre>
+</div>
+
+<div id="para-div">
+<p><span class="caution">CAUTION</span> :: If we omit the <span class="bold">cascade={CascadeType.ALL}</span> attribute,
+we will encounter the following exception: <span class="error">Caused
+by: java.lang.IllegalStateException:
+org.hibernate.TransientPropertyValueException: object references an
+unsaved transient instance - save the transient instance before
+flushing: com.polarsparc.jpa.Member.contact -&gt;
+com.polarsparc.jpa.Contact</span></p>
+</div>
+
+<div id="para-div">
+<p>We have successfully demonstrated an example for one-to-one
+relationship using <span class="bold">JPA</span> Annotations approach.</p>
+</div>
+
+<div id="para-div">
+<p>The one-to-one association we have seen in the above example is
+unidirectional, that is, we can access the <span class="bold">Contact</span> entity only via the <span class="bold">Member</span> entity.</p>
+</div>
+
+<div id="para-div">
+<p>We will look at the bidirectional one-to-one relation between the <span class="bold">Member</span> and <span class="bold">Contact</span> entities using the XML
+mapping file (<span class="bold">META-INF/orm.xml</span>)
+approach.</p>
+</div>
+
+<div id="para-div">
+<p>Create the corresponding <span class="bold">Contact02</span>
+class in Java as follows:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.12</legend>
+<pre>package com.polarsparc.jpa;<br /><br />public class Contact02 {<br />    private long contactId;<br />   <br />    private String emailId;<br />    private String home;<br />    private String mobile;<br />   <br />    private Member04 member4;<br />   <br />    public long getContactId() {<br />        return contactId;<br />    }<br />   <br />    public void setContactId(long contactId) {<br />        this.contactId = contactId;<br />    }<br /><br />    public String getEmailId() {<br />        return emailId;<br />    }<br /><br />    public void setEmailId(String emailId) {<br />        this.emailId = emailId;<br />    }<br /><br />    public String getHome() {<br />        return home;<br />    }<br /><br />    public void setHome(String home) {<br />        this.home = home;<br />    }<br /><br />    public String getMobile() {<br />        return mobile;<br />    }<br /><br />    public void setMobile(String mobile) {<br />        this.mobile = mobile;<br />    }<br /><br />    public Member04 getMember4() {<br />        return member4;<br />    }<br /><br />    public void setMember4(Member04 member) {<br />        this.member4 = member;<br />    }<br />   <br />    @Override<br />    public String toString() {<br />        return "[" + emailId + ", " + home + ", " + mobile + "]";<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The <span class="bold">Contact02</span> class listed
+above is a regular Java POJO.</p>
+</div>
+
+<div id="para-div">
+<p>Also, create the corresponding <span class="bold">Member04</span>
+class in Java as follows:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.13</legend>
+<pre>package com.polarsparc.jpa;<br /><br />public class Member04 {<br />    private long memberId;<br />   <br />    private String firstName;<br />    private String lastName;<br />    private String zip;<br />   <br />    private Contact02 contact2;<br />   <br />    public long getMemberId() {<br />        return memberId;<br />    }<br />   <br />    public void setMemberId(long memberId) {<br />        this.memberId = memberId;<br />    }<br /><br />    public String getFirstName() {<br />        return firstName;<br />    }<br /><br />    public void setFirstName(String firstName) {<br />        this.firstName = firstName;<br />    }<br /><br />    public String getLastName() {<br />        return lastName;<br />    }<br /><br />    public void setLastName(String lastName) {<br />        this.lastName = lastName;<br />    }<br /><br />    public String getZip() {<br />        return zip;<br />    }<br /><br />    public void setZip(String zip) {<br />        this.zip = zip;<br />    }<br /><br />    public Contact02 getContact2() {<br />        return contact2;<br />    }<br /><br />    public void setContact2(Contact02 contact) {<br />        this.contact2 = contact;<br />    }<br />   <br />    @Override<br />    public String toString() {<br />        return "[" + firstName + ", " + lastName + ", " + zip + "]";<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The <span class="bold">Member04</span> class listed
+above is a regular Java POJO.</p>
+</div>
+
+<div id="para-div">
+<p>Next, we need to modify the object-relational mapping file <span class="bold">META-INF/orm.xml</span> to specify the
+bidirectional one-to-one entity relationship between the <span class="bold">Member</span> entity and the <span class="bold">Contact</span> entity.</p>
+</div>
+
+<div id="para-div">
+<p>The following is our <span class="bold">META-INF/orm.xml</span>
+file:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.14</legend>
+<pre>&lt;?xml version="1.0" encoding="UTF-8" ?&gt;<br /><br />&lt;entity-mappings version="2.0"<br />                 xmlns="http://java.sun.com/xml/ns/persistence/orm"<br />                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"<br />                 xsi:schemaLocation="http://java.sun.com/xml/ns/persistence/orm<br />                     http://java.sun.com/xml/ns/persistence/orm_1_0.xsd"&gt;<br />   <br />    &lt;entity class="com.polarsparc.jpa.Contact01" name="Contact01"&gt;<br />        &lt;table name="Contact"/&gt;<br />       <br />        &lt;attributes&gt;<br />            &lt;id name="contactId"&gt;<br />                &lt;column name="contactId" /&gt;<br />            &lt;/id&gt;<br />           <br />            &lt;basic name="emailId"&gt;<br />                &lt;column name="emailId" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="home"&gt;<br />                &lt;column name="home" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="mobile"&gt;<br />                &lt;column name="mobile" /&gt;<br />            &lt;/basic&gt;<br />        &lt;/attributes&gt;<br />    &lt;/entity&gt;       <br />    <br />    &lt;entity class="com.polarsparc.jpa.Member02" name="Member02"&gt;<br />        &lt;table name="Member"/&gt;<br />       <br />        &lt;attributes&gt;<br />            &lt;id name="memberId"&gt;<br />                &lt;column name="memberId" /&gt;<br />                &lt;generated-value strategy="AUTO" /&gt;<br />            &lt;/id&gt;<br />           <br />            &lt;basic name="firstName"&gt;<br />                &lt;column name="firstName" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="lastName"&gt;<br />                &lt;column name="lastName" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="zip"&gt;<br />                &lt;column name="zip" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;one-to-one name="contact"&gt;<br />                &lt;join-column name="memberContactId" /&gt;<br />                &lt;cascade&gt;<br />                    &lt;cascade-all /&gt;<br />                &lt;/cascade&gt;<br />            &lt;/one-to-one&gt;<br />        &lt;/attributes&gt;<br />    &lt;/entity&gt;<br />    <br />    &lt;entity class="com.polarsparc.jpa.Contact02" name="Contact02"&gt;<br />        &lt;table name="Contact"/&gt;<br />       <br />        &lt;attributes&gt;<br />            &lt;id name="contactId"&gt;<br />                &lt;column name="contactId" /&gt;<br />            &lt;/id&gt;<br />           <br />            &lt;basic name="emailId"&gt;<br />                &lt;column name="emailId" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="home"&gt;<br />                &lt;column name="home" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="mobile"&gt;<br />                &lt;column name="mobile" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;one-to-one name="member4" mapped-by="contact2"&gt;<br />                &lt;cascade&gt;<br />                    &lt;cascade-all /&gt;<br />                &lt;/cascade&gt;<br />            &lt;/one-to-one&gt;<br />        &lt;/attributes&gt;<br />    &lt;/entity&gt;       <br />    <br />    &lt;entity class="com.polarsparc.jpa.Member04" name="Member04"&gt;<br />        &lt;table name="Member"/&gt;<br />       <br />        &lt;attributes&gt;<br />            &lt;id name="memberId"&gt;<br />                &lt;column name="memberId" /&gt;<br />                &lt;generated-value strategy="AUTO" /&gt;<br />            &lt;/id&gt;<br />           <br />            &lt;basic name="firstName"&gt;<br />                &lt;column name="firstName" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="lastName"&gt;<br />                &lt;column name="lastName" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="zip"&gt;<br />                &lt;column name="zip" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;one-to-one name="contact2"&gt;<br />                &lt;join-column name="memberContactId" /&gt;<br />                &lt;cascade&gt;<br />                    &lt;cascade-all /&gt;<br />                &lt;/cascade&gt;<br />            &lt;/one-to-one&gt;<br />        &lt;/attributes&gt;<br />    &lt;/entity&gt;       <br />  <br />&lt;/entity-mappings&gt;<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">mapped-by=&#8221;contact2&#8221;</span>
+attribute indicates that the one-to-one association between the <span class="bold">Member</span> entity and the <span class="bold">Contact</span> entity is specified in the <span class="bold">Member</span> entity.</p>
+</div>
+
+<div id="para-div">
+<p>Now, create a Java class called <span class="bold">MemberContactPersist03</span>
+that will persist, query, update, and delete (CRUD) both the <span class="bold">Member</span> and <span class="bold">Contact</span> objects using <span class="bold">JPA</span>:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.15</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import javax.persistence.EntityManagerFactory;<br />import javax.persistence.Persistence;<br />import javax.persistence.EntityManager;<br /><br />public class MemberContactPersist03 {<br />    public static void main(String[] args) throws Exception {<br />        Contact02 c1 = new Contact02();<br />        c1.setContactId(1);<br />        c1.setEmailId("foo.bar@email.com");<br />        c1.setMobile("100-200-3000");<br />       <br />        Member04 m1 = new Member04();<br />        m1.setFirstName("Foo");<br />        m1.setLastName("Bar");<br />        m1.setZip("10001");<br />       <br />        m1.setContact2(c1);<br />       <br />        c1.setMember4(m1);<br />       <br />        EntityManagerFactory emf =<br />            Persistence.createEntityManagerFactory("PolarSparcJPA");<br />        EntityManager em = emf.createEntityManager();<br />       <br />        // Create a member and contact<br />        em.getTransaction().begin();<br />        em.persist(m1);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("CREATE (Member): Member+Contact %d, %s\n", m1.getMemberId(), m1);<br /> <br />        // Retrieve the member and contact through member<br />        Member04 m2 = em.find(Member04.class, m1.getMemberId());<br />       <br />        System.out.printf("READ (Member): Member+Contact: %s\n", m2);<br />       <br />        // Retrieve the member and contact through contact<br />        Contact02 c2 = em.find(Contact02.class, c1.getContactId());<br />       <br />        System.out.printf("READ (Contact): Member+Contact: %s\n", c2);<br />       <br />        // Update the member and contact<br />        em.getTransaction().begin();<br />        m2.setZip("10005");<br />        c2.setHome("101-201-3001");<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("UPDATE (Member, Contact): Member+Contact: %s\n", m2);<br />       <br />        // Delete the member and contact through contact<br />        em.getTransaction().begin();<br />        em.remove(c2);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("DELETE (Contact): Member+Contact: %s\n", m2);<br />       <br />        em.close();<br />        emf.close();<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>In order to test our example, let us create a script called <span class="bold">bin/memcon03.sh</span> as follows:</p>
+</div>
+
+<div id="cmd-div">
+<p>CP=.:build/classes:./META-INF<br />
+<br />
+for jar in $HOME/Products/hibernate-4.1.3/lib/required/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/hibernate-4.1.3/lib/jpa/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/mysql-connector-java-5.1.20/*.jar<br />
+do<br />
+&nbsp;&nbsp;&nbsp; CP=$CP:$jar<br />
+done<br />
+<br />
+java -cp $CP com.polarsparc.jpa.MemberContactPersist03</p>
+</div>
+
+<div id="para-div">
+<p>If we run the script <span class="bold">bin/memcon03.sh</span>,
+we see the following output:</p>
+</div>
+
+<div id="out-div">
+<h4>Output.5</h4>
+<pre>Jun 10, 2012 5:54:00 PM org.hibernate.annotations.common.Version &lt;clinit&gt;<br />INFO: HCANN000001: Hibernate Commons Annotations {4.0.1.Final}<br />Jun 10, 2012 5:54:00 PM org.hibernate.Version logVersion<br />INFO: HHH000412: Hibernate Core {4.1.3.Final}<br />Jun 10, 2012 5:54:00 PM org.hibernate.cfg.Environment &lt;clinit&gt;<br />INFO: HHH000206: hibernate.properties not found<br />Jun 10, 2012 5:54:00 PM org.hibernate.cfg.Environment buildBytecodeProvider<br />INFO: HHH000021: Bytecode provider name : javassist<br />Jun 10, 2012 5:54:00 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000402: Using Hibernate built-in connection pool (not for production use!)<br />Jun 10, 2012 5:54:00 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000115: Hibernate connection pool size: 20<br />Jun 10, 2012 5:54:00 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000006: Autocommit mode: true<br />Jun 10, 2012 5:54:00 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000401: using driver [com.mysql.jdbc.Driver] at URL [jdbc:mysql://localhost:3306/mydb]<br />Jun 10, 2012 5:54:00 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000046: Connection properties: {user=****, password=****, autocommit=true, release_mode=auto}<br />Jun 10, 2012 5:54:00 PM org.hibernate.dialect.Dialect &lt;init&gt;<br />INFO: HHH000400: Using dialect: org.hibernate.dialect.MySQL5Dialect<br />Jun 10, 2012 5:54:00 PM org.hibernate.engine.transaction.internal.TransactionFactoryInitiator initiateService<br />INFO: HHH000268: Transaction strategy: org.hibernate.engine.transaction.internal.jdbc.JdbcTransactionFactory<br />Jun 10, 2012 5:54:00 PM org.hibernate.hql.internal.ast.ASTQueryTranslatorFactory &lt;init&gt;<br />INFO: HHH000397: Using ASTQueryTranslatorFactory<br />Hibernate: insert into Contact (emailId, home, mobile, contactId) values (?, ?, ?, ?)<br />Hibernate: insert into Member (memberContactId, firstName, lastName, zip) values (?, ?, ?, ?)<br />CREATE (Member): Member+Contact 21, [Foo, Bar, 10001]<br />READ (Member): Member+Contact: [Foo, Bar, 10001]<br />READ (Contact): Member+Contact: [foo.bar@email.com, null, 100-200-3000]<br />Hibernate: update Member set memberContactId=?, firstName=?, lastName=?, zip=? where memberId=?<br />Hibernate: update Contact set emailId=?, home=?, mobile=? where contactId=?<br />UPDATE (Member, Contact): Member+Contact: [Foo, Bar, 10005]<br />Hibernate: delete from Member where memberId=?<br />Hibernate: delete from Contact where contactId=?<br />DELETE (Contact): Member+Contact: [Foo, Bar, 10005]<br />Jun 10, 2012 5:54:01 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl stop<br />INFO: HHH000030: Cleaning up connection pool [jdbc:mysql://localhost:3306/mydb]</pre>
+</div>
+
+<div id="para-div">
+<p>We have successfully demonstrated an example for bidirectional
+one-to-one relationship using the XML mapping file approach in <span class="bold">JPA</span>.</p>
+</div>
+
+<div id="para-div">
+<p>Now, we will look at the bidirectional one-to-one relation between
+the <span class="bold">Member</span> and <span class="bold">Contact</span> entities using the JPA
+Annotations approach.</p>
+</div>
+
+<div id="para-div">
+<p>Create the corresponding <span class="bold">Contact03</span>
+class in Java as follows:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.16</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import javax.persistence.Column;<br />import javax.persistence.Entity;<br />import javax.persistence.Id;<br />import javax.persistence.Table;<br />import javax.persistence.OneToOne;<br /><br />@Entity<br />@Table(name="Contact")<br />public class Contact03 {<br />    @Id<br />    @Column(name="contactId")<br />    private long contactId;<br />   <br />    @Column(name="emailId")<br />    private String emailId;<br />   <br />    @Column(name="home")<br />    private String home;<br />   <br />    @Column(name="mobile")<br />    private String mobile;<br />   <br />    @OneToOne(cascade={CascadeType.ALL}, mappedBy="contact3")<br />    private Member05 member5;<br />   <br />    public long getContactId() {<br />        return contactId;<br />    }<br />   <br />    public void setContactId(long contactId) {<br />        this.contactId = contactId;<br />    }<br /><br />    public String getEmailId() {<br />        return emailId;<br />    }<br /><br />    public void setEmailId(String emailId) {<br />        this.emailId = emailId;<br />    }<br /><br />    public String getHome() {<br />        return home;<br />    }<br /><br />    public void setHome(String home) {<br />        this.home = home;<br />    }<br /><br />    public String getMobile() {<br />        return mobile;<br />    }<br /><br />    public void setMobile(String mobile) {<br />        this.mobile = mobile;<br />    }<br /><br />    public Member05 getMember5() {<br />        return member5;<br />    }<br /><br />    public void setMember5(Member05 member) {<br />        this.member5 = member;<br />    }<br />   <br />    @Override<br />    public String toString() {<br />        return "[" + emailId + ", " + home + ", " + mobile + "]";<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">mappedBy=&#8221;contact3&#8221;</span>
+attribute indicates that the one-to-one association between the <span class="bold">Member</span> entity and the <span class="bold">Contact</span> entity is specified in the <span class="bold">Member</span> entity.</p>
+</div>
+
+<div id="para-div">
+<p>Also, create the corresponding <span class="bold">Member05</span>
+class in Java as follows:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.17</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import javax.persistence.Column;<br />import javax.persistence.Entity;<br />import javax.persistence.Id;<br />import javax.persistence.GeneratedValue;<br />import javax.persistence.Table;<br />import javax.persistence.OneToOne;<br />import javax.persistence.CascadeType;<br />import javax.persistence.JoinColumn;<br /><br />@Entity<br />@Table(name="Member")<br />public class Member05 {<br />    @Id<br />    @GeneratedValue<br />    @Column(name="memberId")<br />    private long memberId;<br />   <br />    @Column(name="firstName")<br />    private String firstName;<br />   <br />    @Column(name="lastName")<br />    private String lastName;<br />   <br />    @Column(name="zip")<br />    private String zip;<br />   <br />    @OneToOne(cascade={CascadeType.ALL})<br />    @JoinColumn(name="memberContactId")<br />    private Contact03 contact3;<br />   <br />    public long getMemberId() {<br />        return memberId;<br />    }<br /><br />    public String getFirstName() {<br />        return firstName;<br />    }<br /><br />    public void setFirstName(String firstName) {<br />        this.firstName = firstName;<br />    }<br /><br />    public String getLastName() {<br />        return lastName;<br />    }<br /><br />    public void setLastName(String lastName) {<br />        this.lastName = lastName;<br />    }<br /><br />    public String getZip() {<br />        return zip;<br />    }<br /><br />    public void setZip(String zip) {<br />        this.zip = zip;<br />    }<br /><br />    public Contact03 getContact() {<br />        return contact3;<br />    }<br /><br />    public void setContact(Contact03 contact) {<br />        this.contact3 = contact;<br />    }<br />   <br />    @Override<br />    public String toString() {<br />        return "[" + firstName + ", " + lastName + ", " + zip + "]";<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>Finally, create a Java class called <span class="bold">MemberContactPersist04</span>
+that will persist, query, update, and delete (CRUD) both the <span class="bold">Member</span> and <span class="bold">Contact</span> objects using <span class="bold">JPA</span>:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.18</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import javax.persistence.EntityManagerFactory;<br />import javax.persistence.Persistence;<br />import javax.persistence.EntityManager;<br /><br />public class MemberContactPersist04 {<br />    public static void main(String[] args) throws Exception {<br />        Contact03 c1 = new Contact03();<br />        c1.setContactId(1);<br />        c1.setEmailId("foo.bar@email.com");<br />        c1.setMobile("100-200-3000");<br />       <br />        Member05 m1 = new Member05();<br />        m1.setFirstName("Foo");<br />        m1.setLastName("Bar");<br />        m1.setZip("10001");<br />       <br />        m1.setContact(c1);<br />       <br />        c1.setMember5(m1);<br />       <br />        EntityManagerFactory emf =<br />            Persistence.createEntityManagerFactory("PolarSparcJPA");<br />        EntityManager em = emf.createEntityManager();<br />       <br />        // Create a member and contact<br />        em.getTransaction().begin();<br />        em.persist(m1);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("CREATE (Member): Member+Contact %d, %s\n", m1.getMemberId(), m1);<br /> <br />        // Retrieve the member and contact through member<br />        Member05 m2 = em.find(Member05.class, m1.getMemberId());<br />       <br />        System.out.printf("READ (Member): Member+Contact: %s\n", m2);<br />       <br />        // Retrieve the member and contact through contact<br />        Contact03 c2 = em.find(Contact03.class, c1.getContactId());<br />       <br />        System.out.printf("READ (Contact): Member+Contact: %s\n", c2);<br />       <br />        // Update the member and contact<br />        em.getTransaction().begin();<br />        m2.setZip("10005");<br />        c2.setHome("101-201-3001");<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("UPDATE (Member, Contact): Member+Contact: %s\n", m2);<br />       <br />        // Delete the member and contact through contact<br />        em.getTransaction().begin();<br />        em.remove(c2);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("DELETE (Contact): Member+Contact: %s\n", m2);<br />       <br />        em.close();<br />        emf.close();<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>In order to test our example, let us create a script called <span class="bold">bin/memcon04.sh</span> as follows:</p>
+</div>
+
+<div id="cmd-div">
+<p>CP=.:build/classes:./META-INF<br />
+<br />
+for jar in $HOME/Products/hibernate-4.1.3/lib/required/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/hibernate-4.1.3/lib/jpa/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/mysql-connector-java-5.1.20/*.jar<br />
+do<br />
+&nbsp;&nbsp;&nbsp; CP=$CP:$jar<br />
+done<br />
+<br />
+java -cp $CP com.polarsparc.jpa.MemberContactPersist04</p>
+</div>
+
+<div id="para-div">
+<p>If we run the script <span class="bold">bin/memcon04.sh</span>,
+we see the following output:</p>
+</div>
+
+<div id="out-div">
+<h4>Output.6</h4>
+<pre>Jun 10, 2012 9:01:37 PM org.hibernate.annotations.common.Version &lt;clinit&gt;<br />INFO: HCANN000001: Hibernate Commons Annotations {4.0.1.Final}<br />Jun 10, 2012 9:01:37 PM org.hibernate.Version logVersion<br />INFO: HHH000412: Hibernate Core {4.1.3.Final}<br />Jun 10, 2012 9:01:37 PM org.hibernate.cfg.Environment &lt;clinit&gt;<br />INFO: HHH000206: hibernate.properties not found<br />Jun 10, 2012 9:01:37 PM org.hibernate.cfg.Environment buildBytecodeProvider<br />INFO: HHH000021: Bytecode provider name : javassist<br />Jun 10, 2012 9:01:37 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000402: Using Hibernate built-in connection pool (not for production use!)<br />Jun 10, 2012 9:01:37 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000115: Hibernate connection pool size: 20<br />Jun 10, 2012 9:01:37 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000006: Autocommit mode: true<br />Jun 10, 2012 9:01:37 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000401: using driver [com.mysql.jdbc.Driver] at URL [jdbc:mysql://localhost:3306/mydb]<br />Jun 10, 2012 9:01:37 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000046: Connection properties: {user=****, password=****, autocommit=true, release_mode=auto}<br />Jun 10, 2012 9:01:38 PM org.hibernate.dialect.Dialect &lt;init&gt;<br />INFO: HHH000400: Using dialect: org.hibernate.dialect.MySQL5Dialect<br />Jun 10, 2012 9:01:38 PM org.hibernate.engine.transaction.internal.TransactionFactoryInitiator initiateService<br />INFO: HHH000268: Transaction strategy: org.hibernate.engine.transaction.internal.jdbc.JdbcTransactionFactory<br />Jun 10, 2012 9:01:38 PM org.hibernate.hql.internal.ast.ASTQueryTranslatorFactory &lt;init&gt;<br />INFO: HHH000397: Using ASTQueryTranslatorFactory<br />Hibernate: insert into Contact (emailId, home, mobile, contactId) values (?, ?, ?, ?)<br />Hibernate: insert into Member (memberContactId, firstName, lastName, zip) values (?, ?, ?, ?)<br />CREATE (Member): Member+Contact 25, [Foo, Bar, 10001]<br />READ (Member): Member+Contact: [Foo, Bar, 10001]<br />READ (Contact): Member+Contact: [foo.bar@email.com, null, 100-200-3000]<br />Hibernate: update Member set memberContactId=?, firstName=?, lastName=?, zip=? where memberId=?<br />Hibernate: update Contact set emailId=?, home=?, mobile=? where contactId=?<br />UPDATE (Member, Contact): Member+Contact: [Foo, Bar, 10005]<br />Hibernate: delete from Member where memberId=?<br />Hibernate: delete from Contact where contactId=?<br />DELETE (Contact): Member+Contact: [Foo, Bar, 10005]<br />Jun 10, 2012 9:01:38 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl stop<br />INFO: HHH000030: Cleaning up connection pool [jdbc:mysql://localhost:3306/mydb]</pre>
+</div>
+
+<div id="para-div">
+<p>We have successfully demonstrated an example for bidirectional
+one-to-one relationship using <span class="bold">JPA</span> Annotations approach.</p>
+</div>
+
+<div id="para-div">
+<p>Now let us look at one-to-many bidirectional relationship between an
+<span class="bold">Account</span> entity and the <span class="bold">Member</span> entity. Every account has
+associated with it one or more members. In relational database, the
+one-to-many bidirectional association between two entities is
+established with a join table.</p>
+</div>
+
+<div id="para-div">
+<p>The following illustration depicts the one-to-many bidirectional
+relationship between an <span class="bold">Account</span>
+entity and the <span class="bold">Member</span> entity:</p>
+</div>
+
+<div id="img-outer-div"> <img class="img-cls" src="./images/Account_Member_01.png" alt="Account_Member_01 Image" />
+<div class="img-cap">Figure.2</div>
+</div>
+
+<div id="para-div">
+<p>Drop and create the modified Member as well as the <span class="bold">ACCOUNT_TBL</span> and <span class="bold">ACCT_MEMBER_TBL</span> tables in the MySQL
+database using the following SQL:</p>
+</div>
+
+<div id="cmd-div">
+<p>DROP TABLE Member;<br />
+<br />
+CREATE TABLE Member (<br />
+&nbsp;&nbsp;&nbsp; memberId BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,<br />
+&nbsp;&nbsp;&nbsp; firstName VARCHAR(30) NOT NULL,<br />
+&nbsp;&nbsp;&nbsp; lastName VARCHAR(30) NOT NULL,<br />
+&nbsp;&nbsp;&nbsp; zip VARCHAR(15)<br />
+);<br />
+<br />
+CREATE TABLE ACCOUNT_TBL (<br />
+&nbsp;&nbsp;&nbsp; ACCT_ID VARCHAR(10) NOT NULL PRIMARY KEY,<br />
+&nbsp;&nbsp;&nbsp; ACCT_TYPE VARCHAR(30) NOT NULL,<br />
+&nbsp;&nbsp;&nbsp; BALANCE DOUBLE<br />
+);<br />
+<br />
+CREATE TABLE ACCT_MEMBER_TBL (<br />
+&nbsp;&nbsp;&nbsp; ACCT_ID VARCHAR(10),<br />
+&nbsp;&nbsp;&nbsp; MEMBER_ID BIGINT,<br />
+&nbsp;&nbsp;&nbsp; CONSTRAINT Account_FK FOREIGN KEY (ACCT_ID)
+REFERENCES ACCOUNT_TBL(ACCT_ID),<br />
+&nbsp;&nbsp;&nbsp; CONSTRAINT Member_FK FOREIGN KEY (MEMBER_ID)
+REFERENCES Member(memberId)<br />
+);</p>
+</div>
+
+<div id="para-div">
+<p>We will demonstrate the one-to-many bidirectional relationship
+between the <span class="bold">Account</span> entity and
+the <span class="bold">Member</span> entity using the
+two approaches: XML mapping file (<span class="bold">META-INF/orm.xml</span>)
+and JPA Annotations.</p>
+</div>
+
+<div id="para-div">
+<p>Let us start with the XML mapping file (<span class="bold">META-INF/orm.xml</span>) approach.</p>
+</div>
+
+<div id="para-div">
+<p>Create the corresponding <span class="bold">Member06</span>
+class in Java as follows:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.19</legend>
+<pre>package com.polarsparc.jpa;<br /><br />public class Member06 {<br />    private long memberId;<br />   <br />    private String firstName;<br />    private String lastName;<br />    private String zip;<br />   <br />    private Account01 account1;<br />   <br />    public long getMemberId() {<br />        return memberId;<br />    }<br />   <br />    public void setMemberId(long memberId) {<br />        this.memberId = memberId;<br />    }<br /><br />    public String getFirstName() {<br />        return firstName;<br />    }<br /><br />    public void setFirstName(String firstName) {<br />        this.firstName = firstName;<br />    }<br /><br />    public String getLastName() {<br />        return lastName;<br />    }<br /><br />    public void setLastName(String lastName) {<br />        this.lastName = lastName;<br />    }<br /><br />    public String getZip() {<br />        return zip;<br />    }<br /><br />    public void setZip(String zip) {<br />        this.zip = zip;<br />    }<br /><br />    public Account01 getAccount1() {<br />        return account1;<br />    }<br /><br />    public void setAccount1(Account01 account) {<br />        this.account1 = account;<br />    }<br />   <br />    @Override<br />    public String toString() {<br />        return "[" + firstName + ", " + lastName + ", " + zip + ", &lt;" + account1.getAccountId() + "&gt;]";<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The <span class="bold">Member06</span> class listed
+above is a regular Java POJO.</p>
+</div>
+
+<div id="para-div">
+<p>Next, create the <span class="bold">Account01</span>
+class in Java as follows:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.20</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import java.util.*;<br /><br />public class Account01 {<br />    private String accountId;<br />   <br />    private String accountType;<br />   <br />    private double balance;<br />   <br />    private Collection&lt;Member06&gt; members6 = new ArrayList&lt;Member06&gt;();<br />   <br />    public String getAccountId() {<br />        return accountId;<br />    }<br />   <br />    public void setAccountId(String accountId) {<br />        this.accountId = accountId;<br />    }<br /><br />    public String getAccountType() {<br />        return accountType;<br />    }<br /><br />    public void setAccountType(String accountType) {<br />        this.accountType = accountType;<br />    }<br /><br />    public double getBalance() {<br />        return balance;<br />    }<br /><br />    public void setBalance(double balance) {<br />        this.balance = balance;<br />    }<br /><br />    public Collection&lt;Member06&gt; getMembers6() {<br />        return members6;<br />    }<br /><br />    public void setMembers6(List&lt;Member06&gt; members) {<br />        this.members6 = members;<br />    }<br />   <br />    @Override<br />    public String toString() {<br />        return "[" + accountId + ", " + accountType + ", " + balance + ", &lt;" + members6 + "&gt;]";<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The <span class="bold">Account01</span> class listed
+above is a regular Java POJO.</p>
+</div>
+
+<div id="para-div">
+<p>Next, we need to modify the object-relational mapping file <span class="bold">META-INF/orm.xml</span> to specify the
+bidirectional one-to-many entity relationship between the <span class="bold">Account</span> entity and the <span class="bold">Member</span> entity.</p>
+</div>
+
+<div id="para-div">
+<p>The following is our <span class="bold">META-INF/orm.xml</span>
+file:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.21</legend>
+<pre>&lt;?xml version="1.0" encoding="UTF-8" ?&gt;<br /><br />&lt;entity-mappings version="2.0"<br />                 xmlns="http://java.sun.com/xml/ns/persistence/orm"<br />                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"<br />                 xsi:schemaLocation="http://java.sun.com/xml/ns/persistence/orm<br />                                     http://java.sun.com/xml/ns/persistence/orm_1_0.xsd"&gt;<br />    <br />    &lt;entity class="com.polarsparc.jpa.Account01" name="Account01"&gt;<br />        &lt;table name="ACCOUNT_TBL"/&gt;<br />       <br />        &lt;attributes&gt;<br />            &lt;id name="accountId"&gt;<br />                &lt;column name="ACCT_ID" /&gt;<br />            &lt;/id&gt;<br />           <br />            &lt;basic name="accountType"&gt;<br />                &lt;column name="ACCT_TYPE" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="balance"&gt;<br />                &lt;column name="BALANCE" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;one-to-many name="members6" mapped-by="account1"&gt;<br />                &lt;cascade&gt;<br />                    &lt;cascade-all /&gt;<br />                &lt;/cascade&gt;<br />            &lt;/one-to-many&gt;<br />        &lt;/attributes&gt;<br />    &lt;/entity&gt;       <br />    <br />    &lt;entity class="com.polarsparc.jpa.Member06" name="Member06"&gt;<br />        &lt;table name="Member"/&gt;<br />       <br />        &lt;attributes&gt;<br />            &lt;id name="memberId"&gt;<br />                &lt;column name="memberId" /&gt;<br />                &lt;generated-value strategy="AUTO" /&gt;<br />            &lt;/id&gt;<br />           <br />            &lt;basic name="firstName"&gt;<br />                &lt;column name="firstName" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="lastName"&gt;<br />                &lt;column name="lastName" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="zip"&gt;<br />                &lt;column name="zip" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;many-to-one name="account1"&gt;<br />                &lt;join-table name="ACCT_MEMBER_TBL"&gt;<br />                    &lt;join-column name="MEMBER_ID" /&gt;<br />                    &lt;inverse-join-column name="ACCT_ID" /&gt;<br />                &lt;/join-table&gt;<br />                &lt;cascade&gt;<br />                    &lt;cascade-all /&gt;<br />                &lt;/cascade&gt;<br />            &lt;/many-to-one&gt;<br />        &lt;/attributes&gt;<br />    &lt;/entity&gt;       <br />  <br />&lt;/entity-mappings&gt;<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">&lt;one-to-many&gt;</span>
+element specifies the one-to-many association between the <span class="bold">Account</span> entity and the <span class="bold">Member</span> entity.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">mapped-by=&#8221;account1&#8221;</span>
+attribute indicates that the one-to-many association between the <span class="bold">Account</span> entity and the <span class="bold">Member</span> entity is specified in the <span class="bold">Member</span> entity.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">&lt;join-table&gt;</span>
+element indicates the use of a join table called <span class="bold">ACCT_MEMBER_TBL</span> to associate an <span class="bold">Account</span> with its <span class="bold">Member</span>s.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">&lt;join-column&gt;</span>
+element indicates the foreign key column of the Member entity.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">&lt;inverse-join-column&gt;</span>
+element indicates the foreign key column of the other (inverse side) <span class="bold">Account</span> entity.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">&lt;many-to-one&gt;</span>
+element specifies the mant-to-one association between the <span class="bold">Member</span> entity and the <span class="bold">Account</span> entity.</p>
+</div>
+
+<div id="para-div">
+<p>Next, create a Java class called <span class="bold">AccountMemberPersist01</span>
+that will persist, query, update, and delete (CRUD) both the <span class="bold">Account</span> and <span class="bold">Member</span> objects using <span class="bold">JPA</span>:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.22</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import javax.persistence.EntityManagerFactory;<br />import javax.persistence.Persistence;<br />import javax.persistence.EntityManager;<br /><br />public class AccountMemberPersist01 {<br />    public static void main(String[] args) throws Exception {<br />        Account01 a1 = new Account01();<br />        a1.setAccountId("A001");<br />        a1.setAccountType("Savings");<br />        a1.setBalance(250.00);<br />       <br />        Member06 m1 = new Member06();<br />        m1.setFirstName("Foo");<br />        m1.setLastName("Bar");<br />        m1.setZip("10001");<br />       <br />        Member06 m2 = new Member06();<br />        m2.setFirstName("Bar");<br />        m2.setLastName("Foo");<br />        m2.setZip("10001");<br />       <br />        a1.getMembers6().add(m1);<br />       <br />        m1.setAccount1(a1);<br />       <br />        EntityManagerFactory emf = Persistence.createEntityManagerFactory("PolarSparcJPA");<br />        EntityManager em = emf.createEntityManager();<br />       <br />        // Create an account with a member<br />        em.getTransaction().begin();<br />        em.persist(a1);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("CREATE &lt;Account&gt;: Account+Member %s, %s\n", a1.getAccountId(), a1);<br /> <br />        // Retrieve the account and member(s) through account<br />        Account01 a2 = em.find(Account01.class, a1.getAccountId());<br />       <br />        System.out.printf("READ &lt;Account&gt;: Account+Member: %s\n", a2);<br />       <br />        // Update the account and member(s) through account<br />        em.getTransaction().begin();<br />        m2.setAccount1(a2);<br />        a2.getMembers6().add(m2);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("UPDATE &lt;Account&gt;: Account+Member: %s\n", a2);<br />       <br />        // Retrieve the member and the account through member<br />        Member06 m3 = em.find(Member06.class, m1.getMemberId());<br />       <br />        System.out.printf("READ &lt;Member&gt;: Member+Account: %s, %s\n", m3, m3.getAccount1());<br />       <br />        // Delete the account and member(s) through member<br />        em.getTransaction().begin();<br />        em.remove(m3);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("DELETE &lt;Member&gt;: Member+Account: %s\n", a2);<br />       <br />        em.close();<br />        emf.close();<br />       <br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>In order to test our example, let us create a script called <span class="bold">bin/acctmem01.sh</span> as follows:</p>
+</div>
+
+<div id="cmd-div">
+<p>CP=.:build/classes:./META-INF<br />
+<br />
+for jar in $HOME/Products/hibernate-4.1.3/lib/required/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/hibernate-4.1.3/lib/jpa/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/mysql-connector-java-5.1.20/*.jar<br />
+do<br />
+&nbsp;&nbsp;&nbsp; CP=$CP:$jar<br />
+done<br />
+<br />
+java -cp $CP com.polarsparc.jpa.AccountMemberPersist01</p>
+</div>
+
+<div id="para-div">
+<p>If we run the script <span class="bold">bin/acctmem01.sh</span>,
+we see the following output:</p>
+</div>
+
+<div id="out-div">
+<h4>Output.7</h4>
+<pre>Jun 16, 2012 8:54:18 PM org.hibernate.annotations.common.Version &lt;clinit&gt;<br />INFO: HCANN000001: Hibernate Commons Annotations {4.0.1.Final}<br />Jun 16, 2012 8:54:18 PM org.hibernate.Version logVersion<br />INFO: HHH000412: Hibernate Core {4.1.3.Final}<br />Jun 16, 2012 8:54:18 PM org.hibernate.cfg.Environment &lt;clinit&gt;<br />INFO: HHH000206: hibernate.properties not found<br />Jun 16, 2012 8:54:18 PM org.hibernate.cfg.Environment buildBytecodeProvider<br />INFO: HHH000021: Bytecode provider name : javassist<br />Jun 16, 2012 8:54:19 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000402: Using Hibernate built-in connection pool (not for production use!)<br />Jun 16, 2012 8:54:19 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000115: Hibernate connection pool size: 20<br />Jun 16, 2012 8:54:19 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000006: Autocommit mode: true<br />Jun 16, 2012 8:54:19 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000401: using driver [com.mysql.jdbc.Driver] at URL [jdbc:mysql://localhost:3306/mydb]<br />Jun 16, 2012 8:54:19 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000046: Connection properties: {user=****, password=****, autocommit=true, release_mode=auto}<br />Jun 16, 2012 8:54:19 PM org.hibernate.dialect.Dialect &lt;init&gt;<br />INFO: HHH000400: Using dialect: org.hibernate.dialect.MySQL5Dialect<br />Jun 16, 2012 8:54:19 PM org.hibernate.engine.transaction.internal.TransactionFactoryInitiator initiateService<br />INFO: HHH000268: Transaction strategy: org.hibernate.engine.transaction.internal.jdbc.JdbcTransactionFactory<br />Jun 16, 2012 8:54:19 PM org.hibernate.hql.internal.ast.ASTQueryTranslatorFactory &lt;init&gt;<br />INFO: HHH000397: Using ASTQueryTranslatorFactory<br />Hibernate: insert into ACCOUNT_TBL (ACCT_TYPE, BALANCE, ACCT_ID) values (?, ?, ?)<br />Hibernate: insert into Member (firstName, lastName, zip) values (?, ?, ?)<br />Hibernate: insert into ACCT_MEMBER_TBL (ACCT_ID, MEMBER_ID) values (?, ?)<br />Hibernate: insert into ACCT_MEMBER_TBL (ACCT_ID, MEMBER_ID) values (?, ?)<br />CREATE &lt;Account&gt;: Account+Member A001, [A001, Savings, 250.0, &lt;[[Foo, Bar, 10001, &lt;A001&gt;]]&gt;]<br />READ &lt;Account&gt;: Account+Member: [A001, Savings, 250.0, &lt;[[Foo, Bar, 10001, &lt;A001&gt;]]&gt;]<br />Hibernate: insert into Member (firstName, lastName, zip) values (?, ?, ?)<br />Hibernate: insert into ACCT_MEMBER_TBL (ACCT_ID, MEMBER_ID) values (?, ?)<br />Hibernate: delete from ACCT_MEMBER_TBL where ACCT_ID=?<br />Hibernate: insert into ACCT_MEMBER_TBL (ACCT_ID, MEMBER_ID) values (?, ?)<br />Hibernate: insert into ACCT_MEMBER_TBL (ACCT_ID, MEMBER_ID) values (?, ?)<br />UPDATE &lt;Account&gt;: Account+Member: [A001, Savings, 250.0, &lt;[[Foo, Bar, 10001, &lt;A001&gt;], [Bar, Foo, 10001, &lt;A001&gt;]]&gt;]<br />READ &lt;Member&gt;: Member+Account: [Foo, Bar, 10001, &lt;A001&gt;], [A001, Savings, 250.0, &lt;[[Foo, Bar, 10001, &lt;A001&gt;], [Bar, Foo, 10001, &lt;A001&gt;]]&gt;]<br />Hibernate: delete from ACCT_MEMBER_TBL where ACCT_ID=?<br />Hibernate: delete from ACCT_MEMBER_TBL where MEMBER_ID=?<br />Hibernate: delete from Member where memberId=?<br />Hibernate: delete from ACCT_MEMBER_TBL where MEMBER_ID=?<br />Hibernate: delete from Member where memberId=?<br />Hibernate: delete from ACCOUNT_TBL where ACCT_ID=?<br />DELETE &lt;Member&gt;: Member+Account: [A001, Savings, 250.0, &lt;[[Foo, Bar, 10001, &lt;A001&gt;], [Bar, Foo, 10001, &lt;A001&gt;]]&gt;]<br />Jun 16, 2012 8:54:20 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl stop<br />INFO: HHH000030: Cleaning up connection pool [jdbc:mysql://localhost:3306/mydb]</pre>
+</div>
+
+<div id="para-div">
+<p>We have successfully demonstrated an example for bidirectional
+one-to-many bidirectional relationship using the XML mapping file
+approach in <span class="bold">JPA</span>.</p>
+</div>
+
+<div id="para-div">
+<p>Now, we will look at the bidirectional one-to-many relation between
+the <span class="bold">Account</span> and <span class="bold">Member</span> entities using the <span class="bold">JPA</span>
+Annotations approach.</p>
+</div>
+
+<div id="para-div">
+<p>Create the corresponding <span class="bold">Account02</span>
+class in Java as follows:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.23</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import java.util.*;<br /><br />import javax.persistence.Entity;<br />import javax.persistence.Table;<br />import javax.persistence.Id;<br />import javax.persistence.Column;<br />import javax.persistence.OneToMany;<br />import javax.persistence.CascadeType;<br /><br />@Entity<br />@Table(name="ACCOUNT_TBL")<br />public class Account02 {<br />    @Id<br />    @Column(name="ACCT_ID")<br />    private String accountId;<br />   <br />    @Column(name="ACCT_TYPE")<br />    private String accountType;<br />   <br />    @Column(name="BALANCE")<br />    private double balance;<br />   <br />    @OneToMany(cascade={CascadeType.ALL}, mappedBy="account2")<br />    private Collection&lt;Member07&gt; members7 = new ArrayList&lt;Member07&gt;();<br />   <br />    public String getAccountId() {<br />        return accountId;<br />    }<br />   <br />    public void setAccountId(String accountId) {<br />        this.accountId = accountId;<br />    }<br /><br />    public String getAccountType() {<br />        return accountType;<br />    }<br /><br />    public void setAccountType(String accountType) {<br />        this.accountType = accountType;<br />    }<br /><br />    public double getBalance() {<br />        return balance;<br />    }<br /><br />    public void setBalance(double balance) {<br />        this.balance = balance;<br />    }<br /><br />    public Collection&lt;Member07&gt; getMembers7() {<br />        return members7;<br />    }<br /><br />    public void setMembers6(Collection&lt;Member07&gt; members) {<br />        this.members7 = members;<br />    }<br />   <br />    @Override<br />    public String toString() {<br />        return "[" + accountId + ", " + accountType + ", " + balance + ", &lt;" + members7 + "&gt;]";<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">@OneToMany</span>
+annotation specifies the one-to-many association between the <span class="bold">Account</span> entity and the <span class="bold">Member</span> entity.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">mappedBy=&#8221;account2&#8221;</span>
+attribute indicates that the one-to-many association between the <span class="bold">Account</span> entity and the <span class="bold">Member</span> entity is specified in the <span class="bold">Member</span> entity.</p>
+</div>
+
+<div id="para-div">
+<p>Also, create the corresponding <span class="bold">Member07</span>
+class in Java as follows:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.24</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import javax.persistence.Column;<br />import javax.persistence.Entity;<br />import javax.persistence.Id;<br />import javax.persistence.GeneratedValue;<br />import javax.persistence.Table;<br />import javax.persistence.ManyToOne;<br />import javax.persistence.CascadeType;<br />import javax.persistence.JoinTable;<br />import javax.persistence.JoinColumn;<br /><br />@Entity<br />@Table(name="Member")<br />public class Member07 {<br />    @Id<br />    @GeneratedValue<br />    @Column(name="memberId")<br />    private long memberId;<br />   <br />    @Column(name="firstName")<br />    private String firstName;<br />   <br />    @Column(name="lastName")<br />    private String lastName;<br />   <br />    @Column(name="zip")<br />    private String zip;<br />   <br />    @ManyToOne(cascade={CascadeType.ALL})<br />    @JoinTable(name="ACCT_MEMBER_TBL",<br />               joinColumns={@JoinColumn(name="MEMBER_ID")},<br />               inverseJoinColumns={@JoinColumn(name="ACCT_ID")})<br />    private Account02 account2;<br />   <br />    public long getMemberId() {<br />        return memberId;<br />    }<br /><br />    public String getFirstName() {<br />        return firstName;<br />    }<br /><br />    public void setFirstName(String firstName) {<br />        this.firstName = firstName;<br />    }<br /><br />    public String getLastName() {<br />        return lastName;<br />    }<br /><br />    public void setLastName(String lastName) {<br />        this.lastName = lastName;<br />    }<br /><br />    public String getZip() {<br />        return zip;<br />    }<br /><br />    public void setZip(String zip) {<br />        this.zip = zip;<br />    }<br /><br />    public Account02 getAccount2() {<br />        return account2;<br />    }<br /><br />    public void setAccount2(Account02 account) {<br />        this.account2 = account;<br />    }<br />   <br />    @Override<br />    public String toString() {<br />        return "[" + firstName + ", " + lastName + ", " + zip + "&lt;" +<br />            account2.getAccountId() + "&gt;]";<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">@ManyToOne</span>
+annotation specifies the many-to-one association between the <span class="bold">Member</span> entity and the <span class="bold">Account</span> entity.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">joinColumns={@JoinColumn(name="MEMBER_ID")}</span>
+attribute element indicates the foreign key column (<span class="bold">MEMBER_ID</span>) of the <span class="bold">Member</span> entity.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">inverseJoinColumns={@JoinColumn(name="ACCT_ID")}</span>
+attribute indicates the foreign key column (<span class="bold">ACCT_ID</span>) of the other (inverse side)
+<span class="bold">Account</span> entity.</p>
+</div>
+
+<div id="para-div">
+<p>Finally, create a Java class called <span class="bold">AccountMemberPersist02</span>
+that will persist, query, update, and delete (CRUD) both the <span class="bold">Member</span> and
+<span class="bold">Contact</span> objects using <span class="bold">JPA</span>:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.25</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import javax.persistence.EntityManagerFactory;<br />import javax.persistence.Persistence;<br />import javax.persistence.EntityManager;<br /><br />public class AccountMemberPersist02 {<br />    public static void main(String[] args) throws Exception {<br />        Account02 a1 = new Account02();<br />        a1.setAccountId("A001");<br />        a1.setAccountType("Savings");<br />        a1.setBalance(250.00);<br />       <br />        Member07 m1 = new Member07();<br />        m1.setFirstName("Foo");<br />        m1.setLastName("Bar");<br />        m1.setZip("10001");<br />       <br />        Member07 m2 = new Member07();<br />        m2.setFirstName("Bar");<br />        m2.setLastName("Foo");<br />        m2.setZip("10001");<br />       <br />        a1.getMembers7().add(m1);<br />       <br />        m1.setAccount2(a1);<br />       <br />        EntityManagerFactory emf = Persistence.createEntityManagerFactory("PolarSparcJPA");<br />        EntityManager em = emf.createEntityManager();<br />       <br />        // Create an account with a member<br />        em.getTransaction().begin();<br />        em.persist(a1);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("CREATE &lt;Account&gt;: Account+Member %s, %s\n", a1.getAccountId(), a1);<br /> <br />        // Retrieve the account and member(s) through account<br />        Account02 a2 = em.find(Account02.class, a1.getAccountId());<br />       <br />        System.out.printf("READ &lt;Account&gt;: Account+Member: %s\n", a2);<br />       <br />        // Update the account and member(s) through account<br />        em.getTransaction().begin();<br />        m2.setAccount2(a2);<br />        a2.getMembers7().add(m2);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("UPDATE &lt;Account&gt;: Account+Member: %s\n", a2);<br />       <br />        // Retrieve the member and the account through member<br />        Member07 m3 = em.find(Member07.class, m1.getMemberId());<br />       <br />        System.out.printf("READ &lt;Member&gt;: Member+Account: %s, %s\n", m3, m3.getAccount2());<br />       <br />        // Delete the account and member(s) through member<br />        em.getTransaction().begin();<br />        em.remove(m3);<br />        em.getTransaction().commit();<br />       <br />        System.out.printf("DELETE &lt;Member&gt;: Member+Account: %s\n", a2);<br />       <br />        em.close();<br />        emf.close();<br />       <br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>In order to test our example, let us create a script called <span class="bold">bin/acctmem02.sh</span> as follows:</p>
+</div>
+
+<div id="cmd-div">
+<p>CP=.:build/classes:./META-INF<br />
+<br />
+for jar in $HOME/Products/hibernate-4.1.3/lib/required/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/hibernate-4.1.3/lib/jpa/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/mysql-connector-java-5.1.20/*.jar<br />
+do<br />
+&nbsp;&nbsp;&nbsp; CP=$CP:$jar<br />
+done<br />
+<br />
+java -cp $CP com.polarsparc.jpa.AccountMemberPersist02</p>
+</div>
+
+<div id="para-div">
+<p>If we run the script <span class="bold">bin/acctmem02.sh</span>,
+we see the following output:</p>
+</div>
+
+<div id="out-div">
+<h4>Output.8</h4>
+<pre>Jun 16, 2012 10:49:11 PM org.hibernate.annotations.common.Version &lt;clinit&gt;<br />INFO: HCANN000001: Hibernate Commons Annotations {4.0.1.Final}<br />Jun 16, 2012 10:49:11 PM org.hibernate.Version logVersion<br />INFO: HHH000412: Hibernate Core {4.1.3.Final}<br />Jun 16, 2012 10:49:11 PM org.hibernate.cfg.Environment &lt;clinit&gt;<br />INFO: HHH000206: hibernate.properties not found<br />Jun 16, 2012 10:49:11 PM org.hibernate.cfg.Environment buildBytecodeProvider<br />INFO: HHH000021: Bytecode provider name : javassist<br />Jun 16, 2012 10:49:12 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000402: Using Hibernate built-in connection pool (not for production use!)<br />Jun 16, 2012 10:49:12 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000115: Hibernate connection pool size: 20<br />Jun 16, 2012 10:49:12 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000006: Autocommit mode: true<br />Jun 16, 2012 10:49:12 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000401: using driver [com.mysql.jdbc.Driver] at URL [jdbc:mysql://localhost:3306/mydb]<br />Jun 16, 2012 10:49:12 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000046: Connection properties: {user=****, password=****, autocommit=true, release_mode=auto}<br />Jun 16, 2012 10:49:12 PM org.hibernate.dialect.Dialect &lt;init&gt;<br />INFO: HHH000400: Using dialect: org.hibernate.dialect.MySQL5Dialect<br />Jun 16, 2012 10:49:12 PM org.hibernate.engine.transaction.internal.TransactionFactoryInitiator initiateService<br />INFO: HHH000268: Transaction strategy: org.hibernate.engine.transaction.internal.jdbc.JdbcTransactionFactory<br />Jun 16, 2012 10:49:12 PM org.hibernate.hql.internal.ast.ASTQueryTranslatorFactory &lt;init&gt;<br />INFO: HHH000397: Using ASTQueryTranslatorFactory<br />Hibernate: insert into ACCOUNT_TBL (ACCT_TYPE, BALANCE, ACCT_ID) values (?, ?, ?)<br />Hibernate: insert into Member (firstName, lastName, zip) values (?, ?, ?)<br />Hibernate: insert into ACCT_MEMBER_TBL (ACCT_ID, MEMBER_ID) values (?, ?)<br />Hibernate: insert into ACCT_MEMBER_TBL (ACCT_ID, MEMBER_ID) values (?, ?)<br />CREATE &lt;Account&gt;: Account+Member A001, [A001, Savings, 250.0, &lt;[[Foo, Bar, 10001&lt;A001&gt;]]&gt;]<br />READ &lt;Account&gt;: Account+Member: [A001, Savings, 250.0, &lt;[[Foo, Bar, 10001&lt;A001&gt;]]&gt;]<br />Hibernate: insert into Member (firstName, lastName, zip) values (?, ?, ?)<br />Hibernate: insert into ACCT_MEMBER_TBL (ACCT_ID, MEMBER_ID) values (?, ?)<br />Hibernate: delete from ACCT_MEMBER_TBL where ACCT_ID=?<br />Hibernate: insert into ACCT_MEMBER_TBL (ACCT_ID, MEMBER_ID) values (?, ?)<br />Hibernate: insert into ACCT_MEMBER_TBL (ACCT_ID, MEMBER_ID) values (?, ?)<br />UPDATE &lt;Account&gt;: Account+Member: [A001, Savings, 250.0, &lt;[[Foo, Bar, 10001&lt;A001&gt;], [Bar, Foo, 10001&lt;A001&gt;]]&gt;]<br />READ &lt;Member&gt;: Member+Account: [Foo, Bar, 10001&lt;A001&gt;], [A001, Savings, 250.0, &lt;[[Foo, Bar, 10001&lt;A001&gt;], [Bar, Foo, 10001&lt;A001&gt;]]&gt;]<br />Hibernate: delete from ACCT_MEMBER_TBL where ACCT_ID=?<br />Hibernate: delete from ACCT_MEMBER_TBL where MEMBER_ID=?<br />Hibernate: delete from Member where memberId=?<br />Hibernate: delete from ACCT_MEMBER_TBL where MEMBER_ID=?<br />Hibernate: delete from Member where memberId=?<br />Hibernate: delete from ACCOUNT_TBL where ACCT_ID=?<br />DELETE &lt;Member&gt;: Member+Account: [A001, Savings, 250.0, &lt;[[Foo, Bar, 10001&lt;A001&gt;], [Bar, Foo, 10001&lt;A001&gt;]]&gt;]<br />Jun 16, 2012 10:49:13 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl stop<br />INFO: HHH000030: Cleaning up connection pool [jdbc:mysql://localhost:3306/mydb]</pre>
+</div>
+
+<div id="para-div">
+<p>We have successfully demonstrated an example for bidirectional
+one-to-many bidirectional relationship using the XML mapping file
+approach in <span class="bold">JPA</span>.</p>
+</div>
+
+<div id="para-div">
+<p>We will not look at many-to-many relationship as it is similar to
+one-to-many bidirectional example explored above with a join table.</p>
+</div>
+
+<div id="para-div">
+<p>Once data is collected and stored in a relational database,
+enterprise applications need access to the data for various business
+analysis purposes. This means one needs to query the database to access
+that data. This is where the Java Persistence Query Language (<span class="bold">JPQL</span>) comes to the rescue.</p>
+</div>
+
+<div id="para-div">
+<p>We will now look at using Java Persistence Query Language (<span class="bold">JPQL</span>) with some examples.</p>
+</div>
+
+<div id="para-div">
+<p>Create a Java class called <span class="bold">AccountMemberQuery01</span>
+that will query both the Account and Member objects using <span class="bold">JPA</span>:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.26</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import java.util.List;<br /><br />import javax.persistence.EntityManagerFactory;<br />import javax.persistence.Persistence;<br />import javax.persistence.EntityManager;<br />import javax.persistence.Query;<br /><br />public class AccountMemberQuery01 {<br />    public static void main(String[] args) throws Exception {<br />        EntityManagerFactory emf = Persistence.createEntityManagerFactory("PolarSparcJPA");<br />        EntityManager em = emf.createEntityManager();<br />       <br />        // Fetch all account IDs<br />        {<br />            String query = "SELECT a.accountId FROM Account02 a"; <span class="hi-pink">// [1]</span><br />           <br />            Query qry = em.createQuery(query);<br />           <br />            @SuppressWarnings("unchecked")<br />            List&lt;String&gt; list = qry.getResultList();<br />           <br />            System.out.printf("Query result size: %d\n", list.size());<br />            System.out.printf("Account ID List:\n");<br />            for (String id : list) {<br />                System.out.printf("\tAccount ID: %s\n", id);<br />            }<br />        }<br />       <br />        // Fetch all account IDs and account types<br />        {<br />            String query = "SELECT a.accountId, a.accountType FROM Account02 a"; <span class="hi-pink">// [2]</span><br />           <br />            Query qry = em.createQuery(query);<br />           <br />            @SuppressWarnings("unchecked")<br />            List&lt;Object[]&gt; list = qry.getResultList();<br />           <br />            System.out.printf("Query result size: %d\n", list.size());<br />            System.out.printf("Account ID &amp; Type List:\n");<br />            for (Object[] res : list) {<br />                System.out.printf("\tAccount ID: %s, Type: %s\n", res[0], res[1]);<br />            }<br />        }<br />       <br />        // Query for account ID A001<br />        {<br />            String query = "SELECT a FROM Account02 a WHERE a.accountId = 'A001'"; <span class="hi-pink">// [3]</span><br />           <br />            Query qry = em.createQuery(query);<br />           <br />            @SuppressWarnings("unchecked")<br />            List&lt;Account02&gt; list = qry.getResultList();<br />            if (list.size() &gt; 0) {<br />                System.out.printf("Account: %s\n", list.get(0));<br />            }<br />        }<br />       <br />        // Query for the count of member(s)<br />        {<br />            String query = "SELECT COUNT(m) FROM Member07 m"; <span class="hi-pink">// [4]</span><br />           <br />            Query qry = em.createQuery(query);<br />           <br />            Long count = (Long) qry.getSingleResult();<br />            System.out.printf("Count of member(s): %d\n", count);<br />        }<br />       <br />        // Query for members of account ID A001<br />        {<br />            String query = "SELECT m FROM Account02 a JOIN a.members7 m WHERE<br />                a.accountId = 'A001'"; <span class="hi-pink">// [5]</span><br />           <br />            Query qry = em.createQuery(query);<br />           <br />            @SuppressWarnings("unchecked")<br />            List&lt;Member07&gt; list = qry.getResultList();<br />           <br />            System.out.printf("Member List:\n");<br />            for (Member07 m : list) {<br />                System.out.printf("\tMember: %s %s\n", m.getFirstName(), m.getLastName());<br />            }<br />        }<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>When using <span class="bold">JPQL</span>, we do not
+query the underlying database tables instead we query using the
+entities, which in our case would be the <span class="bold">Account</span> and <span class="bold">Member</span> entities. In <span class="bold">JPA</span>, one can query for entities
+using an instance of the Query object. To obtain an instance of the
+Query object, invoke the <span class="bold">createQuery()</span>
+method on the <span class="bold">EntityManager</span>
+instance. </p>
+</div>
+
+<div id="para-div">
+<p>In <span class="hi-pink">// [1]</span>,
+we are querying for all the <span class="bold">Account</span>
+entities. Invoking the <span class="bold">getResultList()</span>
+method on the <span class="hi-yellow">Query</span>
+object executes the query and returns the result as a list. Since we
+are querying for all the <span class="bold">Account</span>
+entity IDs, the execution of the query will return a <span class="bold">List&lt;String&gt;</span>.</p>
+</div>
+
+<div id="para-div">
+<p>In <span class="hi-pink">// [2]</span>,
+we are querying for the <span class="bold">accountId</span>
+and <span class="bold">accountType</span> members of all
+<span class="bold">Account</span> entities. Since we have
+request for two members, the execution of the query will return a <span class="bold">List&lt;Object[]&gt;</span>.</p>
+</div>
+
+<div id="para-div">
+<p>In <span class="hi-pink">// [3]</span>,
+we are using a filter condition to fetch the <span class="bold">Account</span> entity for the <span class="bold">accountId</span> "<span class="bold">A001</span>". The execution of the query
+will return a <span class="bold">List&lt;Account&gt;</span>.</p>
+</div>
+
+<div id="para-div">
+<p>In <span class="hi-pink">// [4]</span>,
+we are using the aggregate function <span class="bold">COUNT</span>
+to count the number of <span class="bold">Member</span>s
+associated with the <span class="bold">Account</span>
+entity. Invoking the <span class="bold">getSingleResult()</span>
+method on the <span class="bold">Query</span> object
+executes the query and returns the result as a single value.</p>
+</div>
+
+<div id="para-div">
+<p>In <span class="hi-pink">// [5]</span>,
+we are using an inner <span class="bold">JOIN</span>
+over the <span class="bold">Account</span> and <span class="bold">Member</span> entities for the <span class="bold">accountId</span> "<span class="bold">A001</span>" to fetch all the <span class="bold">Member</span> entities.</p>
+</div>
+
+<div id="para-div">
+<p>In order to test our example, let us create a script called <span class="bold">bin/query01.sh</span> as follows:</p>
+</div>
+
+<div id="cmd-div">
+<p>CP=.:build/classes:./META-INF<br />
+<br />
+for jar in $HOME/Products/hibernate-4.1.3/lib/required/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/hibernate-4.1.3/lib/jpa/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/mysql-connector-java-5.1.20/*.jar<br />
+do<br />
+&nbsp;&nbsp;&nbsp; CP=$CP:$jar<br />
+done<br />
+<br />
+java -cp $CP com.polarsparc.jpa.AccountMemberQuery01</p>
+</div>
+
+<div id="para-div">
+<p>If we run the script <span class="bold">bin/query01.sh</span>,
+we see the following output:</p>
+</div>
+
+<div id="out-div">
+<h4>Output.9</h4>
+<pre>Jun 23, 2012 8:50:40 PM org.hibernate.annotations.common.Version &lt;clinit&gt;<br />INFO: HCANN000001: Hibernate Commons Annotations {4.0.1.Final}<br />Jun 23, 2012 8:50:40 PM org.hibernate.Version logVersion<br />INFO: HHH000412: Hibernate Core {4.1.3.Final}<br />Jun 23, 2012 8:50:40 PM org.hibernate.cfg.Environment &lt;clinit&gt;<br />INFO: HHH000206: hibernate.properties not found<br />Jun 23, 2012 8:50:40 PM org.hibernate.cfg.Environment buildBytecodeProvider<br />INFO: HHH000021: Bytecode provider name : javassist<br />Jun 23, 2012 8:50:41 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000402: Using Hibernate built-in connection pool (not for production use!)<br />Jun 23, 2012 8:50:41 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000115: Hibernate connection pool size: 20<br />Jun 23, 2012 8:50:41 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000006: Autocommit mode: true<br />Jun 23, 2012 8:50:41 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000401: using driver [com.mysql.jdbc.Driver] at URL [jdbc:mysql://localhost:3306/mydb]<br />Jun 23, 2012 8:50:41 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000046: Connection properties: {user=****, password=****, autocommit=true, release_mode=auto}<br />Jun 23, 2012 8:50:41 PM org.hibernate.dialect.Dialect &lt;init&gt;<br />INFO: HHH000400: Using dialect: org.hibernate.dialect.MySQL5Dialect<br />Jun 23, 2012 8:50:41 PM org.hibernate.engine.transaction.internal.TransactionFactoryInitiator initiateService<br />INFO: HHH000268: Transaction strategy: org.hibernate.engine.transaction.internal.jdbc.JdbcTransactionFactory<br />Jun 23, 2012 8:50:41 PM org.hibernate.hql.internal.ast.ASTQueryTranslatorFactory &lt;init&gt;<br />INFO: HHH000397: Using ASTQueryTranslatorFactory<br />Hibernate: select account02x0_.ACCT_ID as col_0_0_ from ACCOUNT_TBL account02x0_<br />Query result size: 2<br />Account ID List:<br />    Account ID: A001<br />    Account ID: A002<br />Hibernate: select account02x0_.ACCT_ID as col_0_0_, account02x0_.ACCT_TYPE as col_1_0_ from ACCOUNT_TBL account02x0_<br />Query result size: 2<br />Account ID &amp; Type List:<br />    Account ID: A001, Type: Savings<br />    Account ID: A002, Type: Checking<br />Hibernate: select account02x0_.ACCT_ID as ACCT1_3_, account02x0_.ACCT_TYPE as ACCT2_3_, account02x0_.BALANCE as BALANCE3_ from ACCOUNT_TBL account02x0_ where account02x0_.ACCT_ID='A001'<br />Account: Hibernate: select members7x0_.ACCT_ID as ACCT1_3_2_, members7x0_.MEMBER_ID as MEMBER2_2_, member07x1_.memberId as memberId0_0_, member07x1_.firstName as firstName0_0_, member07x1_.lastName as lastName0_0_, member07x1_.zip as zip0_0_, member07x1_1_.ACCT_ID as ACCT1_2_0_, account02x2_.ACCT_ID as ACCT1_3_1_, account02x2_.ACCT_TYPE as ACCT2_3_1_, account02x2_.BALANCE as BALANCE3_1_ from ACCT_MEMBER_TBL members7x0_ inner join Member member07x1_ on members7x0_.MEMBER_ID=member07x1_.memberId left outer join ACCT_MEMBER_TBL member07x1_1_ on member07x1_.memberId=member07x1_1_.MEMBER_ID left outer join ACCOUNT_TBL account02x2_ on member07x1_1_.ACCT_ID=account02x2_.ACCT_ID where members7x0_.ACCT_ID=?<br />[A001, Savings, 250.0, &lt;[[Alice, Girl, 10001&lt;A001&gt;], [Bob, Boy, 10001&lt;A001&gt;]]&gt;]<br />Hibernate: select count(member07x0_.memberId) as col_0_0_ from Member member07x0_ left outer join ACCT_MEMBER_TBL member07x0_1_ on member07x0_.memberId=member07x0_1_.MEMBER_ID limit ?<br />Count of member(s): 3<br />Hibernate: select member07x2_.memberId as memberId0_, member07x2_.firstName as firstName0_, member07x2_.lastName as lastName0_, member07x2_.zip as zip0_, member07x2_1_.ACCT_ID as ACCT1_2_ from ACCOUNT_TBL account02x0_ inner join ACCT_MEMBER_TBL members7x1_ on account02x0_.ACCT_ID=members7x1_.ACCT_ID inner join Member member07x2_ on members7x1_.MEMBER_ID=member07x2_.memberId left outer join ACCT_MEMBER_TBL member07x2_1_ on member07x2_.memberId=member07x2_1_.MEMBER_ID where account02x0_.ACCT_ID='A001'<br />Member List:<br />    Member: Alice Girl<br />    Member: Bob Boy</pre>
+</div>
+
+<div id="para-div">
+<p>We have successfully demonstrated an example on using some simple
+queries in <span class="bold">JPQL</span>.</p>
+</div>
+
+<div id="para-div">
+<p>Often times we encounter situation when we query with different
+input values. For these situations, we have two ways of passing input
+values to <span class="bold">JPQL</span> - <span class="bold">Query</span> using Positional Parameters or
+using Named Parameters.</p>
+</div>
+
+<div id="para-div">
+<p>With Positional Parameters, the query string will contain one or
+more parameter(s) that contain a question mark (<span class="bold">?</span>) followed by a number (starting at
+<span class="bold">1</span>).</p>
+</div>
+
+<div id="para-div">
+<p>With Named Parameters, the query string will contain one or more
+parameter(s) that contain a colon (<span class="bold">:</span>)
+followed by a parameter name.</p>
+</div>
+
+<div id="para-div">
+<p>The following Java class called <span class="bold">AccountMemberQuery02</span>
+will demonstrated the use of Positional Parameters and Named Parameters
+in queries:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.27</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import java.util.List;<br /><br />import javax.persistence.EntityManagerFactory;<br />import javax.persistence.Persistence;<br />import javax.persistence.EntityManager;<br />import javax.persistence.Query;<br /><br />public class AccountMemberQuery02 {<br />    public static void main(String[] args) throws Exception {<br />        if (args.length != 2) {<br />            System.out.printf("Usage: java %s &lt;account-id&gt; &lt;account-type&gt;\n",<br />                AccountMemberQuery02.class.getName());<br />            System.exit(1);<br />        }<br />       <br />        EntityManagerFactory emf = Persistence.createEntityManagerFactory("PolarSparcJPA");<br />        EntityManager em = emf.createEntityManager();<br />       <br />        // Query using Positional Parameters for input<br />        {<br />            String query = "SELECT a FROM Account02 a WHERE a.accountId = ?1<br />                AND a.accountType = ?2"; <span class="hi-pink">// [1]</span><br />           <br />            Query qry = em.createQuery(query);<br />            qry.setParameter(1, args[0]);<br />            qry.setParameter(2, args[1]);<br />           <br />            @SuppressWarnings("unchecked")<br />            List&lt;Account02&gt; list = qry.getResultList();<br />           <br />            System.out.printf("Query &lt;Positional Parameters&gt; result size: %d\n", list.size());<br />            if (list.size() &gt; 0) {<br />                System.out.printf("Account Type &amp; Balance:\n");<br />                for (Account02 acct : list) {<br />                    System.out.printf("\tAccount Type: %s, Balance: %f\n",<br />                        acct.getAccountType(), acct.getBalance());<br />                }<br />            }<br />        }<br />       <br />        // Query using Named Parameters for input<br />        {<br />            String query = "SELECT a FROM Account02 a WHERE a.accountId = :id<br />                AND a.accountType = :type"; <span class="hi-pink">// [2]</span><br />           <br />            Query qry = em.createQuery(query);<br />            qry.setParameter("id", args[0]);<br />            qry.setParameter("type", args[1]);<br />           <br />            @SuppressWarnings("unchecked")<br />            List&lt;Account02&gt; list = qry.getResultList();<br />           <br />            System.out.printf("Query &lt;Named Parameters&gt; result size: %d\n", list.size());<br />            if (list.size() &gt; 0) {<br />                System.out.printf("Account Type &amp; Balance:\n");<br />                for (Account02 acct : list) {<br />                    System.out.printf("\tAccount Type: %s, Balance: %f\n",<br />                        acct.getAccountType(), acct.getBalance());<br />                }<br />            }<br />        }<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>In <span style="background-color: rgb(204, 51, 204); font-weight: bold;">// [1]</span>,
+we are using Positional Parameters. Notice the use of the parameters <span class="bold">?1</span> and <span class="bold">?2</span>. The input values are specified
+by invoking the methods <span class="bold">setParameter(1,
+args[0])</span> and <span class="bold">setParameter(2,
+args[1])</span> respectively.</p>
+</div>
+
+<div id="para-div">
+<p>In <span class="hi-pink">// [2]</span>,
+we are using Named Parameters. Notice the use of the parameters <span class="bold">:id</span> and <span class="bold">:type</span>. The input values are
+specified by invoking the methods <span class="bold">setParameter("id",
+args[0])</span> and <span class="bold">setParameter("type",
+args[1])</span> respectively.</p>
+</div>
+
+<div id="para-div">
+<p>In order to test our example, let us create a script called <span class="bold">bin/query02.sh</span> as follows:</p>
+</div>
+
+<div id="cmd-div">
+<p>CP=.:build/classes:./META-INF<br />
+<br />
+for jar in $HOME/Products/hibernate-4.1.3/lib/required/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/hibernate-4.1.3/lib/jpa/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/mysql-connector-java-5.1.20/*.jar<br />
+do<br />
+&nbsp;&nbsp;&nbsp; CP=$CP:$jar<br />
+done<br />
+<br />
+java -cp $CP com.polarsparc.jpa.AccountMemberQuery02 $1 $2</p>
+</div>
+
+<div id="para-div">
+<p>If we run the script <span class="bold">bin/query02.sh</span>
+with input <span class="bold">A002</span> and <span class="bold">Checking</span>,
+we see the following output:</p>
+</div>
+
+<div id="out-div">
+<h4>Output.10</h4>
+<pre>Jun 23, 2012 10:30:35 PM org.hibernate.annotations.common.Version &lt;clinit&gt;<br />INFO: HCANN000001: Hibernate Commons Annotations {4.0.1.Final}<br />Jun 23, 2012 10:30:35 PM org.hibernate.Version logVersion<br />INFO: HHH000412: Hibernate Core {4.1.3.Final}<br />Jun 23, 2012 10:30:35 PM org.hibernate.cfg.Environment &lt;clinit&gt;<br />INFO: HHH000206: hibernate.properties not found<br />Jun 23, 2012 10:30:35 PM org.hibernate.cfg.Environment buildBytecodeProvider<br />INFO: HHH000021: Bytecode provider name : javassist<br />Jun 23, 2012 10:30:36 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000402: Using Hibernate built-in connection pool (not for production use!)<br />Jun 23, 2012 10:30:36 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000115: Hibernate connection pool size: 20<br />Jun 23, 2012 10:30:36 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000006: Autocommit mode: true<br />Jun 23, 2012 10:30:36 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000401: using driver [com.mysql.jdbc.Driver] at URL [jdbc:mysql://localhost:3306/mydb]<br />Jun 23, 2012 10:30:36 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000046: Connection properties: {user=dbuser, password=****, autocommit=true, release_mode=auto}<br />Jun 23, 2012 10:30:36 PM org.hibernate.dialect.Dialect &lt;init&gt;<br />INFO: HHH000400: Using dialect: org.hibernate.dialect.MySQL5Dialect<br />Jun 23, 2012 10:30:36 PM org.hibernate.engine.transaction.internal.TransactionFactoryInitiator initiateService<br />INFO: HHH000268: Transaction strategy: org.hibernate.engine.transaction.internal.jdbc.JdbcTransactionFactory<br />Jun 23, 2012 10:30:36 PM org.hibernate.hql.internal.ast.ASTQueryTranslatorFactory &lt;init&gt;<br />INFO: HHH000397: Using ASTQueryTranslatorFactory<br />Hibernate: select account02x0_.ACCT_ID as ACCT1_1_, account02x0_.ACCT_TYPE as ACCT2_1_, account02x0_.BALANCE as BALANCE1_ from ACCOUNT_TBL account02x0_ where account02x0_.ACCT_ID=? and account02x0_.ACCT_TYPE=?<br />Query &lt;Positional Parameters&gt; result size: 1<br />Account Type &amp; Balance:<br />    Account Type: Checking, Balance: 375.000000<br />Hibernate: select account02x0_.ACCT_ID as ACCT1_1_, account02x0_.ACCT_TYPE as ACCT2_1_, account02x0_.BALANCE as BALANCE1_ from ACCOUNT_TBL account02x0_ where account02x0_.ACCT_ID=? and account02x0_.ACCT_TYPE=?<br />Query &lt;Named Parameters&gt; result size: 1<br />Account Type &amp; Balance:<br />    Account Type: Checking, Balance: 375.000000</pre>
+</div>
+
+<div id="para-div">
+<p>We have successfully demonstrated an example on using input
+parameters with queries in <span class="bold">JPQL</span>.</p>
+</div>
+
+<div id="para-div">
+<p>In the last two examples we executed queries in <span class="bold">JPQL</span> using the <span class="bold">Query</span> interface that is created by
+calling the <span class="bold">createQuery()</span>
+method on the <span class="bold">EntityManager</span>.
+Using this approach is inefficient as the query string has to be parsed
+for each execution at runtime. Also, as the application grows in
+complexity, the query strings could be scattered all over the place in
+the code that would make it hard to read and maintain.</p>
+</div>
+
+<div id="para-div">
+<p>Enter <span class="hi-yellow">Named
+Query</span>. A <span class="bold">Named Query</span> is
+a static query that is defined once either in the mapping file <span class="bold">META-INF/orm.xml</span> or in the
+appropriate Entity classes. Named Queries are parsed and precompiled
+once at startup and result in very efficient query execution.</p>
+</div>
+
+<div id="para-div">
+<p>Let us start with the XML mapping file (<span class="bold">META-INF/orm.xml</span>) approach.</p>
+</div>
+
+<div id="para-div">
+<p>We need to modify the object-relational mapping file <span class="bold">META-INF/orm.xml</span> to define the <span class="bold">Named Queries</span> used in our example.
+The following is our <span class="bold">META-INF/orm.xml</span>
+file:
+</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.28</legend>
+<pre>&lt;?xml version="1.0" encoding="UTF-8" ?&gt;<br /><br />&lt;entity-mappings version="2.0"<br />                 xmlns="http://java.sun.com/xml/ns/persistence/orm"<br />                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"<br />                 xsi:schemaLocation="http://java.sun.com/xml/ns/persistence/orm<br />                                     http://java.sun.com/xml/ns/persistence/orm_1_0.xsd"&gt;<br /><br />    &lt;named-query name="Account.findAccountByIdAndType"&gt;<br />        &lt;query&gt;&lt;![CDATA[<br />            SELECT a FROM Account01 a WHERE a.accountId = :id AND a.accountType = :type<br />        ]]&gt;&lt;/query&gt;<br />    &lt;/named-query&gt;<br />    <br />    &lt;entity class="com.polarsparc.jpa.Account01" name="Account01"&gt;<br />        &lt;table name="ACCOUNT_TBL"/&gt;<br />       <br />        &lt;attributes&gt;<br />            &lt;id name="accountId"&gt;<br />                &lt;column name="ACCT_ID" /&gt;<br />            &lt;/id&gt;<br />           <br />            &lt;basic name="accountType"&gt;<br />                &lt;column name="ACCT_TYPE" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="balance"&gt;<br />                &lt;column name="BALANCE" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;one-to-many name="members6" mapped-by="account1"&gt;<br />                &lt;cascade&gt;<br />                    &lt;cascade-all /&gt;<br />                &lt;/cascade&gt;<br />            &lt;/one-to-many&gt;<br />        &lt;/attributes&gt;<br />    &lt;/entity&gt;       <br />    <br />    &lt;entity class="com.polarsparc.jpa.Member06" name="Member06"&gt;<br />        &lt;table name="Member"/&gt;<br />   <br />        &lt;named-query name="Member.findMemberByLastName"&gt;<br />            &lt;query&gt;&lt;![CDATA[<br />                SELECT m FROM Member06 m WHERE m.lastName = :name<br />            ]]&gt;&lt;/query&gt;<br />        &lt;/named-query&gt;<br />       <br />        &lt;attributes&gt;<br />            &lt;id name="memberId"&gt;<br />                &lt;column name="memberId" /&gt;<br />                &lt;generated-value strategy="AUTO" /&gt;<br />            &lt;/id&gt;<br />           <br />            &lt;basic name="firstName"&gt;<br />                &lt;column name="firstName" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="lastName"&gt;<br />                &lt;column name="lastName" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;basic name="zip"&gt;<br />                &lt;column name="zip" /&gt;<br />            &lt;/basic&gt;<br />           <br />            &lt;many-to-one name="account1"&gt;<br />                &lt;join-table name="ACCT_MEMBER_TBL"&gt;<br />                    &lt;join-column name="MEMBER_ID" /&gt;<br />                    &lt;inverse-join-column name="ACCT_ID" /&gt;<br />                &lt;/join-table&gt;<br />                &lt;cascade&gt;<br />                    &lt;cascade-all /&gt;<br />                &lt;/cascade&gt;<br />            &lt;/many-to-one&gt;<br />        &lt;/attributes&gt;<br />    &lt;/entity&gt;<br />  <br />&lt;/entity-mappings&gt;<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">&lt;named-query&gt;</span>
+element allows us to define a Named Query. It contains a "<span class="hi-yellow">name</span>"
+attribute and a <span class="hi-yellow">&lt;query&gt;</span>
+element. The static query string is defined inside the <span class="bold">&lt;query&gt;</span> element and the "<span class="bold">name</span>" attribute associates a name
+with the query string. The convention used to name queries is the form "<span class="bold">Entity.Name</span>". The <span class="bold">&lt;named-query&gt;</span> element can
+appear as a sub-element under <span class="hi-yellow">&lt;entity-mappings&gt;</span>
+element or as a sub-element under <span class="hi-yellow">&lt;entity&gt;</span>
+element. In our example, we have defined two named queries: "<span class="bold">Account.findAccountByIdAndType</span>"
+under <span class="bold">&lt;entity-mappings&gt;</span>
+and "<span class="bold">Member.findMemberByLastName</span>"
+under <span class="bold">Member06</span> <span class="bold">&lt;entity&gt;</span>.</p>
+</div>
+
+<div id="para-div">
+<p>The following Java class called <span class="bold">AccountMemberQuery03</span>
+will demonstrated the use of Named Query using the XML mapping file (<span class="bold">META-INF/orm.xml</span>) approach:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.29</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import java.util.List;<br /><br />import javax.persistence.EntityManagerFactory;<br />import javax.persistence.Persistence;<br />import javax.persistence.EntityManager;<br />import javax.persistence.Query;<br /><br />public class AccountMemberQuery03 {<br />    public static void main(String[] args) throws Exception {<br />        EntityManagerFactory emf = Persistence.createEntityManagerFactory("PolarSparcJPA");<br />        EntityManager em = emf.createEntityManager();<br />       <br />        // Query using findMemberByLastName<br />        {<br />            Query qry = em.createNamedQuery("Member.findMemberByLastName");<br />            qry.setParameter("name", "Girl");<br />           <br />            @SuppressWarnings("unchecked")<br />            List&lt;Member06&gt; list = qry.getResultList();<br />            if (list.size() &gt; 0) {<br />                System.out.printf("Member Names:\n");<br />                for (Member06 mem : list) {<br />                    System.out.printf("\tMember Name: %s %s\n", mem.getFirstName(),<br />                        mem.getLastName());<br />                }<br />            }<br />        }<br />       <br />        // Query using findAccountByIdAndType<br />        {<br />            Query qry = em.createNamedQuery("Account.findAccountByIdAndType");<br />            qry.setParameter("id", "A001");<br />            qry.setParameter("type", "Savings");<br />           <br />            @SuppressWarnings("unchecked")<br />            List&lt;Account01&gt; list = qry.getResultList();<br />            if (list.size() &gt; 0) {<br />                System.out.printf("Account Type &amp; Balance:\n");<br />                for (Account01 acct : list) {<br />                    System.out.printf("\tAccount Type: %s, Balance: %f\n",<br />                        acct.getAccountType(), acct.getBalance());<br />                }<br />            }<br />        }<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>In order to use Named Query in <span class="bold">JPQL</span>,
+we still need an instance of the <span class="bold">Query</span>
+object. However, to obtain an instance of the <span class="bold">Query</span> object for the Named Query,
+invoke the <span class="bold">createNamedQuery()</span>
+method on the <span class="bold">EntityManager</span>
+instance specifiying the query name. The query name has to match the
+name specified in the XML mapping file (<span class="bold">META-INF/orm.xml</span>).
+For our example, we use "<span class="bold">Account.findAccountByIdAndType</span>"
+and "<span class="bold">Member.findMemberByLastName</span>".</p>
+</div>
+
+<div id="para-div">
+<p>In order to test our example, let us create a script called <span class="bold">bin/query03.sh</span> as follows:</p>
+</div>
+
+<div id="cmd-div">
+<p>CP=.:build/classes:./META-INF<br />
+<br />
+for jar in $HOME/Products/hibernate-4.1.3/lib/required/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/hibernate-4.1.3/lib/jpa/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/mysql-connector-java-5.1.20/*.jar<br />
+do<br />
+&nbsp;&nbsp;&nbsp; CP=$CP:$jar<br />
+done<br />
+<br />
+java -cp $CP com.polarsparc.jpa.AccountMemberQuery03</p>
+</div>
+
+<div id="para-div">
+<p>If we run the script <span class="bold">bin/query03.sh</span>,
+we see the following output:</p>
+</div>
+
+<div id="out-div">
+<h4>Output.11</h4>
+<pre>Jun 24, 2012 4:08:54 PM org.hibernate.annotations.common.Version &lt;clinit&gt;<br />INFO: HCANN000001: Hibernate Commons Annotations {4.0.1.Final}<br />Jun 24, 2012 4:08:54 PM org.hibernate.Version logVersion<br />INFO: HHH000412: Hibernate Core {4.1.3.Final}<br />Jun 24, 2012 4:08:54 PM org.hibernate.cfg.Environment &lt;clinit&gt;<br />INFO: HHH000206: hibernate.properties not found<br />Jun 24, 2012 4:08:54 PM org.hibernate.cfg.Environment buildBytecodeProvider<br />INFO: HHH000021: Bytecode provider name : javassist<br />Jun 24, 2012 4:08:55 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000402: Using Hibernate built-in connection pool (not for production use!)<br />Jun 24, 2012 4:08:55 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000115: Hibernate connection pool size: 20<br />Jun 24, 2012 4:08:55 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000006: Autocommit mode: true<br />Jun 24, 2012 4:08:55 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000401: using driver [com.mysql.jdbc.Driver] at URL [jdbc:mysql://localhost:3306/mydb]<br />Jun 24, 2012 4:08:55 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000046: Connection properties: {user=dbuser, password=****, autocommit=true, release_mode=auto}<br />Jun 24, 2012 4:08:55 PM org.hibernate.dialect.Dialect &lt;init&gt;<br />INFO: HHH000400: Using dialect: org.hibernate.dialect.MySQL5Dialect<br />Jun 24, 2012 4:08:55 PM org.hibernate.engine.transaction.internal.TransactionFactoryInitiator initiateService<br />INFO: HHH000268: Transaction strategy: org.hibernate.engine.transaction.internal.jdbc.JdbcTransactionFactory<br />Jun 24, 2012 4:08:55 PM org.hibernate.hql.internal.ast.ASTQueryTranslatorFactory &lt;init&gt;<br />INFO: HHH000397: Using ASTQueryTranslatorFactory<br />Hibernate: select member06x0_.memberId as memberId0_, member06x0_.firstName as firstName0_, member06x0_.lastName as lastName0_, member06x0_.zip as zip0_, member06x0_1_.ACCT_ID as ACCT1_3_ from Member member06x0_ left outer join ACCT_MEMBER_TBL member06x0_1_ on member06x0_.memberId=member06x0_1_.MEMBER_ID where member06x0_.lastName=?<br />Hibernate: select account01x0_.ACCT_ID as ACCT1_2_0_, account01x0_.ACCT_TYPE as ACCT2_2_0_, account01x0_.BALANCE as BALANCE2_0_ from ACCOUNT_TBL account01x0_ where account01x0_.ACCT_ID=?<br />Hibernate: select account01x0_.ACCT_ID as ACCT1_2_0_, account01x0_.ACCT_TYPE as ACCT2_2_0_, account01x0_.BALANCE as BALANCE2_0_ from ACCOUNT_TBL account01x0_ where account01x0_.ACCT_ID=?<br />Member Names:<br />    Member Name: Alice Girl<br />    Member Name: Eve Girl<br />Hibernate: select account01x0_.ACCT_ID as ACCT1_2_, account01x0_.ACCT_TYPE as ACCT2_2_, account01x0_.BALANCE as BALANCE2_ from ACCOUNT_TBL account01x0_ where account01x0_.ACCT_ID=? and account01x0_.ACCT_TYPE=?<br />Account Type &amp; Balance:<br />    Account Type: Savings, Balance: 250.000000</pre>
+</div>
+
+<div id="para-div">
+<p>We have successfully demonstrated an example on using Named Query in
+<span class="bold">JPQL</span> with the XML mapping file (<span class="bold">META-INF/orm.xml</span>)
+approach.</p>
+</div>
+
+<div id="para-div">
+<p>Now, let us demonstrate Named Query in <span class="bold">JPQL</span> using the <span class="bold">JPA</span> Annotations approach.</p>
+</div>
+
+<div id="para-div">
+<p>Modify the <span class="bold">Account02</span> class
+in Java as follows:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.30</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import java.util.*;<br /><br />import javax.persistence.Entity;<br />import javax.persistence.Table;<br />import javax.persistence.Id;<br />import javax.persistence.Column;<br />import javax.persistence.OneToMany;<br />import javax.persistence.CascadeType;<br />import javax.persistence.NamedQuery;<br /><br />@Entity<br />@Table(name="ACCOUNT_TBL")<br />@NamedQuery(name="Account02.findAccountByIdAndType",<br />            query="SELECT a FROM Account02 a WHERE a.accountId = :id AND a.accountType = :type")<br />public class Account02 {<br />    @Id<br />    @Column(name="ACCT_ID")<br />    private String accountId;<br />   <br />    @Column(name="ACCT_TYPE")<br />    private String accountType;<br />   <br />    @Column(name="BALANCE")<br />    private double balance;<br />   <br />    @OneToMany(cascade={CascadeType.ALL}, mappedBy="account2")<br />    private Collection&lt;Member07&gt; members7 = new ArrayList&lt;Member07&gt;();<br />   <br />    public String getAccountId() {<br />        return accountId;<br />    }<br />   <br />    public void setAccountId(String accountId) {<br />        this.accountId = accountId;<br />    }<br /><br />    public String getAccountType() {<br />        return accountType;<br />    }<br /><br />    public void setAccountType(String accountType) {<br />        this.accountType = accountType;<br />    }<br /><br />    public double getBalance() {<br />        return balance;<br />    }<br /><br />    public void setBalance(double balance) {<br />        this.balance = balance;<br />    }<br /><br />    public Collection&lt;Member07&gt; getMembers7() {<br />        return members7;<br />    }<br /><br />    public void setMembers6(Collection&lt;Member07&gt; members) {<br />        this.members7 = members;<br />    }<br />   <br />    @Override<br />    public String toString() {<br />        return "[" + accountId + ", " + accountType + ", " + balance + ", &lt;" + members7 + "&gt;]";<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The <span class="hi-yellow">@NamedQuery</span>
+annotation specifies the Named Query. It contains <span class="hi-yellow">name</span> and <span class="hi-yellow">query</span>
+attributes. The static query string is assigned as the value of the <span class="bold">query</span> attribute and the <span class="bold">name</span> attribute associates a name
+with the query string.</p>
+</div>
+
+<div id="para-div">
+<p>Also, modify the <span class="bold">Member07</span>
+class in Java as follows:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.31</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import javax.persistence.Column;<br />import javax.persistence.Entity;<br />import javax.persistence.Id;<br />import javax.persistence.GeneratedValue;<br />import javax.persistence.Table;<br />import javax.persistence.ManyToOne;<br />import javax.persistence.CascadeType;<br />import javax.persistence.JoinTable;<br />import javax.persistence.JoinColumn;<br />import javax.persistence.NamedQuery;<br /><br />@Entity<br />@Table(name="Member")<br />@NamedQuery(name="Member07.findMemberByLastName",<br />            query="SELECT m FROM Member07 m WHERE m.lastName = :name")<br />public class Member07 {<br />    @Id<br />    @GeneratedValue<br />    @Column(name="memberId")<br />    private long memberId;<br />   <br />    @Column(name="firstName")<br />    private String firstName;<br />   <br />    @Column(name="lastName")<br />    private String lastName;<br />   <br />    @Column(name="zip")<br />    private String zip;<br />   <br />    @ManyToOne(cascade={CascadeType.ALL})<br />    @JoinTable(name="ACCT_MEMBER_TBL",<br />               joinColumns={@JoinColumn(name="MEMBER_ID")},<br />               inverseJoinColumns={@JoinColumn(name="ACCT_ID")})<br />    private Account02 account2;<br />   <br />    public long getMemberId() {<br />        return memberId;<br />    }<br /><br />    public String getFirstName() {<br />        return firstName;<br />    }<br /><br />    public void setFirstName(String firstName) {<br />        this.firstName = firstName;<br />    }<br /><br />    public String getLastName() {<br />        return lastName;<br />    }<br /><br />    public void setLastName(String lastName) {<br />        this.lastName = lastName;<br />    }<br /><br />    public String getZip() {<br />        return zip;<br />    }<br /><br />    public void setZip(String zip) {<br />        this.zip = zip;<br />    }<br /><br />    public Account02 getAccount2() {<br />        return account2;<br />    }<br /><br />    public void setAccount2(Account02 account) {<br />        this.account2 = account;<br />    }<br />   <br />    @Override<br />    public String toString() {<br />        return "[" + firstName + ", " + lastName + ", " + zip + "&lt;" +<br />            account2.getAccountId() + "&gt;]";<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The following Java class called <span class="bold">AccountMemberQuery04</span>
+will demonstrated the use of Named Query using the <span class="bold">JPA</span> Annotations approach:</p>
+</div>
+
+<fieldset id="sc-fieldset"> <legend>Listing.32</legend>
+<pre>package com.polarsparc.jpa;<br /><br />import java.util.List;<br /><br />import javax.persistence.EntityManagerFactory;<br />import javax.persistence.Persistence;<br />import javax.persistence.EntityManager;<br />import javax.persistence.Query;<br /><br />public class AccountMemberQuery04 {<br />    public static void main(String[] args) throws Exception {<br />        EntityManagerFactory emf = Persistence.createEntityManagerFactory("PolarSparcJPA");<br />        EntityManager em = emf.createEntityManager();<br />       <br />        // Query using findMemberByLastName<br />        {<br />            Query qry = em.createNamedQuery("Member07.findMemberByLastName");<br />            qry.setParameter("name", "Girl");<br />           <br />            @SuppressWarnings("unchecked")<br />            List&lt;Member07&gt; list = qry.getResultList();<br />            if (list.size() &gt; 0) {<br />                System.out.printf("Member Names:\n");<br />                for (Member07 mem : list) {<br />                    System.out.printf("\tMember Name: %s %s\n", mem.getFirstName(),<br />                        mem.getLastName());<br />                }<br />            }<br />        }<br />       <br />        // Query using findAccountByIdAndType<br />        {<br />            Query qry = em.createNamedQuery("Account02.findAccountByIdAndType");<br />            qry.setParameter("id", "A001");<br />            qry.setParameter("type", "Savings");<br />           <br />            @SuppressWarnings("unchecked")<br />            List&lt;Account02&gt; list = qry.getResultList();<br />            if (list.size() &gt; 0) {<br />                System.out.printf("Account Type &amp; Balance:\n");<br />                for (Account02 acct : list) {<br />                    System.out.printf("\tAccount Type: %s, Balance: %f\n",<br />                        acct.getAccountType(), acct.getBalance());<br />                }<br />            }<br />        }<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>Notice the use of query names "<span class="bold">Member07.findMemberByLastName</span>"
+and "<span class="bold">Account02.findAccountByIdAndType</span>".
+The query names have to match the names specified in the name attribute
+of the <span class="bold">@NamedQuery</span> annotation.</p>
+</div>
+
+<div id="para-div">
+<p>In order to test our example, let us create a script called <span class="bold">bin/query04.sh</span> as follows:</p>
+</div>
+
+<div id="cmd-div">
+<p>CP=.:build/classes:./META-INF<br />
+<br />
+for jar in $HOME/Products/hibernate-4.1.3/lib/required/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/hibernate-4.1.3/lib/jpa/*.jar<br />
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+$HOME/Products/mysql-connector-java-5.1.20/*.jar<br />
+do<br />
+&nbsp;&nbsp;&nbsp; CP=$CP:$jar<br />
+done<br />
+<br />
+java -cp $CP com.polarsparc.jpa.AccountMemberQuery04</p>
+</div>
+
+<div id="para-div">
+<p>If we run the script <span class="bold">bin/query04.sh</span>,
+we see the following output:</p>
+</div>
+
+<div id="out-div">
+<h4>Output.12</h4>
+<pre>Jun 24, 2012 5:23:42 PM org.hibernate.annotations.common.Version &lt;clinit&gt;<br />INFO: HCANN000001: Hibernate Commons Annotations {4.0.1.Final}<br />Jun 24, 2012 5:23:42 PM org.hibernate.Version logVersion<br />INFO: HHH000412: Hibernate Core {4.1.3.Final}<br />Jun 24, 2012 5:23:42 PM org.hibernate.cfg.Environment &lt;clinit&gt;<br />INFO: HHH000206: hibernate.properties not found<br />Jun 24, 2012 5:23:42 PM org.hibernate.cfg.Environment buildBytecodeProvider<br />INFO: HHH000021: Bytecode provider name : javassist<br />Jun 24, 2012 5:23:42 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000402: Using Hibernate built-in connection pool (not for production use!)<br />Jun 24, 2012 5:23:42 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000115: Hibernate connection pool size: 20<br />Jun 24, 2012 5:23:42 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000006: Autocommit mode: true<br />Jun 24, 2012 5:23:42 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000401: using driver [com.mysql.jdbc.Driver] at URL [jdbc:mysql://localhost:3306/mydb]<br />Jun 24, 2012 5:23:42 PM org.hibernate.service.jdbc.connections.internal.DriverManagerConnectionProviderImpl configure<br />INFO: HHH000046: Connection properties: {user=dbuser, password=****, autocommit=true, release_mode=auto}<br />Jun 24, 2012 5:23:43 PM org.hibernate.dialect.Dialect &lt;init&gt;<br />INFO: HHH000400: Using dialect: org.hibernate.dialect.MySQL5Dialect<br />Jun 24, 2012 5:23:43 PM org.hibernate.engine.transaction.internal.TransactionFactoryInitiator initiateService<br />INFO: HHH000268: Transaction strategy: org.hibernate.engine.transaction.internal.jdbc.JdbcTransactionFactory<br />Jun 24, 2012 5:23:43 PM org.hibernate.hql.internal.ast.ASTQueryTranslatorFactory &lt;init&gt;<br />INFO: HHH000397: Using ASTQueryTranslatorFactory<br />Hibernate: select member07x0_.memberId as memberId0_, member07x0_.firstName as firstName0_, member07x0_.lastName as lastName0_, member07x0_.zip as zip0_, member07x0_1_.ACCT_ID as ACCT1_2_ from Member member07x0_ left outer join ACCT_MEMBER_TBL member07x0_1_ on member07x0_.memberId=member07x0_1_.MEMBER_ID where member07x0_.lastName=?<br />Hibernate: select account02x0_.ACCT_ID as ACCT1_1_0_, account02x0_.ACCT_TYPE as ACCT2_1_0_, account02x0_.BALANCE as BALANCE1_0_ from ACCOUNT_TBL account02x0_ where account02x0_.ACCT_ID=?<br />Hibernate: select account02x0_.ACCT_ID as ACCT1_1_0_, account02x0_.ACCT_TYPE as ACCT2_1_0_, account02x0_.BALANCE as BALANCE1_0_ from ACCOUNT_TBL account02x0_ where account02x0_.ACCT_ID=?<br />Member Names:<br />    Member Name: Alice Girl<br />    Member Name: Eve Girl<br />Hibernate: select account02x0_.ACCT_ID as ACCT1_1_, account02x0_.ACCT_TYPE as ACCT2_1_, account02x0_.BALANCE as BALANCE1_ from ACCOUNT_TBL account02x0_ where account02x0_.ACCT_ID=? and account02x0_.ACCT_TYPE=?<br />Account Type &amp; Balance:<br />    Account Type: Savings, Balance: 250.000000</pre>
+</div>
+
+<div id="para-div">
+<p>We have successfully demonstrated an example on using Named Query in
+<span class="bold">JPQL</span> with the <span class="bold">JPA</span> Annotations approach.</p>
+</div>
+
+<div id="para-div">
+<p>With this we conclude the <span class="bold">Quick
+Introduction to Java Persistence API (JPA)</span>.</p>
+</div>
+
+</body></html>

@@ -1,0 +1,793 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <title>Exploring SSL/TLS - Part 3</title>
+    <link rel="stylesheet" type="text/css" href="../css/polarsparc-v2.0.css" />
+  </head>
+  <body> <br />
+    <div id="title-div">
+      <p>Exploring SSL/TLS - Part 3</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">10/28/2017</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="step-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/Security/Exploring-SSL-TLS-2.html" target="_blank"><span class="bold">
+        Part-2</span></a>, we explored a simple echo client and a server, by creating and using a self-signed SSL/TLS
+        server certificate for secure communication via the default SSL/TLS setup using Java system properties.</p>
+      <p>In this article, we will explore how to perform all the necessary setup for SSL/TLS communication between
+        the client and the server using the lower level JSSE APIs.</p>
+    </div>
+    <div id="step-div">
+      <p>Terminology</p>
+    </div>
+    <div id="para-div">
+      <p>In this section, we will list and briefly describe some of the terms referred to in this article.</p>
+    </div>
+    <table id="col2-table">
+      <thead><tr>
+        <th>Term</th>
+        <th>Description</th>
+      </tr>
+      </thead> <tbody>
+        <tr>
+          <td class="col2-c1-odd">java.security.KeyStore</td>
+          <td class="col2-c2-odd">a class that implements an in-memory representation of the keystore for storing
+            the keys and the associated identify certificates for a subject (either the client or the server)</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even">javax.net.ssl.SSLContext</td>
+          <td class="col2-c2-even">a core engine class that implements the SSL/TLS protocol and acts factory for creating
+            secure sockets</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd">javax.net.ssl.KeyManager</td>
+          <td class="col2-c2-odd">a class that uses the <span class="bold">KeyStore</span> to determine which private key
+            entry (and the corresponding certificate) to use for sending to the remote peer for authentication based on
+            the chosen algorithm</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even">javax.net.ssl.KeyManagerFactory</td>
+          <td class="col2-c2-even">a factory class for creating an instance of <span class="bold">KeyManager</span></td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd">javax.net.ssl.TrustManager</td>
+          <td class="col2-c2-odd">a class that uses the <span class="bold">KeyStore</span> to determine which public key
+            entry (and the corresponding certificate) to use for validating the peer identity certificate</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even">javax.net.ssl.TrustManagerFactory</td>
+          <td class="col2-c2-even">a factory class for creating an instance of <span class="bold">TrustManager</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="step-div">
+      <p>Hands-on SSL/TLS using Java - Part 3</p>
+    </div>
+    <div id="para-div">
+      <p> We will leverage the server keystore <span class="bold">server.ks</span> and the client truststore
+        <span class="bold">client.ts</span> we created in <a href="https://polarsparc.github.io/Security/Exploring-SSL-TLS-2.html"
+        target="_blank"><span class="bold">Part-2</span></a> to demonstrate the use of SSL/TLS for secure communication between
+        the client and the server using the lower level JSSE APIs.</p>
+      <p>The following is the simple SSL enabled echo server using the lower level JSSE APIs:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>SecureEchoServer3.java</legend>
+      <pre>/*
+ *
+ *  Name:        SecureEchoServer3
+ *  Description: Echo server that loads a KeyStore and uses SSLContext
+ *  
+ */
+
+package com.polarsparc.pki;
+
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+
+import java.security.KeyStore;
+
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSocket;
+
+public class SecureEchoServer3 {
+    private static final int _SSL_PORT = 8443;
+    private static final String _PROTOCOL = "TLSv1.2";
+    
+    public static void main(String[] args) {
+        if (args.length != 2) {
+            System.out.printf("Usage: java com.polarsparc.pki.SecureEchoServer3 &lt;keystore&gt; &lt;password&gt;\n");
+            System.exit(1);
+        }
+        
+        try {
+            String kst = KeyStore.getDefaultType();
+            
+            System.out.printf("Echo (server-3), default key store type: %s\n", kst);
+            
+            KeyStore ks = KeyStore.getInstance(kst);
+            try (InputStream fs = new FileInputStream(args[0])) {
+                ks.load(fs, args[1].toCharArray());
+            }
+            catch (Exception ioEx) {
+                throw ioEx;
+            }
+            
+            String ksa = KeyManagerFactory.getDefaultAlgorithm();
+            
+            System.out.printf("Echo (server-3), default key manager algorithm: %s\n", ksa);
+            
+            KeyManagerFactory ksf = KeyManagerFactory.getInstance(ksa);
+            ksf.init(ks, args[1].toCharArray());
+            
+            KeyManager[] km = ksf.getKeyManagers();
+            
+            SSLContext context = SSLContext.getInstance(_PROTOCOL);
+            context.init(km, null, null);
+            
+            SSLServerSocketFactory factory = context.getServerSocketFactory();
+            
+            SSLServerSocket server = (SSLServerSocket) factory.createServerSocket(_SSL_PORT);
+            
+            System.out.printf("Echo (server-3) started on %d\n", _SSL_PORT);
+            
+            for (;;) {
+                try (SSLSocket client = (SSLSocket) server.accept()) {
+                    try (BufferedReader input = new BufferedReader(new InputStreamReader(client.getInputStream()))) {
+                        String line = null;
+                        while ((line = input.readLine()) != null) {
+                            System.out.printf("-> Echo (server-3): %s\n", line);
+                            System.out.flush();
+                        }
+                    }
+                    catch (Exception inputEx) {
+                        inputEx.printStackTrace();
+                    }
+                }
+                catch (Exception sockEx) {
+                    sockEx.printStackTrace();
+                }
+            }
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Let us explain and understand some of the methods used in the SecureEchoServer3 code shown above.</p>
+      <p>The KeyStore<span class="bold">.getDefaultType()</span> static method returns the default type of the KeyStore.
+        In the standard Java implementation, it is of type <span class="hi-yellow">JKS</span>, which is an acronym for
+        Java KeyStore.</p>
+      <p>The KeyStore<span class="bold">.getInstance(String)</span> static method returns an instance of a KeyStore of
+        the specified type.</p>
+      <p>The <span class="bold">load(InputStream, char[])</span> instance method initializes the KeyStore with keys and
+        certificates from the specified keystore file as an input stream. The second argument is the character array of
+        the password to unlock the keystore file.</p>
+      <p>The KeyManagerFactory<span class="bold">.getDefaultAlgorithm()</span> static method returns the name of the
+        default algorithm used. In the standard Java implementation, it is <span class="hi-yellow">SunX509</span>.</p>
+      <p>The KeyManagerFactory<span class="bold">.getInstance(String)</span> static method returns an instance of a
+        KeyManagerFactory that implements the specified algorithm.</p>
+      <p>The <span class="bold">init(KeyStore, char[])</span> instance method initializes the KeyManagerFactory with
+        the specified instance of the KeyStore. The second argument is the character array of the password to unlock
+        a key entries from the KeyStore instance.</p>
+      <p>The <span class="bold">getKeyManagers()</span> instance method returns an array of KeyManager instances, one
+        for each type of key entry in the KeyStore.</p>
+      <p>The SSLContext<span class="bold">.getInstance(String)</span> static method returns an instance of an
+        SSLContext that implements the specified protocol. We have chosen <span class="hi-yellow">TLSv1.2</span> as
+        it is the most current and secure version.</p>
+      <p>The <span class="bold">init(KeyManager[], TrustManager[], null)</span> instance method initializes the instance
+        of the SSLContext with the specified array of KeyManager and TrustManager. In our example, we pass in a
+        <span class="bold">null</span> for the array of TrustManager since the server does not need a truststore.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a new <span class="bold">Terminal</span> window, and execute the following command to start the SSL/TLS
+        echo server with the appropriate keystore:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -cp build/classes com.polarsparc.pki.SecureEchoServer3 ./resources/server.ks server.123</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Echo (server-3), default key store type: jks
+Echo (server-3), default key manager algorithm: SunX509
+Echo (server-3) started on 8443</pre>
+    </div>
+    <div id="para-div">
+      <p>The following is the simple SSL enabled echo client using the lower level JSSE APIs:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>SecureEchoClient3.java</legend>
+      <pre>/*
+ *
+ *  Name:        SecureEchoClient3
+ *  Description: Echo client that loads a TrustStore and uses SSLContext
+ *  
+ */
+
+package com.polarsparc.pki;
+
+import java.io.BufferedWriter;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.OutputStreamWriter;
+
+import java.security.KeyStore;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+
+public class SecureEchoClient3 {
+    private static final int _SSL_PORT = 8443;
+    private static final String _PROTOCOL = "TLSv1.2";
+    private static final String _SSL_HOST = "localhost";
+    
+    public static void main(String[] args) {
+        if (args.length != 3) {
+            System.out.printf("Usage: java com.polarsparc.pki.SecureEchoClient3 &lt;truststore&gt; &lt;password&gt; &lt;message&gt;\n");
+            System.exit(1);
+        }
+        
+        try {
+            String kst = KeyStore.getDefaultType();
+            
+            System.out.printf("Echo (client-3), default key store type: %s\n", kst);
+            
+            KeyStore ks = KeyStore.getInstance(kst);
+            try (InputStream fs = new FileInputStream(args[0])) {
+                ks.load(fs, args[1].toCharArray());
+            }
+            catch (Exception ioEx) {
+                throw ioEx;
+            }
+            
+            String tsa = TrustManagerFactory.getDefaultAlgorithm();
+            
+            System.out.printf("Echo (client-3), default trust manager algorithm: %s\n", tsa);
+            
+            TrustManagerFactory tsf = TrustManagerFactory.getInstance(tsa);
+            tsf.init(ks);
+            
+            TrustManager[] tm = tsf.getTrustManagers();
+            
+            SSLContext context = SSLContext.getInstance(_PROTOCOL);
+            context.init(null, tm, null);
+            
+            SSLSocketFactory factory = context.getSocketFactory();
+            
+            SSLSocket socket = (SSLSocket) factory.createSocket(_SSL_HOST, _SSL_PORT);
+            
+            BufferedWriter output = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+            
+            output.write(args[2]+"\n");
+            output.flush();
+            
+            socket.close();
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Let us explain and understand some of the methods used in the SecureEchoClient3 code shown above.</p>
+      <p>The TrustManagerFactory<span class="bold">.getDefaultAlgorithm()</span> static method returns the name of the
+        default algorithm used. In the standard Java implementation, it is <span class="hi-yellow">PKIX</span>.</p>
+      <p>The TrustManagerFactory<span class="bold">.getInstance(String)</span> static method returns an instance of a
+        TrustManagerFactory that implements the specified algorithm.</p>
+      <p>The <span class="bold">init(KeyStore, char[])</span> instance method initializes the TrustManagerFactory with
+        the specified instance of the KeyStore. The second argument is the character array of the password to unlock
+        a key entries from the KeyStore instance.</p>
+      <p>The <span class="bold">getTrustManagers()</span> instance method returns an array of TrustManager instances,
+        one for each type of key entry in the KeyStore.</p>
+      <p>The SSLContext<span class="bold">.getInstance(String)</span> static method returns an instance of an
+        SSLContext that implements the specified protocol. We have chosen <span class="hi-yellow">TLSv1.2</span> as
+        it is the most current and secure version.</p>
+      <p>The <span class="bold">init(KeyManager[], TrustManager[], null)</span> instance method initializes the instance
+        of the SSLContext with the specified array of KeyManager and TrustManager. In our example, we pass in a
+        <span class="bold">null</span> for the array of KeyManager since the client does not need a keystore.</p>
+    </div>
+    <div id="para-div">
+      <p>Open another <span class="bold">Terminal</span> window, and execute the following command to start the
+        SSL/TLS echo client:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -cp build/classes com.polarsparc.pki.SecureEchoClient3 ./resources/client.ts client.123 "Hello SSL World"</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Echo (client-3), default key store type: jks
+Echo (client-3), default trust manager algorithm: PKIX</pre>
+    </div>
+    <div id="para-div">
+      <p>From the terminal window where the server was started, we see the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>-> Echo (server-3): Hello SSL World</pre>
+    </div>
+    <div id="step-div">
+      <p>Mutual Authentication</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the basic steps involved in the two-way SSL/TLS handshake:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>The SSL/TLS client sends a 'client hello' message to the SSL/TLS server, specifying the supported protocols
+            (SSLv3, TLSv1, TLSv1.1, TLSv1.2), and the supported list of cipher suites</p>
+        </li>
+        <li>
+          <p>The SSL/TLS server responds with a 'server hello' message, indicating the selected protocol and the cipher
+            suite from the choice presented by the SSL/TLS client. In addition, the SSL/TLS server also sends its
+            digital certificate</p>
+        </li>
+        <li>
+          <p>The SSL/TLS server requests the client to send its digital certificate for verification</p>
+        </li>
+        <li>
+          <p>The SSL/TLS client verifies the digital certificate presented by the SSL/TLS server and extracts the
+            public key</p>
+        </li>
+        <li>
+          <p>The SSL/TLS server verifies the digital certificate presented by the SSL/TLS client and extracts the
+            public key</p>
+        </li>
+        <li>
+          <p>Once the server certificate is verified by the client and the client certificate by the server (mutual),
+            the SSL/TLS client sends a session master key (shared secret key) that is encrypted with the server's
+            public key</p>
+        </li>
+        <li>
+          <p>The SSL/TLS client sends a 'finished' message that is encrypted with the session key to the SSL/TLS server,
+            indicating the client side of the SSL/TLS handshake is completed</p>
+        </li>
+        <li>
+          <p>The SSL/TLS server sends a 'finished' message that is encrypted with the session key to the SSL/TLS client
+            signalling the server side of the SSL/TLS handshake is completed</p>
+        </li>
+        <li>
+          <p>The SSL/TLS client and server can now securely exchange data that is encrypted with the session key for
+            the duration of the session</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following diagram illustrates the above steps in a pictorial form:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/ssl-2-way.png" alt="Two-Way SSL" />
+      <div class="img-cap">Two-Way SSL/TLS</div>
+    </div>
+    <div id="step-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>In this section, we will create a digital certificate for the client that will be verified by the server
+        to demonstrate the two-way SSL/TLS mutual authentication.</p>
+    </div>
+    <div id="para-div">
+      <p>The private key and the identify certificate for the client will be stored in a <span class="bold">keystore</span>
+        file called <span class="hi-yellow">client.ks</span> that will be protected with a keystore password. The
+        certificate will be valid for 365 days.</p>
+      <p>To create the client certificate using the <span class="bold">keytool</span>, execute the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>keytool -genkeypair -alias client -keystore ./resources/client.ks -keyalg rsa -keysize 2048 -validity 365</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>Enter keystore password: client.123
+Re-enter new password: client.123
+What is your first and last name?
+  [Unknown]:  client
+What is the name of your organizational unit?
+  [Unknown]:  testing
+What is the name of your organization?
+  [Unknown]:  polarsparc
+What is the name of your City or Locality?
+  [Unknown]:  na
+What is the name of your State or Province?
+  [Unknown]:  ny
+What is the two-letter country code for this unit?
+  [Unknown]:  us
+Is CN=client, OU=testing, O=polarsparc, L=na, ST=ny, C=us correct?
+  [no]:  yes</pre>
+    </div>
+    <div id="para-div">
+      <p>To self-sign the client certificate from the keystore <span class="bold">client.ks</span> using
+        the <span class="bold">keytool</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>keytool -selfcert -alias client -keystore ./resources/client.ks -validity 365</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>Enter keystore password: client.123</pre>
+    </div>
+    <div id="para-div">
+      <p>For the server to validate a client certificate, it needs a <span class="bold">truststore</span>
+        with the public key and the CA certificate. Since we self-signed the server certificate, we need
+        to extract the public key and the CA certificate to a <span class="bold">truststore</span> file
+        called <span class="hi-yellow">server.ts</span>. It is a two-step process - first export the CA
+        certificate to a file and then import the CA certificate from the file into the truststore.</p>
+      <p>To export the CA certificate from the keystore <span class="bold">client.ks</span> into a file
+        called <span class="bold">client.cer</span> in the rfc 1421 format using the
+        <span class="bold">keytool</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>keytool -exportcert -alias client -keystore ./resources/client.ks -rfc -file ./resources/client.cer</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>Enter keystore password: client.123 
+Certificate stored in file <./resources/client.cer></pre>
+    </div>
+    <div id="para-div">
+      <p>To import the CA certificate from the file <span class="bold">client.cer</span> in the rfc 1421 format
+        into the truststore <span class="bold">server.ts</span> using the <span class="bold">keytool</span>,
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>keytool -importcert -alias client -file ./resources/client.cer -keystore ./resources/server.ts</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>Enter keystore password: server.123
+Re-enter new password: server.123
+Owner: CN=client, OU=testing, O=polarsparc, L=na, ST=ny, C=us
+Issuer: CN=client, OU=testing, O=polarsparc, L=na, ST=ny, C=us
+Serial number: 3d5f9f96
+Valid from: Fri Oct 27 23:05:11 EDT 2017 until: Sat Oct 27 23:05:11 EDT 2018
+Certificate fingerprints:
+   SHA1: DF:ED:5A:19:8B:B2:53:31:80:D7:B1:95:8A:CB:A0:8D:56:31:03:F0
+   SHA256: 05:8F:0F:11:5F:7E:F3:72:23:E4:3A:C6:58:9C:81:B7:B0:4F:1E:6F:A9:C8:B6:30:09:23:A8:8B:92:86:11:92
+Signature algorithm name: SHA256withRSA
+Subject Public Key Algorithm: 2048-bit RSA key
+Version: 3
+
+Extensions: 
+
+#1: ObjectId: 2.5.29.14 Criticality=false
+SubjectKeyIdentifier [
+KeyIdentifier [
+0000: 62 4E EE 82 9C B0 AE 02   54 E3 3D AE 32 6B 09 4B  bN......T.=.2k.K
+0010: C6 8C 08 FE                                        ....
+]
+]
+
+Trust this certificate? [no]:  yes
+Certificate was added to keystore</pre>
+    </div>
+    <div id="para-div">
+      <p>At this point, we should have two keystore files - one for the server (<span class="hi-yellow">server.ks</span>
+        from <a href="https://polarsparc.github.io/Security/Exploring-SSL-TLS-2.html" target="_blank"><span class="bold">Part 2
+        </span></a>) and one for the client (<span class="hi-yellow">client.ks</span> from above). Similarly, we should have
+        two truststore files - one for the client (<span class="hi-yellow">client.ts</span> from <a href=
+        "https://polarsparc.github.io/Security/Exploring-SSL-TLS-2.html" target="_blank"><span class="bold">Part 2</span></a>)
+        and one for the server (<span class="hi-yellow">server.ts</span> from above).</p>
+    </div>
+    <div id="step-div">
+      <p>Hands-on Two-way SSL/TLS using Java</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the simple SSL enabled echo server that uses the lower level JSSE APIs for the two-way SSL/TLS
+       mutual authentication:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>SecureEchoServer4.java</legend>
+      <pre>/*
+ *
+ *  Name:        SecureEchoServer4
+ *  Description: Echo server that loads both the KeyStore and the TrustStore and uses SSLContext
+ *  
+ */
+
+package com.polarsparc.pki;
+
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+
+import java.security.KeyStore;
+
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+
+public class SecureEchoServer4 {
+    private static final int _SSL_PORT = 8443;
+    private static final String _PROTOCOL = "TLSv1.2";
+    
+    public static void main(String[] args) {
+        if (args.length != 4) {
+            System.out.printf("Usage: java com.polarsparc.pki.SecureEchoServer4 &lt;keystore&gt; &lt;ks-secret&gt; &lt;truststore&gt; &lt;ts-secret&gt;\n");
+            System.exit(1);
+        }
+        
+        try {
+            String kst = KeyStore.getDefaultType();
+            
+            System.out.printf("Echo (server-4), default key store type: %s\n", kst);
+            
+            KeyStore ks = KeyStore.getInstance(kst);
+            try (InputStream fs = new FileInputStream(args[0])) {
+                ks.load(fs, args[1].toCharArray());
+            }
+            catch (Exception ioEx) {
+                throw ioEx;
+            }
+            
+            String ksa = KeyManagerFactory.getDefaultAlgorithm();
+            
+            System.out.printf("Echo (server-4), default key manager algorithm: %s\n", ksa);
+            
+            KeyManagerFactory ksf = KeyManagerFactory.getInstance(ksa);
+            ksf.init(ks, args[1].toCharArray());
+            
+            KeyStore ts = KeyStore.getInstance(kst);
+            try (InputStream fs = new FileInputStream(args[2])) {
+                ts.load(fs, args[3].toCharArray());
+            }
+            catch (Exception ioEx) {
+                throw ioEx;
+            }
+            
+            String tsa = TrustManagerFactory.getDefaultAlgorithm();
+            
+            System.out.printf("Echo (server-4), default trust manager algorithm: %s\n", tsa);
+            
+            TrustManagerFactory tsf = TrustManagerFactory.getInstance(tsa);
+            tsf.init(ts);
+            
+            KeyManager[] km = ksf.getKeyManagers();
+            
+            TrustManager[] tm = tsf.getTrustManagers();
+            
+            SSLContext context = SSLContext.getInstance(_PROTOCOL);
+            context.init(km, tm, null);
+            
+            SSLServerSocketFactory factory = context.getServerSocketFactory();
+            
+            SSLServerSocket server = (SSLServerSocket) factory.createServerSocket(_SSL_PORT);
+            server.setNeedClientAuth(true);
+            
+            System.out.printf("Echo (server-4) started on %d\n", _SSL_PORT);
+            
+            for (;;) {
+                try (SSLSocket client = (SSLSocket) server.accept()) {
+                    try (BufferedReader input = new BufferedReader(new InputStreamReader(client.getInputStream()))) {
+                        String line = null;
+                        while ((line = input.readLine()) != null) {
+                            System.out.printf("-> Echo (server-4): %s\n", line);
+                            System.out.flush();
+                        }
+                    }
+                    catch (Exception inputEx) {
+                        inputEx.printStackTrace();
+                    }
+                }
+                catch (Exception sockEx) {
+                    sockEx.printStackTrace();
+                }
+            }
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The <span class="bold">setNeedClientAuth(true)</span> instance method on the SSLServerSocket is what enables
+        the SSL/TLS client authentication.</p>
+      <p>For the two-way SSL/TLS mutual authentication, the SSL/TLS server needs both a keystore to store its private
+        keys and identify certificate as well as a truststore to store the trusted root CA certificate to validate the
+        SSL/TLS client identity certificate.</p>
+      <p>The <span class="bold">init(KeyManager[], TrustManager[], null)</span> instance method initializes the instance
+        of the SSLContext with the specified array of KeyManager and TrustManager. In this example, we specify valid
+        instances for both the array of KeyManager and TrustManager.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a new <span class="bold">Terminal</span> window, and execute the following command to start the SSL/TLS
+        echo server with the appropriate keystore and truststore:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -cp build/classes com.polarsparc.pki.SecureEchoServer4 ./resources/server.ks server.123 \</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;./resources/server.ts server.123</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>Echo (server-4), default key store type: jks
+Echo (server-4), default key manager algorithm: SunX509
+Echo (server-4), default trust manager algorithm: PKIX
+Echo (server-4) started on 8443</pre>
+    </div>
+    <div id="para-div">
+      <p>The following is the simple SSL enabled echo client that uses the lower level JSSE APIs for the two-way SSL/TLS
+        mutual authentication:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>SecureEchoClient4.java</legend>
+      <pre>/*
+ *
+ *  Name:        SecureEchoClient4
+ *  Description: Echo client that loads both the KeyStore and the TrustStore and uses SSLContext
+ *  
+ */
+
+package com.polarsparc.pki;
+
+import java.io.BufferedWriter;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.OutputStreamWriter;
+
+import java.security.KeyStore;
+
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+
+public class SecureEchoClient4 {
+    private static final int _SSL_PORT = 8443;
+    private static final String _PROTOCOL = "TLSv1.2";
+    private static final String _SSL_HOST = "localhost";
+    
+    public static void main(String[] args) {
+        if (args.length != 5) {
+            System.out.printf("Usage: java com.polarsparc.pki.SecureEchoClient4 &lt;keystore&gt; &lt;ks-secret&gt; &lt;truststore&gt; &lt;ts-secret&gt; &lt;message&gt;\n");
+            System.exit(1);
+        }
+        
+        try {
+            String kst = KeyStore.getDefaultType();
+            
+            System.out.printf("Echo (client-4), default key store type: %s\n", kst);
+            
+            KeyStore ks = KeyStore.getInstance(kst);
+            try (InputStream fs = new FileInputStream(args[0])) {
+                ks.load(fs, args[1].toCharArray());
+            }
+            catch (Exception ioEx) {
+                throw ioEx;
+            }
+            
+            String ksa = KeyManagerFactory.getDefaultAlgorithm();
+            
+            System.out.printf("Echo (client-4), default key manager algorithm: %s\n", ksa);
+            
+            KeyManagerFactory ksf = KeyManagerFactory.getInstance(ksa);
+            ksf.init(ks, args[1].toCharArray());
+            
+            KeyStore ts = KeyStore.getInstance(kst);
+            try (InputStream fs = new FileInputStream(args[2])) {
+                ts.load(fs, args[3].toCharArray());
+            }
+            catch (Exception ioEx) {
+                throw ioEx;
+            }
+            
+            String tsa = TrustManagerFactory.getDefaultAlgorithm();
+            
+            System.out.printf("Echo (client-4), default trust manager algorithm: %s\n", tsa);
+            
+            TrustManagerFactory tsf = TrustManagerFactory.getInstance(tsa);
+            tsf.init(ts);
+            
+            KeyManager[] km = ksf.getKeyManagers();
+            
+            TrustManager[] tm = tsf.getTrustManagers();
+            
+            SSLContext context = SSLContext.getInstance(_PROTOCOL);
+            context.init(km, tm, null);
+            
+            SSLSocketFactory factory = context.getSocketFactory();
+            
+            SSLSocket socket = (SSLSocket) factory.createSocket(_SSL_HOST, _SSL_PORT);
+            
+            BufferedWriter output = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+            
+            output.write(args[4]+"\n");
+            output.flush();
+            
+            socket.close();
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>For the two-way SSL/TLS mutual authentication, the SSL/TLS client needs both a keystore to store its private
+        keys and identify certificate as well as a truststore to store the trusted root CA certificate to validate the
+        SSL/TLS server identity certificate.</p>
+      <p>The <span class="bold">init(KeyManager[], TrustManager[], null)</span> instance method initializes the instance
+        of the SSLContext with the specified array of KeyManager and TrustManager. In this example, we specify valid
+        instances for both the array of KeyManager and TrustManager.</p>
+    </div>
+    <div id="para-div">
+      <p>Open another <span class="bold">Terminal</span> window, and execute the following command to start the
+        SSL/TLS echo client:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -cp build/classes com.polarsparc.pki.SecureEchoClient4 ./resources/client.ks client.123 \</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;./resources/client.ts client.123 "Hello SSL World"</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>Echo (client-4), default key store type: jks
+Echo (client-4), default key manager algorithm: SunX509
+Echo (client-4), default trust manager algorithm: PKIX</pre>
+    </div>
+    <div id="para-div">
+      <p>From the terminal window where the server was started, we see the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>-> Echo (server-4): Hello SSL World</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">YIPPEE !!!</span> We have successfully demonstrated the two-way SSL/TLS authetication.</p>
+    </div>
+    <div id="step-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/Security/Exploring-SSL-TLS-1.html" target="_blank"><span class="bold">Exploring SSL/TLS - Part 1</span></a></p>
+      <p><a href="https://polarsparc.github.io/Security/Exploring-SSL-TLS-2.html" target="_blank"><span class="bold">Exploring SSL/TLS - Part 2</span></a></p>
+    </div>
+  </body>
+</html>

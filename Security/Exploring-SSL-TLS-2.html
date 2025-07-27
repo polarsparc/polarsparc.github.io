@@ -1,0 +1,1157 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <title>Exploring SSL/TLS - Part 2</title>
+    <link rel="stylesheet" type="text/css" href="../css/polarsparc-v2.0.css" />
+  </head>
+  <body> <br />
+    <div id="title-div">
+      <p>Exploring SSL/TLS - Part 2</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">10/22/2017</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="step-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/Security/Exploring-SSL-TLS-1.html" target="_blank"><span class="bold">
+        Part-1</span></a>, we explored a simple echo client and a server with no real SSL/TLS certificate(s) being exchanged.</p>
+      <p>In this article, we will explore how to create our own SSL/TLS certificates and use then between the client
+        and the server to secure the communication.</p>
+    </div>
+    <div id="step-div">
+      <p>Terminology</p>
+    </div>
+    <div id="para-div">
+      <p>In this section, we will list and briefly describe some of the terms referred to in this article.</p>
+    </div>
+    <table id="col2-table">
+      <thead><tr>
+        <th>Term</th>
+        <th>Description</th>
+      </tr>
+      </thead> <tbody>
+        <tr>
+          <td class="col2-c1-odd">Keystore</td>
+          <td class="col2-c2-odd">a file that stores the private key and the associated identify certificate for
+            a subject (either the client or the server)</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even">Certificate Authority (CA)</td>
+          <td class="col2-c2-even">a trusted third party entity that issues a digital certificate that verifies
+            the identify of the subject (either the client or the server)</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd">Truststore</td>
+          <td class="col2-c2-odd">a file that stores certificates of the <span class="bold">CA</span> that can
+            be used to verify certificates presented by a subject (either the client or the server)</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even">keytool</td>
+          <td class="col2-c2-even">a command line utility provided with Java JDK for creating and managing keys
+            and digital certificates</td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="step-div">
+      <p>keytool</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="bold">keytool</span> utility takes a few command-line options, which are described as
+        follows:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="bold">-alias &lt;name&gt;</span> :: an alias name associated with the specified key
+            entry</p>
+        </li>
+        <li>
+          <p><span class="bold">-exportcert</span> :: export the certificate associates with the specified
+            alias to the specified file</p>
+        </li>
+        <li>
+          <p><span class="bold">-file &lt;inout&gt;</span> :: specify the input or output file</p>
+        </li>
+        <li>
+          <p><span class="bold">-genkey</span> :: generate a public-private asymmetric key-pair to be added to
+            the keystore</p>
+        </li>
+        <li>
+          <p><span class="bold">-importcert</span> :: import the certificate from the specified file</p>
+        </li>
+        <li>
+          <p><span class="bold">-keypass &lt;password&gt;</span> :: password used to protect the entire keystore</p>
+        </li>
+        <li>
+          <p><span class="bold">-keystore &lt;file&gt;</span> :: specify the keystore file</p>
+        </li>
+        <li>
+          <p><span class="bold">-keysize &lt;size&gt;</span> :: specify the keystore file</p>
+        </li>
+        <li>
+          <p><span class="bold">-list</span> :: list the entries from the specified keystore</p>
+        </li>
+        <li>
+          <p><span class="bold">-rfc</span> :: certificate in the rfc 1421 format</p>
+        </li>
+        <li>
+          <p><span class="bold">-selfcert</span> :: change the certificate chain associated with the specified key
+            entry. Removes all the certificates and replaces with this self-signed certificate</p>
+        </li>
+        <li>
+          <p><span class="bold">-storepass &lt;password&gt;</span> :: password used to protect the specified key
+            entry</p>
+        </li>
+        <li>
+          <p><span class="bold">-validity &lt;days&gt;</span> :: specify no. of days for which the certificate
+            is valid</p>
+        </li>
+      </ul>
+    </div>
+    <div id="step-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>In this section, we will create a digital certificate for the server that will be verified by the client
+        to demonstrate the one-way SSL/TLS authentication.</p>
+    </div>
+    <div id="para-div">
+      <p>The first step is the creation of the SSL/TLS certificate for the identification of the server. The private
+        key and the identify certificate for the server will be stored in a <span class="bold">keystore</span>
+        file called <span class="hi-yellow">server.ks</span> that will be protected with a keystore password. The
+        certificate will be valid for 365 days.</p>
+      <p>To create the server certificate using the <span class="bold">keytool</span>, execute the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>keytool -genkeypair -alias server -keystore ./resources/server.ks -keyalg rsa -keysize 2048 -validity 365</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Enter keystore password: server.123
+Re-enter new password: server.123
+What is your first and last name?
+  [Unknown]:  server
+What is the name of your organizational unit?
+  [Unknown]:  testing
+What is the name of your organization?
+  [Unknown]:  polarsparc
+What is the name of your City or Locality?
+  [Unknown]:  na
+What is the name of your State or Province?
+  [Unknown]:  ny
+What is the two-letter country code for this unit?
+  [Unknown]:  us
+Is CN=server, OU=testing, O=polarsparc, L=na, ST=ny, C=us correct?
+  [no]:  yes</pre>
+    </div>
+    <div id="para-div">
+      <p>To list the key entries from the keystore <span class="bold">server.ks</span> using the
+        <span class="bold">keytool</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>keytool -list -keystore ./resources/server.ks</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Enter keystore password: server.123
+Keystore type: PKCS12
+Keystore provider: SUN
+
+Your keystore contains 1 entry
+
+server, Oct 21, 2017, PrivateKeyEntry, 
+Certificate fingerprint (SHA-256): 8E:52:7A:3F:93:16:E4:85:1B:63:BC:67:69:BD:5B:B0:E1:38:2A:72:29:C7:D2:95:CE:8B:2C:57:F2:C4:1B:21</pre>
+    </div>
+    <div id="para-div">
+      <p>For real production deployment, one would send the above generated certificate to a CA (such as
+        Verisign) so that they can validate and sign the certificate for assurance and authenticity. That
+        costs money and hence for demonstration purposes, we will self-sign the above certificate.</p>
+      <p>To self-sign the server certificate from the keystore <span class="bold">server.ks</span> using
+        the <span class="bold">keytool</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>keytool -selfcert -alias server -keystore ./resources/server.ks -validity 365</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>Enter keystore password: server.123</pre>
+    </div>
+    <div id="para-div">
+      <p>For the client to validate a server certificate, it needs a <span class="bold">truststore</span>
+        with the public key and the CA certificate. Since we self-signed the server certificate, we need
+        to extract the public key and the CA certificate to a <span class="bold">truststore</span> file
+        called <span class="hi-yellow">client.ts</span>. It is a two-step process - first export the CA
+        certificate to a file and then import the CA certificate from the file into the truststore.</p>
+      <p>To export the CA certificate from the keystore <span class="bold">server.ks</span> into a file
+        called <span class="bold">server.cer</span> in the rfc 1421 format using the
+        <span class="bold">keytool</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>keytool -exportcert -alias server -keystore ./resources/server.ks -rfc -file ./resources/server.cer</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>Enter keystore password: server.123 
+Certificate stored in file <./resources/server.cer></pre>
+    </div>
+    <div id="para-div">
+      <p>To import the CA certificate from the file <span class="bold">server.cer</span> in the rfc 1421 format
+        into the truststore <span class="bold">client.ts</span> using the <span class="bold">keytool</span>,
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>keytool -importcert -alias server -file ./resources/server.cer -keystore ./resources/client.ts</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>Enter keystore password: client.123
+Re-enter new password: client.123
+Owner: CN=server, OU=testing, O=polarsparc, L=na, ST=ny, C=us
+Issuer: CN=server, OU=testing, O=polarsparc, L=na, ST=ny, C=us
+Serial number: 7cfcad13
+Valid from: Sat Oct 21 22:32:16 EDT 2017 until: Sun Oct 21 22:32:16 EDT 2018
+Certificate fingerprints:
+   SHA1: 10:79:42:36:68:8D:38:74:5A:96:E1:11:54:91:74:6E:46:F9:E3:52
+   SHA256: 94:6B:27:B0:8B:27:D5:5A:68:06:31:5D:6B:CD:30:E7:9F:5A:28:B2:AA:A8:FC:3E:F4:46:36:27:40:61:68:DD
+Signature algorithm name: SHA256withRSA
+Subject Public Key Algorithm: 2048-bit RSA key
+Version: 3
+
+Extensions: 
+
+#1: ObjectId: 2.5.29.14 Criticality=false
+SubjectKeyIdentifier [
+KeyIdentifier [
+0000: 92 BF FB 34 F8 C6 86 77   AC A2 56 A2 26 CD 2E 65  ...4...w..V.&..e
+0010: BA 34 22 6C                                        .4"l
+]
+]
+
+Trust this certificate? [no]:  yes
+Certificate was added to keystore</pre>
+    </div>
+    <div id="para-div">
+      <p>To list the key entries from the truststore <span class="bold">client.ts</span> using the
+        <span class="bold">keytool</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>keytool -list -keystore ./resources/client.ts</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>Enter keystore password: client.123
+Keystore type: PKCS12
+Keystore provider: SUN
+
+Your keystore contains 1 entry
+
+server, Oct 21, 2017, trustedCertEntry, 
+Certificate fingerprint (SHA-256): 94:6B:27:B0:8B:27:D5:5A:68:06:31:5D:6B:CD:30:E7:9F:5A:28:B2:AA:A8:FC:3E:F4:46:36:27:40:61:68:DD</pre>
+    </div>
+    <div id="step-div">
+      <p>Hands-on SSL/TLS using Java - Part 2</p>
+    </div>
+    <div id="para-div">
+      <p>Now, to demonstrate the use of SSL/TLS certificates we just created, we will now leverage the basic SSL/TLS
+        client (SecureEchoClient.java) and server (SecureEchoServer.java) we implemented in
+        <a href="./Exploring-SSL-TLS-1.html" target="_blank"><span class="bold">Part-1</span></a>.</p>
+      <p>For convenience, the following is the simple SSL enabled echo server:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>SecureEchoServer.java</legend>
+      <pre>/*
+ *
+ *  Name:        SecureEchoServer
+ *  Description: Echo server that uses the secure sockets
+ *  
+ */
+
+package com.polarsparc.pki;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+
+import javax.net.ssl.SSLServerSocket;
+import javax.net.ssl.SSLServerSocketFactory;
+import javax.net.ssl.SSLSocket;
+
+public class SecureEchoServer {
+    private static final int _SSL_PORT = 8443;
+    
+    public static void main(String[] args) {
+        try {
+            SSLServerSocketFactory factory = (SSLServerSocketFactory) SSLServerSocketFactory.getDefault();
+            
+            SSLServerSocket server = (SSLServerSocket) factory.createServerSocket(_SSL_PORT);
+            
+            System.out.printf("Echo (server) started on %d\n", _SSL_PORT);
+            
+            for (;;) {
+                try (SSLSocket client = (SSLSocket) server.accept()) {
+                    try (BufferedReader input = new BufferedReader(new InputStreamReader(client.getInputStream()))) {
+                        String line = null;
+                        while ((line = input.readLine()) != null) {
+                            System.out.printf("-> Echo (server): %s\n", line);
+                            System.out.flush();
+                        }
+                    }
+                    catch (Exception inputEx) {
+                        inputEx.printStackTrace();
+                    }
+                }
+                catch (Exception sockEx) {
+                    sockEx.printStackTrace();
+                }
+            }
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>We had explained the basics of the classes/methods used in
+        <a href="./Exploring-SSL-TLS-1.html" target="_blank"><span class="bold">Part-1</span></a>. We will connect
+        the missing puzzle pieces in this section.</p>
+      <p>When a default <span class="bold">javax.net.ssl.SSLServerSocketFactory</span> instance is created by invoking
+        the <span class="bold">getDefault()</span> static method, under-the-hood it uses a default instance of the
+        <span class="hi-yellow">javax.net.ssl.SSLContext</span> class.</p>
+      <p>An instance of the <span class="bold">javax.net.ssl.SSLContext</span> class represents the Java implementation
+        of the SSL/TLS protocol with a default <span class="bold">keystore</span> (initialized from the default keystore
+        located at the location <span class="hi-yellow">$HOME/.keystore</span>). Since we do not have any keystore at
+        that location, it is initialized with an empty keystore.</p>
+      <p>In order to use the keystore <span class="bold">server.ks</span> as the server keystore, we need to set the
+        Java system property <span class="hi-blue">javax.net.ssl.keyStore</span> to the path of the server keystore.
+        Since the server keystore is password protected (for security reasons), we also need to set the Java system
+        property <span class="hi-blue">javax.net.ssl.keyStorePassword</span> to the password of the server keystore.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a new <span class="bold">Terminal</span> window, and execute the following command to start the SSL/TLS
+        echo server with the appropriate keystore:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -Djavax.net.ssl.keyStore=./resources/server.ks \</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-Djavax.net.ssl.keyStorePassword=server.123 \</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-cp build/classes com.polarsparc.pki.SecureEchoServer</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>Echo (server) started on 8443</pre>
+    </div>
+    <div id="para-div">
+      <p>For convenience, the following is the simple SSL enabled echo client:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>SecureEchoClient.java</legend>
+      <pre>/*
+ *
+ *  Name:        SecureEchoClient
+ *  Description: Echo client that uses the secure sockets to communicate with the secure echo server
+ *  
+ */
+
+package com.polarsparc.pki;
+
+import java.io.BufferedWriter;
+import java.io.OutputStreamWriter;
+
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
+
+public class SecureEchoClient {
+    private static final int _SSL_PORT = 8443;
+    private static final String _SSL_HOST = "localhost";
+    
+    public static void main(String[] args) {
+        if (args.length != 1) {
+            System.out.printf("Usage: java com.polarsparc.pki.SecureEchoClient &lt;message&gt;\n");
+            System.exit(1);
+        }
+        
+        try {
+            SSLSocketFactory factory = (SSLSocketFactory) SSLSocketFactory.getDefault();
+            
+            SSLSocket socket = (SSLSocket) factory.createSocket(_SSL_HOST, _SSL_PORT);
+            
+            BufferedWriter output = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+            
+            output.write(args[0]+"\n");
+            output.flush();
+            
+            socket.close();
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Open another <span class="bold">Terminal</span> window, and execute the following command to start the
+        SSL/TLS echo client:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -cp build/classes com.polarsparc.pki.SecureEchoClient "Hello SSL/TLS World"</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>javax.net.ssl.SSLHandshakeException: sun.security.validator.ValidatorException: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target
+  at sun.security.ssl.Alerts.getSSLException(Alerts.java:192)
+  at sun.security.ssl.SSLSocketImpl.fatal(SSLSocketImpl.java:1959)
+  at sun.security.ssl.Handshaker.fatalSE(Handshaker.java:302)
+  at sun.security.ssl.Handshaker.fatalSE(Handshaker.java:296)
+  at sun.security.ssl.ClientHandshaker.serverCertificate(ClientHandshaker.java:1514)
+  at sun.security.ssl.ClientHandshaker.processMessage(ClientHandshaker.java:216)
+  at sun.security.ssl.Handshaker.processLoop(Handshaker.java:1026)
+  at sun.security.ssl.Handshaker.process_record(Handshaker.java:961)
+  at sun.security.ssl.SSLSocketImpl.readRecord(SSLSocketImpl.java:1072)
+  at sun.security.ssl.SSLSocketImpl.performInitialHandshake(SSLSocketImpl.java:1385)
+  at sun.security.ssl.SSLSocketImpl.writeRecord(SSLSocketImpl.java:757)
+  at sun.security.ssl.AppOutputStream.write(AppOutputStream.java:123)
+  at sun.nio.cs.StreamEncoder.writeBytes(StreamEncoder.java:221)
+  at sun.nio.cs.StreamEncoder.implFlushBuffer(StreamEncoder.java:291)
+  at sun.nio.cs.StreamEncoder.implFlush(StreamEncoder.java:295)
+  at sun.nio.cs.StreamEncoder.flush(StreamEncoder.java:141)
+  at java.io.OutputStreamWriter.flush(OutputStreamWriter.java:229)
+  at java.io.BufferedWriter.flush(BufferedWriter.java:254)
+  at com.polarsparc.pki.SecureEchoClient.main(SecureEchoClient.java:34)
+Caused by: sun.security.validator.ValidatorException: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target
+  at sun.security.validator.PKIXValidator.doBuild(PKIXValidator.java:397)
+  at sun.security.validator.PKIXValidator.engineValidate(PKIXValidator.java:302)
+  at sun.security.validator.Validator.validate(Validator.java:260)
+  at sun.security.ssl.X509TrustManagerImpl.validate(X509TrustManagerImpl.java:324)
+  at sun.security.ssl.X509TrustManagerImpl.checkTrusted(X509TrustManagerImpl.java:229)
+  at sun.security.ssl.X509TrustManagerImpl.checkServerTrusted(X509TrustManagerImpl.java:124)
+  at sun.security.ssl.ClientHandshaker.serverCertificate(ClientHandshaker.java:1496)
+  ... 14 more
+Caused by: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target
+  at sun.security.provider.certpath.SunCertPathBuilder.build(SunCertPathBuilder.java:141)
+  at sun.security.provider.certpath.SunCertPathBuilder.engineBuild(SunCertPathBuilder.java:126)
+  at java.security.cert.CertPathBuilder.build(CertPathBuilder.java:280)
+  at sun.security.validator.PKIXValidator.doBuild(PKIXValidator.java:392)
+  ... 20 more</pre>
+    </div>
+    <div id="para-div">
+      <p>From the terminal window where the server was started, we see the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>javax.net.ssl.SSLHandshakeException: Received fatal alert: certificate_unknown
+  at sun.security.ssl.Alerts.getSSLException(Alerts.java:192)
+  at sun.security.ssl.Alerts.getSSLException(Alerts.java:154)
+  at sun.security.ssl.SSLSocketImpl.recvAlert(SSLSocketImpl.java:2033)
+  at sun.security.ssl.SSLSocketImpl.readRecord(SSLSocketImpl.java:1135)
+  at sun.security.ssl.SSLSocketImpl.performInitialHandshake(SSLSocketImpl.java:1385)
+  at sun.security.ssl.SSLSocketImpl.readDataRecord(SSLSocketImpl.java:938)
+  at sun.security.ssl.AppInputStream.read(AppInputStream.java:105)
+  at sun.nio.cs.StreamDecoder.readBytes(StreamDecoder.java:284)
+  at sun.nio.cs.StreamDecoder.implRead(StreamDecoder.java:326)
+  at sun.nio.cs.StreamDecoder.read(StreamDecoder.java:178)
+  at java.io.InputStreamReader.read(InputStreamReader.java:184)
+  at java.io.BufferedReader.fill(BufferedReader.java:161)
+  at java.io.BufferedReader.readLine(BufferedReader.java:324)
+  at java.io.BufferedReader.readLine(BufferedReader.java:389)
+  at com.polarsparc.pki.SecureEchoServer.main(SecureEchoServer.java:32)</pre>
+    </div>
+    <div id="para-div">
+      <p>This is an expected behavior - <span class="bold">why</span> - see the details below.</p>
+    </div>
+    <div id="para-div">
+      <p>In the one-way SSL/TLS authentication, the server presents the client with its certificate. The client would
+        then verify the server certificate using the trusted certificate from a certificate authority (CA).</p>
+      <p>Remember, we created a self-signed server certificate. We never set the client to use the trusted CA certificate
+        from the truststore <span class="bold">client.ts</span>.</p>
+
+      <p>When a default <span class="bold">javax.net.ssl.SSLSocketFactory</span> instance (just like the default
+        instance of <span class="bold">javax.net.ssl.SSLServerSocketFactory</span>) is created by invoking the
+        <span class="bold">getDefault()</span> static method, under-the-hood it uses a default instance of the
+        <span class="hi-yellow">javax.net.ssl.SSLContext</span> class.</p>
+      <p>The default instance of the <span class="bold">javax.net.ssl.SSLContext</span> class uses a default
+        <span class="bold">truststore</span>. If the truststore 
+        <span class="hi-yellow">$JAVA_HOME/lib/security/jssecacerts</span> exists, then it is used. Else, the
+        truststore that comes bundled with the Java JDK located at
+        <span class="hi-yellow">$JAVA_HOME/lib/security/cacerts</span> is used.</p>
+      <p>In order to use the truststore <span class="bold">client.ts</span> as the preferred truststore, we need to
+        set the Java system property <span class="hi-blue">javax.net.ssl.trustStore</span> to the path of the client
+        truststore. Since the preferred client truststore is password protected (for security reasons), we also need
+        to set the Java system property <span class="hi-blue">javax.net.ssl.trustStorePassword</span> to the password
+        of the client truststore.</p>
+    </div>
+    <div id="para-div">
+      <p>In the client <span class="bold">Terminal</span> window, re-execute the following command to start the
+        SSL/TLS echo client with the appropriate truststore:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -Djavax.net.ssl.trustStore=./resources/client.ts \</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-Djavax.net.ssl.trustStorePassword=client.123 \</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-cp build/classes com.polarsparc.pki.SecureEchoClient</p>
+    </div>
+    <div id="para-div">
+      <p>This time everything will work as expected and the following should be the typical output on the server
+        terminal:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>-> Echo (server): Hello SSL World</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">How do we tell for sure if the SSL/TLS handshake is working as expected ???</span></p>
+      <p>Enter the magic SSL/TLS debugging flag that is set to the string value <span class="hi-yellow">ssl</span>
+        via the Java system property <span class="hi-blue">javax.net.debug</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>On the server <span class="bold">Terminal</span> window, execute the following command to re-start the
+        SSL/TLS echo server with the appropriate server keystore, an empty truststore, and the SSL/TLS debugging
+        enabled:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -Djavax.net.debug=ssl \</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-Djavax.net.ssl.keyStore=./resources/server.ks \</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-Djavax.net.ssl.keyStorePassword=server.123 \</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-Djavax.net.ssl.trustStore= \</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-cp build/classes com.polarsparc.pki.SecureEchoServer</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_DH_anon_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_DH_anon_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_anon_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_DH_anon_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+trustStore is: No File Available, using empty keystore.
+trustStore type is : jks
+trustStore provider is : 
+init truststore
+keyStore is : ./resources/server.ks
+keyStore type is : jks
+keyStore provider is : 
+init keystore
+init keymanager of type SunX509
+***
+found key for : server
+chain [0] = [
+[
+  Version: V3
+  Subject: CN=server, OU=testing, O=polarsparc, L=na, ST=ny, C=us
+  Signature Algorithm: SHA256withRSA, OID = 1.2.840.113549.1.1.11
+
+  Key:  Sun RSA public key, 2048 bits
+  modulus: 16880709253080032281023643288018292757591472990147041413067700063286874836435286486595463275405826540677043133541515079940061370074948525466150319332258445816121121323852615120575426350344951966607996124484732807137674741331043316045153266626369807597360407114730905359098531843798290614154840416692041829247208068515557243466657152613854068367410765010336003292379203689592678243745477840353651069609264959847936134271884019149728209739211071092172731513927122046245889069050645877810100305598441675402471666469623444230617374487715840759851667415984790846787273336838521198613180358803005260150117224850644716996473
+  public exponent: 65537
+  Validity: [From: Sat Oct 21 22:32:16 EDT 2017,
+               To: Sun Oct 21 22:32:16 EDT 2018]
+  Issuer: CN=server, OU=testing, O=polarsparc, L=na, ST=ny, C=us
+  SerialNumber: [    7cfcad13]
+
+Certificate Extensions: 1
+[1]: ObjectId: 2.5.29.14 Criticality=false
+SubjectKeyIdentifier [
+KeyIdentifier [
+0000: 92 BF FB 34 F8 C6 86 77   AC A2 56 A2 26 CD 2E 65  ...4...w..V.&..e
+0010: BA 34 22 6C                                        .4"l
+]
+]
+
+]
+  Algorithm: [SHA256withRSA]
+  Signature:
+0000: 0F 5D 08 87 11 33 BF A6   07 81 6E 4A AB 55 8C 67  .]...3....nJ.U.g
+0010: 5E 68 44 79 D9 AB A5 33   F6 62 57 44 25 CC 73 F0  ^hDy...3.bWD%.s.
+0020: 1D 82 C7 91 54 0E 78 BF   A4 C0 A5 B0 46 0D 76 EA  ....T.x.....F.v.
+0030: B0 CF 87 BB 3B 5B C4 7A   67 A1 C7 7B 56 1A B2 C5  ....;[.zg...V...
+0040: 12 7F BA AD 53 5B 35 AC   72 EE 3A A3 2F A9 5D 94  ....S[5.r.:./.].
+0050: BD C8 A3 78 BB 17 34 25   28 F3 35 84 25 E8 8D D0  ...x..4%(.5.%...
+0060: C8 80 42 C0 D1 92 9B CB   1E 36 EC AF 81 46 B4 AB  ..B......6...F..
+0070: 1E 28 0A ED 54 F7 C6 5A   B0 86 28 D2 7A 7B 3C 67  .(..T..Z..(.z.<g
+0080: 1F A5 4C 2C 20 DC B3 31   24 30 F4 28 68 0C AC D0  ..L, ..1$0.(h...
+0090: 23 91 ED B2 71 17 D5 74   20 2A AC 17 F7 FD 08 B0  #...q..t *......
+00A0: 17 D3 3B 67 6B A5 26 13   C5 0C 69 8C 1A FD 02 7F  ..;gk.&...i.....
+00B0: D4 8D 87 BF 1D 89 4D 00   00 A0 72 CE 9D 1B 7E 1C  ......M...r.....
+00C0: DE 3A B7 57 DD 18 DA CD   59 9B 44 1A AC EA 54 E7  .:.W....Y.D...T.
+00D0: 7C 98 12 73 0C ED 1B 7B   C1 D6 8B B1 37 55 AE 37  ...s........7U.7
+00E0: 4B 8E 24 34 37 B1 CC 9C   6E 22 26 DA 07 5D B6 33  K.$47...n"&..].3
+00F0: 3B FE 38 F7 D9 5D 99 27   72 07 0F 51 A9 8F 0C C1  ;.8..].'r..Q....
+
+]
+***
+trigger seeding of SecureRandom
+done seeding SecureRandom
+Echo (server) started on 8443</pre>
+    </div>
+    <div id="para-div">
+      <p>The SSL/TLS enabled echo server has successfully started and waiting for an echo client connection.</p>
+    </div>
+    <div id="para-div">
+      <p>In the client <span class="bold">Terminal</span> window, execute the following command to re-start the
+        SSL/TLS echo client with the appropriate client truststore and the SSL/TLS debugging enabled:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -Djavax.net.debug=ssl \</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-Djavax.net.ssl.trustStore=./resources/client.ts \</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-Djavax.net.ssl.trustStorePassword=client.123 \</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-cp build/classes com.polarsparc.pki.SecureEchoClient</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_DH_anon_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_DH_anon_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_anon_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_DH_anon_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_ECDSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDH_RSA_WITH_AES_256_GCM_SHA384
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_DHE_DSS_WITH_AES_256_CBC_SHA256
+Ignoring unavailable cipher suite: TLS_DHE_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+Ignoring unavailable cipher suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+trustStore is: ./resources/client.ts
+trustStore type is : jks
+trustStore provider is : 
+init truststore
+adding as trusted cert:
+  Subject: CN=server, OU=testing, O=polarsparc, L=na, ST=ny, C=us
+  Issuer:  CN=server, OU=testing, O=polarsparc, L=na, ST=ny, C=us
+  Algorithm: RSA; Serial number: 0x7cfcad13
+  Valid from Sat Oct 21 22:32:16 EDT 2017 until Sun Oct 21 22:32:16 EDT 2018
+
+keyStore is : 
+keyStore type is : jks
+keyStore provider is : 
+init keystore
+init keymanager of type SunX509
+trigger seeding of SecureRandom
+done seeding SecureRandom
+Allow unsafe renegotiation: false
+Allow legacy hello messages: true
+Is initial handshake: true
+Is secure renegotiation: false
+Ignoring unsupported cipher suite: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256 for TLSv1
+Ignoring unsupported cipher suite: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256 for TLSv1
+Ignoring unsupported cipher suite: TLS_RSA_WITH_AES_128_CBC_SHA256 for TLSv1
+Ignoring unsupported cipher suite: TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256 for TLSv1
+Ignoring unsupported cipher suite: TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256 for TLSv1
+Ignoring unsupported cipher suite: TLS_DHE_RSA_WITH_AES_128_CBC_SHA256 for TLSv1
+Ignoring unsupported cipher suite: TLS_DHE_DSS_WITH_AES_128_CBC_SHA256 for TLSv1
+Ignoring unsupported cipher suite: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256 for TLSv1.1
+Ignoring unsupported cipher suite: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256 for TLSv1.1
+Ignoring unsupported cipher suite: TLS_RSA_WITH_AES_128_CBC_SHA256 for TLSv1.1
+Ignoring unsupported cipher suite: TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256 for TLSv1.1
+Ignoring unsupported cipher suite: TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256 for TLSv1.1
+Ignoring unsupported cipher suite: TLS_DHE_RSA_WITH_AES_128_CBC_SHA256 for TLSv1.1
+Ignoring unsupported cipher suite: TLS_DHE_DSS_WITH_AES_128_CBC_SHA256 for TLSv1.1
+%% No cached client session
+*** ClientHello, TLSv1.2
+RandomCookie:  GMT: 1491848360 bytes = { 155, 188, 4, 249, 233, 156, 199, 63, 209, 186, 196, 189, 85, 108, 40, 91, 24, 247, 98, 125, 105, 180, 62, 242, 136, 110, 173, 115 }
+Session ID:  {}
+Cipher Suites: [TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256, TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256, TLS_RSA_WITH_AES_128_CBC_SHA256, TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256, TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256, TLS_DHE_RSA_WITH_AES_128_CBC_SHA256, TLS_DHE_DSS_WITH_AES_128_CBC_SHA256, TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA, TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA, TLS_RSA_WITH_AES_128_CBC_SHA, TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA, TLS_ECDH_RSA_WITH_AES_128_CBC_SHA, TLS_DHE_RSA_WITH_AES_128_CBC_SHA, TLS_DHE_DSS_WITH_AES_128_CBC_SHA, TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, TLS_RSA_WITH_AES_128_GCM_SHA256, TLS_ECDH_ECDSA_WITH_AES_128_GCM_SHA256, TLS_ECDH_RSA_WITH_AES_128_GCM_SHA256, TLS_DHE_RSA_WITH_AES_128_GCM_SHA256, TLS_DHE_DSS_WITH_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA, TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA, SSL_RSA_WITH_3DES_EDE_CBC_SHA, TLS_ECDH_ECDSA_WITH_3DES_EDE_CBC_SHA, TLS_ECDH_RSA_WITH_3DES_EDE_CBC_SHA, SSL_DHE_RSA_WITH_3DES_EDE_CBC_SHA, SSL_DHE_DSS_WITH_3DES_EDE_CBC_SHA, TLS_EMPTY_RENEGOTIATION_INFO_SCSV]
+Compression Methods:  { 0 }
+Extension elliptic_curves, curve names: {secp256r1, secp384r1, secp521r1, sect283k1, sect283r1, sect409k1, sect409r1, sect571k1, sect571r1, secp256k1}
+Extension ec_point_formats, formats: [uncompressed]
+Extension signature_algorithms, signature_algorithms: SHA512withECDSA, SHA512withRSA, SHA384withECDSA, SHA384withRSA, SHA256withECDSA, SHA256withRSA, SHA256withDSA, SHA224withECDSA, SHA224withRSA, SHA224withDSA, SHA1withECDSA, SHA1withRSA, SHA1withDSA
+***
+main, WRITE: TLSv1.2 Handshake, length = 167
+main, READ: TLSv1.2 Handshake, length = 1293
+*** ServerHello, TLSv1.2
+RandomCookie:  GMT: 1491848360 bytes = { 6, 101, 13, 60, 69, 32, 212, 209, 99, 231, 201, 9, 63, 214, 5, 18, 223, 246, 86, 119, 12, 34, 38, 47, 4, 245, 44, 159 }
+Session ID:  {89, 236, 205, 168, 195, 184, 179, 21, 255, 63, 240, 61, 86, 168, 58, 73, 183, 5, 37, 114, 204, 208, 16, 157, 11, 117, 9, 223, 89, 189, 1, 57}
+Cipher Suite: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+Compression Method: 0
+Extension renegotiation_info, renegotiated_connection: &lt;empty>
+***
+%% Initialized:  [Session-1, TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256]
+** TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+*** Certificate chain
+chain [0] = [
+[
+  Version: V3
+  Subject: CN=server, OU=testing, O=polarsparc, L=na, ST=ny, C=us
+  Signature Algorithm: SHA256withRSA, OID = 1.2.840.113549.1.1.11
+
+  Key:  Sun RSA public key, 2048 bits
+  modulus: 16880709253080032281023643288018292757591472990147041413067700063286874836435286486595463275405826540677043133541515079940061370074948525466150319332258445816121121323852615120575426350344951966607996124484732807137674741331043316045153266626369807597360407114730905359098531843798290614154840416692041829247208068515557243466657152613854068367410765010336003292379203689592678243745477840353651069609264959847936134271884019149728209739211071092172731513927122046245889069050645877810100305598441675402471666469623444230617374487715840759851667415984790846787273336838521198613180358803005260150117224850644716996473
+  public exponent: 65537
+  Validity: [From: Sat Oct 21 22:32:16 EDT 2017,
+               To: Sun Oct 21 22:32:16 EDT 2018]
+  Issuer: CN=server, OU=testing, O=polarsparc, L=na, ST=ny, C=us
+  SerialNumber: [    7cfcad13]
+
+Certificate Extensions: 1
+[1]: ObjectId: 2.5.29.14 Criticality=false
+SubjectKeyIdentifier [
+KeyIdentifier [
+0000: 92 BF FB 34 F8 C6 86 77   AC A2 56 A2 26 CD 2E 65  ...4...w..V.&..e
+0010: BA 34 22 6C                                        .4"l
+]
+]
+
+]
+  Algorithm: [SHA256withRSA]
+  Signature:
+0000: 0F 5D 08 87 11 33 BF A6   07 81 6E 4A AB 55 8C 67  .]...3....nJ.U.g
+0010: 5E 68 44 79 D9 AB A5 33   F6 62 57 44 25 CC 73 F0  ^hDy...3.bWD%.s.
+0020: 1D 82 C7 91 54 0E 78 BF   A4 C0 A5 B0 46 0D 76 EA  ....T.x.....F.v.
+0030: B0 CF 87 BB 3B 5B C4 7A   67 A1 C7 7B 56 1A B2 C5  ....;[.zg...V...
+0040: 12 7F BA AD 53 5B 35 AC   72 EE 3A A3 2F A9 5D 94  ....S[5.r.:./.].
+0050: BD C8 A3 78 BB 17 34 25   28 F3 35 84 25 E8 8D D0  ...x..4%(.5.%...
+0060: C8 80 42 C0 D1 92 9B CB   1E 36 EC AF 81 46 B4 AB  ..B......6...F..
+0070: 1E 28 0A ED 54 F7 C6 5A   B0 86 28 D2 7A 7B 3C 67  .(..T..Z..(.z.&lt;g
+0080: 1F A5 4C 2C 20 DC B3 31   24 30 F4 28 68 0C AC D0  ..L, ..1$0.(h...
+0090: 23 91 ED B2 71 17 D5 74   20 2A AC 17 F7 FD 08 B0  #...q..t *......
+00A0: 17 D3 3B 67 6B A5 26 13   C5 0C 69 8C 1A FD 02 7F  ..;gk.&...i.....
+00B0: D4 8D 87 BF 1D 89 4D 00   00 A0 72 CE 9D 1B 7E 1C  ......M...r.....
+00C0: DE 3A B7 57 DD 18 DA CD   59 9B 44 1A AC EA 54 E7  .:.W....Y.D...T.
+00D0: 7C 98 12 73 0C ED 1B 7B   C1 D6 8B B1 37 55 AE 37  ...s........7U.7
+00E0: 4B 8E 24 34 37 B1 CC 9C   6E 22 26 DA 07 5D B6 33  K.$47...n"&..].3
+00F0: 3B FE 38 F7 D9 5D 99 27   72 07 0F 51 A9 8F 0C C1  ;.8..].'r..Q....
+
+]
+***
+Found trusted certificate:
+[
+[
+  Version: V3
+  Subject: CN=server, OU=testing, O=polarsparc, L=na, ST=ny, C=us
+  Signature Algorithm: SHA256withRSA, OID = 1.2.840.113549.1.1.11
+
+  Key:  Sun RSA public key, 2048 bits
+  modulus: 16880709253080032281023643288018292757591472990147041413067700063286874836435286486595463275405826540677043133541515079940061370074948525466150319332258445816121121323852615120575426350344951966607996124484732807137674741331043316045153266626369807597360407114730905359098531843798290614154840416692041829247208068515557243466657152613854068367410765010336003292379203689592678243745477840353651069609264959847936134271884019149728209739211071092172731513927122046245889069050645877810100305598441675402471666469623444230617374487715840759851667415984790846787273336838521198613180358803005260150117224850644716996473
+  public exponent: 65537
+  Validity: [From: Sat Oct 21 22:32:16 EDT 2017,
+               To: Sun Oct 21 22:32:16 EDT 2018]
+  Issuer: CN=server, OU=testing, O=polarsparc, L=na, ST=ny, C=us
+  SerialNumber: [    7cfcad13]
+
+Certificate Extensions: 1
+[1]: ObjectId: 2.5.29.14 Criticality=false
+SubjectKeyIdentifier [
+KeyIdentifier [
+0000: 92 BF FB 34 F8 C6 86 77   AC A2 56 A2 26 CD 2E 65  ...4...w..V.&..e
+0010: BA 34 22 6C                                        .4"l
+]
+]
+
+]
+  Algorithm: [SHA256withRSA]
+  Signature:
+0000: 0F 5D 08 87 11 33 BF A6   07 81 6E 4A AB 55 8C 67  .]...3....nJ.U.g
+0010: 5E 68 44 79 D9 AB A5 33   F6 62 57 44 25 CC 73 F0  ^hDy...3.bWD%.s.
+0020: 1D 82 C7 91 54 0E 78 BF   A4 C0 A5 B0 46 0D 76 EA  ....T.x.....F.v.
+0030: B0 CF 87 BB 3B 5B C4 7A   67 A1 C7 7B 56 1A B2 C5  ....;[.zg...V...
+0040: 12 7F BA AD 53 5B 35 AC   72 EE 3A A3 2F A9 5D 94  ....S[5.r.:./.].
+0050: BD C8 A3 78 BB 17 34 25   28 F3 35 84 25 E8 8D D0  ...x..4%(.5.%...
+0060: C8 80 42 C0 D1 92 9B CB   1E 36 EC AF 81 46 B4 AB  ..B......6...F..
+0070: 1E 28 0A ED 54 F7 C6 5A   B0 86 28 D2 7A 7B 3C 67  .(..T..Z..(.z.&lt;g
+0080: 1F A5 4C 2C 20 DC B3 31   24 30 F4 28 68 0C AC D0  ..L, ..1$0.(h...
+0090: 23 91 ED B2 71 17 D5 74   20 2A AC 17 F7 FD 08 B0  #...q..t *......
+00A0: 17 D3 3B 67 6B A5 26 13   C5 0C 69 8C 1A FD 02 7F  ..;gk.&...i.....
+00B0: D4 8D 87 BF 1D 89 4D 00   00 A0 72 CE 9D 1B 7E 1C  ......M...r.....
+00C0: DE 3A B7 57 DD 18 DA CD   59 9B 44 1A AC EA 54 E7  .:.W....Y.D...T.
+00D0: 7C 98 12 73 0C ED 1B 7B   C1 D6 8B B1 37 55 AE 37  ...s........7U.7
+00E0: 4B 8E 24 34 37 B1 CC 9C   6E 22 26 DA 07 5D B6 33  K.$47...n"&..].3
+00F0: 3B FE 38 F7 D9 5D 99 27   72 07 0F 51 A9 8F 0C C1  ;.8..].'r..Q....
+
+]
+*** ECDH ServerKeyExchange
+Signature Algorithm SHA512withRSA
+Server key: Sun EC public key, 256 bits
+  public x coord: 102916021230798713502846261795524827745686363189407049086278630339817786227391
+  public y coord: 62995413796920149366682535898514209140484735116912743653437842884829212014075
+  parameters: secp256r1 [NIST P-256, X9.62 prime256v1] (1.2.840.10045.3.1.7)
+*** ServerHelloDone
+*** ECDHClientKeyExchange
+ECDH Public value:  { 4, 14, 29, 171, 161, 153, 151, 76, 189, 75, 15, 158, 88, 230, 238, 219, 140, 231, 196, 129, 143, 206, 203, 26, 238, 127, 253, 140, 158, 213, 80, 195, 95, 34, 68, 89, 66, 46, 121, 102, 213, 246, 170, 87, 147, 41, 22, 166, 119, 58, 129, 25, 39, 170, 142, 12, 155, 11, 156, 227, 18, 248, 52, 171, 56 }
+main, WRITE: TLSv1.2 Handshake, length = 70
+SESSION KEYGEN:
+PreMaster Secret:
+0000: 8D 31 41 B5 16 A4 BE 7C   71 72 AB EE 6E A6 91 A2  .1A.....qr..n...
+0010: 82 EA 18 3C D0 6B 3C E1   CC F9 BE A6 E8 24 93 A2  ...&lt;.k&lt;......$..
+CONNECTION KEYGEN:
+Client Nonce:
+0000: 59 EC CD A8 9B BC 04 F9   E9 9C C7 3F D1 BA C4 BD  Y..........?....
+0010: 55 6C 28 5B 18 F7 62 7D   69 B4 3E F2 88 6E AD 73  Ul([..b.i.>..n.s
+Server Nonce:
+0000: 59 EC CD A8 06 65 0D 3C   45 20 D4 D1 63 E7 C9 09  Y....e.&lt;E ..c...
+0010: 3F D6 05 12 DF F6 56 77   0C 22 26 2F 04 F5 2C 9F  ?.....Vw."&/..,.
+Master Secret:
+0000: B5 A7 02 18 C2 96 79 29   B9 F4 05 E1 1A 81 05 7B  ......y)........
+0010: B5 F4 40 CD 40 14 A9 07   2B C7 90 E3 59 B4 C1 5E  ..@.@...+...Y..^
+0020: B3 1D 93 11 1F B4 FF 1C   80 4F 8E 48 16 0E 08 95  .........O.H....
+Client MAC write Secret:
+0000: 93 78 2F A4 ED 0B BF CE   CA 39 19 4C 42 ED 00 DB  .x/......9.LB...
+0010: 90 A8 D2 19 89 FB FB B3   6A 12 2E 85 68 57 D8 42  ........j...hW.B
+Server MAC write Secret:
+0000: EC 2F 0E 12 BC C7 19 CB   BD A5 AB 03 CF 44 E9 52  ./...........D.R
+0010: CE 8F B9 57 9A AF C3 A5   8F B3 24 CC 06 F9 B0 E9  ...W......$.....
+Client write key:
+0000: 45 E1 49 35 81 1F AF C6   1C BB 79 45 78 C3 F5 5C  E.I5......yEx..\
+Server write key:
+0000: 33 C7 6E 7B 88 05 A0 8E   B4 3B 47 DB EA A5 EC 6F  3.n......;G....o
+... no IV derived for this protocol
+main, WRITE: TLSv1.2 Change Cipher Spec, length = 1
+*** Finished
+verify_data:  { 53, 5, 46, 24, 63, 183, 205, 235, 118, 223, 90, 103 }
+***
+main, WRITE: TLSv1.2 Handshake, length = 80
+main, READ: TLSv1.2 Change Cipher Spec, length = 1
+main, READ: TLSv1.2 Handshake, length = 80
+*** Finished
+verify_data:  { 128, 57, 240, 193, 92, 236, 44, 183, 74, 4, 132, 47 }
+***
+%% Cached client session: [Session-1, TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256]
+main, WRITE: TLSv1.2 Application Data, length = 80
+main, called close()
+main, called closeInternal(true)
+main, SEND TLSv1.2 ALERT:  warning, description = close_notify
+main, WRITE: TLSv1.2 Alert, length = 64
+main, called closeSocket(true)</pre>
+    </div>
+    <div id="para-div">
+      <p>The following would be the corresponding typical output on the server terminal:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>Allow unsafe renegotiation: false
+Allow legacy hello messages: true
+Is initial handshake: true
+Is secure renegotiation: false
+Ignoring unsupported cipher suite: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256 for TLSv1
+Ignoring unsupported cipher suite: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256 for TLSv1
+Ignoring unsupported cipher suite: TLS_RSA_WITH_AES_128_CBC_SHA256 for TLSv1
+Ignoring unsupported cipher suite: TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256 for TLSv1
+Ignoring unsupported cipher suite: TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256 for TLSv1
+Ignoring unsupported cipher suite: TLS_DHE_RSA_WITH_AES_128_CBC_SHA256 for TLSv1
+Ignoring unsupported cipher suite: TLS_DHE_DSS_WITH_AES_128_CBC_SHA256 for TLSv1
+Ignoring unsupported cipher suite: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256 for TLSv1.1
+Ignoring unsupported cipher suite: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256 for TLSv1.1
+Ignoring unsupported cipher suite: TLS_RSA_WITH_AES_128_CBC_SHA256 for TLSv1.1
+Ignoring unsupported cipher suite: TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256 for TLSv1.1
+Ignoring unsupported cipher suite: TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256 for TLSv1.1
+Ignoring unsupported cipher suite: TLS_DHE_RSA_WITH_AES_128_CBC_SHA256 for TLSv1.1
+Ignoring unsupported cipher suite: TLS_DHE_DSS_WITH_AES_128_CBC_SHA256 for TLSv1.1
+main, READ: TLSv1.2 Handshake, length = 167
+*** ClientHello, TLSv1.2
+RandomCookie:  GMT: 1491848360 bytes = { 155, 188, 4, 249, 233, 156, 199, 63, 209, 186, 196, 189, 85, 108, 40, 91, 24, 247, 98, 125, 105, 180, 62, 242, 136, 110, 173, 115 }
+Session ID:  {}
+Cipher Suites: [TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256, TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256, TLS_RSA_WITH_AES_128_CBC_SHA256, TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA256, TLS_ECDH_RSA_WITH_AES_128_CBC_SHA256, TLS_DHE_RSA_WITH_AES_128_CBC_SHA256, TLS_DHE_DSS_WITH_AES_128_CBC_SHA256, TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA, TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA, TLS_RSA_WITH_AES_128_CBC_SHA, TLS_ECDH_ECDSA_WITH_AES_128_CBC_SHA, TLS_ECDH_RSA_WITH_AES_128_CBC_SHA, TLS_DHE_RSA_WITH_AES_128_CBC_SHA, TLS_DHE_DSS_WITH_AES_128_CBC_SHA, TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256, TLS_RSA_WITH_AES_128_GCM_SHA256, TLS_ECDH_ECDSA_WITH_AES_128_GCM_SHA256, TLS_ECDH_RSA_WITH_AES_128_GCM_SHA256, TLS_DHE_RSA_WITH_AES_128_GCM_SHA256, TLS_DHE_DSS_WITH_AES_128_GCM_SHA256, TLS_ECDHE_ECDSA_WITH_3DES_EDE_CBC_SHA, TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA, SSL_RSA_WITH_3DES_EDE_CBC_SHA, TLS_ECDH_ECDSA_WITH_3DES_EDE_CBC_SHA, TLS_ECDH_RSA_WITH_3DES_EDE_CBC_SHA, SSL_DHE_RSA_WITH_3DES_EDE_CBC_SHA, SSL_DHE_DSS_WITH_3DES_EDE_CBC_SHA, TLS_EMPTY_RENEGOTIATION_INFO_SCSV]
+Compression Methods:  { 0 }
+Extension elliptic_curves, curve names: {secp256r1, secp384r1, secp521r1, sect283k1, sect283r1, sect409k1, sect409r1, sect571k1, sect571r1, secp256k1}
+Extension ec_point_formats, formats: [uncompressed]
+Extension signature_algorithms, signature_algorithms: SHA512withECDSA, SHA512withRSA, SHA384withECDSA, SHA384withRSA, SHA256withECDSA, SHA256withRSA, SHA256withDSA, SHA224withECDSA, SHA224withRSA, SHA224withDSA, SHA1withECDSA, SHA1withRSA, SHA1withDSA
+***
+%% Initialized:  [Session-1, SSL_NULL_WITH_NULL_NULL]
+matching alias: server
+Standard ciphersuite chosen: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+%% Negotiating:  [Session-1, TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256]
+*** ServerHello, TLSv1.2
+RandomCookie:  GMT: 1491848360 bytes = { 6, 101, 13, 60, 69, 32, 212, 209, 99, 231, 201, 9, 63, 214, 5, 18, 223, 246, 86, 119, 12, 34, 38, 47, 4, 245, 44, 159 }
+Session ID:  {89, 236, 205, 168, 195, 184, 179, 21, 255, 63, 240, 61, 86, 168, 58, 73, 183, 5, 37, 114, 204, 208, 16, 157, 11, 117, 9, 223, 89, 189, 1, 57}
+Cipher Suite: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+Compression Method: 0
+Extension renegotiation_info, renegotiated_connection: &lt;empty>
+***
+Cipher suite:  TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+*** Certificate chain
+chain [0] = [
+[
+  Version: V3
+  Subject: CN=server, OU=testing, O=polarsparc, L=na, ST=ny, C=us
+  Signature Algorithm: SHA256withRSA, OID = 1.2.840.113549.1.1.11
+
+  Key:  Sun RSA public key, 2048 bits
+  modulus: 16880709253080032281023643288018292757591472990147041413067700063286874836435286486595463275405826540677043133541515079940061370074948525466150319332258445816121121323852615120575426350344951966607996124484732807137674741331043316045153266626369807597360407114730905359098531843798290614154840416692041829247208068515557243466657152613854068367410765010336003292379203689592678243745477840353651069609264959847936134271884019149728209739211071092172731513927122046245889069050645877810100305598441675402471666469623444230617374487715840759851667415984790846787273336838521198613180358803005260150117224850644716996473
+  public exponent: 65537
+  Validity: [From: Sat Oct 21 22:32:16 EDT 2017,
+               To: Sun Oct 21 22:32:16 EDT 2018]
+  Issuer: CN=server, OU=testing, O=polarsparc, L=na, ST=ny, C=us
+  SerialNumber: [    7cfcad13]
+
+Certificate Extensions: 1
+[1]: ObjectId: 2.5.29.14 Criticality=false
+SubjectKeyIdentifier [
+KeyIdentifier [
+0000: 92 BF FB 34 F8 C6 86 77   AC A2 56 A2 26 CD 2E 65  ...4...w..V.&..e
+0010: BA 34 22 6C                                        .4"l
+]
+]
+
+]
+  Algorithm: [SHA256withRSA]
+  Signature:
+0000: 0F 5D 08 87 11 33 BF A6   07 81 6E 4A AB 55 8C 67  .]...3....nJ.U.g
+0010: 5E 68 44 79 D9 AB A5 33   F6 62 57 44 25 CC 73 F0  ^hDy...3.bWD%.s.
+0020: 1D 82 C7 91 54 0E 78 BF   A4 C0 A5 B0 46 0D 76 EA  ....T.x.....F.v.
+0030: B0 CF 87 BB 3B 5B C4 7A   67 A1 C7 7B 56 1A B2 C5  ....;[.zg...V...
+0040: 12 7F BA AD 53 5B 35 AC   72 EE 3A A3 2F A9 5D 94  ....S[5.r.:./.].
+0050: BD C8 A3 78 BB 17 34 25   28 F3 35 84 25 E8 8D D0  ...x..4%(.5.%...
+0060: C8 80 42 C0 D1 92 9B CB   1E 36 EC AF 81 46 B4 AB  ..B......6...F..
+0070: 1E 28 0A ED 54 F7 C6 5A   B0 86 28 D2 7A 7B 3C 67  .(..T..Z..(.z.&lt;g
+0080: 1F A5 4C 2C 20 DC B3 31   24 30 F4 28 68 0C AC D0  ..L, ..1$0.(h...
+0090: 23 91 ED B2 71 17 D5 74   20 2A AC 17 F7 FD 08 B0  #...q..t *......
+00A0: 17 D3 3B 67 6B A5 26 13   C5 0C 69 8C 1A FD 02 7F  ..;gk.&...i.....
+00B0: D4 8D 87 BF 1D 89 4D 00   00 A0 72 CE 9D 1B 7E 1C  ......M...r.....
+00C0: DE 3A B7 57 DD 18 DA CD   59 9B 44 1A AC EA 54 E7  .:.W....Y.D...T.
+00D0: 7C 98 12 73 0C ED 1B 7B   C1 D6 8B B1 37 55 AE 37  ...s........7U.7
+00E0: 4B 8E 24 34 37 B1 CC 9C   6E 22 26 DA 07 5D B6 33  K.$47...n"&..].3
+00F0: 3B FE 38 F7 D9 5D 99 27   72 07 0F 51 A9 8F 0C C1  ;.8..].'r..Q....
+
+]
+***
+*** ECDH ServerKeyExchange
+Signature Algorithm SHA512withRSA
+Server key: Sun EC public key, 256 bits
+  public x coord: 102916021230798713502846261795524827745686363189407049086278630339817786227391
+  public y coord: 62995413796920149366682535898514209140484735116912743653437842884829212014075
+  parameters: secp256r1 [NIST P-256, X9.62 prime256v1] (1.2.840.10045.3.1.7)
+*** ServerHelloDone
+main, WRITE: TLSv1.2 Handshake, length = 1293
+main, READ: TLSv1.2 Handshake, length = 70
+*** ECDHClientKeyExchange
+ECDH Public value:  { 4, 14, 29, 171, 161, 153, 151, 76, 189, 75, 15, 158, 88, 230, 238, 219, 140, 231, 196, 129, 143, 206, 203, 26, 238, 127, 253, 140, 158, 213, 80, 195, 95, 34, 68, 89, 66, 46, 121, 102, 213, 246, 170, 87, 147, 41, 22, 166, 119, 58, 129, 25, 39, 170, 142, 12, 155, 11, 156, 227, 18, 248, 52, 171, 56 }
+SESSION KEYGEN:
+PreMaster Secret:
+0000: 8D 31 41 B5 16 A4 BE 7C   71 72 AB EE 6E A6 91 A2  .1A.....qr..n...
+0010: 82 EA 18 3C D0 6B 3C E1   CC F9 BE A6 E8 24 93 A2  ...&lt;.k&lt;......$..
+CONNECTION KEYGEN:
+Client Nonce:
+0000: 59 EC CD A8 9B BC 04 F9   E9 9C C7 3F D1 BA C4 BD  Y..........?....
+0010: 55 6C 28 5B 18 F7 62 7D   69 B4 3E F2 88 6E AD 73  Ul([..b.i.>..n.s
+Server Nonce:
+0000: 59 EC CD A8 06 65 0D 3C   45 20 D4 D1 63 E7 C9 09  Y....e.&lt;E ..c...
+0010: 3F D6 05 12 DF F6 56 77   0C 22 26 2F 04 F5 2C 9F  ?.....Vw."&/..,.
+Master Secret:
+0000: B5 A7 02 18 C2 96 79 29   B9 F4 05 E1 1A 81 05 7B  ......y)........
+0010: B5 F4 40 CD 40 14 A9 07   2B C7 90 E3 59 B4 C1 5E  ..@.@...+...Y..^
+0020: B3 1D 93 11 1F B4 FF 1C   80 4F 8E 48 16 0E 08 95  .........O.H....
+Client MAC write Secret:
+0000: 93 78 2F A4 ED 0B BF CE   CA 39 19 4C 42 ED 00 DB  .x/......9.LB...
+0010: 90 A8 D2 19 89 FB FB B3   6A 12 2E 85 68 57 D8 42  ........j...hW.B
+Server MAC write Secret:
+0000: EC 2F 0E 12 BC C7 19 CB   BD A5 AB 03 CF 44 E9 52  ./...........D.R
+0010: CE 8F B9 57 9A AF C3 A5   8F B3 24 CC 06 F9 B0 E9  ...W......$.....
+Client write key:
+0000: 45 E1 49 35 81 1F AF C6   1C BB 79 45 78 C3 F5 5C  E.I5......yEx..\
+Server write key:
+0000: 33 C7 6E 7B 88 05 A0 8E   B4 3B 47 DB EA A5 EC 6F  3.n......;G....o
+... no IV derived for this protocol
+main, READ: TLSv1.2 Change Cipher Spec, length = 1
+main, READ: TLSv1.2 Handshake, length = 80
+*** Finished
+verify_data:  { 53, 5, 46, 24, 63, 183, 205, 235, 118, 223, 90, 103 }
+***
+main, WRITE: TLSv1.2 Change Cipher Spec, length = 1
+*** Finished
+verify_data:  { 128, 57, 240, 193, 92, 236, 44, 183, 74, 4, 132, 47 }
+***
+main, WRITE: TLSv1.2 Handshake, length = 80
+%% Cached server session: [Session-1, TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256]
+main, READ: TLSv1.2 Application Data, length = 80
+-> Echo (server): Hello SSL World
+main, READ: TLSv1.2 Alert, length = 64
+main, RECV TLSv1.2 ALERT:  warning, close_notify
+main, called closeInternal(false)
+main, SEND TLSv1.2 ALERT:  warning, description = close_notify
+main, WRITE: TLSv1.2 Alert, length = 64
+main, called closeSocket(false)
+main, called close()
+main, called closeInternal(true)
+main, called close()
+main, called closeInternal(true)</pre>
+    </div>
+    <div id="para-div">
+      <p>From the client Output.12, we see the <span class="bold">ClientHello</span> message along with the
+      supported ciphers, as shown below:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/handshake-1.png" alt="ClientHello" />
+      <div class="img-cap">ClientHello</div>
+    </div>
+    <div id="para-div">
+      <p>From the server Output.13, we see the <span class="bold">ServerHello</span> message along with the
+      selected cipher and the server certificate, as shown below:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/handshake-2.png" alt="ServerHello" />
+      <div class="img-cap">ServerHello</div>
+    </div>
+    <div id="para-div">
+      <p>From the client Output.12, we see the client finding a trusted CA certificate to successfully
+      verify the presented server certificate, as shown below:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/handshake-3.png" alt="Trusted Certificate" />
+      <div class="img-cap">Trusted Certificate</div>
+    </div>
+    <div id="para-div">
+      <p>From the client Output.12, we see the client exchanging the shared master session key with the server
+      and sending the client finished message, as shown below:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/handshake-4.png" alt="KeyExchange" />
+      <div class="img-cap">KeyExchange</div>
+    </div>
+    <div id="para-div">
+      <p>Finally, from the server Output.13, we see the the server sending the finished message, as shown below:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/handshake-5.png" alt="Finished" />
+      <div class="img-cap">Finished</div>
+    </div>
+    <div id="step-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/Security/Exploring-SSL-TLS-1.html" target="_blank"><span class="bold">Exploring SSL/TLS - Part 1</span></a></p>
+    </div>
+  </body>
+</html>
