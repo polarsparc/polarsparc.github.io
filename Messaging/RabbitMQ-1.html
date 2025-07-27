@@ -1,0 +1,631 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+  <title>Quick Tour of RabbitMQ - Part 1</title>
+  <link rel="stylesheet" type="text/css" href="../css/polarsparc-v2.0.css"/>
+</head>
+<body>
+  <br />
+  <div id="title-div">
+    <p>Quick Tour of RabbitMQ - Part 1</p>
+  </div>
+  <br/>
+  <table id="ad-table">
+    <tbody>
+      <tr>
+        <td class="author-td">Bhaskar S</td>
+        <td class="date-td">11/12/2017</td>
+      </tr>
+    </tbody>
+  </table>
+  <hr class="line-hr" /> <br />
+  <div id="step-div">
+    <p>Overview</p>
+  </div>
+  <div id="para-div">
+    <p><a href="https://www.rabbitmq.com/" target="_blank"><span class="hi-yellow">RabbitMQ</span></a> is an
+  	  open source, language neutral <span class="bold">Message-oriented Middleware</span> that implements the
+  	  open standard <a href="http://www.amqp.org/" target="_blank"><span class="bold">Advanced Message Queuing
+  	  Protocol (AMQP)</span></a> specification. AMQP is a wire-level application layer protocol, that specifies
+  	  and mandates how messages should be queued, routed, and delivered in a reliable and secure way.</p>
+  </div>
+  <div id="step-div">
+    <p>Terminology</p>
+  </div>
+  <div id="para-div">
+    <p>The following is a high level architectural view of <span class="bold">RabbitMQ</span>:</p>
+  </div>
+  <div id="img-outer-div"> <img class="img-cls" src="./images/rabbitmq-1.png" alt="Architecture" />
+    <div class="img-cap">Architecture</div>
+  </div>
+  <div id="para-div">
+    <p>In this section, we will list and briefly describe some of the terms referred to in this article.</p>
+  </div>
+  <table id="col2-table">
+    <thead><tr>
+      <th>Term</th>
+      <th>Description</th>
+    </tr>
+    </thead> <tbody>
+      <tr>
+        <td class="col2-c1-odd">Broker</td>
+        <td class="col2-c2-odd">server that receives messages from producers and routes the messages to the
+          appropriate consumers</td>
+      </tr>
+      <tr>
+        <td class="col2-c1-even">Exchange</td>
+        <td class="col2-c2-even">server component through which a producer connects to send messages. It is
+          like a Mailbox</td>
+      </tr>
+      <tr>
+        <td class="col2-c1-odd">Queue</td>
+        <td class="col2-c2-odd">server component from which consumers get messages. It is the storage buffer
+          (memory and/or disk) for messages</td>
+      </tr>
+      <tr>
+        <td class="col2-c1-even">Binding</td>
+        <td class="col2-c2-even">the logical relationship between Exchanges and Queues. It establishes the
+          rules to route messages from Exchanges to appropriate Queues</td>
+      </tr>
+      <tr>
+        <td class="col2-c1-odd">Channel</td>
+        <td class="col2-c2-odd">logical connection between a client (producer or consumer) and the message
+          broker allowing for isolation of communication</td>
+      </tr>
+      <tr>
+        <td class="col2-c1-even">Routing Key</td>
+        <td class="col2-c2-even">a string attribute of the message that an Exchange will look at to determine 
+          which Queue(s) to route the incoming message to</td>
+      </tr>
+    </tbody>
+  </table>
+  <div id="step-div">
+    <p>Setup</p>
+  </div>
+  <div id="para-div">
+    <p>The setup will be on a <span class="bold">Ubuntu 17.04 LTS</span> based Linux desktop.</p>
+    <p>Ensure <span class="bold">Docker</span> is installed and setup. Else, refer to the article
+    	<a href="http://polarsparc.github.io/xhtml/Docker.html" target="_blank">
+    	  <span class="bold">Introduction to Docker</span></a>.</p>
+    <p>Assume a hypothetical user <span class="bold">alice</span> with the home directory located
+      at <span class="bold">/home/alice</span>.</p>
+  </div>
+  <div id="para-div">
+    <p>Create a directory called <span class="hi-yellow">rabbitmq</span> under
+      <span class="bold">/home/alice</span> by executing the following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>mkdir rabbitmq</p>
+  </div>
+  <div id="para-div">
+    <p>Create another directory called <span class="hi-yellow">lib</span> under
+      <span class="bold">/home/alice</span> by executing the following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>mkdir lib</p>
+  </div>
+  <div id="para-div">
+    <p>Since we will be implementing code in Java (for demonstration), we need to download some dependent JARs.
+      Download and copy the <a href="http://central.maven.org/maven2/org/slf4j/slf4j-api/1.7.25/slf4j-api-1.7.25.jar"
+      target="_blank"><span class="hi-yellow">Slf4J API</span></a> and
+      <a href="http://central.maven.org/maven2/org/slf4j/slf4j-simple/1.7.25/slf4j-simple-1.7.25.jar" target="_blank">
+      <span class="hi-yellow">Slf4J Simple</span></a> JARs to <span class="bold">/home/alice/lib</span>.
+      Also, download and copy the <a href="http://central.maven.org/maven2/com/rabbitmq/amqp-client/5.0.0/amqp-client-5.0.0.jar"
+      target="_blank"><span class="hi-yellow">RabbitMQ Java Client</span></a> JAR to <span class="bold">/home/alice/lib</span>.</p>
+  </div>
+  <div id="para-div">
+    <p>For our exploration, we will be downloading and using the official docker image
+    	<a href="https://hub.docker.com/_/rabbitmq/" target="_blank">
+    	  <span class="hi-yellow">rabbitmq:management</span></a>.</p>
+  </div>
+  <div id="para-div">
+    <p>To pull and download the docker image for <span class="bold">RabbitMQ</span> with the management plugin
+      enabled, execute the following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>docker pull rabbitmq:management</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.1</h4>
+    <pre>management: Pulling from library/rabbitmq
+bc95e04b23c0: Pull complete 
+41a230aa3726: Pull complete 
+9190ffbd2271: Pull complete 
+69e829d8f0d2: Pull complete 
+2404945c98d3: Pull complete 
+629c315aa810: Pull complete 
+cff2b1994ea2: Pull complete 
+3246485e4a5d: Pull complete 
+dd004dbdde7c: Pull complete 
+ef3f0c64cb0d: Pull complete 
+f7d9dcfb8c20: Pull complete 
+30545194ec57: Pull complete 
+Digest: sha256:3840069fcc704db533cd83ec7fad30daabdd2fda321df4fb788b81b6ed2323b2
+Status: Downloaded newer image for rabbitmq:management</pre>
+  </div>
+  <div id="para-div">
+    <p>To launch the docker instance for <span class="bold">RabbitMQ</span> with the management plugin
+      enabled, execute the following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>docker run -d --hostname rabbit-dev --name rabbit-dev -v /home/alice/rabbitmq:/var/lib/rabbitmq -p 15672:15672 -p 5672:5672 -e RABBITMQ_DEFAULT_USER=rabbitusr -e RABBITMQ_DEFAULT_PASS=s3cr3t rabbitmq:management</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.2</h4>
+    <pre>f7cfd461ce68256b91e387cc37dde864f752b5c909e70e50c5f1b20c20bf0701</pre>
+  </div>
+  <div id="para-div">
+    <p>To check if the docker instance for <span class="bold">RabbitMQ</span> is up and running, execute the
+      following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>docker ps</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.3</h4>
+    <pre>CONTAINER ID    IMAGE                 COMMAND                  CREATED             STATUS              PORTS                                                                     NAMES
+f7cfd461ce68    rabbitmq:management   "docker-entrypoint.sh"   7 seconds ago       Up 4 seconds        4369/tcp, 5671-5672/tcp, 15671/tcp, 25672/tcp, 0.0.0.0:15672->15672/tcp   rabbit-dev</pre>
+  </div>
+  <div id="para-div">
+    <p>Fire up a web-browser and open the URL <span class="bold">http://localhost:15672</span>. The following should
+      be the typical output:</p>
+  </div>
+  <div id="img-outer-div"> <img class="img-cls" src="./images/rabbitmq-2.png" alt="Login" />
+    <div class="img-cap">Login</div>
+  </div>
+  <div id="para-div">
+    <p>Login to the management console with the user-id <span class="bold">rabbitusr</span> and password
+    	<span class="bold">s3cr3t</span>. The following should be the typical output:</p>
+  </div>
+  <div id="img-outer-div"> <img class="img-cls" src="./images/rabbitmq-3.png" alt="Management" />
+    <div class="img-cap">Management</div>
+  </div>
+  <div id="step-div">
+    <p>Hands-on with RabbitMQ using Java</p>
+  </div>
+  <div id="para-div">
+    <p>An <span class="hi-yellow">Exchange</span> type controls how incoming messages are routed to the appropriate
+      <span class="hi-yellow">Queue</span>(s). The simplest of these is the <span class="hi-yellow">Direct</span>
+      <span class="bold">Exchange</span>.</p>
+    <p>A <span class="bold">Direct Exchange</span> routes messages to <span class="bold">Queues</span> based on a
+      <span class="hi-green">Routing</span> key. A <span class="bold">Routing</span> key is just a string to allow
+      for directed routing. For example, if a payment processor accepts only a Mastercard or a Visa card, then the
+      <span class="bold">Routing</span> key with &quot;mastercard&quot; will be routed to the Mastercard verifier,
+      while the <span class="bold">Routing</span> key with &quot;visa&quot; will be routed to the Visa verifier.</p>
+  </div>
+  <div id="para-div">
+    <p>The following picture illustrates the high level view of the <span class="bold">Direct Exchange</span>:</p>
+  </div>
+  <div id="img-outer-div"> <img class="img-cls" src="./images/rabbitmq-4.png" alt="Direct" />
+    <div class="img-cap">Direct</div>
+  </div>
+  <div id="para-div">
+    <p>Now, to demonstrate the hypothetical Payments system with a payment processor (publisher) and two payment verifiers
+      (consumers - Mastercard and Visa), we will implement the corresponding <span class="bold">PaymentProcessor</span> and
+      <span class="bold">PaymentVerifier</span> classes.
+    <p>The following is the common class that captures and exposes some constants:</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>PaymentConstants.java</legend>
+    <pre>/*
+ *
+ *  Name:        PaymentConstants
+ *  
+ *  Description: Common constants used between the Payment Processor (publisher) and the payment
+ *               verifiers for Mastercard and Visa (consumers)
+ *  
+ */
+
+package com.polarsparc.rabbitmq.common;
+
+public interface PaymentConstants {
+    public final static String DEFAULT_EXCHANGE = "";
+    public final static String MASTERCARD_QUEUE_NAME = "mastercard";
+    public final static String VISA_QUEUE_NAME       = "visa";
+}</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>The following is the common utility class that implements the commonly used methods between the producer and the
+      consumer classes:</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>RabbitMqUtils.java</legend>
+    <pre>/*
+ *
+ *  Name:        RabbitMqUtils
+ *  
+ *  Description: Common utility methods used by producers as well as consumers
+ *  
+ */
+
+package com.polarsparc.rabbitmq.common;
+
+import java.util.logging.Logger;
+import java.util.logging.Level;
+
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.Channel;
+
+public final class RabbitMqUtils {
+    private static  Logger _logger = Logger.getLogger(RabbitMqUtils.class.getName());
+    
+    private static Connection _connection = null;
+    
+    private RabbitMqUtils() {
+    }
+    
+    public static void initRabbitMq(String host, String user, String pass) 
+            throws Exception {
+        ConnectionFactory factory = new ConnectionFactory();
+        factory.setHost(host);
+        factory.setUsername(user);
+        factory.setPassword(pass);
+        
+        _connection = factory.newConnection();
+    }
+    
+    public static Channel getRabbitMqChannel() 
+            throws Exception {
+        if (_connection == null) {
+            throw new Exception("RabbitMQ not initialized!");
+        }
+        
+        return _connection.createChannel();
+    }
+    
+    public static void closeRabbitMqChannel(final Channel channel) {
+        try {
+            if (channel != null) {
+                channel.close();
+            }
+        }
+        catch (Exception ex) {
+            _logger.log(Level.SEVERE, "Error on channel close!", ex);
+        }
+    }
+    
+    public static void cleanRabbitMq() {
+        try {
+            if (_connection != null) {
+                _connection.close();
+                _connection = null;
+            }
+        }
+        catch (Exception ex) {
+            _logger.log(Level.SEVERE, "Error on connection close!", ex);
+        }
+    }
+}</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>Let us explain and understand some of the classes/methods used in the <span class="bold">RabbitMqUtils</span>
+      code shown above.</p>
+    <p>The class <span class="hi-yellow">com.rabbitmq.client.ConnectionFactory</span> is a factory class that is used
+      to configure various options for creating a connection instance to the <span class="bold">RabbitMQ</span> message
+      broker. In our case, we are configuring the host name on which the message broker is running, the user-id with
+      which to connect, and the user credential to use.</p>
+    <p>The method <span class="hi-green">setHost(String)</span> on the factory class instance configures the host
+      name of the <span class="bold">RabbitMQ</span> message broker.</p>
+    <p>The method <span class="hi-green">setUsername(String)</span> on the factory class instance configures the user
+      name to use when connecting to the <span class="bold">RabbitMQ</span> message broker.</p>
+    <p>The method <span class="hi-green">setPassword(String)</span> on the factory class instance configures the user
+      name credential to use when connecting to the <span class="bold">RabbitMQ</span> message broker.</p>
+    <p>The class <span class="hi-yellow">com.rabbitmq.client.Connection</span> represents a connection to the
+      <span class="bold">RabbitMQ</span> message broker, which under-the-hood uses the lower level reliable TCP
+      protocol.</p>
+    <p>The method <span class="hi-green">newConnection()</span> on the factory class instance creates and
+      returns an instance of the connection to the <span class="bold">RabbitMQ</span> message broker.</p>
+    <p>The class <span class="hi-yellow">com.rabbitmq.client.Channel</span> represents a logical communication path
+      that is multiplexed on top of an instance of a connection to the <span class="bold">RabbitMQ</span> message
+      broker. In some use-cases, an application may need multiple communication paths to the <span class="bold">RabbitMQ</span>
+      message broker. Rather than creating multiple <span class="bold">com.rabbitmq.client.Connection</span> instances
+      (which is expensive as it uses system network resources), it is much more efficient to create multiple
+      channels.</p>
+    <p>The method <span class="hi-green">createChannel()</span> on the connection class instance creates and returns
+      an instance of the channel (a communication path to the <span class="bold">RabbitMQ</span> message broker).</p>
+    <p>The method <span class="hi-green">close()</span> on the connection class instance closes the connection
+      path to the <span class="bold">RabbitMQ</span> message broker.</p>
+    <p>The method <span class="hi-green">close()</span> on the channel class instance closes the communication
+      to the <span class="bold">RabbitMQ</span> message broker.</p>
+  </div>
+  <div id="para-div">
+    <p>The following is the code for the payments processor, which acts as a publisher of payment messages. We
+      declare two channels and corresponding queues and publish two sample messages (one for Mastercard and one
+      for Visa):</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>PaymentProcessor.java</legend>
+    <pre>/*
+ *
+ *  Name:        PaymentProcessor
+ *  
+ *  Description: RabbitMQ publisher that generates hypothetical payment messages for either Mastercard
+ *               or Visa payment 
+ *  
+ */
+
+package com.polarsparc.rabbitmq.direct;
+
+import java.util.logging.Logger;
+import java.util.logging.Level;
+
+import com.rabbitmq.client.Channel;
+
+import com.polarsparc.rabbitmq.common.PaymentConstants;
+import com.polarsparc.rabbitmq.common.PaymentsUtils;
+
+public class PaymentProcessor {
+    private static String _MASTERCARD_PAYMENT_MSG = "12345,19.99";
+    private static String _VISA_PAYMENT_MSG       = "98765,21.99";
+    
+    public static void main(String[] args) {
+        if (args.length != 3) {
+            System.out.printf("Usage: java com.polarsparc.rabbitmq.direct.PaymentProcessor &lt;host&gt; &lt;user&gt; &lt;password&gt;\n");
+            System.exit(1);
+        }
+        
+        Logger _logger = Logger.getLogger(PaymentProcessor.class.getName());
+        
+        try {
+            PaymentsUtils.initRabbitMq(args[0], args[1], args[2]);
+            
+            _logger.log(Level.INFO, "Ready to create communication channels ...");
+            
+            Channel channel1 = PaymentsUtils.getRabbitMqChannel();
+            Channel channel2 = PaymentsUtils.getRabbitMqChannel();
+            
+            _logger.log(Level.INFO, "Ready to create queues for Mastercard and Visa");
+            
+            channel1.queueDeclare(PaymentConstants.MASTERCARD_QUEUE_NAME, false, false, false, null);
+            channel2.queueDeclare(PaymentConstants.VISA_QUEUE_NAME, false, false, false, null);
+            
+            _logger.log(Level.INFO, "Ready to publish test messages for Mastercard and Visa");
+            
+            channel1.basicPublish(PaymentConstants.DEFAULT_EXCHANGE,
+                    PaymentConstants.MASTERCARD_QUEUE_NAME,
+                    null,
+                    _MASTERCARD_PAYMENT_MSG.getBytes());
+            channel2.basicPublish(PaymentConstants.DEFAULT_EXCHANGE,
+                    PaymentConstants.VISA_QUEUE_NAME,
+                    null,
+                    _VISA_PAYMENT_MSG.getBytes());
+            
+            _logger.log(Level.INFO, "Ready to close the communication channels");
+            
+            PaymentsUtils.closeRabbitMqChannel(channel1);
+            PaymentsUtils.closeRabbitMqChannel(channel2);
+            
+            _logger.log(Level.INFO, "Payment processing done !!!");
+        }
+        catch (Exception ex) {
+            _logger.log(Level.SEVERE, "Error in PaymentProcessor!", ex);
+        }
+        finally {
+            PaymentsUtils.cleanRabbitMq();
+        }
+    }
+}</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>Let us explain and understand some of the classes/methods used in the <span class="bold">PaymentProcessor</span>
+      code shown above.</p>
+    <p>The method <span class="hi-green">queueDeclare(String, boolean, boolean, boolean, Map)</span> on the channel class
+      instance creates (if it does not already exist) and declares a queue in the <span class="bold">RabbitMQ</span> message
+      broker. The first parameter is the queue name. If the second parameter is <span class="bold">true</span>, then we are
+      declaring a durable queue. Non-durable queues get cleaned up if the <span class="bold">RabbitMQ</span> message broker
+      is shutdown or crashes. If the third parameter is <span class="bold">true</span>, then we are declaring an exclusive
+      queue, meaning it is restricted to just this connection. If the fourth parameter is <span class="bold">true</span>,
+      then we are declaring an auto delete queue, meaning the server will delete the queue if no longer in use. The last
+      parameter can be used to specify additional properties, such as queue specify message TTL, etc.</p>
+    <p>The method <span class="hi-green">basicPublish(String, String, AMQP.BasicProperties, byte[])</span> on the channel
+      class instance allows one to publish a message (specified as a byte array in the last parameter) to the specified
+      routing key (second parameter). The routing key should match the destined queue name. The first parameter specifies
+      the exchange to use. In our case, we use the default <span class="bold">RabbitMQ</span> exchange that has no name.
+      The third parameter can be used to specify additional message properties, such as the message priority, correlation id,
+      etc.</p>
+  </div>
+  <div id="para-div">
+    <p>The following is the code for the payments verifier, which acts as a consumer of payment messages:</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>PaymentVerifier.java</legend>
+    <pre>/*
+ *
+ *  Name:        PaymentVerifier
+ *  
+ *  Description: RabbitMQ Mastercard or Visa (consumer) that receives the hypothetical payment messages
+ *  
+ */
+
+package com.polarsparc.rabbitmq.direct;
+
+import java.util.logging.Logger;
+import java.util.logging.Level;
+import java.io.IOException;
+
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Consumer;
+import com.rabbitmq.client.DefaultConsumer;
+import com.rabbitmq.client.Envelope;
+import com.rabbitmq.client.AMQP;
+
+import com.polarsparc.rabbitmq.common.PaymentConstants;
+import com.polarsparc.rabbitmq.common.PaymentsUtils;
+
+public class PaymentVerifier {
+    public static void main(String[] args) {
+        if (args.length != 4) {
+            System.out.printf("Usage: java com.polarsparc.rabbitmq.direct.PaymentVerifier &lt;host&gt; &lt;user&gt; &lt;password&gt; &lt;queue&gt;\n");
+            System.exit(1);
+        }
+        
+        Logger _logger = Logger.getLogger(PaymentVerifier.class.getName());
+        
+        try {
+            String queue = PaymentConstants.VISA_QUEUE_NAME;
+            if (args[3].equalsIgnoreCase(PaymentConstants.MASTERCARD_QUEUE_NAME)) {
+                queue = PaymentConstants.MASTERCARD_QUEUE_NAME;
+                        
+            }
+            PaymentsUtils.initRabbitMq(args[0], args[1], args[2]);
+            
+            _logger.log(Level.INFO, "Ready to create communication channel for " + queue);
+            
+            Channel channel = PaymentsUtils.getRabbitMqChannel();
+            
+            _logger.log(Level.INFO, "Ready to create a queue for " + queue);
+            
+            channel.queueDeclare(queue, false, false, false, null);
+            
+            _logger.log(Level.INFO, "Ready to create a consumer for " + args[3]);
+            
+            Consumer consumer = new DefaultConsumer(channel) {
+                @Override
+                public void handleDelivery(String consumerTag, 
+                        Envelope envelope,
+                        AMQP.BasicProperties properties,
+                        byte[] body) throws IOException {
+                    String msg = new String(body, "UTF-8");
+                    _logger.log(Level.INFO, "Received message: " + msg);
+                }
+            };
+            
+            _logger.log(Level.INFO, "Ready to consume test messages for " + args[3]);
+            
+            channel.basicConsume(queue, true, consumer);
+        }
+        catch (Exception ex) {
+            _logger.log(Level.SEVERE, "Error in PaymentVerifier!", ex);
+        }
+    }
+}</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>Let us explain and understand some of the classes/methods used in the <span class="bold">PaymentVerifier</span>
+      code shown above.</p>
+    <p>The interface <span class="hi-yellow">com.rabbitmq.client.Consumer</span> defines the application callbacks for
+      messages received on a queue.</p>
+    <p>The class <span class="hi-yellow">com.rabbitmq.client.DefaultConsumer</span> is a convenience class that provides
+      a default implementation of the interface <span class="bold">com.rabbitmq.client.Consumer</span>. The constructor
+      takes an instance of <span class="bold">com.rabbitmq.client.Channel</span> that is associated with the corresponding
+      queue. This class provides dummy (no-op) implementations of the callback methods.</p>
+    <p>The class <span class="hi-yellow">com.rabbitmq.client.Envelope</span> encapsulates some of the basic properties
+      such as the exchange through which the message the message was published, the routing key, etc.</p>
+    <p>The class <span class="hi-yellow">com.rabbitmq.client.AMQP.BasicProperties</span> encapsulates some of the basic
+      properties associated with the message such as the message id, priority, timestamp, message expiration, etc.</p>
+    <p>The method <span class="hi-green">handleDelivery(String, Envelope, AMQP.BasicProperties, byte[])</span> on the
+      class <span class="bold">com.rabbitmq.client.DefaultConsumer</span> is called every time a message is received on
+      the corresponding message queue.</p>
+    <p>The method <span class="hi-green">basicConsume(String, boolean, Consumer)</span> on the channel class instance
+      associates the specified <span class="bold">com.rabbitmq.client.DefaultConsumer</span> instance with the specified
+      queue.</p>
+  </div>
+  <div id="para-div">
+    <p>Now, for the demostration of messaging using <span class="bold">Direct Exchange</span>, open three terminal
+      windows. Lets refer to them as the <span class="bold">publisher</span>, <span class="bold">consumer-mc</span>, and
+      <span class="bold">consumer-v</span> respectively.</p>
+  </div>
+  <div id="para-div">
+    <p>In the consumer-mc terminal, execute the following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>java -cp ./build/classes:./lib/amqp-client-5.0.0.jar:./lib/slf4j-api-1.7.25.jar:./lib/slf4j-simple-1.7.25.jar com.polarsparc.rabbitmq.direct.PaymentVerifier 172.17.0.2 rabbitusr s3cr3t mastercard</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.4</h4>
+    <pre>Nov 12, 2017 2:51:52 PM com.polarsparc.rabbitmq.direct.PaymentVerifier main
+INFO: Ready to create communication channel for mastercard
+Nov 12, 2017 2:51:52 PM com.polarsparc.rabbitmq.direct.PaymentVerifier main
+INFO: Ready to create a queue for mastercard
+Nov 12, 2017 2:51:52 PM com.polarsparc.rabbitmq.direct.PaymentVerifier main
+INFO: Ready to create a consumer for mastercard
+Nov 12, 2017 2:51:52 PM com.polarsparc.rabbitmq.direct.PaymentVerifier main
+INFO: Ready to consume test messages for mastercard</pre>
+  </div>
+  <div id="para-div">
+    <p>In the consumer-v terminal, execute the following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>java -cp ./build/classes:./lib/amqp-client-5.0.0.jar:./lib/slf4j-api-1.7.25.jar:./lib/slf4j-simple-1.7.25.jar com.polarsparc.rabbitmq.direct.PaymentVerifier 172.17.0.2 rabbitusr s3cr3t visa</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.5</h4>
+    <pre>Nov 12, 2017 2:52:32 PM com.polarsparc.rabbitmq.direct.PaymentVerifier main
+INFO: Ready to create communication channel for visa
+Nov 12, 2017 2:52:32 PM com.polarsparc.rabbitmq.direct.PaymentVerifier main
+INFO: Ready to create a queue for visa
+Nov 12, 2017 2:52:32 PM com.polarsparc.rabbitmq.direct.PaymentVerifier main
+INFO: Ready to create a consumer for visa
+Nov 12, 2017 2:52:32 PM com.polarsparc.rabbitmq.direct.PaymentVerifier main
+INFO: Ready to consume test messages for visa</pre>
+  </div>
+  <div id="para-div">
+    <p>In the publisher terminal, execute the following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>java -cp ./build/classes:./lib/amqp-client-5.0.0.jar:./lib/slf4j-api-1.7.25.jar:./lib/slf4j-simple-1.7.25.jar com.polarsparc.rabbitmq.direct.PaymentProcessor 172.17.0.2 rabbitusr s3cr3t</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.6</h4>
+    <pre>Nov 12, 2017 2:53:33 PM com.polarsparc.rabbitmq.direct.PaymentProcessor main
+INFO: Ready to create communication channels ...
+Nov 12, 2017 2:53:33 PM com.polarsparc.rabbitmq.direct.PaymentProcessor main
+INFO: Ready to create queues for Mastercard and Visa
+Nov 12, 2017 2:53:33 PM com.polarsparc.rabbitmq.direct.PaymentProcessor main
+INFO: Ready to publish test messages for Mastercard and Visa
+Nov 12, 2017 2:53:33 PM com.polarsparc.rabbitmq.direct.PaymentProcessor main
+INFO: Ready to close the communication channels
+Nov 12, 2017 2:53:33 PM com.polarsparc.rabbitmq.direct.PaymentProcessor main
+INFO: Payment processing done !!!</pre>
+  </div>
+  <div id="para-div">
+    <p>In the consumer-mc terminal, we should see the following message pop-up:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.7</h4>
+    <pre>Nov 12, 2017 2:55:41 PM com.polarsparc.rabbitmq.direct.PaymentVerifier$1 handleDelivery
+INFO: Received message: 12345,19.99</pre>
+  </div>
+  <div id="para-div">
+    <p>In the consumer-v terminal, we should see the following message pop-up:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.8</h4>
+    <pre>Nov 12, 2017 2:55:41 PM com.polarsparc.rabbitmq.direct.PaymentVerifier$1 handleDelivery
+INFO: Received message: 98765,21.99</pre>
+  </div>
+  <div id="para-div">
+    <p>The following picture shows the screenshot of the <span class="bold">RabbitMQ</span> web management
+      console:</p>
+  </div>
+  <div id="img-outer-div"> <img class="img-cls" src="./images/rabbitmq-5.png" alt="Web Console" />
+    <div class="img-cap">Web Console</div>
+  </div>
+  <div id="para-div">
+    <p>We have successfully demonstrated <span class="bold">RabbitMQ</span> messaging using the
+      <span class="bold">Direct Exchange</span> !!!</p>
+  </div>
+  <div id="step-div">
+    <p>References</p>
+  </div>
+  <div id="para-div">
+    <p><a href="http://polarsparc.github.io/Docker/Docker.html" target="_blank"><span class="bold">Introduction to Docker</span></a></p>
+    <p><a href="https://www.rabbitmq.com" target="_blank"><span class="bold">RabbitMQ Official Site</span></a></p>
+  </div>
+</body>
+</html>

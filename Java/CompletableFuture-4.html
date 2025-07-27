@@ -1,0 +1,839 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="Java CompletableFuture :: Part 4 (Final)" content="author: Bhaskar.S, category: java">
+    <title>Java CompletableFuture :: Part 4 (Final)</title>
+    <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Java CompletableFuture :: Part 4 (Final)</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">11/10/2018</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="para-div">
+      <p>In <a href="http://polarsparc.github.io/Java/CompletableFuture-1.html" target="_blank"><span class="bold">
+        Part 1</span></a>, <a href="http://polarsparc.github.io/Java/CompletableFuture-2.html" target="_blank">
+        <span class="bold">Part 2</span></a> and <a href="http://polarsparc.github.io/Java/CompletableFuture-3.html"
+        target="_blank"><span class="bold">Part 3</span></a> of this series, we demonstrated some of the capabilities and
+        nuances in <span class="bold">CompletableFuture</span>. In this <span class="underbold">final</span> part, we will
+        wrap-up the series by covering the following:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="bold">Case. 1 ::</span> Demonstrate a simple pipeline of tasks using some of the method(s) covered
+            thus far in this series from <span class="bold">CompletableFuture</span></p>
+        </li>
+        <li>
+          <p><span class="bold">Case. 2 ::</span> Performance characteristics of a hypothetical payment processing use-case
+            using <span class="bold">CompletableFuture</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Let us get started without much further ado.</p>
+    </div>
+    <div id="step-div">
+      <p>Case. 1</p>
+    </div>
+    <div id="para-div">
+      <p>There are scenarios where one could have a task consume input from two sources of data and once the processing
+        is completed, trigger more than one child task(s). The following diagram illustrates a simple pipeline of tasks
+        tackling this exact case:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/cfpipeline.png" alt="Pipeline" />
+        <div class="img-cap">Pipeline</div>
+    </div>
+    <div id="para-div">
+      <p>Note that we used the word <span class="bold">Supply</span> for the method <span class="bold">thenSupply</span>
+        the word <span class="bold">Combine</span> for the method <span class="bold">thenCombine</span> and so on.</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.11</legend>
+      <pre>package com.polarsparc.cf.CompletableFuture;
+
+import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+public class Sample11 {
+    private static final Random random = new Random();
+    
+    // ----- Main -----
+    
+    public static void main(String[] args) {
+        {
+            ExecutorService executor = Executors.newFixedThreadPool(4);
+            
+            CompletableFuture&lt;Integer&gt; cf1 = CompletableFuture.supplyAsync(() -> {
+                int n = random.nextInt(1000) + 1;
+                System.out.printf("[1] [%s] Random number is %d\n", Thread.currentThread().getName(), n);
+                return n;
+            }, executor);
+            
+            CompletableFuture&lt;Integer&gt; cf2 = CompletableFuture.supplyAsync(() -> {
+                int n = random.nextInt(100) + 1;
+                System.out.printf("[2] [%s] Random number is %d\n", Thread.currentThread().getName(), n);
+                return n;
+            }, executor);
+            
+            CompletableFuture&lt;Integer&gt; cf3 = cf1.thenCombineAsync(cf2, (n1, n2) -> {
+                int n = n1.intValue() % n2.intValue();
+                if (n <= 0) {
+                    throw new RuntimeException(String.format("n1 = %d, n2 = %d => Invalid combination", 
+                        n1.intValue(), n2.intValue()));
+                }
+                return n;
+            }, executor);
+            cf3.thenAcceptAsync(n -> System.out.printf("[3] [%s] Transformed number is %d\n",
+                Thread.currentThread().getName(), n), executor);
+            
+            CompletableFuture&lt;Integer&gt; cf4 = cf3.thenApplyAsync(n -> {
+                int r = random.nextInt(5) + 1;
+                System.out.printf("[4] [%s] Random seed is %d\n", Thread.currentThread().getName(), r);
+                return n * r;
+            }, executor);
+            cf4.thenAcceptAsync(n -> System.out.printf("[5] [%s] Final number is %d\n", 
+                Thread.currentThread().getName(), n), executor);
+            cf4.thenRun(() -> System.out.printf("[6] [%s] Done !!!\n", Thread.currentThread().getName()));
+            
+            try {
+                cf4.get(1000, TimeUnit.MILLISECONDS);
+            } catch (Exception ex) {
+                System.out.printf("EXCEPTION:: %s\n", ex.getMessage());
+            }
+            
+            // Sleep 1 second before shutting down executor
+            try {
+                Thread.sleep(1000);
+            } catch (Exception ex) {
+                // Ignore
+            }
+
+            executor.shutdown();
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the program from Listing.11 will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.18</h4>
+      <pre>[1] [pool-1-thread-1] Random number is 47
+[2] [pool-1-thread-2] Random number is 28
+[4] [pool-1-thread-4] Random seed is 2
+[3] [pool-1-thread-3] Transformed number is 19
+[5] [pool-1-thread-2] Final number is 38
+[6] [pool-1-thread-4] Done !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>Re-running the program from Listing.11 a few times will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.19</h4>
+      <pre>[1] [pool-1-thread-1] Random number is 91
+[2] [pool-1-thread-2] Random number is 7
+EXCEPTION:: java.lang.RuntimeException: n1 = 91, n2 = 7 => Invalid combination</pre>
+    </div>
+    <div id="para-div">
+      <p>Again, re-running the program from Listing.11 a few times will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.20</h4>
+      <pre>[1] [pool-1-thread-1] Random number is 818
+[2] [pool-1-thread-2] Random number is 69
+[4] [pool-1-thread-4] Random seed is 4
+[6] [pool-1-thread-4] Done !!!
+[5] [pool-1-thread-1] Final number is 236
+[3] [pool-1-thread-3] Transformed number is 59</pre>
+    </div>
+    <div id="para-div">
+      <p>The following are some of the concepts in the context of the code in Listing.11:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">TimeUnit</span> :: An <span class="bold">enum</span> type that represents unit of time at
+            different levels of granularity and provides utility methods to convert between time units</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">get(long, TimeUnit)</span> :: This method waits upto the specified unit of time and returns
+            the results if the <span class="bold">CompletableFuture</span> completes before the time expires or throws a
+            <span class="bold">TimeoutException</span> exception</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">thenRun(Runnable)</span> :: This method is defined on the interface <span class="bold">
+            CompletionStage</span> and accepts an instance of type <span class="bold">Runnable</span>, which gets executed
+            using the default fork-join thread pool when the previous stage (or task) completes. The method returns an instance
+            of <span class="bold">CompletionStage</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="step-div">
+      <p>Case. 2</p>
+    </div>
+    <div id="para-div">
+      <p>In this example, we will measure the performance characteristics of a simple hypothetical payments processing use-case
+        using different approaches, such as <span class="bold">Thread</span>s, <span class="bold">Future</span>s, etc. For the
+        payments processing, each payment instruction encapsulates a transaction between a buyer and a seller for a given amount.
+        Processing each payment instruction involves the following three steps:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="bold">Step. 1 ::</span> Lookup the account number for the buyer</p>
+        </li>
+        <li>
+          <p><span class="bold">Step. 2 ::</span> Lookup the account number for the seller</p>
+        </li>
+        <li>
+          <p><span class="bold">Step. 3 ::</span> Debit the buyer for the specified amount only if buyer balance is greater than
+            the specified amount and credit the seller for the specified amount. Else generate an exception</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following class <span class="hi-green">Instruction</span> represents a payment instruction:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Instruction</legend>
+      <pre>package com.polarsparc.concurrency;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+@AllArgsConstructor
+@Getter
+public class Instruction {
+    private String buyerId = null;
+    private String sellerId = null;
+    private double amount = 0.0;
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The following class <span class="hi-green">Account</span> class represents an account (buyer or seller):</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Account</legend>
+      <pre>package com.polarsparc.concurrency;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+@AllArgsConstructor
+@Getter
+public class Account {
+    private String clientId = null;
+    private String accountId = null;
+    private double balance = 0.0;
+    
+    public boolean hasBalance(double amt) {
+        return balance > amt;
+    }
+    
+    public boolean debit(double amt) {
+        if (hasBalance(amt)) {
+            balance -= amt;
+            
+            return true;
+        }
+        
+        return false;
+    }
+    
+    public void credit(double amt) {
+        balance += amt;
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The following class <span class="hi-green">Settlement</span> wraps a payment settlement:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Settlement</legend>
+      <pre>package com.polarsparc.concurrency;
+
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@NoArgsConstructor
+@Getter
+@Setter
+public class Settlement {
+    private String buyerAccount = null;
+    private String sellerAccount = null;
+    private double amount = 0.0;
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The following class <span class="hi-green">Utility</span> encapsulates some utility functions:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Utility</legend>
+      <pre>package com.polarsparc.concurrency;
+
+import java.util.Random;
+
+public final class Utility {
+    private static final Random RANDOM = new Random();
+    
+    // ----- Static Block -----
+    
+    static {
+        RANDOM.setSeed(1000);
+    }
+    
+    // ----- Private Constructor -----
+    
+    private Utility() {
+    }
+    
+    // ----- Public Method(s) -----
+    
+    public static final void log(String cls, String meth, String msg) {
+        System.out.printf("%d [%s] &lt;%s:%s&gt; %s\n", System.currentTimeMillis(), Thread.currentThread().getName(),
+            cls, meth, msg);
+    }
+    
+    public static final void delay(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (Exception ex) {
+            // Ignore
+        }
+    }
+    
+    public static Instruction generateInstruction() {
+        String bid = "B-100" + (1 + RANDOM.nextInt(5));
+        String sid = "S-200" + (1 + RANDOM.nextInt(5));
+        double amt = 5.00;
+        
+        return new Instruction(bid, sid, amt);
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The following class <span class="hi-green">ClientServices</span> encapsulates the client (buyer or seller) to
+        account mappings:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>ClientServices</legend>
+      <pre>package com.polarsparc.concurrency;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public final class ClientServices {
+    private static final Map&lt;String, String&gt; client2AccountTbl = new HashMap&lt;&gt;();
+    
+    // ----- Private Constructor -----
+    
+    private ClientServices() {
+    }
+    
+    // ----- Public Method(s) -----
+    
+    public static final void setUp() {
+        client2AccountTbl.put("B-1001", "A-10001");
+        client2AccountTbl.put("B-1002", "A-10002");
+        client2AccountTbl.put("B-1003", "A-10003");
+        client2AccountTbl.put("B-1004", "A-10004");
+        client2AccountTbl.put("B-1005", "A-10005");
+        client2AccountTbl.put("S-2001", "A-10006");
+        client2AccountTbl.put("S-2002", "A-10007");
+        client2AccountTbl.put("S-2003", "A-10008");
+        client2AccountTbl.put("S-2004", "A-10009");
+        client2AccountTbl.put("S-2005", "A-10010");
+    }
+    
+    public static final String lookupAccountByClientId(String id) {
+        Utility.delay(150);
+        
+        if (id != null && id.isBlank() == false) {
+            String acctId = client2AccountTbl.get(id);
+            
+//            String msg = String.format("Given client id - %s, Mapped account id - %s", id, acctId);
+//            Utility.log("ClientServices", "lookupAccountByClientId", msg);
+            
+            return acctId;
+        }
+        
+        return null;
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The following class <span class="hi-green">AccountServices</span> encapsulates payment processing by providing
+        a simple facade method for debit and credit operation:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>AccountServices</legend>
+      <pre>package com.polarsparc.concurrency;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public final class AccountServices {
+    private static final Map&lt;String, Account&gt; clientAccounts = new HashMap&lt;&gt;();
+    
+    // ----- Private Constructor -----
+            
+    private AccountServices() {
+    }
+    
+    // ----- Public Method(s) -----
+    
+    public static final void setUp() {
+        clientAccounts.put("A-10001", new Account("B-1001", "A-10001", 10000.00));
+        clientAccounts.put("A-10002", new Account("B-1002", "A-10002", 12500.00));
+        clientAccounts.put("A-10003", new Account("B-1003", "A-10003", 5000.00));
+        clientAccounts.put("A-10004", new Account("B-1004", "A-10004", 15000.00));
+        clientAccounts.put("A-10005", new Account("B-1005", "A-10005", 7500.00));
+        clientAccounts.put("A-10006", new Account("S-2001", "A-10006", 10000.00));
+        clientAccounts.put("A-10007", new Account("S-2002", "A-10007", 5000.00));
+        clientAccounts.put("A-10008", new Account("S-2003", "A-10008", 15000.00));
+        clientAccounts.put("A-10009", new Account("S-2004", "A-10009", 7500.00));
+        clientAccounts.put("A-10010", new Account("S-2005", "A-10010", 10000.00));
+    }
+    
+    public static final void settle(String bid, String sid, double amt) throws Exception {
+        Utility.delay(350);
+        
+        if (bid != null && bid.isBlank() == false && sid != null && sid.isBlank() == false) {
+            synchronized(clientAccounts) {
+                Account bacct = clientAccounts.get(bid);
+                Account sacct = clientAccounts.get(sid);
+                if (bacct != null && sacct != null) {
+                    if (bacct.debit(amt)) {
+                        sacct.credit(amt);
+                    } else {
+                        throw new Exception(String.format("Exception: Buyer account id - %s, Specified amount - %.2f,"
+                            + "Balance - %.2f",    bid, amt, bacct.getBalance()));
+                    }
+                }
+                
+                String msg = String.format("Buyer account - %s, Seller account - %s, Amount - %.2f, "
+                    + "Buyer balance - %.2f, Seller balance - %.2f", bid, sid, amt, bacct.getBalance(), sacct.getBalance());
+                Utility.log("AccountServices", "settle", msg);
+            }
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>And finally, the following class <span class="hi-green">PaymentsProcessor</span> is the driver for measuring the
+        performance characteristics of the various approaches to payments processing:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>PaymentsProcessor</legend>
+      <pre>package com.polarsparc.concurrency;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+public final class PaymentsProcessor {
+    private static final int COUNT = 10;
+    private static final int POOLSZ = 4;
+    private static final List&lt;Instruction&gt; INSTRUCTIONS = new ArrayList&lt;&gt;(10);
+    
+    // ----- Static Block -----
+    
+    static {
+        for (int i = 1; i &lt;= COUNT; i++) {
+            INSTRUCTIONS.add(Utility.generateInstruction());
+        }
+    }
+    
+    // ----- Main -----
+    
+    /*
+     * Steps for a payment on an instruction from a buyer to a seller:
+     * 
+     * 1. Lookup the account of the buyer
+     * 2. Lookup the account of the seller
+     * 3. Settle the payment - credit the seller and debit the buyer
+     */
+    
+    public static void main(String[] args) {
+        Utility.log("PaymentsProcessor", "main", "---&gt; Ready to start");
+        
+        approachOne();
+        approachTwo();
+        approachThree();
+        approachFour();
+        approachFive();
+        
+        Utility.log("PaymentsProcessor", "main", "---&gt; Done");
+    }
+    
+    // ----- Method(s) -----
+    
+    // Sequential processing
+    public static void approachOne() {
+        ClientServices.setUp();
+        AccountServices.setUp();
+        
+        Utility.log("PaymentsProcessor", "approachOne", "=====> Ready to start");
+        
+        long start = System.nanoTime();
+        
+        for (Instruction inst : INSTRUCTIONS) {
+            String bacct = ClientServices.lookupAccountByClientId(inst.getBuyerId());
+            String sacct = ClientServices.lookupAccountByClientId(inst.getSellerId());
+            try {
+                AccountServices.settle(bacct, sacct, inst.getAmount());
+            } catch (Exception ex) {
+                Utility.log("PaymentsProcessor", "approachOne", ex.getMessage());
+            }
+        }
+        
+        long end = System.nanoTime();
+        
+        String msg = String.format("=====> Average time - %d ms", (TimeUnit.NANOSECONDS.toMillis(end-start)/COUNT));
+        Utility.log("PaymentsProcessor", "approachOne", msg);
+    }
+    
+    // Using java threads
+    public static void approachTwo() {
+        ClientServices.setUp();
+        AccountServices.setUp();
+        
+        Utility.log("PaymentsProcessor", "approachTwo", "=====> Ready to start");
+        
+        long start = System.nanoTime();
+        
+        for (Instruction inst : INSTRUCTIONS) {
+            Settlement smt = new Settlement();
+            smt.setAmount(inst.getAmount());
+            
+            Thread thr1 = new Thread(() -> {
+                smt.setBuyerAccount(ClientServices.lookupAccountByClientId(inst.getBuyerId()));
+            });
+            thr1.setName("thread-1");
+            thr1.start();
+            
+            Thread thr2 = new Thread(() -> {
+                smt.setSellerAccount(ClientServices.lookupAccountByClientId(inst.getSellerId()));
+            });
+            thr2.setName("thread-2");
+            thr2.start();
+            
+            try {
+                thr1.join();
+                thr2.join();
+            } catch (Exception ex) {
+                Utility.log("PaymentsProcessor", "approachTwo", ex.getMessage());
+            }
+            
+            Thread thr3 = new Thread(() -> {
+                try {
+                    AccountServices.settle(smt.getBuyerAccount(), smt.getSellerAccount(), smt.getAmount());
+                } catch (Exception ex) {
+                    Utility.log("PaymentsProcessor", "approachTwo", ex.getMessage());
+                }
+            });
+            thr3.setName("thread-3");
+            thr3.start();
+            
+            try {
+                thr3.join();
+            } catch (Exception ex) {
+                Utility.log("PaymentsProcessor", "approachTwo", ex.getMessage());
+            }
+        }
+        
+        long end = System.nanoTime();
+        
+        String msg = String.format("=====> Average time - %d ms", (TimeUnit.NANOSECONDS.toMillis(end-start)/COUNT));
+        Utility.log("PaymentsProcessor", "approachTwo", msg);
+    }
+    
+    // Using java futures
+    public static void approachThree() {
+        ClientServices.setUp();
+        AccountServices.setUp();
+        
+        ExecutorService executor = Executors.newFixedThreadPool(POOLSZ);
+        
+        Utility.log("PaymentsProcessor", "approachThree", "=====> Ready to start");
+        
+        long start = System.nanoTime();
+        
+        for (Instruction inst : INSTRUCTIONS) {
+            Settlement smt = new Settlement();
+            smt.setAmount(inst.getAmount());
+            
+            Future&lt;String&gt; fb = executor.submit(() -> {
+                return ClientServices.lookupAccountByClientId(inst.getBuyerId());
+            });
+            
+            Future&lt;String&gt; fs = executor.submit(() -> {
+                return ClientServices.lookupAccountByClientId(inst.getSellerId());
+            });
+            
+            try {
+                smt.setBuyerAccount(fb.get());
+                smt.setSellerAccount(fs.get());
+            } catch (Exception ex) {
+                Utility.log("PaymentsProcessor", "approachThree", ex.getMessage());
+            }
+            
+            Future<?> fdc = executor.submit(() -> {
+                try {
+                    AccountServices.settle(smt.getBuyerAccount(), smt.getSellerAccount(), smt.getAmount());
+                } catch (Exception ex) {
+                    Utility.log("PaymentsProcessor", "approachThree", ex.getMessage());
+                }
+            });
+            
+            try {
+                fdc.get();
+            } catch (Exception ex) {
+                Utility.log("PaymentsProcessor", "approachThree", ex.getMessage());
+            }
+        }
+        
+        long end = System.nanoTime();
+        
+        executor.shutdown();
+        
+        String msg = String.format("=====> Average time - %d ms", (TimeUnit.NANOSECONDS.toMillis(end-start)/COUNT));
+        Utility.log("PaymentsProcessor", "approachThree", msg);
+    }
+    
+    
+    // Using java futures
+    public static void approachFour() {
+        ClientServices.setUp();
+        AccountServices.setUp();
+        
+        ExecutorService executor = Executors.newFixedThreadPool(POOLSZ);
+        
+        List&lt;Future&lt;?&gt;&gt; futures = new ArrayList&lt;&gt;();
+        
+        Utility.log("PaymentsProcessor", "approachFour", "=====> Ready to start");
+        
+        long start = System.nanoTime();
+        
+        for (Instruction inst : INSTRUCTIONS) {
+            Future<?> fb = executor.submit(() -> {
+                Settlement smt = new Settlement();
+                smt.setAmount(inst.getAmount());
+                
+                smt.setBuyerAccount(ClientServices.lookupAccountByClientId(inst.getBuyerId()));
+                smt.setSellerAccount(ClientServices.lookupAccountByClientId(inst.getSellerId()));
+                
+                try {
+                    AccountServices.settle(smt.getBuyerAccount(), smt.getSellerAccount(), smt.getAmount());
+                } catch (Exception ex) {
+                    Utility.log("PaymentsProcessor", "approachFour", ex.getMessage());
+                }
+            });
+            
+            futures.add(fb);
+        }
+        
+        for (Future<?> fut : futures) {
+            try {
+                fut.get();
+            } catch (Exception ex) {
+                Utility.log("PaymentsProcessor", "approachFour", ex.getMessage());
+            }
+        }
+        
+        long end = System.nanoTime();
+        
+        executor.shutdown();
+        
+        String msg = String.format("=====> Average time - %d ms", (TimeUnit.NANOSECONDS.toMillis(end-start)/COUNT));
+        Utility.log("PaymentsProcessor", "approachFour", msg);
+    }
+    
+    // Using java completable futures
+    public static void approachFive() {
+        ClientServices.setUp();
+        AccountServices.setUp();
+        
+        ExecutorService executor = Executors.newFixedThreadPool(POOLSZ);
+        
+        List&lt;CompletableFuture&lt;?&gt;&gt; cfList = new ArrayList&lt;&gt;();
+        
+        Utility.log("PaymentsProcessor", "approachFive", "=====> Ready to start");
+        
+        long start = System.nanoTime();
+        
+        for (Instruction inst : INSTRUCTIONS) {
+            CompletableFuture&lt;String&gt; bcf = CompletableFuture.supplyAsync(() -> 
+                ClientServices.lookupAccountByClientId(inst.getBuyerId()), executor);
+            
+            CompletableFuture&lt;String&gt; scf = CompletableFuture.supplyAsync(() -> 
+                ClientServices.lookupAccountByClientId(inst.getSellerId()), executor);
+            
+            CompletableFuture&lt;Settlement&gt; bscf = bcf.thenCombineAsync(scf, (ba, sa) -> {
+                Settlement smt = new Settlement();
+                smt.setBuyerAccount(ba);
+                smt.setSellerAccount(sa);
+                smt.setAmount(inst.getAmount());
+                return smt;
+            });
+            
+            CompletableFuture&lt;Void&gt; fcf = bscf.thenAcceptAsync(smt -> {
+                try {
+                    AccountServices.settle(smt.getBuyerAccount(), smt.getSellerAccount(), smt.getAmount());
+                } catch (Exception ex) {
+                    Utility.log("PaymentsProcessor", "approachFive", ex.getMessage());
+                }
+            });
+            
+            cfList.add(fcf);
+        }
+        
+        for (CompletableFuture&lt;?&gt; cf : cfList) {
+            try {
+                cf.get();
+            } catch (Exception ex) {
+                Utility.log("PaymentsProcessor", "approachFive", ex.getMessage());
+            }
+        }
+        
+        long end = System.nanoTime();
+        
+        executor.shutdown();
+        
+        String msg = String.format("=====> Average time - %d ms", (TimeUnit.NANOSECONDS.toMillis(end-start)/COUNT));
+        Utility.log("PaymentsProcessor", "approachFive", msg);
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the above program <span class="bold">PaymentsProcessor</span> will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.21</h4>
+      <pre>1541882058692 [main] &lt;PaymentsProcessor:main&gt; ---&gt; Ready to start
+1541882058719 [main] &lt;PaymentsProcessor:approachOne&gt; =====&gt; Ready to start
+1541882059378 [main] &lt;AccountServices:settle&gt; Buyer account - A-10003, Seller account - A-10006, Amount - 5.00, Buyer balance - 4995.00, Seller balance - 10005.00
+1541882060031 [main] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10010, Amount - 5.00, Buyer balance - 12495.00, Seller balance - 10005.00
+1541882060685 [main] &lt;AccountServices:settle&gt; Buyer account - A-10003, Seller account - A-10010, Amount - 5.00, Buyer balance - 4990.00, Seller balance - 10010.00
+1541882061338 [main] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10006, Amount - 5.00, Buyer balance - 12490.00, Seller balance - 10010.00
+1541882061991 [main] &lt;AccountServices:settle&gt; Buyer account - A-10005, Seller account - A-10006, Amount - 5.00, Buyer balance - 7495.00, Seller balance - 10015.00
+1541882062645 [main] &lt;AccountServices:settle&gt; Buyer account - A-10005, Seller account - A-10010, Amount - 5.00, Buyer balance - 7490.00, Seller balance - 10015.00
+1541882063298 [main] &lt;AccountServices:settle&gt; Buyer account - A-10003, Seller account - A-10009, Amount - 5.00, Buyer balance - 4985.00, Seller balance - 7505.00
+1541882063951 [main] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10006, Amount - 5.00, Buyer balance - 12485.00, Seller balance - 10020.00
+1541882064604 [main] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10008, Amount - 5.00, Buyer balance - 12480.00, Seller balance - 15005.00
+1541882065257 [main] &lt;AccountServices:settle&gt; Buyer account - A-10004, Seller account - A-10007, Amount - 5.00, Buyer balance - 14995.00, Seller balance - 5005.00
+1541882065259 [main] &lt;PaymentsProcessor:approachOne&gt; =====&gt; Average time - 653 ms
+1541882065261 [main] &lt;PaymentsProcessor:approachTwo&gt; =====&gt; Ready to start
+1541882065770 [thread-3] &lt;AccountServices:settle&gt; Buyer account - A-10003, Seller account - A-10006, Amount - 5.00, Buyer balance - 4995.00, Seller balance - 10005.00
+1541882066274 [thread-3] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10010, Amount - 5.00, Buyer balance - 12495.00, Seller balance - 10005.00
+1541882066778 [thread-3] &lt;AccountServices:settle&gt; Buyer account - A-10003, Seller account - A-10010, Amount - 5.00, Buyer balance - 4990.00, Seller balance - 10010.00
+1541882067281 [thread-3] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10006, Amount - 5.00, Buyer balance - 12490.00, Seller balance - 10010.00
+1541882067784 [thread-3] &lt;AccountServices:settle&gt; Buyer account - A-10005, Seller account - A-10006, Amount - 5.00, Buyer balance - 7495.00, Seller balance - 10015.00
+1541882068288 [thread-3] &lt;AccountServices:settle&gt; Buyer account - A-10005, Seller account - A-10010, Amount - 5.00, Buyer balance - 7490.00, Seller balance - 10015.00
+1541882068791 [thread-3] &lt;AccountServices:settle&gt; Buyer account - A-10003, Seller account - A-10009, Amount - 5.00, Buyer balance - 4985.00, Seller balance - 7505.00
+1541882069295 [thread-3] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10006, Amount - 5.00, Buyer balance - 12485.00, Seller balance - 10020.00
+1541882069798 [thread-3] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10008, Amount - 5.00, Buyer balance - 12480.00, Seller balance - 15005.00
+1541882070301 [thread-3] &lt;AccountServices:settle&gt; Buyer account - A-10004, Seller account - A-10007, Amount - 5.00, Buyer balance - 14995.00, Seller balance - 5005.00
+1541882070303 [main] &lt;PaymentsProcessor:approachTwo&gt; =====&gt; Average time - 504 ms
+1541882070313 [main] &lt;PaymentsProcessor:approachThree&gt; =====&gt; Ready to start
+1541882070821 [pool-1-thread-3] &lt;AccountServices:settle&gt; Buyer account - A-10003, Seller account - A-10006, Amount - 5.00, Buyer balance - 4995.00, Seller balance - 10005.00
+1541882071324 [pool-1-thread-1] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10010, Amount - 5.00, Buyer balance - 12495.00, Seller balance - 10005.00
+1541882071827 [pool-1-thread-2] &lt;AccountServices:settle&gt; Buyer account - A-10003, Seller account - A-10010, Amount - 5.00, Buyer balance - 4990.00, Seller balance - 10010.00
+1541882072330 [pool-1-thread-3] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10006, Amount - 5.00, Buyer balance - 12490.00, Seller balance - 10010.00
+1541882072832 [pool-1-thread-4] &lt;AccountServices:settle&gt; Buyer account - A-10005, Seller account - A-10006, Amount - 5.00, Buyer balance - 7495.00, Seller balance - 10015.00
+1541882073335 [pool-1-thread-1] &lt;AccountServices:settle&gt; Buyer account - A-10005, Seller account - A-10010, Amount - 5.00, Buyer balance - 7490.00, Seller balance - 10015.00
+1541882073837 [pool-1-thread-2] &lt;AccountServices:settle&gt; Buyer account - A-10003, Seller account - A-10009, Amount - 5.00, Buyer balance - 4985.00, Seller balance - 7505.00
+1541882074339 [pool-1-thread-3] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10006, Amount - 5.00, Buyer balance - 12485.00, Seller balance - 10020.00
+1541882074842 [pool-1-thread-4] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10008, Amount - 5.00, Buyer balance - 12480.00, Seller balance - 15005.00
+1541882075344 [pool-1-thread-2] &lt;AccountServices:settle&gt; Buyer account - A-10004, Seller account - A-10007, Amount - 5.00, Buyer balance - 14995.00, Seller balance - 5005.00
+1541882075346 [main] &lt;PaymentsProcessor:approachThree&gt; =====&gt; Average time - 503 ms
+1541882075348 [main] &lt;PaymentsProcessor:approachFour&gt; =====&gt; Ready to start
+1541882076002 [pool-2-thread-1] &lt;AccountServices:settle&gt; Buyer account - A-10003, Seller account - A-10006, Amount - 5.00, Buyer balance - 4995.00, Seller balance - 10005.00
+1541882076004 [pool-2-thread-4] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10006, Amount - 5.00, Buyer balance - 12495.00, Seller balance - 10010.00
+1541882076005 [pool-2-thread-3] &lt;AccountServices:settle&gt; Buyer account - A-10003, Seller account - A-10010, Amount - 5.00, Buyer balance - 4990.00, Seller balance - 10005.00
+1541882076006 [pool-2-thread-2] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10010, Amount - 5.00, Buyer balance - 12490.00, Seller balance - 10010.00
+1541882076654 [pool-2-thread-1] &lt;AccountServices:settle&gt; Buyer account - A-10005, Seller account - A-10006, Amount - 5.00, Buyer balance - 7495.00, Seller balance - 10015.00
+1541882076656 [pool-2-thread-4] &lt;AccountServices:settle&gt; Buyer account - A-10005, Seller account - A-10010, Amount - 5.00, Buyer balance - 7490.00, Seller balance - 10015.00
+1541882076657 [pool-2-thread-3] &lt;AccountServices:settle&gt; Buyer account - A-10003, Seller account - A-10009, Amount - 5.00, Buyer balance - 4985.00, Seller balance - 7505.00
+1541882076659 [pool-2-thread-2] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10006, Amount - 5.00, Buyer balance - 12485.00, Seller balance - 10020.00
+1541882077306 [pool-2-thread-1] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10008, Amount - 5.00, Buyer balance - 12480.00, Seller balance - 15005.00
+1541882077308 [pool-2-thread-4] &lt;AccountServices:settle&gt; Buyer account - A-10004, Seller account - A-10007, Amount - 5.00, Buyer balance - 14995.00, Seller balance - 5005.00
+1541882077309 [main] &lt;PaymentsProcessor:approachFour&gt; =====&gt; Average time - 195 ms
+1541882077310 [main] &lt;PaymentsProcessor:approachFive&gt; =====&gt; Ready to start
+1541882077827 [ForkJoinPool.commonPool-worker-7] &lt;AccountServices:settle&gt; Buyer account - A-10003, Seller account - A-10006, Amount - 5.00, Buyer balance - 4995.00, Seller balance - 10005.00
+1541882077829 [ForkJoinPool.commonPool-worker-5] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10010, Amount - 5.00, Buyer balance - 12495.00, Seller balance - 10005.00
+1541882077975 [ForkJoinPool.commonPool-worker-9] &lt;AccountServices:settle&gt; Buyer account - A-10003, Seller account - A-10010, Amount - 5.00, Buyer balance - 4990.00, Seller balance - 10010.00
+1541882077976 [ForkJoinPool.commonPool-worker-3] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10006, Amount - 5.00, Buyer balance - 12490.00, Seller balance - 10010.00
+1541882078126 [ForkJoinPool.commonPool-worker-11] &lt;AccountServices:settle&gt; Buyer account - A-10005, Seller account - A-10006, Amount - 5.00, Buyer balance - 7495.00, Seller balance - 10015.00
+1541882078127 [ForkJoinPool.commonPool-worker-13] &lt;AccountServices:settle&gt; Buyer account - A-10005, Seller account - A-10010, Amount - 5.00, Buyer balance - 7490.00, Seller balance - 10015.00
+1541882078276 [ForkJoinPool.commonPool-worker-5] &lt;AccountServices:settle&gt; Buyer account - A-10003, Seller account - A-10009, Amount - 5.00, Buyer balance - 4985.00, Seller balance - 7505.00
+1541882078277 [ForkJoinPool.commonPool-worker-7] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10006, Amount - 5.00, Buyer balance - 12485.00, Seller balance - 10020.00
+1541882078426 [ForkJoinPool.commonPool-worker-3] &lt;AccountServices:settle&gt; Buyer account - A-10002, Seller account - A-10008, Amount - 5.00, Buyer balance - 12480.00, Seller balance - 15005.00
+1541882078427 [ForkJoinPool.commonPool-worker-9] &lt;AccountServices:settle&gt; Buyer account - A-10004, Seller account - A-10007, Amount - 5.00, Buyer balance - 14995.00, Seller balance - 5005.00
+1541882078429 [main] &lt;PaymentsProcessor:approachFive&gt; =====&gt; Average time - 111 ms
+1541882078430 [main] &lt;PaymentsProcessor:main&gt; ---&gt; Done</pre>
+    </div>
+    <div id="para-div">
+      <p>Notice from the listing <span class="bold">ClientServices</span> above, we introduce a delay of <span class="hi-orange">
+        150</span> ms to simulate a real-world service call to look-up an account for a given client. Similarly, from the listing
+        <span class="bold">AccountServices</span> above, we introduce a delay of <span class="hi-orange">350</span> ms to simulate
+        a real-world service call to settle a payment between two clients (buyer and seller).</p>
+      <p>The following are some of the observations from the <span class="bold">Output.21</span> above:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">approachOne</span> <span class="bold">::</span> Processes each payment sequentially one after
+            the other. The average time comes to about <span class="hi-orange">653</span> ms</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">approachTwo</span> <span class="bold">::</span> Processes each payment using 3 <span class="bold">
+            Thread</span>s - 2 for the account lookup and 1 for the payment settlement. The average time comes to about
+            <span class="hi-orange">504</span> ms. Decent improvement compared to <span class="bold">approachOne</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">approachThree</span> <span class="bold">::</span> Processes each payment using 3 <span class="bold">
+            Future</span>s - 2 for the account lookup and 1 for the payment settlement. The average time comes to about
+            <span class="hi-orange">503</span> ms. Not much of an improvement compared to <span class="bold">approachTwo</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">approachFour</span> <span class="bold">::</span> Processes each payment using a <span class="bold">
+            Future</span> that does both the account lookups as well as the payment settlement. The average time comes to about
+            <span class="hi-orange">195</span> ms. This is a <span class="underbold">vast</span> improvement compared to
+            <span class="bold">approachTwo</span>. The tests are being run on different cores  and each of the underlying
+            <span class="bold">Thread</span>s are running in parallel</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">approachFive</span> <span class="bold">::</span> Processes each payment using a pipeline of
+            tasks using <span class="bold">CompletableFuture</span>s. The average time comes to about <span class="hi-orange">111</span>
+            ms. This is because the tests are being run on multiple cores in parallel. This is a <span class="underbold">remarkable</span>
+            performance compared to <span class="bold">approachTwo</span> and a great improvement over
+            <span class="bold">approachFour</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="warn-div">
+      <h4>CAUTION</h4>
+      <pre>One needs to realize that <span class="bold">CompletableFuture</span> is not a silver bullet for every situation. One needs to really understand the use-case at hand to apply the right tools for the problem.</pre>
+    </div>
+    <div id="para-div">
+      <p>With that we conclude this series on <span class="bold">CompletableFuture</span>.</p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

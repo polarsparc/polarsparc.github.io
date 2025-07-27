@@ -1,0 +1,735 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <title>Exploring Apache ZooKeeper :: Part-1</title>
+    <link href="../css/polarsparc-v1.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body> <br />
+    <div id="title-div">
+      <p>Exploring Apache ZooKeeper :: Part-1</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">05/17/2014</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Apache ZooKeeper</span> is a robust, reliable, and
+        resilient open-source coordination service that can be leveraged by
+        distributed applications.</p>
+      <p><span class="bold">ZooKeeper</span> exposes a simple set of primitives
+        which can be leveraged to build highly reliable cluster-aware
+        distributed applications with the following capabilities:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="bold">Configuration Management</span> :: Store and
+            manage configuration information in <span class="bold">ZooKeeper</span></p>
+        </li>
+        <li>
+          <p><span class="bold">Group Membership</span> :: Maintain a current
+            list of all the active processes (members) for a distributed
+            application in <span class="bold">ZooKeeper</span></p>
+        </li>
+        <li>
+          <p><span class="bold">Leader Election</span> :: Maintain a single
+            Master (or Leader) for making critical decisions in a distributed
+            application using <span class="bold">ZooKeeper</span></p>
+        </li>
+        <li>
+          <p><span class="bold">Naming Service</span> :: Maintain a map of names
+            to values for the distributed application in <span class="bold">ZooKeeper</span></p>
+        </li>
+        <li>
+          <p><span class="bold">Distributed Synchronization</span> :: Control
+            access to a shared resource across processes of a distributed
+            application using <span class="bold">ZooKeeper</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">ZooKeeper</span> being a distributed coordination
+        service is a distributed application in itself with a set of servers
+        (nodes) providing the reliable coordination service. This set of <span
+          class="bold">ZooKeeper</span> servers (nodes) providing the reliable
+        coordination service is called an <span class="hi-yellow">ensemble</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Figure-1 is an illustration of an <span class="bold">Ensemble</span>:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/Ensemble.png" class="img-cls" alt="ZooKeeper Ensemble" />
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">ZooKeeper</span> allows the processes in a
+        cluster-aware distributed application to coordinate with each other
+        through a shared hierarchical namespace which is organized similarly to
+        the standard file system. The hierarchical namespace consists of data
+        registers that can hold some amount of data as byte array (upto <span class="bold">1MB</span>)
+        and are called <span class="hi-yellow">znodes</span>. Think of these <span
+          class="bold">znodes</span> as similar to a directory in a standard
+        file system.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Figure-2 is an illustration of the <span class="bold">znodes</span>
+        hierarchy:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/Znodes.png" class="img-cls" alt="ZooKeeper Ensemble" />
+      <div class="img-cap">Figure-2</div>
+    </div>
+    <div id="para-div">
+      <p>Each of the <span class="bold">znode</span>s in the <span class="bold">ZooKeeper</span>
+        namespace is identified by a name, which is a sequence of path elements
+        separated by a slash (/). From the above example, the <span class="bold">znode</span>
+        <span class="hi-yellow">S2</span> is identified by the name <span class="hi-yellow">/T1/S2</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="bold">znodes</span> hierarchy (along with data) is
+        stored in-memory within each of the <span class="bold">ZooKeeper</span>
+        servers in the <span class="bold">ensemble</span>. This allows <span class="bold">ZooKeeper</span>
+        to achieve high-throughput and low-latency and respond quickly to reads
+        from the clients. Each <span class="bold">ZooKeeper</span> server also
+        maintains a snapshot of the in-memory structure as well as a transaction
+        log on the disk for persistent store.</p>
+      <p>Any updates to the <span class="bold">znode</span> hierarchy
+        (including data) is replicated amongst the servers in the <span class="bold">ensemble</span>.</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">ZooKeeper</span> exposes a very simple set of
+        primitive operations which are as follows:</p>
+    </div>
+    <table id="col2-table">
+      <thead>
+        <tr>
+          <th>Operation</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">create &lt;path&gt;
+              &lt;data&gt;</span></td>
+          <td class="col2-c2-odd">Creates a <span class="bold">znode</span> at
+            the appropriate location in the hierarchical namespace as specified
+            by the &lt;path&gt; containing the specified &lt;data&gt;</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">exists &lt;path&gt;</span></td>
+          <td class="col2-c2-even">Checks if the <span class="bold">znode</span>
+            exists at the location as specified by the &lt;path&gt;</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">stat &lt;path&gt;</span></td>
+          <td class="col2-c2-odd">Returns the metadata information associated
+            with the <span class="bold">znode</span> for the specified by the
+            &lt;path&gt;. Metadata includes information such as creation time,
+            last modification time, version number, etc</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">getData &lt;path&gt;</span></td>
+          <td class="col2-c2-even">Returns data contained in the <span class="bold">znode</span>
+            at the location as specified by the &lt;path&gt;</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">setData &lt;path&gt;
+              &lt;data&gt;</span></td>
+          <td class="col2-c2-odd">Sets the data contained in the <span class="bold">znode</span>
+            at the location as specified by the &lt;path&gt; to the specified
+            &lt;data&gt;</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">getChildren &lt;path&gt;</span></td>
+          <td class="col2-c2-even">Returns a list of all the children under the
+            <span class="bold">znode</span> as specified by the &lt;path&gt;</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">delete &lt;path&gt;</span></td>
+          <td class="col2-c2-odd">Deletes the <span class="bold">znode</span>
+            at the location as specified by the &lt;path&gt;</td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>A distributed application (client) can leverage the above mentioned
+        primitives to create higher level distributed operations such as
+        Configuration Management, Naming Service, Group Membership, etc.</p>
+      <p>Client(s) can connect to the <span class="bold">ensemble</span> and
+        issue requests for the above mentioned primitives. At any given moment
+        in time, a client is connected to only one of the servers in the <span
+          class="bold">ensemble</span>. The client periodically checks to see if
+        the server it is connected is alive. If the client detects the server as
+        dead, then the client automatically connects to a different server in
+        the <span class="bold">ensemble</span>.</p>
+      <p>When a client issues a read request on a <span class="bold">znode</span>,
+        the read request is serviced from the local replica of the server that
+        the client is connected to.</p>
+      <p>On the other hand, when the client issues a write request on a <span class="bold">znode</span>,
+        the actual write request is processed by the leader of the <span class="bold">ensemble</span>.
+        When the <span class="bold">ZooKeeper</span> service is initialized,
+        one servers from the <span class="bold">ensemble</span> is elected as
+        the leader (see Figure.1). The remaining servers are the followers. When
+        a client issues a write request, the server the client is connected to
+        passes on the request to the leader. This leader then issues the same
+        write request to a quoram of servers (N/2+1) in the <span class="bold">ensemble</span>.
+        If the write request on the quorum of servers succeeds, the write
+        request is considered successful.</p>
+    </div>
+    <div id="para-div">
+      <p>A <span class="bold">znode</span> can be created as being either
+        persistent or ephemeral. A persistent <span class="bold">znode</span>
+        can only be deleted using the <span class="bold">delete</span>
+        primitive. An ephemeral <span class="bold">znode</span> on the other
+        hand, will be deleted when the client that created the <span class="bold">znode</span>
+        either crashes or closes its connection gracefully.</p>
+    </div>
+    <div id="para-div">
+      <p>A <span class="bold">znode</span> maintains metadata just like the
+        standard filesystem. The metadata includes information such as when the
+        <span class="bold">znode</span> was created, when the <span class="bold">znode</span>
+        was last modified, length of data in the <span class="bold">znode</span>,
+        version number of the data in the <span class="bold">znode</span>, etc.</p>
+      <p>The version number is incremented each time the data in the <span class="bold">znode</span>
+        is modified.</p>
+    </div>
+    <div id="para-div">
+      <p>A client can register for notification of changes to a <span class="bold">znode</span>.
+        This is referred to as a <span class="hi-yellow">watch</span>. A <span
+          class="bold">watch</span> is one-time trigger event that is sent to
+        the client that set it. The trigger event occurs when the data
+        corresponding to the <span class="bold">znode</span> changes.</p>
+    </div>
+    <div id="section-div">
+      <p>Installation and Setup On a 3-node Cluster</p>
+    </div>
+    <div id="para-div">
+      <p>Ensure there are at least 3 Ubuntu 64-bit based Linux nodes in the
+        cluster. Let us assume the IP addresses of the 3 nodes be: <span class="hi-yellow">192.168.1.1</span>,
+        <span class="hi-yellow">192.168.1.2</span>, and <span class="hi-yellow">192.168.1.3</span>
+        respectively.</p>
+      <p>Download the latest stable version (<span class="hi-yellow">3.4.6</span>
+        as of 05/10/2014) of Apache ZooKeeper from the project site located at
+        the URL <a href="http://zookeeper.apache.org/releases.html"><span class="bold">zookeeper.apache.org/releases.html</span></a></p>
+      <p>Following are the steps to install and setup Apache ZooKeeper on a
+        Ubuntu 64-bit based Linux workstation:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>Ensure Java SE 7 or above is installed on your system</p>
+        </li>
+        <li>
+          <p>Extract the downloaded package <span class="bold">zookeeper-3.4.6.tar.gz</span>
+            to a desired directory location (say, /home/zkuser/zookeper). Let us
+            refer to it as <span class="bold">ZOOKEEPER_HOME</span></p>
+        </li>
+        <li>
+          <p>mkdir -p $ZOOKEEPER_HOME/data</p>
+        </li>
+        <li>
+          <p>Copy the file <span class="bold">$ZOOKEEPER_HOME/conf/zoo_sample.cfg</span>
+            to <span class="hi-yellow">$ZOOKEEPER_HOME/conf/zoo.cfg</span></p>
+        </li>
+        <li>
+          <p>Modify the contents of the file <span class="bold">$ZOOKEEPER_HOME/conf/zoo.cfg</span>
+            to be as follows:</p>
+          <div id="out-div">
+            <h4>zoo.cfg</h4>
+            <pre>tickTime=2000
+initLimit=5
+syncLimit=2
+dataDir=/home/zkuser/zookeeper/data
+dataLogDir=/home/zkuser/zookeeper/data
+clientPort=2181
+server.1=192.168.1.1:2888:3888
+server.2=192.168.1.2:2888:3888
+server.3=192.168.1.3:2888:3888</pre>
+          </div>
+        </li>
+        <li>
+          <p>On the node <span class="bold">192.168.1.1</span>, create a file
+            named <span class="bold">myid</span> under the directory
+            $ZOOKEEPER_HOME/data with the value <span class="hi-yellow">1</span></p>
+        </li>
+        <li>
+          <p>On the node <span class="bold">192.168.1.2</span>, create a file
+            named <span class="bold">myid</span> under the directory
+            $ZOOKEEPER_HOME/data with the value <span class="hi-yellow">2</span></p>
+        </li>
+        <li>
+          <p>On the node <span class="bold">192.168.1.3</span>, create a file
+            named <span class="bold">myid</span> under the directory
+            $ZOOKEEPER_HOME/data with the value <span class="hi-yellow">3</span></p>
+        </li>
+        <li>
+          <p>On each of the 3 nodes, execute the command: <span class="bold">$ZOOKEEPER_HOME/bin/zkServer.sh
+              start-foreground</span></p>
+          <p>This will startup the ZooKeeper service on the 3-node cluster.</p>
+          <p>This following is the output from the node <span class="bold">192.168.1.1</span>:</p>
+          <div id="out-div">
+            <h4>Output.1</h4>
+            <pre>zkuser@my-host:$ $ZOOKEEPER_HOME/bin/zkServer.sh start-foreground
+JMX enabled by default
+Using config: /home/zkuser/zookeeper/bin/../conf/zoo.cfg
+2014-05-09 16:41:48,323 [myid:] - INFO  [main:QuorumPeerConfig@103] - Reading configuration from: /home/zkuser/zookeeper/bin/../conf/zoo.cfg
+2014-05-09 16:41:48,329 [myid:] - INFO  [main:QuorumPeerConfig@340] - Defaulting to majority quorums
+2014-05-09 16:41:48,338 [myid:1] - INFO  [main:DatadirCleanupManager@78] - autopurge.snapRetainCount set to 3
+2014-05-09 16:41:48,338 [myid:1] - INFO  [main:DatadirCleanupManager@79] - autopurge.purgeInterval set to 0
+2014-05-09 16:41:48,339 [myid:1] - INFO  [main:DatadirCleanupManager@101] - Purge task is not scheduled.
+2014-05-09 16:41:48,363 [myid:1] - INFO  [main:QuorumPeerMain@127] - Starting quorum peer
+2014-05-09 16:41:48,434 [myid:1] - INFO  [main:NIOServerCnxnFactory@94] - binding to port 0.0.0.0/0.0.0.0:2181
+2014-05-09 16:41:48,456 [myid:1] - INFO  [main:QuorumPeer@959] - tickTime set to 2000
+2014-05-09 16:41:48,456 [myid:1] - INFO  [main:QuorumPeer@979] - minSessionTimeout set to -1
+2014-05-09 16:41:48,456 [myid:1] - INFO  [main:QuorumPeer@990] - maxSessionTimeout set to -1
+2014-05-09 16:41:48,456 [myid:1] - INFO  [main:QuorumPeer@1005] - initLimit set to 5
+2014-05-09 16:41:48,477 [myid:1] - INFO  [main:QuorumPeer@473] - currentEpoch not found! Creating with a reasonable default of 0. This should only happen when you are upgrading your installation
+2014-05-09 16:41:48,507 [myid:1] - INFO  [main:QuorumPeer@488] - acceptedEpoch not found! Creating with a reasonable default of 0. This should only happen when you are upgrading your installation
+2014-05-09 16:41:48,552 [myid:1] - INFO  [Thread-1:QuorumCnxManager$Listener@504] - My election bind port: /192.168.1.6:3888
+2014-05-09 16:41:48,565 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:QuorumPeer@714] - LOOKING
+2014-05-09 16:41:48,568 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:FastLeaderElection@815] - New election. My id =  1, proposed zxid=0x0
+2014-05-09 16:41:48,571 [myid:1] - INFO  [WorkerReceiver[myid=1]:FastLeaderElection@597] - Notification: 1 (message format version), 1 (n.leader), 0x0 (n.zxid), 0x1 (n.round), LOOKING (n.state), 1 (n.sid), 0x0 (n.peerEpoch) LOOKING (my state)
+2014-05-09 16:41:48,579 [myid:1] - WARN  [WorkerSender[myid=1]:QuorumCnxManager@382] - Cannot open channel to 2 at election address /192.168.1.2:3888
+java.net.ConnectException: Connection refused
+	at java.net.PlainSocketImpl.socketConnect(Native Method)
+	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:345)
+	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:206)
+	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:188)
+	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)
+	at java.net.Socket.connect(Socket.java:589)
+	at org.apache.zookeeper.server.quorum.QuorumCnxManager.connectOne(QuorumCnxManager.java:368)
+	at org.apache.zookeeper.server.quorum.QuorumCnxManager.toSend(QuorumCnxManager.java:341)
+	at org.apache.zookeeper.server.quorum.FastLeaderElection$Messenger$WorkerSender.process(FastLeaderElection.java:449)
+	at org.apache.zookeeper.server.quorum.FastLeaderElection$Messenger$WorkerSender.run(FastLeaderElection.java:430)
+	at java.lang.Thread.run(Thread.java:745)
+2014-05-09 16:41:48,589 [myid:1] - WARN  [WorkerSender[myid=1]:QuorumCnxManager@382] - Cannot open channel to 3 at election address /192.168.1.3:3888
+java.net.ConnectException: Connection refused
+	at java.net.PlainSocketImpl.socketConnect(Native Method)
+	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:345)
+	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:206)
+	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:188)
+	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)
+	at java.net.Socket.connect(Socket.java:589)
+	at org.apache.zookeeper.server.quorum.QuorumCnxManager.connectOne(QuorumCnxManager.java:368)
+	at org.apache.zookeeper.server.quorum.QuorumCnxManager.toSend(QuorumCnxManager.java:341)
+	at org.apache.zookeeper.server.quorum.FastLeaderElection$Messenger$WorkerSender.process(FastLeaderElection.java:449)
+	at org.apache.zookeeper.server.quorum.FastLeaderElection$Messenger$WorkerSender.run(FastLeaderElection.java:430)
+	at java.lang.Thread.run(Thread.java:745)
+2014-05-09 16:42:14,013 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:FastLeaderElection@849] - Notification time out: 25600
+2014-05-09 16:42:22,296 [myid:1] - INFO  [/192.168.1.6:3888:QuorumCnxManager$Listener@511] - Received connection request /192.168.1.3:60368
+2014-05-09 16:42:22,302 [myid:1] - INFO  [WorkerReceiver[myid=1]:FastLeaderElection@597] - Notification: 1 (message format version), 3 (n.leader), 0x0 (n.zxid), 0x1 (n.round), LOOKING (n.state), 3 (n.sid), 0x0 (n.peerEpoch) LOOKING (my state)
+2014-05-09 16:42:22,303 [myid:1] - INFO  [WorkerReceiver[myid=1]:FastLeaderElection@597] - Notification: 1 (message format version), 3 (n.leader), 0x0 (n.zxid), 0x1 (n.round), LOOKING (n.state), 1 (n.sid), 0x0 (n.peerEpoch) LOOKING (my state)
+2014-05-09 16:42:22,305 [myid:1] - WARN  [WorkerSender[myid=1]:QuorumCnxManager@382] - Cannot open channel to 2 at election address /192.168.1.2:3888
+java.net.ConnectException: Connection refused
+	at java.net.PlainSocketImpl.socketConnect(Native Method)
+	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:345)
+	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:206)
+	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:188)
+	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)
+	at java.net.Socket.connect(Socket.java:589)
+	at org.apache.zookeeper.server.quorum.QuorumCnxManager.connectOne(QuorumCnxManager.java:368)
+	at org.apache.zookeeper.server.quorum.QuorumCnxManager.toSend(QuorumCnxManager.java:341)
+	at org.apache.zookeeper.server.quorum.FastLeaderElection$Messenger$WorkerSender.process(FastLeaderElection.java:449)
+	at org.apache.zookeeper.server.quorum.FastLeaderElection$Messenger$WorkerSender.run(FastLeaderElection.java:430)
+	at java.lang.Thread.run(Thread.java:745)
+2014-05-09 16:42:22,504 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:QuorumPeer@784] - FOLLOWING
+2014-05-09 16:42:22,523 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Learner@86] - TCP NoDelay set to: true
+2014-05-09 16:42:22,557 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Environment@100] - Server environment:zookeeper.version=3.4.6-1569965, built on 02/20/2014 09:09 GMT
+2014-05-09 16:42:22,557 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Environment@100] - Server environment:host.name=my-host
+2014-05-09 16:42:22,558 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Environment@100] - Server environment:java.version=1.8.0_05
+2014-05-09 16:42:22,558 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Environment@100] - Server environment:java.vendor=Oracle Corporation
+2014-05-09 16:42:22,558 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Environment@100] - Server environment:java.home=/usr/lib/jvm/java-8-oracle/jre
+2014-05-09 16:42:22,558 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Environment@100] - Server environment:java.class.path=/home/zkuser/zookeeper/bin/../build/classes:/home/zkuser/zookeeper/bin/../build/lib/*.jar:/home/zkuser/zookeeper/bin/../lib/zookeeper-3.4.6.jar:/home/zkuser/zookeeper/bin/../lib/slf4j-log4j12-1.6.1.jar:/home/zkuser/zookeeper/bin/../lib/slf4j-api-1.6.1.jar:/home/zkuser/zookeeper/bin/../lib/netty-3.7.0.Final.jar:/home/zkuser/zookeeper/bin/../lib/log4j-1.2.16.jar:/home/zkuser/zookeeper/bin/../lib/jline-0.9.94.jar:/home/zkuser/zookeeper/bin/../zookeeper-*.jar:/home/zkuser/zookeeper/bin/../src/java/lib/*.jar:/home/zkuser/zookeeper/bin/../conf:
+2014-05-09 16:42:22,558 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Environment@100] - Server environment:java.library.path=/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib
+2014-05-09 16:42:22,559 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Environment@100] - Server environment:java.io.tmpdir=/tmp
+2014-05-09 16:42:22,559 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Environment@100] - Server environment:java.compiler=&lt;NA&gt;
+2014-05-09 16:42:22,559 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Environment@100] - Server environment:os.name=Linux
+2014-05-09 16:42:22,559 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Environment@100] - Server environment:os.arch=amd64
+2014-05-09 16:42:22,560 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Environment@100] - Server environment:os.version=3.13.0-24-generic
+2014-05-09 16:42:22,560 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Environment@100] - Server environment:user.name=zkuser
+2014-05-09 16:42:22,560 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Environment@100] - Server environment:user.home=/home/zkuser
+2014-05-09 16:42:22,561 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Environment@100] - Server environment:user.dir=/home/zkuser/zookeeper
+2014-05-09 16:42:22,565 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:ZooKeeperServer@162] - Created server with tickTime 2000 minSessionTimeout 4000 maxSessionTimeout 40000 datadir /home/zkuser/zookeeper/data/version-2 snapdir /home/zkuser/zookeeper/data/version-2
+2014-05-09 16:42:22,568 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Follower@63] - FOLLOWING - LEADER ELECTION TOOK - 34001
+2014-05-09 16:42:22,572 [myid:1] - WARN  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Learner@233] - Unexpected exception, tries=0, connecting to /192.168.1.3:2888
+java.net.ConnectException: Connection refused
+	at java.net.PlainSocketImpl.socketConnect(Native Method)
+	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:345)
+	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:206)
+	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:188)
+	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:392)
+	at java.net.Socket.connect(Socket.java:589)
+	at org.apache.zookeeper.server.quorum.Learner.connectToLeader(Learner.java:225)
+	at org.apache.zookeeper.server.quorum.Follower.followLeader(Follower.java:71)
+	at org.apache.zookeeper.server.quorum.QuorumPeer.run(QuorumPeer.java:786)
+2014-05-09 16:42:23,655 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:Learner@323] - Getting a diff from the leader 0x0
+2014-05-09 16:42:23,660 [myid:1] - INFO  [QuorumPeer[myid=1]/0:0:0:0:0:0:0:0:2181:FileTxnSnapLog@240] - Snapshotting: 0x0 to /home/zkuser/zookeeper/data/version-2/snapshot.0
+2014-05-09 16:42:43,770 [myid:1] - INFO  [/192.168.1.1:3888:QuorumCnxManager$Listener@511] - Received connection request /192.168.1.2:50429
+2014-05-09 16:42:43,776 [myid:1] - INFO  [WorkerReceiver[myid=1]:FastLeaderElection@597] - Notification: 1 (message format version), 2 (n.leader), 0x0 (n.zxid), 0x1 (n.round), LOOKING (n.state), 2 (n.sid), 0x0 (n.peerEpoch) FOLLOWING (my state)
+2014-05-09 16:42:43,781 [myid:1] - INFO  [WorkerReceiver[myid=1]:FastLeaderElection@597] - Notification: 1 (message format version), 3 (n.leader), 0x0 (n.zxid), 0x1 (n.round), LOOKING (n.state), 2 (n.sid), 0x0 (n.peerEpoch) FOLLOWING (my state)
+2014-05-09 16:46:25,379 [myid:1] - INFO  [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxnFactory@197] - Accepted socket connection from /127.0.0.1:34668
+2014-05-09 16:46:25,393 [myid:1] - INFO  [NIOServerCxn.Factory:0.0.0.0/0.0.0.0:2181:NIOServerCnxn@827] - Processing srvr command from /127.0.0.1:34668
+2014-05-09 16:46:25,397 [myid:1] - INFO  [Thread-2:NIOServerCnxn@1007] - Closed socket connection for client /127.0.0.1:34668 (no session established for client)</pre>
+          </div>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Do not worry about the exceptions from the Output.1 above; it is from
+        the Leader Election process as we start the <span class="bold">ZooKeeper</span>
+        server in each of the 3 nodes one-by-one.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Apache ZooKeeper</p>
+    </div>
+    <div id="para-div">
+      <p>Apache <span class="bold">ZooKeeper</span> has a command-line client <span
+          class="hi-yellow">$ZOOKEEPER_HOME/bin/zkCli.sh</span>, which behaves
+        like an interactive shell. In the following paragraphs we will explore
+        some of the primitives of <span class="bold">ZooKeeper</span>.</p>
+      <p>To launch the interactive <span class="bold">ZooKeeper</span> client,
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ZOOKEEPER_HOME/bin/zkCli.sh -server
+        192.168.1.6:2181,192.168.1.3:2181,192.168.1.13:2181</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Connecting to 192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181
+2014-05-09 22:57:17,975 [myid:] - INFO  [main:Environment@100] - Client environment:zookeeper.version=3.4.6-1569965, built on 02/20/2014 09:09 GMT
+2014-05-09 22:57:17,978 [myid:] - INFO  [main:Environment@100] - Client environment:host.name=my-host
+2014-05-09 22:57:17,979 [myid:] - INFO  [main:Environment@100] - Client environment:java.version=1.8.0_05
+2014-05-09 22:57:17,981 [myid:] - INFO  [main:Environment@100] - Client environment:java.vendor=Oracle Corporation
+2014-05-09 22:57:17,981 [myid:] - INFO  [main:Environment@100] - Client environment:java.home=/usr/lib/jvm/java-8-oracle/jre
+2014-05-09 22:57:17,981 [myid:] - INFO  [main:Environment@100] - Client environment:java.class.path=/home/zkuser/zookeeper/bin/../build/classes:/home/zkuser/zookeeper/bin/../build/lib/*.jar:/home/zkuser/zookeeper/bin/../lib/zookeeper-3.4.6.jar:/home/zkuser/zookeeper/bin/../lib/slf4j-log4j12-1.6.1.jar:/home/zkuser/zookeeper/bin/../lib/slf4j-api-1.6.1.jar:/home/zkuser/zookeeper/bin/../lib/netty-3.7.0.Final.jar:/home/zkuser/zookeeper/bin/../lib/log4j-1.2.16.jar:/home/zkuser/zookeeper/bin/../lib/jline-0.9.94.jar:/home/zkuser/zookeeper/bin/../zookeeper-*.jar:/home/zkuser/zookeeper/bin/../src/java/lib/*.jar:/home/zkuser/zookeeper/bin/../conf:
+2014-05-09 22:57:17,981 [myid:] - INFO  [main:Environment@100] - Client environment:java.library.path=/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib
+2014-05-09 22:57:17,981 [myid:] - INFO  [main:Environment@100] - Client environment:java.io.tmpdir=/tmp
+2014-05-09 22:57:17,981 [myid:] - INFO  [main:Environment@100] - Client environment:java.compiler=&lt;NA&gt;
+2014-05-09 22:57:17,981 [myid:] - INFO  [main:Environment@100] - Client environment:os.name=Linux
+2014-05-09 22:57:17,981 [myid:] - INFO  [main:Environment@100] - Client environment:os.arch=amd64
+2014-05-09 22:57:17,981 [myid:] - INFO  [main:Environment@100] - Client environment:os.version=3.13.0-24-generic
+2014-05-09 22:57:17,982 [myid:] - INFO  [main:Environment@100] - Client environment:user.name=zkuser
+2014-05-09 22:57:17,982 [myid:] - INFO  [main:Environment@100] - Client environment:user.home=/home/zkuser
+2014-05-09 22:57:17,982 [myid:] - INFO  [main:Environment@100] - Client environment:user.dir=/home/zkuser/zookeeper
+2014-05-09 22:57:17,983 [myid:] - INFO  [main:ZooKeeper@438] - Initiating client connection, connectString=192.168.1.6:2181,192.168.1.3:2181,192.168.1.13:2181 sessionTimeout=30000 watcher=org.apache.zookeeper.ZooKeeperMain$MyWatcher@506c589e
+Welcome to ZooKeeper!
+2014-05-09 22:57:18,009 [myid:] - INFO  [main-SendThread(192.168.1.3:2181):ClientCnxn$SendThread@975] - Opening socket connection to server 192.168.1.1/192.168.1.1:2181. Will not attempt to authenticate using SASL (unknown error)
+JLine support is enabled
+2014-05-09 22:57:18,013 [myid:] - INFO  [main-SendThread(192.168.1.1:2181):ClientCnxn$SendThread@852] - Socket connection established to 192.168.1.1/192.168.1.1:2181, initiating session
+[zk: 192.168.1.6:2181,192.168.1.3:2181,192.168.1.13:2181(CONNECTING) 0] 2014-05-09 22:57:18,043 [myid:] - INFO  [main-SendThread(192.168.1.1:2181):ClientCnxn$SendThread@1235] - Session establishment complete on server 192.168.1.1/192.168.1.1:2181, sessionid = 0x245e7dfa13a0001, negotiated timeout = 30000
+
+WATCHER::
+
+WatchedEvent state:SyncConnected type:None path:null
+
+[zk: 192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181(CONNECTED) 0] </pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the <span class="bold">znode</span>s in <span class="bold">ZooKeeper</span>
+        hierarchical namespace, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>[zk: 192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181(CONNECTED) 0]
+        ls /</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>[zookeeper]</pre>
+    </div>
+    <div id="para-div">
+      <p>The above output indicates that there is a default <span class="bold">znode</span>
+        called <span class="hi-yellow">zookeper</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To create a persistent <span class="bold">znode</span> named <span class="hi-yellow">mytest</span>
+        with no data, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>[zk: 192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181(CONNECTED) 0]
+        create /mytest ""</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>Created /mytest</pre>
+    </div>
+    <div id="para-div">
+      <p>To again list all the <span class="bold">znode</span>s in <span class="bold">ZooKeeper</span>,
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>[zk: 192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181(CONNECTED) 0]
+        ls /</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>[mytest, zookeeper]</pre>
+    </div>
+    <div id="para-div">
+      <p>To create an ephemeral <span class="bold">znode</span> named <span class="hi-yellow">mytemp</span>
+        with no data, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>[zk: 192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181(CONNECTED) 0]
+        create -e /mytemp ""</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>Created /mytemp</pre>
+    </div>
+    <div id="para-div">
+      <p>To again list all the <span class="bold">znode</span>s in <span class="bold">ZooKeeper</span>,
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>[zk: 192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181(CONNECTED) 0]
+        ls /</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>[mytemp, mytest, zookeeper]</pre>
+    </div>
+    <div id="para-div">
+      <p>To close the client connection to <span class="bold">ZooKeeper</span>
+        and quit the interactive shell, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>[zk: 192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181(CONNECTED) 0]
+        quit</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>Quitting...
+2014-05-09 22:55:42,255 [myid:] - INFO  [main:ZooKeeper@684] - Session: 0x245e7dfa13a0000 closed
+2014-05-09 22:55:42,255 [myid:] - INFO  [main-EventThread:ClientCnxn$EventThread@512] - EventThread shut down</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, re-launch the interactive <span class="bold">ZooKeeper</span>
+        client by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ZOOKEEPER_HOME/bin/zkCli.sh -server
+        192.168.1.6:2181,192.168.1.3:2181,192.168.1.13:2181</p>
+    </div>
+    <div id="para-div">
+      <p>And issue the command to list all the <span class="bold">znode</span>s
+        in <span class="bold">ZooKeeper</span> by executing the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>[zk: 192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181(CONNECTED) 0]
+        ls /</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>[mytest, zookeeper]</pre>
+    </div>
+    <div id="para-div">
+      <p>As expected, the ephemeral <span class="bold">znode</span> with the
+        path <span class="bold">/mytemp</span> has been automatically deleted.</p>
+    </div>
+    <div id="para-div">
+      <p>To fetch the data stored in the <span class="bold">znode</span> named
+        <span class="bold">/mytest</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>[zk: 192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181(CONNECTED) 0]
+        get /mytest</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>""
+cZxid = 0x100000004
+ctime = Sat May 10 22:52:50 EDT 2014
+mZxid = 0x100000004
+mtime = Sat May 10 22:52:50 EDT 2014
+pZxid = 0x100000004
+cversion = 0
+dataVersion = 0
+aclVersion = 0
+ephemeralOwner = 0x0
+dataLength = 2
+numChildren = 0</pre>
+    </div>
+    <div id="para-div">
+      <p>The first line with the empty double quotes is the data. Remember we
+        created the <span class="bold">znode</span> named <span class="bold">/mytest</span>
+        with no data.</p>
+      <p>The <span class="bold">get</span> data command also displays the
+        metadata information.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the metadata associate with the <span class="bold">znode</span>
+        named <span class="bold">/mytest</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>[zk: 192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181(CONNECTED) 0]
+        stat /mytest</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>cZxid = 0x100000004
+ctime = Sat May 10 22:52:50 EDT 2014
+mZxid = 0x100000004
+mtime = Sat May 10 22:52:50 EDT 2014
+pZxid = 0x100000004
+cversion = 0
+dataVersion = 0
+aclVersion = 0
+ephemeralOwner = 0x0
+dataLength = 2
+numChildren = 0</pre>
+    </div>
+    <div id="para-div">
+      <p>To set the data stored in the <span class="bold">znode</span> named <span
+          class="bold">/mytest</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>[zk: 192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181(CONNECTED) 0]
+        set /mytest "hello"</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>cZxid = 0x100000004
+ctime = Sat May 10 22:52:50 EDT 2014
+mZxid = 0x100000008
+mtime = Sat May 10 23:05:48 EDT 2014
+pZxid = 0x100000004
+cversion = 0
+dataVersion = 1
+aclVersion = 0
+ephemeralOwner = 0x0
+dataLength = 7
+numChildren = 0</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be observed from the Output.12, the version number of the data
+        at the <span class="bold">znode</span> named <span class="bold">/mytest</span>
+        has been incremented to 1.</p>
+    </div>
+    <div id="para-div">
+      <p>To add a watch on the <span class="bold">znode</span> named <span class="bold">/mytest</span>,
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>[zk: 192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181(CONNECTED) 0]
+        stat /mytest true</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>cZxid = 0x100000004
+ctime = Sat May 10 22:52:50 EDT 2014
+mZxid = 0x100000004
+mtime = Sat May 10 23:05:48 EDT 2014
+pZxid = 0x100000004
+cversion = 0
+dataVersion = 1
+aclVersion = 0
+ephemeralOwner = 0x0
+dataLength = 7
+numChildren = 0</pre>
+    </div>
+    <div id="para-div">
+      <p>To set a watch on a path, we can either use the <span class="bold">stat</span>
+        command or the <span class="bold">get</span> command.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, let us again change (or modify) the data stored in the <span class="bold">znode</span>
+        named <span class="bold">/mytest</span> by executing the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>[zk: 192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181(CONNECTED) 0]
+        set /mytest "world"</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>WATCHER::
+WatchedEvent state:SyncConnected type:NodeDataChanged path:/mytest<br /><br />cZxid = 0x100000004
+ctime = Sat May 10 22:52:50 EDT 2014
+mZxid = 0x100000008
+mtime = Sat May 10 23:06:37 EDT 2014
+pZxid = 0x100000004
+cversion = 0
+dataVersion = 2
+aclVersion = 0
+ephemeralOwner = 0x0
+dataLength = 7
+numChildren = 0</pre>
+    </div>
+    <div id="para-div">
+      <p>Notice the <span class="hi-yellow">WatchedEvent</span> fire in the
+        above Output.14.</p>
+    </div>
+    <div id="para-div">
+      <p>Finally, to delete the <span class="bold">znode</span> named <span class="bold">/mytest</span>,
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>[zk: 192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181(CONNECTED) 0]
+        delete /mytest</p>
+    </div>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>Now issue the command to list all the <span class="bold">znode</span>s
+        in <span class="bold">ZooKeeper</span> by executing the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>[zk: 192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181(CONNECTED) 0]
+        ls /</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>[zookeeper]</pre>
+    </div>
+  </body>
+</html>

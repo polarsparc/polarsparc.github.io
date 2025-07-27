@@ -1,0 +1,1299 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <title>Exploring Apache ZooKeeper :: Part-3</title>
+    <link rel="stylesheet" type="text/css" href="../css/polarsparc-v1.0.css" />
+  </head>
+  <body> <br />
+    <div id="title-div">
+      <p>Exploring Apache ZooKeeper :: Part-3</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">05/31/2014</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a target="_blank" href="https://polarsparc.github.io/Messaging/ZooKeeper-2.html"><span class="bold">Part-2</span></a>
+        we explored the <span class="bold">ZooKeeper</span> Java API and got
+        our hands dirty with the <span class="bold">ZooKeeper</span> primitives
+        exposed via the Java API.</p>
+      <p>In this part, we will use the primitives defined in the <span class="bold">ZkHelper</span>
+        helper class to demonstrate the following use-cases:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="bold">Configuration Management</span></p>
+        </li>
+        <li>
+          <p><span class="bold">Group Membership</span></p>
+        </li>
+        <li>
+          <p><span class="bold">Distributed Synchronization</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="section-div">
+      <p>ZooKeeper Use-Cases</p>
+    </div>
+    <div id="step-div">
+      <p>Configuration Management</p>
+    </div>
+    <div id="para-div">
+      <p>Traditionally, config information associated with an application is
+        bundled together with the application binaries and deployed as a
+        package.</p>
+      <p>What if we have to deploy the application in a large enterprise cluster
+        of 1000s of nodes ?</p>
+      <p>More important, what if we have to change the config information on
+        those 1000s of nodes ?</p>
+      <p>We can leverage <span class="bold">ZooKeeper</span> to host and manage
+        the config information for an application (size cannot exceed 1 MB) and
+        have the application first connect to the <span class="bold">ensemble</span>
+        to bootstrap the config information.</p>
+      <p>We will now demonstrate this use-case using <span class="bold">ZooKeeper</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Java class <span class="hi-yellow">com.polarsparc.zookeeper.ZNodeConfigSetup</span>
+        is used for one-time config setup:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.1</legend>
+      <pre>/*
+ * 
+ * Name:   ZNodeConfigSetup
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   05/31/2014
+ * 
+ */
+
+package com.polarsparc.zookeeper;
+
+import java.io.File;
+import java.io.FileInputStream;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.ZooKeeper;
+
+// ----- Usage -----
+// java com.polarsparc.zookeeper.ZNodeConfigSetup &lt;config-file&gt; &lt;host-port-list&gt;
+//
+public class ZNodeConfigSetup {
+    private static final int SESSION_TIMEOUT = 10000;
+    private static final String path1 = "/ConfigMgmt";
+    private static final String path2 = "/ConfigMgmt/config";
+    private static final byte[] data1 = "".getBytes();
+    
+    private static final Logger log = LoggerFactory.getLogger(ZNodeConfigSetup.class);
+    
+    // ----- Main Method -----
+    
+    public static void main(String[] args) {
+        if (args.length != 2) {
+            System.out.printf("Specify &lt;config-file&gt; &lt;host-port-list&gt;\n");
+            System.exit(1);
+        }
+        
+        try {
+            byte[] data2 = null;
+            
+            File file = new File(args[0]);
+            
+            try (FileInputStream fin = new FileInputStream(file)) {
+                data2 = new byte[(int)file.length()];
+                fin.read(data2);
+            }
+            catch (Exception ex) {
+                log.error("ZNodeConfigSetup.main(): Exception", ex);
+            }
+            
+            ZooKeeper zk = ZkHelper.connect(args[1], SESSION_TIMEOUT);
+            
+            boolean status = ZkHelper.checkZnode(zk, path1, null);
+            
+            log.info("Check ZNode " + path1 + ", Status = " + status);
+            
+            if (status == false) {
+                ZkHelper.createZnode(zk, CreateMode.PERSISTENT, path1, data1);
+            }
+            
+            status = ZkHelper.checkZnode(zk, path2, null);
+            
+            log.info("Check ZNode " + path2 + ", Status = " + status);
+            
+            if (status == false) {
+                ZkHelper.createZnode(zk, CreateMode.PERSISTENT, path2, data2);
+            }
+            
+            String str = ZkHelper.getDataZnode(zk, path2);
+            
+            log.info("Get ZNode " + path2 + ", Data = " + str);
+            
+            ZkHelper.close(zk);
+        }
+        catch (Exception ex) {
+            log.error("ZNodeConfigSetup.main(): Exception", ex);
+        }
+    }
+}
+</pre> </fieldset>
+    <div id="para-div">
+      <p>The logic in <span class="bold">ZNodeConfigSetup</span> is to perform
+        the following:</p>
+      <ul id="blue-disc-ul">
+        <li>
+          <p>Read the contents of the specified properties file as a byte array</p>
+        </li>
+        <li>
+          <p>Create a persistent <span class="bold">znode</span> with the path
+            <span class="hi-green">/ConfigMgmt/config</span></p>
+        </li>
+        <li>
+          <p>Set the data for <span class="bold">/ConfigMgmt/config</span> with
+            the contents of the byte array</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following Java class <span class="hi-yellow">com.polarsparc.zookeeper.ZNodeConfigClient</span>
+        is a simple client reading the config information:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.2</legend>
+      <pre>/*
+ * 
+ * Name:   ZNodeConfigClient
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   05/31/2014
+ * 
+ */
+
+package com.polarsparc.zookeeper;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.WatchedEvent;
+
+// ----- Usage -----
+// java com.polarsparc.zookeeper.ZNodeConfigClient &lt;host-port-list&gt;
+//
+public class ZNodeConfigClient {
+    private static final int SESSION_TIMEOUT = 10000;
+    private static final String path = "/ConfigMgmt/config";
+    
+    private static final Logger log = LoggerFactory.getLogger(ZNodeConfigClient.class);
+    
+    // ----- Main Method -----
+    
+    public static void main(String[] args) {
+        if (args.length != 1) {
+            System.out.printf("Specify &lt;host-port-list&gt;\n");
+            System.exit(1);
+        }
+        
+        try {
+            ZooKeeper zk = ZkHelper.connect(args[0], SESSION_TIMEOUT);
+            
+            boolean status = ZkHelper.checkZnode(zk, path, new MyWatcher(zk));
+            
+            log.info("Check ZNode " + path + ", Status = " + status);
+            
+            if (status == true) {
+                String str = ZkHelper.getDataZnode(zk, path);
+
+                log.info("Get ZNode " + path + ", Data = " + str);
+            }
+            
+            log.info("Ready to sleep for 60 seconds !!!");
+            
+            Thread.sleep(60 * 1000); // 60 Seconds
+            
+            ZkHelper.close(zk);
+            
+            log.info("Done !!!");
+        }
+        catch (Exception ex) {
+            log.error("ZNodeConfigClient.main(): Exception", ex);
+        }
+    }
+    
+    static class MyWatcher implements Watcher {
+        private final ZooKeeper zk;
+        
+        MyWatcher(ZooKeeper zk) {
+            this.zk = zk;
+        }
+        
+        @Override
+        public void process(WatchedEvent event) {
+            log.info("-----&gt; Notification for ZNode " + event.getPath() + " &lt;-----");
+            
+            if (event.getType() == Watcher.Event.EventType.NodeDataChanged) {
+                String str = ZkHelper.getDataZnode(zk, ZNodeConfigClient.path);
+            
+                log.info("Get ZNode " + ZNodeConfigClient.path + ", Data = " + str);
+            }
+        }
+    }
+}
+</pre> </fieldset>
+    <div id="para-div">
+      <p>The logic in <span class="bold">ZNodeConfigClient</span> is to perform
+        the following:</p>
+      <ul id="blue-disc-ul">
+        <li>
+          <p>Connect to the <span class="bold">ensemble</span> and fetch the
+            configuration information at the <span class="bold">znode</span>
+            with the path <span class="hi-green">/ConfigMgmt/config</span></p>
+        </li>
+        <li>
+          <p>Setup a custom <span class="bold">org.apache.zookeeper.Watcher</span>
+            on <span class="bold">/ConfigMgmt/config</span> for data changes</p>
+        </li>
+        <li>
+          <p>Refresh the configuration information via the custom <span class="bold">Watcher</span>
+            notification</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following Java class <span class="hi-yellow">com.polarsparc.zookeeper.ZNodeConfigUpdate</span>
+        is for updating the config information:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.3</legend>
+      <pre>/*
+ * 
+ * Name:   ZNodeConfigUpdate
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   05/31/2014
+ * 
+ */
+
+package com.polarsparc.zookeeper;
+
+import java.io.File;
+import java.io.FileInputStream;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.zookeeper.ZooKeeper;
+
+// ----- Usage -----
+// java com.polarsparc.zookeeper.ZNodeConfigUpdate &lt;config-file&gt; &lt;host-port-list&gt;
+//
+public class ZNodeConfigUpdate {
+    private static final int SESSION_TIMEOUT = 10000;
+    private static final String path = "/ConfigMgmt/config";
+    
+    private static final Logger log = LoggerFactory.getLogger(ZNodeConfigUpdate.class);
+    
+    // ----- Main Method -----
+    
+    public static void main(String[] args) {
+        if (args.length != 2) {
+            System.out.printf("Specify &lt;config-file&gt; &lt;host-port-list&gt;\n");
+            System.exit(1);
+        }
+        
+        try {
+            byte[] data = null;
+            
+            File file = new File(args[0]);
+            
+            try (FileInputStream fin = new FileInputStream(file)) {
+                data = new byte[(int)file.length()];
+                fin.read(data);
+            }
+            catch (Exception ex) {
+                log.error("ZNodeConfigUpdate.main(): Exception", ex);
+            }
+            
+            ZooKeeper zk = ZkHelper.connect(args[1], SESSION_TIMEOUT);
+            
+            boolean status = ZkHelper.checkZnode(zk, path, null);
+            
+            log.info("Check ZNode " + path + ", Status = " + status);
+            
+            if (status == true) {
+                status = ZkHelper.setDataZnode(zk, path, data);
+
+                log.info("Set ZNode Data Status = " + status);
+            }
+            
+            ZkHelper.close(zk);
+        }
+        catch (Exception ex) {
+            log.error("ZNodeConfigSetup.main(): Exception", ex);
+        }
+    }    
+}
+</pre> </fieldset>
+    <div id="para-div">
+      <p>The logic in <span class="bold">ZNodeConfigUpdate</span> is to perform
+        the following:</p>
+      <ul id="blue-disc-ul">
+        <li>
+          <p>Read the contents of the specified properties file as a byte array</p>
+        </li>
+        <li>
+          <p>Set the data for <span class="bold">/ConfigMgmt/config</span> with
+            the contents of the byte array</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>For our tests, we will use two different properties files for the
+        configuration information: <span class="bold">config-test-1.properties</span>
+        and <span class="bold">config-test-2.properties</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of <span class="bold">config-test-1.properties</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>#<br />
+        # For Config Management test<br />
+        #<br />
+        <br />
+        app.log.level=INFO<br />
+        <br />
+        db.driver=com.mysql.jdbc.Driver<br />
+        db.url=jdbc:mysql://localhost:3306/testDB1<br />
+        db.user=testUser1<br />
+        db.secret=testSecret1</p>
+    </div>
+    <div id="para-div">
+      <p>And, the following are the contents of <span class="bold">config-test-2.properties</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>#<br />
+        # For Config Management test<br />
+        #<br />
+        <br />
+        app.log.level=DEBUG<br />
+        <br />
+        db.driver=com.mysql.jdbc.Driver<br />
+        db.url=jdbc:mysql://localhost:3306/testDB2<br />
+        db.user=testUser2<br />
+        db.secret=testSecret2</p>
+    </div>
+    <div id="para-div">
+      <p>Open a Terminal window (Terminal-1) and execute the Java code <span class="bold">com.polarsparc.zookeeper.ZNodeConfigSetup</span>
+        as follows:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -cp
+        /home/zkuser/zookeeper/resources\:/home/zkuser/zookeeper/lib/jline-0.9.94.jar\:/home/zkuser/zookeeper/lib/log4j-1.2.16.jar\:/home/zkuser/zookeeper/lib/netty-3.7.0.Final.jar\:/home/zkuser/zookeeper/lib/slf4j-api-1.6.1.jar\:/home/zkuser/zookeeper/lib/slf4j-log4j12-1.6.1.jar\:/home/zkuser/zookeeper/lib/zookeeper-3.4.6.jar\:/home/zkuser/zookeeper/build/classes
+        com.polarsparc.zookeeper.ZNodeConfigSetup
+        /home/zkuser/zookeeper/resources/config-test-1.properties
+        192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>2014-06-01 09:17:19 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:zookeeper.version=3.4.6-1569965, built on 02/20/2014 09:09 GMT
+2014-06-01 09:17:19 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:host.name=my-host
+2014-06-01 09:17:19 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.version=1.8.0_05
+2014-06-01 09:17:19 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.vendor=Oracle Corporation
+2014-06-01 09:17:19 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.home=/usr/lib/jvm/java-8-oracle/jre
+2014-06-01 09:17:19 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.class.path=/home/zkuser/zookeeper/resources:/home/zkuser/zookeeper/lib/jline-0.9.94.jar:/home/zkuser/zookeeper/lib/log4j-1.2.16.jar:/home/zkuser/zookeeper/lib/netty-3.7.0.Final.jar:/home/zkuser/zookeeper/lib/slf4j-api-1.6.1.jar:/home/zkuser/zookeeper/lib/slf4j-log4j12-1.6.1.jar:/home/zkuser/zookeeper/lib/zookeeper-3.4.6.jar:/home/zkuser/zookeeper/build/classes
+2014-06-01 09:17:19 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.library.path=/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib
+2014-06-01 09:17:19 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.io.tmpdir=/tmp
+2014-06-01 09:17:19 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.compiler=&lt;NA&gt;
+2014-06-01 09:17:19 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.name=Linux
+2014-06-01 09:17:19 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.arch=amd64
+2014-06-01 09:17:19 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.version=3.13.0-27-generic
+2014-06-01 09:17:19 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.name=zkuser
+2014-06-01 09:17:19 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.home=/home/zkuser
+2014-06-01 09:17:19 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.dir=/home/zkuser
+2014-06-01 09:17:19 &lt;main&gt; INFO  ZooKeeper:438 - Initiating client connection, connectString=192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181 sessionTimeout=10000 watcher=com.polarsparc.zookeeper.ZkHelper$$Lambda$1/758705033@4d76f3f8
+2014-06-01 09:17:19 &lt;main-SendThread(192.168.1.1:2181)&gt; INFO  ClientCnxn:975 - Opening socket connection to server 192.168.1.1/192.168.1.1:2181. Will not attempt to authenticate using SASL (unknown error)
+2014-06-01 09:17:19 &lt;main-SendThread(192.168.1.1:2181)&gt; INFO  ClientCnxn:852 - Socket connection established to 192.168.1.1/192.168.1.1:2181, initiating session
+2014-06-01 09:17:20 &lt;main-SendThread(192.168.1.1:2181)&gt; INFO  ClientCnxn:1235 - Session establishment complete on server 192.168.1.1/192.168.1.1:2181, sessionid = 0x146577d45700000, negotiated timeout = 10000
+2014-06-01 09:17:20 &lt;main-EventThread&gt; INFO  ZkHelper:45 - ZK[192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181] -&gt; Connected !!!
+2014-06-01 09:17:20 &lt;main&gt; INFO  ZNodeConfigSetup:58 - Check ZNode /ConfigMgmt, Status = false
+2014-06-01 09:17:20 &lt;main&gt; INFO  ZNodeConfigSetup:66 - Check ZNode /ConfigMgmt/config, Status = false
+2014-06-01 09:17:20 &lt;main&gt; INFO  ZNodeConfigSetup:74 - Get ZNode /ConfigMgmt/config, Data = #
+# For Config Management test
+#
+
+app.log.level=INFO
+
+db.driver=com.mysql.jdbc.Driver
+db.url=jdbc:mysql://localhost:3306/testDB1
+db.user=testUser1
+db.secret=testSecret1
+
+2014-06-01 09:17:20 &lt;main&gt; INFO  ZooKeeper:684 - Session: 0x146577d45700000 closed
+2014-06-01 09:17:20 &lt;main-EventThread&gt; INFO  ClientCnxn:512 - EventThread shut down</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be inferred from the above Output.1, we created a <span class="bold">znode</span>
+        with path <span class="bold">/ConfigMgmt/config</span> and set the
+        contents of the properties file <span class="bold">config-test-2.properties</span>
+        as the data.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, open another Terminal window (Terminal-2) and execute the Java
+        code <span class="bold">com.polarsparc.zookeeper.ZNodeConfigClient</span>
+        as follows:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -cp
+        /home/zkuser/zookeeper/resources\:/home/zkuser/zookeeper/lib/jline-0.9.94.jar\:/home/zkuser/zookeeper/lib/log4j-1.2.16.jar\:/home/zkuser/zookeeper/lib/netty-3.7.0.Final.jar\:/home/zkuser/zookeeper/lib/slf4j-api-1.6.1.jar\:/home/zkuser/zookeeper/lib/slf4j-log4j12-1.6.1.jar\:/home/zkuser/zookeeper/lib/zookeeper-3.4.6.jar\:/home/zkuser/zookeeper/build/classes
+        com.polarsparc.zookeeper.ZNodeConfigClient
+        192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>2014-06-01 09:20:42 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:zookeeper.version=3.4.6-1569965, built on 02/20/2014 09:09 GMT
+2014-06-01 09:20:42 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:host.name=my-host
+2014-06-01 09:20:42 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.version=1.8.0_05
+2014-06-01 09:20:42 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.vendor=Oracle Corporation
+2014-06-01 09:20:42 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.home=/usr/lib/jvm/java-8-oracle/jre
+2014-06-01 09:20:42 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.class.path=/home/zkuser/zookeeper/resources:/home/zkuser/zookeeper/lib/jline-0.9.94.jar:/home/zkuser/zookeeper/lib/log4j-1.2.16.jar:/home/zkuser/zookeeper/lib/netty-3.7.0.Final.jar:/home/zkuser/zookeeper/lib/slf4j-api-1.6.1.jar:/home/zkuser/zookeeper/lib/slf4j-log4j12-1.6.1.jar:/home/zkuser/zookeeper/lib/zookeeper-3.4.6.jar:/home/zkuser/zookeeper/build/classes
+2014-06-01 09:20:42 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.library.path=/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib
+2014-06-01 09:20:42 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.io.tmpdir=/tmp
+2014-06-01 09:20:42 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.compiler=&lt;NA&gt;
+2014-06-01 09:20:42 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.name=Linux
+2014-06-01 09:20:42 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.arch=amd64
+2014-06-01 09:20:42 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.version=3.13.0-27-generic
+2014-06-01 09:20:42 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.name=zkuser
+2014-06-01 09:20:42 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.home=/home/zkuser
+2014-06-01 09:20:42 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.dir=/home/zkuser
+2014-06-01 09:20:42 &lt;main&gt; INFO  ZooKeeper:438 - Initiating client connection, connectString=192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181 sessionTimeout=10000 watcher=com.polarsparc.zookeeper.ZkHelper$$Lambda$1/758705033@4d76f3f8
+2014-06-01 09:20:42 &lt;main-SendThread(192.168.1.3:2181)&gt; INFO  ClientCnxn:975 - Opening socket connection to server 192.168.1.3/192.168.1.3:2181. Will not attempt to authenticate using SASL (unknown error)
+2014-06-01 09:20:42 &lt;main-SendThread(192.168.1.3:2181)&gt; INFO  ClientCnxn:852 - Socket connection established to 192.168.1.3/192.168.1.3:2181, initiating session
+2014-06-01 09:20:42 &lt;main-SendThread(192.168.1.3:2181)&gt; INFO  ClientCnxn:1235 - Session establishment complete on server 192.168.1.3/192.168.1.3:2181, sessionid = 0x346577d3eed0000, negotiated timeout = 10000
+2014-06-01 09:20:42 &lt;main-EventThread&gt; INFO  ZkHelper:45 - ZK[192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181] -&gt; Connected !!!
+2014-06-01 09:20:43 &lt;main&gt; INFO  ZkHelper:165 - ZK[/ConfigMgmt/config] -&gt; Exists, Stat: {ctime = Sun Jun 01 09:17:20 EDT 2014, mtime = Sun Jun 01 09:17:20 EDT 2014, version = 0}
+2014-06-01 09:20:43 &lt;main&gt; INFO  ZNodeConfigClient:42 - Check ZNode /ConfigMgmt/config, Status = true
+2014-06-01 09:20:43 &lt;main&gt; INFO  ZNodeConfigClient:47 - Get ZNode /ConfigMgmt/config, Data = #
+# For Config Management test
+#
+
+app.log.level=INFO
+
+db.driver=com.mysql.jdbc.Driver
+db.url=jdbc:mysql://localhost:3306/testDB1
+db.user=testUser1
+db.secret=testSecret1
+
+2014-06-01 09:20:43 &lt;main&gt; INFO  ZNodeConfigClient:50 - Ready to sleep for 60 seconds !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be inferred from the above Output.2, the simple client was� able
+        to fetch the config information as expected. The client is also watching
+        for any changes to the config information at the <span class="bold">znode</span>
+        with path <span class="bold">/ConfigMgmt/config</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, open a third Terminal window (Terminal-3) and execute the Java
+        code <span class="bold">com.polarsparc.zookeeper.ZNodeConfigUpdate</span>
+        as follows:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -cp
+        /home/zkuser/zookeeper/resources\:/home/zkuser/zookeeper/lib/jline-0.9.94.jar\:/home/zkuser/zookeeper/lib/log4j-1.2.16.jar\:/home/zkuser/zookeeper/lib/netty-3.7.0.Final.jar\:/home/zkuser/zookeeper/lib/slf4j-api-1.6.1.jar\:/home/zkuser/zookeeper/lib/slf4j-log4j12-1.6.1.jar\:/home/zkuser/zookeeper/lib/zookeeper-3.4.6.jar\:/home/zkuser/zookeeper/build/classes
+        com.polarsparc.zookeeper.ZNodeConfigUpdate
+        /home/zkuser/zookeeper/resources/config-test-2.properties
+        192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>2014-06-01 09:21:04 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.library.path=/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib
+2014-06-01 09:21:04 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.io.tmpdir=/tmp
+2014-06-01 09:21:04 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.compiler=&lt;NA&gt;
+2014-06-01 09:21:04 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.name=Linux
+2014-06-01 09:21:04 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.arch=amd64
+2014-06-01 09:21:04 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.version=3.13.0-27-generic
+2014-06-01 09:21:04 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.name=zkuser
+2014-06-01 09:21:04 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.home=/home/zkuser
+2014-06-01 09:21:04 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.dir=/home/zkuser
+2014-06-01 09:21:04 &lt;main&gt; INFO  ZooKeeper:438 - Initiating client connection, connectString=192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181 sessionTimeout=10000 watcher=com.polarsparc.zookeeper.ZkHelper$$Lambda$1/758705033@4d76f3f8
+2014-06-01 09:21:04 &lt;main-SendThread(192.168.1.1:2181)&gt; INFO  ClientCnxn:975 - Opening socket connection to server 192.168.1.1/192.168.1.1:2181. Will not attempt to authenticate using SASL (unknown error)
+2014-06-01 09:21:04 &lt;main-SendThread(192.168.1.1:2181)&gt; INFO  ClientCnxn:852 - Socket connection established to 192.168.1.1/192.168.1.1:2181, initiating session
+2014-06-01 09:21:04 &lt;main-SendThread(192.168.1.1:2181)&gt; INFO  ClientCnxn:1235 - Session establishment complete on server 192.168.1.1/192.168.1.1:2181, sessionid = 0x146577d45700001, negotiated timeout = 10000
+2014-06-01 09:21:04 &lt;main-EventThread&gt; INFO  ZkHelper:45 - ZK[192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181] -&gt; Connected !!!
+2014-06-01 09:21:05 &lt;main&gt; INFO  ZkHelper:165 - ZK[/ConfigMgmt/config] -&gt; Exists, Stat: {ctime = Sun Jun 01 09:17:20 EDT 2014, mtime = Sun Jun 01 09:17:20 EDT 2014, version = 0}
+2014-06-01 09:21:05 &lt;main&gt; INFO  ZNodeConfigUpdate:55 - Check ZNode /ConfigMgmt/config, Status = true
+2014-06-01 09:21:05 &lt;main&gt; INFO  ZNodeConfigUpdate:60 - Set ZNode Data Status = true
+2014-06-01 09:21:05 &lt;main&gt; INFO  ZooKeeper:684 - Session: 0x146577d45700001 closed
+2014-06-01 09:21:05 &lt;main-EventThread&gt; INFO  ClientCnxn:512 - EventThread shut down</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be inferred from the above Output.3, config information at the <span
+          class="bold">znode</span> with path <span class="bold">/ConfigMgmt/config</span>
+        has been updated with the contents of the properties file <span class="bold">config-test-2.properties</span>.</p>
+      <p>Simultaneously, observe the output in Terminal-2 as shown below:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>2014-06-01 09:21:05 &lt;main-EventThread&gt; INFO  ZNodeConfigClient:72 - -----&gt; Notification for ZNode /ConfigMgmt/config &lt;-----
+2014-06-01 09:21:05 &lt;main-EventThread&gt; INFO  ZNodeConfigClient:77 - Get ZNode /ConfigMgmt/config, Data = #
+# For Config Management test
+#
+
+app.log.level=DEBUG
+
+db.driver=com.mysql.jdbc.Driver
+db.url=jdbc:mysql://localhost:3306/testDB2
+db.user=testUser2
+db.secret=testSecret2
+
+2014-06-01 09:21:43 &lt;main&gt; INFO  ZooKeeper:684 - Session: 0x346577d3eed0000 closed
+2014-06-01 09:21:43 &lt;main&gt; INFO  ZNodeConfigClient:56 - Done !!!
+2014-06-01 09:21:43 &lt;main-EventThread&gt; INFO  ClientCnxn:512 - EventThread shut down
+</pre> </div>
+    <div id="para-div">
+      <p>As can be inferred from the above Output.4, the simple client running
+        in Terminal-2 was notified of the changes to the config information at
+        the <span class="bold">znode</span> with path <span class="bold">/ConfigMgmt/config</span>.</p>
+    </div>
+    <div id="step-div">
+      <p>Group Membership</p>
+    </div>
+    <div id="para-div">
+      <p>When we deploy server-based applications (applications that accept
+        connections from clients and service their requests) in a cluster of
+        nodes, we need to know which nodes are active and ready to serve
+        clients.</p>
+      <p>We can leverage <span class="bold">ZooKeeper</span> to track active
+        nodes in a cluster (group membership).</p>
+    </div>
+    <div id="para-div">
+      <p>The following Java class <span class="hi-yellow">com.polarsparc.zookeeper.ZNodeGroupMonitor</span>
+        monitors for active members in a cluster:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.4</legend>
+      <pre>/*
+ * 
+ * Name:   ZNodeGroupMonitor
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   05/31/2014
+ * 
+ */
+
+package com.polarsparc.zookeeper;
+
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.ZooKeeper;
+
+// ----- Usage -----
+// java com.polarsparc.zookeeper.ZNodeGroupMonitor &lt;count&gt; &lt;delay&gt; &lt;host-port-list&gt;
+//
+public class ZNodeGroupMonitor {
+    private static final int SESSION_TIMEOUT = 10000;
+    private static final String parent = "/GroupMember";
+    private static final byte[] data = "".getBytes();
+    
+    private static final Logger log = LoggerFactory.getLogger(ZNodeGroupMonitor.class);
+    
+    // ----- Main Method -----
+    
+    public static void main(String[] args) {
+        if (args.length != 3) {
+            System.out.printf("Specify &lt;count&gt; &lt;delay&gt; &lt;host-port-list&gt;\n");
+            System.exit(1);
+        }
+        
+        try {
+            int count = Integer.parseInt(args[0]);
+            
+            long delay = Long.parseLong(args[1]);
+            
+            ZooKeeper zk = ZkHelper.connect(args[2], SESSION_TIMEOUT);
+            
+            boolean status = ZkHelper.checkZnode(zk, parent, null);
+            
+            log.info("Check ZNode " + parent + ", Status = " + status);
+            
+            if (status == false) {
+                ZkHelper.createZnode(zk, CreateMode.PERSISTENT, parent, data);
+            }
+            
+            status = ZkHelper.checkZnode(zk, parent, null);
+            
+            if (status == true) {
+                for (int i = 0; i &lt; count; i++) {
+                    List&lt;String&gt; list = ZkHelper.getZnodeChildren(zk, parent, null);
+                    if (list != null) {
+                        log.info("Members = " + list);
+                    }
+                    
+                    Thread.sleep(delay);
+                }
+            }
+            
+            ZkHelper.close(zk);
+        }
+        catch (Exception ex) {
+            log.error("ZNodeGroupMonitor.main(): Exception", ex);
+        }
+    }
+}
+</pre> </fieldset>
+    <div id="para-div">
+      <p>The logic in <span class="bold">ZNodeGroupMonitor</span> is to perform
+        the following:</p>
+      <ul id="blue-disc-ul">
+        <li>
+          <p>Check if the <span class="bold">znode</span> with path <span class="hi-green">/GroupMember</span>
+            exists. If not, create it</p>
+        </li>
+        <li>
+          <p>In a loop, list all the children under <span class="bold">/GroupMember</span>
+            and diplay their names. These are the active members of the cluster</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following Java class <span class="hi-yellow">com.polarsparc.zookeeper.ZNodeGroupMember</span>
+        is a simple group member:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.5</legend>
+      <pre>/*
+ * 
+ * Name:   ZNodeGroupMember
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   05/31/2014
+ * 
+ */
+
+package com.polarsparc.zookeeper;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.ZooKeeper;
+
+// ----- Usage -----
+// java com.polarsparc.zookeeper.ZNodeGroupMember &lt;unique-name&gt; &lt;delay&gt; &lt;host-port-list&gt;
+//
+public class ZNodeGroupMember {
+    private static final int SESSION_TIMEOUT = 10000;
+    private static final String SLASH = "/";
+    private static final String parent = "/GroupMember";
+    private static final byte[] data = "".getBytes();
+    
+    private static final Logger log = LoggerFactory.getLogger(ZNodeGroupMember.class);
+    
+    // ----- Main Method -----
+    
+    public static void main(String[] args) {
+        if (args.length != 3) {
+            System.out.printf("Specify &lt;unique-name&gt; &lt;delay&gt; &lt;host-port-list&gt;\n");
+            System.exit(1);
+        }
+        
+        try {
+            String path = parent + SLASH + args[0];
+            
+            long delay = Long.parseLong(args[1]);
+            
+            ZooKeeper zk = ZkHelper.connect(args[2], SESSION_TIMEOUT);
+            
+            boolean status = ZkHelper.checkZnode(zk, parent, null);
+            
+            log.info("Check ZNode " + parent + ", Status = " + status);
+            
+            if (status == false) {
+                ZkHelper.createZnode(zk, CreateMode.PERSISTENT, parent, data);
+            }
+            
+            log.info("Client member ZNode = " + path);
+            
+            status = ZkHelper.checkZnode(zk, path, null);
+            
+            log.info("Check ZNode " + path + ", Status = " + status);
+            
+            if (status == false) {
+                ZkHelper.createZnode(zk, CreateMode.EPHEMERAL, path, data);
+            }
+            
+            Thread.sleep(delay);
+            
+            ZkHelper.close(zk);
+        }
+        catch (Exception ex) {
+            log.error("ZNodeGroupMember.main(): Exception", ex);
+        }
+    }
+}
+</pre> </fieldset>
+    <div id="para-div">
+      <p>The logic in <span class="bold">ZNodeGroupMember</span> is to perform
+        the following:</p>
+      <ul id="blue-disc-ul">
+        <li>
+          <p>Connect to the <span class="bold">ensemble</span> and create an
+            ephemeral <span class="bold">znode</span> under <span class="hi-green">/GroupMember</span></p>
+        </li>
+        <li>
+          <p>Sleep for a specified duration and then exit to simulate an
+            inactive member</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Open a Terminal window (Terminal-1) and execute the Java code <span class="bold">com.polarsparc.zookeeper.ZNodeGroupMonitor</span>
+        as follows:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -cp
+        /home/zkuser/zookeeper/resources:/home/zkuser/zookeeper/lib/jline-0.9.94.jar:/home/zkuser/zookeeper/lib/log4j-1.2.16.jar:/home/zkuser/zookeeper/lib/netty-3.7.0.Final.jar:/home/zkuser/zookeeper/lib/slf4j-api-1.6.1.jar:/home/zkuser/zookeeper/lib/slf4j-log4j12-1.6.1.jar:/home/zkuser/zookeeper/lib/zookeeper-3.4.6.jar:/home/zkuser/zookeeper/build/classes
+        com.polarsparc.zookeeper.ZNodeGroupMonitor 20 5000
+        192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>2014-06-01 13:12:18 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:zookeeper.version=3.4.6-1569965, built on 02/20/2014 09:09 GMT
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:host.name=my-host
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.version=1.8.0_05
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.vendor=Oracle Corporation
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.home=/usr/lib/jvm/java-8-oracle/jre
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.class.path=/home/zkuser/zookeeper/resources:/home/zkuser/zookeeper/lib/jline-0.9.94.jar:/home/zkuser/zookeeper/lib/log4j-1.2.16.jar:/home/zkuser/zookeeper/lib/netty-3.7.0.Final.jar:/home/zkuser/zookeeper/lib/slf4j-api-1.6.1.jar:/home/zkuser/zookeeper/lib/slf4j-log4j12-1.6.1.jar:/home/zkuser/zookeeper/lib/zookeeper-3.4.6.jar:/home/zkuser/zookeeper/build/classes
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.library.path=/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.io.tmpdir=/tmp
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.compiler=&lt;NA&gt;
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.name=Linux
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.arch=amd64
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.version=3.13.0-27-generic
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.name=zkuser
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.home=/home/zkuser
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.dir=/home/zkuser
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZooKeeper:438 - Initiating client connection, connectString=192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181 sessionTimeout=10000 watcher=com.polarsparc.zookeeper.ZkHelper$$Lambda$1/758705033@4d76f3f8
+2014-06-01 13:12:18 &lt;main-SendThread(192.168.1.3:2181)&gt; INFO  ClientCnxn:975 - Opening socket connection to server 192.168.1.3/192.168.1.3:2181. Will not attempt to authenticate using SASL (unknown error)
+2014-06-01 13:12:18 &lt;main-SendThread(192.168.1.3:2181)&gt; INFO  ClientCnxn:852 - Socket connection established to 192.168.1.3/192.168.1.3:2181, initiating session
+2014-06-01 13:12:18 &lt;main-SendThread(192.168.1.3:2181)&gt; INFO  ClientCnxn:1235 - Session establishment complete on server 192.168.1.3/192.168.1.3:2181, sessionid = 0x34648a66eb50000, negotiated timeout = 10000
+2014-06-01 13:12:18 &lt;main-EventThread&gt; INFO  ZkHelper:45 - ZK[192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181] -&gt; Connected !!!
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZNodeGroupMonitor:48 - Check ZNode /GroupMember, Status = false
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZkHelper:165 - ZK[/GroupMember] -&gt; Exists, Stat: {ctime = Sun Jun 01 13:12:18 EDT 2014, mtime = Sun Jun 01 13:12:18 EDT 2014, version = 0}
+2014-06-01 13:12:18 &lt;main&gt; INFO  ZNodeGroupMonitor:60 - Members = []</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be inferred from the above Output.5, we create a <span class="bold">znode</span>
+        with path <span class="bold">/GroupMember</span> (if it does not
+        exist), fetch and display its children at regular interval. As can be
+        observed, there are no active members.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, open 3 more Terminal windows (Terminal-2, Terminal-3, and
+        Terminal-4) and execute the Java code <span class="bold">com.polarsparc.zookeeper.ZNodeGroupMember</span>
+        with different command-line arguments as follows:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -cp
+        /home/zkuser/zookeeper/resources\:/home/zkuser/zookeeper/lib/jline-0.9.94.jar\:/home/zkuser/zookeeper/lib/log4j-1.2.16.jar\:/home/zkuser/zookeeper/lib/netty-3.7.0.Final.jar\:/home/zkuser/zookeeper/lib/slf4j-api-1.6.1.jar\:/home/zkuser/zookeeper/lib/slf4j-log4j12-1.6.1.jar\:/home/zkuser/zookeeper/lib/zookeeper-3.4.6.jar\:/home/zkuser/zookeeper/build/classes
+        com.polarsparc.zookeeper.ZNodeGroupMember client-1 60000
+        192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181</p>
+      <p>java -cp
+        /home/zkuser/zookeeper/resources\:/home/zkuser/zookeeper/lib/jline-0.9.94.jar\:/home/zkuser/zookeeper/lib/log4j-1.2.16.jar\:/home/zkuser/zookeeper/lib/netty-3.7.0.Final.jar\:/home/zkuser/zookeeper/lib/slf4j-api-1.6.1.jar\:/home/zkuser/zookeeper/lib/slf4j-log4j12-1.6.1.jar\:/home/zkuser/zookeeper/lib/zookeeper-3.4.6.jar\:/home/zkuser/zookeeper/build/classes
+        com.polarsparc.zookeeper.ZNodeGroupMember client-2 40000
+        192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181</p>
+      <p>java -cp
+        /home/zkuser/zookeeper/resources\:/home/zkuser/zookeeper/lib/jline-0.9.94.jar\:/home/zkuser/zookeeper/lib/log4j-1.2.16.jar\:/home/zkuser/zookeeper/lib/netty-3.7.0.Final.jar\:/home/zkuser/zookeeper/lib/slf4j-api-1.6.1.jar\:/home/zkuser/zookeeper/lib/slf4j-log4j12-1.6.1.jar\:/home/zkuser/zookeeper/lib/zookeeper-3.4.6.jar\:/home/zkuser/zookeeper/build/classes
+        com.polarsparc.zookeeper.ZNodeGroupMember client-3 20000
+        192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181</p>
+    </div>
+    <div id="para-div">
+      <p>As we start the 3 group members, the following will be the output in
+        Terminal-1:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>2014-06-01 13:13:09 &lt;main&gt; INFO  ZNodeGroupMonitor:60 - Members = [client-1]
+2014-06-01 13:13:14 &lt;main&gt; INFO  ZNodeGroupMonitor:60 - Members = [client-1]
+2014-06-01 13:13:19 &lt;main&gt; INFO  ZNodeGroupMonitor:60 - Members = [client-1]
+2014-06-01 13:13:24 &lt;main&gt; INFO  ZNodeGroupMonitor:60 - Members = [client-1]
+2014-06-01 13:13:29 &lt;main&gt; INFO  ZNodeGroupMonitor:60 - Members = [client-1, client-2]
+2014-06-01 13:13:34 &lt;main&gt; INFO  ZNodeGroupMonitor:60 - Members = [client-1, client-2]
+2014-06-01 13:13:39 &lt;main&gt; INFO  ZNodeGroupMonitor:60 - Members = [client-1, client-2]
+2014-06-01 13:13:44 &lt;main&gt; INFO  ZNodeGroupMonitor:60 - Members = [client-1, client-3, client-2]
+2014-06-01 13:13:49 &lt;main&gt; INFO  ZNodeGroupMonitor:60 - Members = [client-1, client-3, client-2]
+2014-06-01 13:13:54 &lt;main&gt; INFO  ZNodeGroupMonitor:60 - Members = [client-1, client-3, client-2]
+2014-06-01 13:13:59 &lt;main&gt; INFO  ZNodeGroupMonitor:60 - Members = [client-1, client-3, client-2]
+2014-06-01 12:18:04 &lt;main&gt; INFO  ZNodeGroupMonitor:60 - Members = [client-1, client-2]
+2014-06-01 12:18:09 &lt;main&gt; INFO  ZNodeGroupMonitor:60 - Members = []</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be inferred from the above Output.6, we are able to monitor and
+        identify the active members of the application.</p>
+    </div>
+    <div id="step-div">
+      <p>Distributed Synchronization</p>
+    </div>
+    <div id="para-div">
+      <p>Often times in an application that is distributed across nodes of
+        the cluster there is a need for using synchronization so that only one
+        instance of the application is in a critical section (such as updating a
+        counter).</p>
+      <p>We will leverage <span class="bold">ZooKeeper</span> to demostrate
+        distributed locking.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Java class <span class="hi-yellow">com.polarsparc.zookeeper.ZNodeDistLock</span>
+        implements a simple distributed lock:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.6</legend>
+      <pre>/*
+ * 
+ * Name:   ZNodeDistLock
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   05/31/2014
+ * 
+ */
+
+package com.polarsparc.zookeeper;
+
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.WatchedEvent;
+
+// ----- Usage -----
+// java com.polarsparc.zookeeper.ZNodeDistLock &lt;unique-name&gt; &lt;count&gt; &lt;delay&gt; &lt;host-port-list&gt;
+//
+public class ZNodeDistLock {
+    private static final int SESSION_TIMEOUT = 10000;
+    private static final String parent = "/DistLock";
+    private static final String lock = "/DistLock/lock";
+    private static final byte[] data = "1".getBytes();
+    private static final byte[] data1 = "".getBytes();
+    
+    private static final Logger log = LoggerFactory.getLogger(ZNodeDistLock.class);
+    
+    private static long delay = 0;
+    
+    private static String client = null;
+    
+    // ----- Main Method -----
+    
+    public static void main(String[] args) {
+        if (args.length != 4) {
+            System.out.printf("Specify &lt;unique-name&gt; &lt;count&gt; &lt;delay&gt; &lt;host-port-list&gt;\n");
+            System.exit(1);
+        }
+        
+        try {
+            client = args[0];
+            int count = Integer.parseInt(args[1]);
+            delay = Long.parseLong(args[2]);
+            
+            ZooKeeper zk = ZkHelper.connect(args[3], SESSION_TIMEOUT);
+            
+            boolean status = ZkHelper.checkZnode(zk, parent, null);
+            
+            log.info("Check ZNode " + parent + ", Status = " + status);
+            
+            if (status == false) {
+                ZkHelper.createZnode(zk, CreateMode.PERSISTENT, parent, data);
+            }
+            
+            status = ZkHelper.checkZnode(zk, parent, null);
+            
+            if (status == true) {
+                for (int i = 0; i &lt; count; i++) {
+                    lock(zk);
+                    
+                    String str = ZkHelper.getDataZnode(zk, parent);
+                    
+                    log.info("Client " + client + " processing [" + str + "]");
+                    
+                    int x = Integer.parseInt(str);
+                    
+                    byte[] data2 = (Integer.toString(x+1)).getBytes();
+                    
+                    ZkHelper.setDataZnode(zk, parent, data2);
+                    
+                    unlock(zk);
+                    
+                    Thread.sleep(delay);
+                }
+            }
+            
+            ZkHelper.close(zk);
+        }
+        catch (Exception ex) {
+            log.error("ZNodeDistLock.main(): Exception", ex);
+        }
+    }
+    
+    static void lock(ZooKeeper zk) {
+        final Object mutex = new Object();
+        
+        Watcher watcher = new MyLockWatcher(mutex);
+        
+        for (;;) {
+            List&lt;String&gt; list = ZkHelper.getZnodeChildren(zk, parent, watcher);
+            if (list.isEmpty()) {
+                // Try to grab znode
+                boolean status = ZkHelper.createZnode(zk, CreateMode.EPHEMERAL, lock, data1);
+                if (status) {
+                    // Success
+                    log.info("Client " + client + " acquired lock !!!");
+                    break;
+                }
+                else {
+                    log.info("Ouch, client " + client + " missed ...");
+                    try {
+                        synchronized (mutex) {
+                            mutex.wait(delay);
+                        }
+                    }
+                    catch (InterruptedException ex) {
+                    }
+                }
+            }
+            else {
+                log.info("Client " + client + " have to wait ...");
+                try {
+                    synchronized (mutex) {
+                        mutex.wait(delay);
+                    }
+                }
+                catch (InterruptedException ex) {
+                }
+            }
+        }
+    }
+    
+    static void unlock(ZooKeeper zk) {
+        boolean status = ZkHelper.deleteZnode(zk, lock);
+        if (status) {
+            log.info("Client " + client + " released lock !!!");
+        }
+    }
+    
+    static class MyLockWatcher implements Watcher {
+        private final Object mutex;
+        
+        MyLockWatcher(Object mutex) {
+            this.mutex = mutex;
+        }
+        
+        @Override
+        public void process(WatchedEvent event) {
+            log.info("-----&gt; Notification for ZNode " + event.getPath() + " &lt;-----");
+            
+            if (event.getType() == Watcher.Event.EventType.NodeDataChanged) {
+                synchronized (mutex) {
+                    mutex.notifyAll();
+                }
+            }
+        }
+    }
+}
+</pre> </fieldset>
+    <div id="para-div">
+      <p>The logic in <span class="bold">ZNodeDistLock</span> is to perform the
+        following:</p>
+      <ul id="blue-disc-ul">
+        <li>
+          <p>Check if the <span class="bold">znode</span> with path <span class="hi-green">/DistLock</span>
+            exists. If it does not exist, create it with an initial data value
+            of 1</p>
+        </li>
+        <li>
+          <p>Try to acquire a lock by creating an ephemeral <span class="bold">znode</span>
+            with path <span class="hi-green">/DistLock/lock</span></p>
+        </li>
+        <li>
+          <p>If lock was acquired successfully, increment that data value at <span
+              class="bold">/DistLock</span></p>
+        </li>
+        <li>
+          <p>If lock was not acquired, setup a watch on <span class="bold">/DistLock</span>
+            and wait for a callback to retry</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Now, open 3 more Terminal windows (Terminal-1, Terminal-2, and
+        Terminal-3) and execute the Java code <span class="bold">com.polarsparc.zookeeper.ZNodeDistLock</span>
+        with different command-line arguments as follows:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -cp
+        /home/zkuser/zookeeper/resources\:/home/zkuser/zookeeper/lib/jline-0.9.94.jar\:/home/zkuser/zookeeper/lib/log4j-1.2.16.jar\:/home/zkuser/zookeeper/lib/netty-3.7.0.Final.jar\:/home/zkuser/zookeeper/lib/slf4j-api-1.6.1.jar\:/home/zkuser/zookeeper/lib/slf4j-log4j12-1.6.1.jar\:/home/zkuser/zookeeper/lib/zookeeper-3.4.6.jar\:/home/zkuser/zookeeper/build/classes
+        com.polarsparc.zookeeper.ZNodeDistLock client-1 10 3000
+        192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181</p>
+      <p>java -cp
+        /home/zkuser/zookeeper/resources\:/home/zkuser/zookeeper/lib/jline-0.9.94.jar\:/home/zkuser/zookeeper/lib/log4j-1.2.16.jar\:/home/zkuser/zookeeper/lib/netty-3.7.0.Final.jar\:/home/zkuser/zookeeper/lib/slf4j-api-1.6.1.jar\:/home/zkuser/zookeeper/lib/slf4j-log4j12-1.6.1.jar\:/home/zkuser/zookeeper/lib/zookeeper-3.4.6.jar\:/home/zkuser/zookeeper/build/classes
+        com.polarsparc.zookeeper.ZNodeGroupMember client-2 10 1000
+        192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181</p>
+      <p>java -cp
+        /home/zkuser/zookeeper/resources\:/home/zkuser/zookeeper/lib/jline-0.9.94.jar\:/home/zkuser/zookeeper/lib/log4j-1.2.16.jar\:/home/zkuser/zookeeper/lib/netty-3.7.0.Final.jar\:/home/zkuser/zookeeper/lib/slf4j-api-1.6.1.jar\:/home/zkuser/zookeeper/lib/slf4j-log4j12-1.6.1.jar\:/home/zkuser/zookeeper/lib/zookeeper-3.4.6.jar\:/home/zkuser/zookeeper/build/classes
+        com.polarsparc.zookeeper.ZNodeGroupMember client-3 10 2000
+        192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output in Terminal-1:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>2014-06-01 15:16:57 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.library.path=/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib
+2014-06-01 15:16:57 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.io.tmpdir=/tmp
+2014-06-01 15:16:57 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.compiler=&lt;NA&gt;
+2014-06-01 15:16:57 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.name=Linux
+2014-06-01 15:16:57 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.arch=amd64
+2014-06-01 15:16:57 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.version=3.13.0-27-generic
+2014-06-01 15:16:57 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.name=zkuser
+2014-06-01 15:16:57 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.home=/home/zkuser
+2014-06-01 15:16:57 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.dir=/home/zkuser
+2014-06-01 15:16:57 &lt;main&gt; INFO  ZooKeeper:438 - Initiating client connection, connectString=192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181 sessionTimeout=10000 watcher=com.polarsparc.zookeeper.ZkHelper$$Lambda$1/758705033@4d76f3f8
+2014-06-01 15:16:57 &lt;main-SendThread(192.168.1.2:2181)&gt; INFO  ClientCnxn:975 - Opening socket connection to server 192.168.1.2/192.168.1.2:2181. Will not attempt to authenticate using SASL (unknown error)
+2014-06-01 15:16:57 &lt;main-SendThread(192.168.1.2:2181)&gt; INFO  ClientCnxn:852 - Socket connection established to 192.168.1.2/192.168.1.2:2181, initiating session
+2014-06-01 15:16:57 &lt;main-SendThread(192.168.1.2:2181)&gt; INFO  ClientCnxn:1235 - Session establishment complete on server 192.168.1.2/192.168.1.2:2181, sessionid = 0x246577d3ec20000, negotiated timeout = 10000
+2014-06-01 15:16:57 &lt;main-EventThread&gt; INFO  ZkHelper:45 - ZK[192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181] -&gt; Connected !!!
+2014-06-01 15:16:57 &lt;main&gt; INFO  ZNodeDistLock:56 - Check ZNode /DistLock, Status = false
+2014-06-01 15:16:57 &lt;main&gt; INFO  ZkHelper:165 - ZK[/DistLock] -&gt; Exists, Stat: {ctime = Sun Jun 01 15:16:57 EDT 2014, mtime = Sun Jun 01 15:16:57 EDT 2014, version = 0}
+2014-06-01 15:16:57 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:16:57 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-1 acquired lock !!!
+2014-06-01 15:16:57 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-1 processing [1]
+2014-06-01 15:16:57 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-1 released lock !!!
+2014-06-01 15:17:00 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:00 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-1 acquired lock !!!
+2014-06-01 15:17:00 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-1 processing [6]
+2014-06-01 15:17:01 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-1 released lock !!!
+2014-06-01 15:17:04 &lt;main&gt; INFO  ZNodeDistLock:118 - Client client-1 have to wait ...
+2014-06-01 15:17:04 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:07 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:07 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-1 acquired lock !!!
+2014-06-01 15:17:07 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-1 processing [15]
+2014-06-01 15:17:07 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-1 released lock !!!
+2014-06-01 15:17:10 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:10 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-1 acquired lock !!!
+2014-06-01 15:17:10 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-1 processing [20]
+2014-06-01 15:17:10 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-1 released lock !!!
+2014-06-01 15:17:13 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:13 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-1 acquired lock !!!
+2014-06-01 15:17:13 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-1 processing [22]
+2014-06-01 15:17:13 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-1 released lock !!!
+2014-06-01 15:17:16 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:16 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-1 acquired lock !!!
+2014-06-01 15:17:16 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-1 processing [25]
+2014-06-01 15:17:16 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-1 released lock !!!
+2014-06-01 15:17:19 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:19 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-1 acquired lock !!!
+2014-06-01 15:17:19 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-1 processing [27]
+2014-06-01 15:17:19 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-1 released lock !!!
+2014-06-01 15:17:22 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:22 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-1 acquired lock !!!
+2014-06-01 15:17:22 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-1 processing [28]
+2014-06-01 15:17:22 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-1 released lock !!!
+2014-06-01 15:17:25 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:25 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-1 acquired lock !!!
+2014-06-01 15:17:25 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-1 processing [29]
+2014-06-01 15:17:26 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-1 released lock !!!
+2014-06-01 15:17:29 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:29 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-1 acquired lock !!!
+2014-06-01 15:17:29 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-1 processing [30]
+2014-06-01 15:17:29 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-1 released lock !!!
+2014-06-01 15:17:32 &lt;main&gt; INFO  ZooKeeper:684 - Session: 0x246577d3ec20000 closed
+2014-06-01 15:17:32 &lt;main-EventThread&gt; INFO  ClientCnxn:512 - EventThread shut down</pre>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output in Terminal-2:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:zookeeper.version=3.4.6-1569965, built on 02/20/2014 09:09 GMT
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:host.name=my-host
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.version=1.8.0_05
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.vendor=Oracle Corporation
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.home=/usr/lib/jvm/java-8-oracle/jre
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.class.path=/home/zkuser/zookeeper/resources:/home/zkuser/zookeeper/lib/jline-0.9.94.jar:/home/zkuser/zookeeper/lib/log4j-1.2.16.jar:/home/zkuser/zookeeper/lib/netty-3.7.0.Final.jar:/home/zkuser/zookeeper/lib/slf4j-api-1.6.1.jar:/home/zkuser/zookeeper/lib/slf4j-log4j12-1.6.1.jar:/home/zkuser/zookeeper/lib/zookeeper-3.4.6.jar:/home/zkuser/zookeeper/build/classes
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.library.path=/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.io.tmpdir=/tmp
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.compiler=&lt;NA&gt;
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.name=Linux
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.arch=amd64
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.version=3.13.0-27-generic
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.name=zkuser
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.home=/home/zkuser
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.dir=/home/zkuser
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:438 - Initiating client connection, connectString=192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181 sessionTimeout=10000 watcher=com.polarsparc.zookeeper.ZkHelper$$Lambda$1/758705033@4d76f3f8
+2014-06-01 15:16:58 &lt;main-SendThread(192.168.1.2:2181)&gt; INFO  ClientCnxn:975 - Opening socket connection to server 192.168.1.2/192.168.1.2:2181. Will not attempt to authenticate using SASL (unknown error)
+2014-06-01 15:16:58 &lt;main-SendThread(192.168.1.2:2181)&gt; INFO  ClientCnxn:852 - Socket connection established to 192.168.1.2/192.168.1.2:2181, initiating session
+2014-06-01 15:16:58 &lt;main-SendThread(192.168.1.2:2181)&gt; INFO  ClientCnxn:1235 - Session establishment complete on server 192.168.1.2/192.168.1.2:2181, sessionid = 0x246577d3ec20001, negotiated timeout = 10000
+2014-06-01 15:16:58 &lt;main-EventThread&gt; INFO  ZkHelper:45 - ZK[192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181] -&gt; Connected !!!
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZkHelper:165 - ZK[/DistLock] -&gt; Exists, Stat: {ctime = Sun Jun 01 15:16:57 EDT 2014, mtime = Sun Jun 01 15:16:57 EDT 2014, version = 1}
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZNodeDistLock:56 - Check ZNode /DistLock, Status = true
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZkHelper:165 - ZK[/DistLock] -&gt; Exists, Stat: {ctime = Sun Jun 01 15:16:57 EDT 2014, mtime = Sun Jun 01 15:16:57 EDT 2014, version = 1}
+2014-06-01 15:16:58 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-2 acquired lock !!!
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-2 processing [2]
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-2 released lock !!!
+2014-06-01 15:16:59 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:16:59 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-2 acquired lock !!!
+2014-06-01 15:16:59 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-2 processing [4]
+2014-06-01 15:16:59 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-2 released lock !!!
+2014-06-01 15:17:00 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:00 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-2 acquired lock !!!
+2014-06-01 15:17:00 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-2 processing [5]
+2014-06-01 15:17:00 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-2 released lock !!!
+2014-06-01 15:17:01 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:01 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-2 acquired lock !!!
+2014-06-01 15:17:01 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-2 processing [8]
+2014-06-01 15:17:01 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-2 released lock !!!
+2014-06-01 15:17:02 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:02 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-2 acquired lock !!!
+2014-06-01 15:17:02 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-2 processing [9]
+2014-06-01 15:17:02 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-2 released lock !!!
+2014-06-01 15:17:04 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:04 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-2 acquired lock !!!
+2014-06-01 15:17:04 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-2 processing [11]
+2014-06-01 15:17:04 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-2 released lock !!!
+2014-06-01 15:17:05 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:05 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-2 acquired lock !!!
+2014-06-01 15:17:05 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-2 processing [12]
+2014-06-01 15:17:05 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-2 released lock !!!
+2014-06-01 15:17:06 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:06 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-2 acquired lock !!!
+2014-06-01 15:17:06 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-2 processing [14]
+2014-06-01 15:17:06 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-2 released lock !!!
+2014-06-01 15:17:07 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:07 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-2 acquired lock !!!
+2014-06-01 15:17:07 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-2 processing [16]
+2014-06-01 15:17:07 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-2 released lock !!!
+2014-06-01 15:17:08 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:08 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-2 acquired lock !!!
+2014-06-01 15:17:08 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-2 processing [18]
+2014-06-01 15:17:08 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-2 released lock !!!
+2014-06-01 15:17:09 &lt;main-EventThread&gt; INFO  ClientCnxn:512 - EventThread shut down
+2014-06-01 15:17:09 &lt;main&gt; INFO  ZooKeeper:684 - Session: 0x246577d3ec20001 closed</pre>
+    </div>
+    <div id="para-div">
+      <p>The following will be the output in Terminal-3:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:zookeeper.version=3.4.6-1569965, built on 02/20/2014 09:09 GMT
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:host.name=my-host
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.version=1.8.0_05
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.vendor=Oracle Corporation
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.home=/usr/lib/jvm/java-8-oracle/jre
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.class.path=/home/zkuser/zookeeper/resources:/home/zkuser/zookeeper/lib/jline-0.9.94.jar:/home/zkuser/zookeeper/lib/log4j-1.2.16.jar:/home/zkuser/zookeeper/lib/netty-3.7.0.Final.jar:/home/zkuser/zookeeper/lib/slf4j-api-1.6.1.jar:/home/zkuser/zookeeper/lib/slf4j-log4j12-1.6.1.jar:/home/zkuser/zookeeper/lib/zookeeper-3.4.6.jar:/home/zkuser/zookeeper/build/classes
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.library.path=/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.io.tmpdir=/tmp
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.compiler=&lt;NA&gt;
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.name=Linux
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.arch=amd64
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.version=3.13.0-27-generic
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.name=zkuser
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.home=/home/zkuser
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.dir=/home/zkuser
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZooKeeper:438 - Initiating client connection, connectString=192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181 sessionTimeout=10000 watcher=com.polarsparc.zookeeper.ZkHelper$$Lambda$1/758705033@4d76f3f8
+2014-06-01 15:16:58 &lt;main-SendThread(192.168.1.3:2181)&gt; INFO  ClientCnxn:975 - Opening socket connection to server 192.168.1.3/192.168.1.3:2181. Will not attempt to authenticate using SASL (unknown error)
+2014-06-01 15:16:58 &lt;main-SendThread(192.168.1.3:2181)&gt; INFO  ClientCnxn:852 - Socket connection established to 192.168.1.3/192.168.1.3:2181, initiating session
+2014-06-01 15:16:58 &lt;main-SendThread(192.168.1.3:2181)&gt; INFO  ClientCnxn:1235 - Session establishment complete on server 192.168.1.3/192.168.1.3:2181, sessionid = 0x346577d3eed0001, negotiated timeout = 10000
+2014-06-01 15:16:58 &lt;main-EventThread&gt; INFO  ZkHelper:45 - ZK[192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181] -&gt; Connected !!!
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZkHelper:165 - ZK[/DistLock] -&gt; Exists, Stat: {ctime = Sun Jun 01 15:16:57 EDT 2014, mtime = Sun Jun 01 15:16:58 EDT 2014, version = 2}
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZNodeDistLock:56 - Check ZNode /DistLock, Status = true
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZkHelper:165 - ZK[/DistLock] -&gt; Exists, Stat: {ctime = Sun Jun 01 15:16:57 EDT 2014, mtime = Sun Jun 01 15:16:58 EDT 2014, version = 2}
+2014-06-01 15:16:58 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-3 acquired lock !!!
+2014-06-01 15:16:58 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-3 processing [3]
+2014-06-01 15:16:59 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-3 released lock !!!
+2014-06-01 15:17:01 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:01 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-3 acquired lock !!!
+2014-06-01 15:17:01 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-3 processing [7]
+2014-06-01 15:17:01 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-3 released lock !!!
+2014-06-01 15:17:03 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:03 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-3 acquired lock !!!
+2014-06-01 15:17:03 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-3 processing [10]
+2014-06-01 15:17:03 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-3 released lock !!!
+2014-06-01 15:17:05 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:05 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-3 acquired lock !!!
+2014-06-01 15:17:05 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-3 processing [13]
+2014-06-01 15:17:05 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-3 released lock !!!
+2014-06-01 15:17:07 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:07 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-3 acquired lock !!!
+2014-06-01 15:17:07 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-3 processing [17]
+2014-06-01 15:17:07 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-3 released lock !!!
+2014-06-01 15:17:09 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:09 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-3 acquired lock !!!
+2014-06-01 15:17:09 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-3 processing [19]
+2014-06-01 15:17:09 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-3 released lock !!!
+2014-06-01 15:17:11 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:11 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-3 acquired lock !!!
+2014-06-01 15:17:11 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-3 processing [21]
+2014-06-01 15:17:12 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-3 released lock !!!
+2014-06-01 15:17:14 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:14 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-3 acquired lock !!!
+2014-06-01 15:17:14 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-3 processing [23]
+2014-06-01 15:17:14 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-3 released lock !!!
+2014-06-01 15:17:16 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:16 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-3 acquired lock !!!
+2014-06-01 15:17:16 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-3 processing [24]
+2014-06-01 15:17:16 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-3 released lock !!!
+2014-06-01 15:17:18 &lt;main-EventThread&gt; INFO  ZNodeDistLock:146 - -----&gt; Notification for ZNode /DistLock &lt;-----
+2014-06-01 15:17:18 &lt;main&gt; INFO  ZNodeDistLock:103 - Client client-3 acquired lock !!!
+2014-06-01 15:17:18 &lt;main&gt; INFO  ZNodeDistLock:70 - Client client-3 processing [26]
+2014-06-01 15:17:18 &lt;main&gt; INFO  ZNodeDistLock:133 - Client client-3 released lock !!!
+2014-06-01 15:17:20 &lt;main&gt; INFO  ZooKeeper:684 - Session: 0x346577d3eed0001 closed
+2014-06-01 15:17:20 &lt;main-EventThread&gt; INFO  ClientCnxn:512 - EventThread shut down</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be inferred from the above Output.7, Output.8, and Output.9, the
+        counter value is icrementing sequentially as expected without any
+        duplicates or misses.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://polarsparc.github.io/Messaging/ZooKeeper-1.html"><span class="bold">Exploring
+            Apache ZooKeeper :: Part-1</span></a></p>
+      <p><a target="_blank" href="https://polarsparc.github.io/Messaging/ZooKeeper-2.html"><span class="bold">Exploring
+            Apache ZooKeeper :: Part-2</span></a></p>
+    </div>
+  </body>
+</html>

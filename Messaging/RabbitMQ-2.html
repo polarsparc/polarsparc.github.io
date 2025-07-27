@@ -1,0 +1,494 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+  <title>Quick Tour of RabbitMQ - Part 2</title>
+  <link rel="stylesheet" type="text/css" href="../css/polarsparc-v2.0.css"/>
+</head>
+<body>
+  <br />
+  <div id="title-div">
+    <p>Quick Tour of RabbitMQ - Part 2</p>
+  </div>
+  <br/>
+  <table id="ad-table">
+    <tbody>
+      <tr>
+        <td class="author-td">Bhaskar S</td>
+        <td class="date-td">11/18/2017</td>
+      </tr>
+    </tbody>
+  </table>
+  <hr class="line-hr" /> <br />
+  <div id="step-div">
+    <p>Overview</p>
+  </div>
+  <div id="para-div">
+    <p>Continuing from <a href="http://polarsparc.github.io/Messaging/RabbitMQ-1.html" target="_blank"><span class="bold">
+      Part-1</span></a> of this series, we will demonstrate the <span class="hi-yellow">Fanout</span>
+      <span class="bold">Exchange</span> type in this part.</p>
+  </div>
+  <div id="step-div">
+    <p>Hands-on with RabbitMQ using Java</p>
+  </div>
+  <div id="para-div">
+    <p>A <span class="bold">Fanout Exchange</span> routes a copy of a message to all the <span class="bold">Queues</span>
+      bound to it (<span class="hi-pink">ignoring</span> the <span class="bold">Routing</span> key). In other words, it
+      broadcats incoming messages to all the <span class="bold">Queues</span> bound to it. For example, when a credit-card
+      processor processes an incoming transaction message, it publishes the transaction to both the fraud verifier and the
+      analytics engine.</p>
+  </div>
+  <div id="para-div">
+    <p>The following picture illustrates the high level view of the <span class="bold">Fanout Exchange</span>:</p>
+  </div>
+  <div id="img-outer-div"> <img class="img-cls" src="./images/rabbitmq-6.png" alt="Fanout" />
+    <div class="img-cap">Fanout</div>
+  </div>
+  <div id="para-div">
+    <p>Now, to demonstrate the hypothetical credit-card processing system with a credit-card processor (publisher) and two
+      consumers - a fraud verifier and an analytics engine, we will implement the corresponding
+      <span class="bold">CreditCardProcessor</span>, <span class="bold">FraudVerifier</span>, and
+      <span class="bold">AnalyticsEngine</span> classes.
+    <p>The following is the common class that captures and exposes some constants:</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>CreditConstants.java</legend>
+    <pre>/*
+ *
+ *  Name:        CreditConstants
+ *  
+ *  Description: Common constants used between the CreditCard Processor (publisher) and the two consumers
+ *               Fraud Verifier and Analytics Engine
+ *  
+ */
+
+package com.polarsparc.rabbitmq.common;
+
+public interface CreditConstants {
+    public final static String CREDIT_EXCHANGE      = "credit";
+    public final static String ROUTING_KEY          = "";
+    public final static String ANALYTICS_QUEUE_NAME = "analytics";
+    public final static String FRAUD_QUEUE_NAME     = "fraud";
+}</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>The following is the code for the credit-card processor, which acts as a publisher of credit transaction messages:</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>CreditCardProcessor.java</legend>
+    <pre>/*
+ *
+ *  Name:        CreditCardProcessor
+ *  
+ *  Description: The hypothetical credit-card processor that publishes credit transaction messages in a JSON
+ *               format to a fanout exchange
+ *  
+ */
+
+package com.polarsparc.rabbitmq.fanout;
+
+import java.util.logging.Logger;
+import java.util.logging.Level;
+
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.BuiltinExchangeType;
+import com.rabbitmq.client.AMQP;
+
+import com.polarsparc.rabbitmq.common.CreditConstants;
+import com.polarsparc.rabbitmq.common.RabbitMqUtils;
+
+public class CreditCardProcessor {
+    private static String _CC_TXN_MESSAGE_1 = String.join("\n",
+            "{",
+            "'cc_no': '1234-5678-9012-3456'",
+            "'txn_id': '0000000001'",
+            "'txn_dt': '11/01/2017 10:25:34'",
+            "'txn_amt': '112.75'",
+            "'merchant_id': '123'",
+            "}"
+        );
+    private static String _CC_TXN_MESSAGE_2 = String.join("\n",
+            "{",
+            "'cc_no': '9876-5432-2109-8765'",
+            "'txn_id': '0000000002'",
+            "'txn_dt': '11/02/2017 16:44:21'",
+            "'txn_amt': '33.09'",
+            "'merchant_id': '456'",
+            "}"
+        );
+    
+    public static void main(String[] args) {
+        if (args.length != 3) {
+            System.out.printf("Usage: java com.polarsparc.rabbitmq.fanout.CreditCardProcessor &lt;host&gt; &lt;user&gt; &lt;password&gt;\n");
+            System.exit(1);
+        }
+        
+        Logger _logger = Logger.getLogger(CreditCardProcessor.class.getName());
+        
+        try {
+            String exchange = CreditConstants.CREDIT_EXCHANGE;
+            String routingKey = CreditConstants.ROUTING_KEY;
+            
+            RabbitMqUtils.initRabbitMq(args[0], args[1], args[2]);
+            
+            _logger.log(Level.INFO, "Ready to create a communication channel ...");
+            
+            Channel channel = RabbitMqUtils.getRabbitMqChannel();
+            
+            _logger.log(Level.INFO, "Ready to create a fanout exchange " + exchange);
+            
+            channel.exchangeDeclare(exchange, BuiltinExchangeType.FANOUT);
+            
+            AMQP.BasicProperties properties = new AMQP.BasicProperties.Builder()
+                    .appId("CreditCardProcessor")
+                    .contentType("text/json")
+                    .priority(1)
+                    .build();
+            
+            _logger.log(Level.INFO, "Ready to publish test credit transaction messages");
+            
+            channel.basicPublish(exchange, routingKey, properties, _CC_TXN_MESSAGE_1.getBytes());
+            channel.basicPublish(exchange, routingKey, properties, _CC_TXN_MESSAGE_2.getBytes());
+            
+            _logger.log(Level.INFO, "Ready to close the communication channel");
+            
+            RabbitMqUtils.closeRabbitMqChannel(channel);
+            
+            _logger.log(Level.INFO, "Credit-card processing done !!!");
+        }
+        catch (Exception ex) {
+            _logger.log(Level.SEVERE, "Error in CreditCardProcessor!", ex);
+        }
+        finally {
+            RabbitMqUtils.cleanRabbitMq();
+        }
+    }
+}</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>Let us explain and understand some of the classes/methods used in the <span class="bold">CreditCardProcessor</span>
+      code shown above.</p>
+    <p>The enum <span class="hi-yellow">com.rabbitmq.client.BuiltinExchangeType</span> defines the exchange types supported
+      in <span class="bold">RabbitMQ</span>.</p>
+    <p>The method <span class="hi-green">exchangeDeclare(String, BuiltinExchangeType)</span> on the channel class instance
+      declares a non-auto-deleteable and non-durable <span class="bold">Exchange</span> of the specified type.</p>
+    <p>The class <span class="hi-yellow">com.rabbitmq.client.AMQP.BasicProperties.Builder</span> is a builder class, an
+      instance of which allows one to create instance of <span class="bold">com.rabbitmq.client.AMQP.BasicProperties</span>
+      with the message properties, such as the message app id, content type, priority, etc.</p>
+  </div>
+  <div id="para-div">
+    <p>The following is the code for the fraud verifier, which acts as a consumer of credit-card transaction messages:</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>FraudVerifier.java</legend>
+    <pre>/*
+ *
+ *  Name:        FraudVerifier
+ *  
+ *  Description: A hypothetical credit card fraud verifier
+ *  
+ */
+
+package com.polarsparc.rabbitmq.fanout;
+
+import java.util.logging.Logger;
+import java.util.logging.Level;
+import java.io.IOException;
+
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.BuiltinExchangeType;
+import com.rabbitmq.client.Consumer;
+import com.rabbitmq.client.DefaultConsumer;
+import com.rabbitmq.client.Envelope;
+import com.rabbitmq.client.AMQP;
+
+import com.polarsparc.rabbitmq.common.CreditConstants;
+import com.polarsparc.rabbitmq.common.RabbitMqUtils;
+
+public class FraudVerifier {
+    public static void main(String[] args) {
+        if (args.length != 3) {
+            System.out.printf("Usage: java com.polarsparc.rabbitmq.fanout.FraudVerifier &lt;host&gt; &lt;user&gt; &lt;password&gt;\n");
+            System.exit(1);
+        }
+        
+        Logger _logger = Logger.getLogger(FraudVerifier.class.getName());
+        
+        try {
+            String queue = CreditConstants.FRAUD_QUEUE_NAME;
+            String exchange = CreditConstants.CREDIT_EXCHANGE;
+            String routingKey = CreditConstants.ROUTING_KEY;
+            
+            RabbitMqUtils.initRabbitMq(args[0], args[1], args[2]);
+            
+            _logger.log(Level.INFO, "Ready to create communication channel for " + queue);
+            
+            Channel channel = RabbitMqUtils.getRabbitMqChannel();
+            
+            _logger.log(Level.INFO, "Ready to create a fanout exchange " + exchange);
+            
+            channel.exchangeDeclare(exchange, BuiltinExchangeType.FANOUT);
+            
+            _logger.log(Level.INFO, "Ready to bind the queue " + queue + " to exchange " + exchange);
+            
+            channel.queueDeclare(queue, false, false, false, null);
+            channel.queueBind(queue, exchange, routingKey);
+            
+            _logger.log(Level.INFO, "Ready to create a consumer for " + queue);
+            
+            Consumer consumer = new DefaultConsumer(channel) {
+                @Override
+                public void handleDelivery(String consumerTag, 
+                        Envelope envelope,
+                        AMQP.BasicProperties properties,
+                        byte[] body) throws IOException {
+                    String msg = new String(body, "UTF-8");
+                    _logger.log(Level.INFO, "Received credit-card message (properties): " + properties);
+                    _logger.log(Level.INFO, "Received credit-card message (body): " + msg);
+                    channel.basicAck(envelope.getDeliveryTag(), false);
+                }
+            };
+            
+            _logger.log(Level.INFO, "Ready to consume test credit-card messages for " + queue);
+            
+            channel.basicConsume(queue, false, consumer);
+        }
+        catch (Exception ex) {
+            _logger.log(Level.SEVERE, "Error in FraudVerifier!", ex);
+        }
+    }
+}</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>Let us explain and understand some of the classes/methods used in the <span class="bold">FraudVerifier</span>
+      code shown above.</p>
+    <p>The method <span class="hi-green">queueBind(String, String, String)</span> binds the specified
+      <span class="bold">Queue</span> to the specified <span class="bold">Exchange</span>.</p>
+    <p>The method <span class="hi-green">basicAck(long, boolean)</span> allows one to explicitly acknowledge one or
+      more messages. If the second parameter is <span class="bold">true</span>, it means acknowledge all the messages
+      up to and including this message with the specified delivery tag. If <span class="bold">false</span>, means
+      just acknowledge this message with the specified delivery tag. In some cases, we may want to acknowledge the
+      receipt of message(s) only after successful processing. In such scenarios, we want to disable auto-acknowledgement
+      by specifying <span class="bold">false</span> as the second parameter to the <span class="bold">basicConsume</span>
+      method and explicitly calling <span class="bold">basicAck</span> after processing the message(s).</p>
+  </div>
+  <div id="para-div">
+    <p>The following is the code for the analytics engine, which acts as another consumer of credit-card transaction
+      messages:</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>AnalyticsEngine.java</legend>
+    <pre>/*
+ *
+ *  Name:        AnalyticsEngine
+ *  
+ *  Description: A hypothetical analytics engine that consumes all transactions
+ *  
+ */
+
+package com.polarsparc.rabbitmq.fanout;
+
+import java.util.logging.Logger;
+import java.util.logging.Level;
+import java.io.IOException;
+
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.BuiltinExchangeType;
+import com.rabbitmq.client.Consumer;
+import com.rabbitmq.client.DefaultConsumer;
+import com.rabbitmq.client.Envelope;
+import com.rabbitmq.client.AMQP;
+
+import com.polarsparc.rabbitmq.common.CreditConstants;
+import com.polarsparc.rabbitmq.common.RabbitMqUtils;
+
+public class AnalyticsEngine {
+    public static void main(String[] args) {
+        if (args.length != 3) {
+            System.out.printf("Usage: java com.polarsparc.rabbitmq.fanout.AnalyticsEngine &lt;host&gt; &lt;user&gt; &lt;password&gt;\n");
+            System.exit(1);
+        }
+        
+        Logger _logger = Logger.getLogger(AnalyticsEngine.class.getName());
+        
+        try {
+            String queue = CreditConstants.ANALYTICS_QUEUE_NAME;
+            String exchange = CreditConstants.CREDIT_EXCHANGE;
+            String routingKey = CreditConstants.ROUTING_KEY;
+            
+            RabbitMqUtils.initRabbitMq(args[0], args[1], args[2]);
+            
+            _logger.log(Level.INFO, "Ready to create communication channel for " + queue);
+            
+            Channel channel = RabbitMqUtils.getRabbitMqChannel();
+            
+            _logger.log(Level.INFO, "Ready to create a fanout exchange " + exchange);
+            
+            channel.exchangeDeclare(exchange, BuiltinExchangeType.FANOUT);
+            
+            _logger.log(Level.INFO, "Ready to bind the queue " + queue + " to exchange " + exchange);
+            
+            channel.queueDeclare(queue, false, false, false, null);
+            channel.queueBind(queue, exchange, routingKey);
+            
+            _logger.log(Level.INFO, "Ready to create a consumer for " + queue);
+            
+            Consumer consumer = new DefaultConsumer(channel) {
+                @Override
+                public void handleDelivery(String consumerTag, 
+                        Envelope envelope,
+                        AMQP.BasicProperties properties,
+                        byte[] body) throws IOException {
+                    String msg = new String(body, "UTF-8");
+                    _logger.log(Level.INFO, "Received credit-card message (body): " + msg);
+                }
+            };
+            
+            _logger.log(Level.INFO, "Ready to consume test credit-card messages for " + queue);
+            
+            channel.basicConsume(queue, true, consumer);
+        }
+        catch (Exception ex) {
+            _logger.log(Level.SEVERE, "Error in AnalyticsEngine!", ex);
+        }
+    }
+}</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>Now, for the demostration of messaging using <span class="bold">Fanout Exchange</span>, open three terminal
+      windows. Lets refer to them as the <span class="bold">publisher</span>, <span class="bold">consumer-fv</span>, and
+      <span class="bold">consumer-ae</span> respectively.</p>
+  </div>
+  <div id="para-div">
+    <p>In the consumer-fv terminal, execute the following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>java -cp ./build/classes:./lib/amqp-client-5.0.0.jar:./lib/slf4j-api-1.7.25.jar:./lib/slf4j-simple-1.7.25.jar com.polarsparc.rabbitmq.fanout.FraudVerifier 172.17.0.2 rabbitusr s3cr3t</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.1</h4>
+    <pre>Nov 18, 2017 8:01:45 PM com.polarsparc.rabbitmq.fanout.FraudVerifier main
+INFO: Ready to create communication channel for fraud
+Nov 18, 2017 8:01:45 PM com.polarsparc.rabbitmq.fanout.FraudVerifier main
+INFO: Ready to create a fanout exchange credit
+Nov 18, 2017 8:01:45 PM com.polarsparc.rabbitmq.fanout.FraudVerifier main
+INFO: Ready to bind the queue fraud to exchange credit
+Nov 18, 2017 8:01:45 PM com.polarsparc.rabbitmq.fanout.FraudVerifier main
+INFO: Ready to create a consumer for fraud
+Nov 18, 2017 8:01:45 PM com.polarsparc.rabbitmq.fanout.FraudVerifier main
+INFO: Ready to consume test credit-card messages for fraud</pre>
+  </div>
+  <div id="para-div">
+    <p>In the consumer-ae terminal, execute the following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>java -cp ./build/classes:./lib/amqp-client-5.0.0.jar:./lib/slf4j-api-1.7.25.jar:./lib/slf4j-simple-1.7.25.jar com.polarsparc.rabbitmq.fanout.AnalyticsEngine 172.17.0.2 rabbitusr s3cr3t</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.2</h4>
+    <pre>Nov 18, 2017 8:01:50 PM com.polarsparc.rabbitmq.fanout.AnalyticsEngine main
+INFO: Ready to create communication channel for analytics
+Nov 18, 2017 8:01:50 PM com.polarsparc.rabbitmq.fanout.AnalyticsEngine main
+INFO: Ready to create a fanout exchange credit
+Nov 18, 2017 8:01:50 PM com.polarsparc.rabbitmq.fanout.AnalyticsEngine main
+INFO: Ready to bind the queue analytics to exchange credit
+Nov 18, 2017 8:01:50 PM com.polarsparc.rabbitmq.fanout.AnalyticsEngine main
+INFO: Ready to create a consumer for analytics</pre>
+  </div>
+  <div id="para-div">
+    <p>In the publisher terminal, execute the following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>java -cp ./build/classes:./lib/amqp-client-5.0.0.jar:./lib/slf4j-api-1.7.25.jar:./lib/slf4j-simple-1.7.25.jar com.polarsparc.rabbitmq.fanout.CreditCardProcessor 172.17.0.2 rabbitusr s3cr3t</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.3</h4>
+    <pre>Nov 18, 2017 8:01:56 PM com.polarsparc.rabbitmq.fanout.CreditCardProcessor main
+INFO: Ready to create a communication channel ...
+Nov 18, 2017 8:01:56 PM com.polarsparc.rabbitmq.fanout.CreditCardProcessor main
+INFO: Ready to create a fanout exchange credit
+Nov 18, 2017 8:01:56 PM com.polarsparc.rabbitmq.fanout.CreditCardProcessor main
+INFO: Ready to publish test credit transaction messages
+Nov 18, 2017 8:01:56 PM com.polarsparc.rabbitmq.fanout.CreditCardProcessor main
+INFO: Ready to close the communication channel
+Nov 18, 2017 8:01:56 PM com.polarsparc.rabbitmq.fanout.CreditCardProcessor main
+INFO: Payment processing done !!!</pre>
+  </div>
+  <div id="para-div">
+    <p>In the consumer-fv terminal, we should see the following messages pop-up:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.4</h4>
+    <pre>Nov 18, 2017 8:01:56 PM com.polarsparc.rabbitmq.fanout.FraudVerifier$1 handleDelivery
+INFO: Received credit-card message (properties): #contentHeader<basic>(content-type=text/json, content-encoding=null, headers=null, delivery-mode=null, priority=1, correlation-id=null, reply-to=null, expiration=null, message-id=null, timestamp=null, type=null, user-id=null, app-id=CreditCardProcessor, cluster-id=null)
+Nov 18, 2017 8:01:56 PM com.polarsparc.rabbitmq.fanout.FraudVerifier$1 handleDelivery
+INFO: Received credit-card message (body): {
+'cc_no': '1234-5678-9012-3456'
+'txn_id': '0000000001'
+'txn_dt': '11/01/2017 10:25:34'
+'txn_amt': '112.75'
+'merchant_id': '123'
+}
+Nov 18, 2017 8:01:56 PM com.polarsparc.rabbitmq.fanout.FraudVerifier$1 handleDelivery
+INFO: Received credit-card message (properties): #contentHeader<basic>(content-type=text/json, content-encoding=null, headers=null, delivery-mode=null, priority=1, correlation-id=null, reply-to=null, expiration=null, message-id=null, timestamp=null, type=null, user-id=null, app-id=CreditCardProcessor, cluster-id=null)
+Nov 18, 2017 8:01:56 PM com.polarsparc.rabbitmq.fanout.FraudVerifier$1 handleDelivery
+INFO: Received credit-card message (body): {
+'cc_no': '9876-5432-2109-8765'
+'txn_id': '0000000002'
+'txn_dt': '11/02/2017 16:44:21'
+'txn_amt': '33.09'
+'merchant_id': '456'
+}</pre>
+  </div>
+  <div id="para-div">
+    <p>In the consumer-ae terminal, we should see the following messages pop-up:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.5</h4>
+    <pre>Nov 18, 2017 8:01:56 PM com.polarsparc.rabbitmq.fanout.AnalyticsEngine$1 handleDelivery
+INFO: Received credit-card message (body): {
+'cc_no': '1234-5678-9012-3456'
+'txn_id': '0000000001'
+'txn_dt': '11/01/2017 10:25:34'
+'txn_amt': '112.75'
+'merchant_id': '123'
+}
+Nov 18, 2017 8:01:56 PM com.polarsparc.rabbitmq.fanout.AnalyticsEngine$1 handleDelivery
+INFO: Received credit-card message (body): {
+'cc_no': '9876-5432-2109-8765'
+'txn_id': '0000000002'
+'txn_dt': '11/02/2017 16:44:21'
+'txn_amt': '33.09'
+'merchant_id': '456'
+}</pre>
+  </div>
+  <div id="para-div">
+    <p>From the consumer-fv and consumer-ae terminals, we infer that both the FraudVerifier and the AnalyticsEngine
+      consumers have received the two credit-card transaction messages that were published by the CreditCardProcessor.</p>
+  </div>
+  <div id="para-div">
+    <p>The following picture shows the screenshot of the <span class="bold">Exchange</span> tab from the
+      <span class="bold">RabbitMQ</span> web management console with our <span class="bold">Exchange</span>
+      named <span class="bold">credit</span> highlighted:</p>
+  </div>
+  <div id="img-outer-div"> <img class="img-cls" src="./images/rabbitmq-7.png" alt="Web Console" />
+    <div class="img-cap">Web Console</div>
+  </div>
+  <div id="para-div">
+    <p>We have successfully demonstrated <span class="bold">RabbitMQ</span> messaging using the
+      <span class="bold">Fanout Exchange</span> !!!</p>
+  </div>
+  <div id="step-div">
+    <p>References</p>
+  </div>
+  <div id="para-div">
+    <p><a href="http://polarsparc.github.io/Messaging/RabbitMQ-1.html" target="_blank">
+      <span class="bold">Quick Tour of RabbitMQ - Part 1</span></a></p>
+    <p><a href="https://www.rabbitmq.com" target="_blank"><span class="bold">RabbitMQ Official Site</span></a></p>
+  </div>
+</body>
+</html>

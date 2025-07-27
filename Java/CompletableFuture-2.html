@@ -1,0 +1,538 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="Java CompletableFuture :: Part 2" content="author: Bhaskar.S, category: java">
+    <title>Java CompletableFuture :: Part 2</title>
+    <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Java CompletableFuture :: Part 2</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">11/02/2018</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="para-div">
+      <p>In <a href="http://polarsparc.github.io/Java/CompletableFuture-1.html" target="_blank"><span class="bold">
+        Part 1</span></a> of this series, we demonstrated some of the capabilities and nuances of <span class="bold">
+        CompletableFuture</span>. We will continue our journey to illustrate the other features in <span class="bold">
+        CompletableFuture</span>.
+    </div>
+    <div id="para-div">
+      <p>The following example demonstrates a pipeline with the ability to combine outputs from two asynchronous tasks
+        that are <span class="underbold">independent</span> of each other:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.5</legend>
+      <pre>package com.polarsparc.cf.CompletableFuture;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class Sample05 {
+    public static void main(String[] args) {
+        // Explicit style
+        {
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> "I'm Cool");
+            CompletableFuture&lt;String&gt; cf2 = CompletableFuture.supplyAsync(() -> "am Slick !!!");
+            CompletableFuture&lt;String&gt; cf3 = cf1.thenCombine(cf2,
+                (s1, s2) -> String.format("%s AND %s", s1, s2));
+            CompletableFuture&lt;Void&gt; cf = cf3.thenAccept(msg ->
+                System.out.printf("[1] [%s] %s\n", Thread.currentThread().getName(), msg));
+            
+            try {
+                cf.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        // Fluent style
+        {
+            CompletableFuture&lt;Void&gt; cf = CompletableFuture.supplyAsync(() -> "I'm Smart")
+                .thenCombine(CompletableFuture.supplyAsync(() -> "am Nimble !!!"),
+                    (s1, s2) -> String.format("%s AND %s", s1, s2))
+                .thenAccept(msg -> 
+                    System.out.printf("[2] [%s] %s\n", Thread.currentThread().getName(), msg));
+            
+            try {
+                cf.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        // Fluent style using Async
+        {
+            CompletableFuture&lt;Void&gt; cf = CompletableFuture.supplyAsync(() -> "I'm Awesome")
+                .thenCombineAsync(CompletableFuture.supplyAsync(() -> "am Fast !!!"),
+                    (s1, s2) -> String.format("%s AND %s", s1, s2))
+                .thenAcceptAsync(msg -> 
+                    System.out.printf("[3] [%s] %s\n", Thread.currentThread().getName(), msg));
+            
+            try {
+                cf.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        // Fluent style using Async with an Executor [1]
+        {
+            ExecutorService executor = Executors.newFixedThreadPool(4);
+            
+            CompletableFuture&lt;Void&gt; cf = CompletableFuture.supplyAsync(() -> "I'm Stunning", executor)
+                .thenCombineAsync(CompletableFuture.supplyAsync(() -> "am New !!!"),
+                    (s1, s2) -> String.format("%s AND %s", s1, s2), executor)
+                .thenAcceptAsync(msg -> 
+                    System.out.printf("[4] [%s] %s\n", Thread.currentThread().getName(), msg), executor);
+            
+            executor.shutdown();
+            
+            try {
+                cf.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        // Fluent style using Async with an Executor [2]
+        {
+            ExecutorService executor = Executors.newFixedThreadPool(4);
+            
+            CompletableFuture&lt;Void&gt; cf = CompletableFuture.supplyAsync(() -> "I'm Agile", executor)
+                .thenCombineAsync(CompletableFuture.supplyAsync(() -> "am Quick !!!"),
+                    (s1, s2) -> String.format("%s AND %s", s1, s2), executor)
+                .thenAcceptAsync(msg -> 
+                    System.out.printf("[5] [%s] %s\n", Thread.currentThread().getName(), msg), executor);
+            
+            try {
+                cf.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+            
+            executor.shutdown();
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the program from Listing.5 will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>[1] [main] I'm Cool AND am Slick !!!
+[2] [main] I'm Smart AND am Nimble !!!
+[3] [ForkJoinPool.commonPool-worker-5] I'm Awesome AND am Fast !!!
+[4] [pool-1-thread-3] I'm Stunning AND am New !!!
+[5] [pool-2-thread-3] I'm Agile AND am Quick !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>Re-running the program from Listing.5 few more times will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>[1] [ForkJoinPool.commonPool-worker-3] I'm Cool AND am Slick !!!
+[2] [main] I'm Smart AND am Nimble !!!
+[3] [ForkJoinPool.commonPool-worker-3] I'm Awesome AND am Fast !!!
+java.util.concurrent.ExecutionException: java.util.concurrent.RejectedExecutionException: Task java.util.concurrent.CompletableFuture$UniAccept@1767e42a rejected from java.util.concurrent.ThreadPoolExecutor@1358721e[Shutting down, pool size = 2, active threads = 1, queued tasks = 0, completed tasks = 1]
+  at java.base/java.util.concurrent.CompletableFuture.reportGet(CompletableFuture.java:395)
+  at java.base/java.util.concurrent.CompletableFuture.get(CompletableFuture.java:1999)
+  at com.polarsparc.cf.CompletableFuture.Sample05.main(Sample05.java:71)
+Caused by: java.util.concurrent.RejectedExecutionException: Task java.util.concurrent.CompletableFuture$UniAccept@1767e42a rejected from java.util.concurrent.ThreadPoolExecutor@1358721e[Shutting down, pool size = 2, active threads = 1, queued tasks = 0, completed tasks = 1]
+  at java.base/java.util.concurrent.ThreadPoolExecutor$AbortPolicy.rejectedExecution(ThreadPoolExecutor.java:2055)
+  at java.base/java.util.concurrent.ThreadPoolExecutor.reject(ThreadPoolExecutor.java:825)
+  at java.base/java.util.concurrent.ThreadPoolExecutor.execute(ThreadPoolExecutor.java:1355)
+  at java.base/java.util.concurrent.CompletableFuture$UniCompletion.claim(CompletableFuture.java:568)
+  at java.base/java.util.concurrent.CompletableFuture$UniAccept.tryFire(CompletableFuture.java:710)
+  at java.base/java.util.concurrent.CompletableFuture.postComplete(CompletableFuture.java:506)
+  at java.base/java.util.concurrent.CompletableFuture.postFire(CompletableFuture.java:610)
+  at java.base/java.util.concurrent.CompletableFuture.postFire(CompletableFuture.java:1186)
+  at java.base/java.util.concurrent.CompletableFuture$BiApply.tryFire(CompletableFuture.java:1208)
+  at java.base/java.util.concurrent.CompletableFuture$Completion.run(CompletableFuture.java:478)
+  at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1128)
+  at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:628)
+  at java.base/java.lang.Thread.run(Thread.java:834)
+[5] [pool-2-thread-3] I'm Agile AND am Quick !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>Notice the excepion in Output.7. This happens because the executor was shutdown before all the task submissions
+        could be completed.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are some of the concepts in the context of the code in Listing.5:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">BiFunction&lt;T, U, R&gt;</span> :: A functional interface defined in the <span class="bold">
+            java.util.function</span> package that is implemented by a class whose method takes in two input values (of types T and
+            U) and generates an output value of type R</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">thenCombine(CompletionStage&lt;U&gt;, BiFunction&lt;T, U, R&gt;)</span> :: This method takes
+            two arguments - a reference to <span class="bold">CompletionStage&lt;U&gt;</span> (basically an instance of <span
+            class="bold">CompletableFuture</span>) that will return a value of type U when it completes execution and an instance
+            of a function of type <span class="bold">BiFunction&lt;T, U, R&gt;</span>. The function (in the second argument) is
+            executed only after the prior task (or stage) in the pipeline completes execution (returning a value of type T) and
+            the task (wrapped in the first argument) complete execution (returning a value of type U). The function takes in the
+            values T and U and returns a result of type R. The tasks are executed using the default fork-join thread pool. The
+            method returns an instance of <span class="bold">CompletionStage</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">thenCombineAsync(CompletionStage&lt;U&gt;, BiFunction&lt;T, U, R&gt;)</span> :: This method
+            is similar to the method <span class="bold">thenCombine(CompletionStage&lt;U&gt;, BiFunction&lt;T, U, R&gt;)</span>,
+            except that the specified <span class="bold">BiFunction&lt;T, U, R&gt;</span> function is executed asynchronously
+            using the default fork-join thread pool. The method returns an instance of <span class="bold">CompletionStage</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">thenCombineAsync(CompletionStage&lt;U&gt;, BiFunction&lt;T, U, R&gt;, Executor)</span> :: This
+            method is similar to the method <span class="bold">thenCombine(CompletionStage&lt;U&gt;, BiFunction&lt;T, U, R&gt;)</span>,
+            except that the specified <span class="bold">BiFunction&lt;T, U, R&gt;</span> function is executed asynchronously using
+            the specified custom executor. The method returns an instance of <span class="bold">CompletionStage</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="warn-div">
+      <h4>CAUTION</h4>
+      <pre>When using a custom <span class="bold">Executor</span>, ensure the <span class="bold">shutdown()</span> method is invoked only after all the tasks have completed execution.</pre>
+    </div>
+    <div id="para-div">
+      <p>In the next example, we will demonstrate a pipeline with the ability to combine outputs from two asynchronous tasks
+        where the next task in the chain is <span class="underbold">dependent</span> on the result from the current task in
+        the chain. In other words, the output from the current task is consumed by the next task in the chain as input, and
+        returns an instance of <span class="bold">CompletionStage</span> that will generate the result (in the future) when
+        that task completes execution.</p>
+      <p>This may seem mouthful and confusing - but we will break it down in the following section.</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.6</legend>
+      <pre>package com.polarsparc.cf.CompletableFuture;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class Sample06 {
+    public static void main(String[] args) {
+        // Explicit style
+        {
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> "I'm Cool");
+            CompletableFuture&lt;String&gt; cf2 = cf1.thenCompose(s ->
+                CompletableFuture.supplyAsync(() -> s + " & am SLICK !!!"));
+            CompletableFuture&lt;Void&gt; cf = cf2.thenAccept(msg ->
+                System.out.printf("[1] [%s] %s\n", Thread.currentThread().getName(), msg));
+            
+            try {
+                cf.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        // Fluent style
+        {
+            CompletableFuture&lt;Void&gt; cf = CompletableFuture.supplyAsync(() -> "I'm Smart")
+                .thenCompose(s -> CompletableFuture.supplyAsync(() -> s + " & am NIMBLE !!!"))
+                .thenAccept(msg -> 
+                    System.out.printf("[2] [%s] %s\n", Thread.currentThread().getName(), msg));
+            
+            try {
+                cf.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        // Fluent style using Async
+        {
+            CompletableFuture&lt;Void&gt; cf = CompletableFuture.supplyAsync(() -> "I'm Awesome")
+                    .thenComposeAsync(s -> CompletableFuture.supplyAsync(() -> s + " & am FAST !!!"))
+                    .thenAcceptAsync(msg -> 
+                        System.out.printf("[3] [%s] %s\n", Thread.currentThread().getName(), msg));
+            
+            try {
+                cf.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        // Fluent style using Async with an Executor
+        {
+            ExecutorService executor = Executors.newFixedThreadPool(4);
+            
+            CompletableFuture&lt;Void&gt; cf = CompletableFuture.supplyAsync(() -> "I'm Awesome", executor)
+                    .thenComposeAsync(s -> CompletableFuture.supplyAsync(() -> s + " & am FAST !!!"),
+                        executor)
+                    .thenAcceptAsync(msg -> 
+                        System.out.printf("[4] [%s] %s\n", Thread.currentThread().getName(), msg),
+                        executor);
+            
+            try {
+                cf.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+            
+            executor.shutdown();
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the program from Listing.6 will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>[1] [ForkJoinPool.commonPool-worker-5] I'm Cool & am SLICK !!!
+[2] [main] I'm Smart & am NIMBLE !!!
+[3] [ForkJoinPool.commonPool-worker-5] I'm Awesome & am FAST !!!
+[4] [pool-1-thread-3] I'm Awesome & am FAST !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>The following are some of the concepts in the context of the code in Listing.6:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">thenCompose(Function&lt;T, CompletionStage&lt;U&gt;&gt;)</span> :: This method is defined
+            on the interface <span class="bold">CompletionStage</span> and accepts an instance of a function of type <span
+            class="bold">Function&lt;T, CompletionStage&lt;U&gt;&gt;</span>, which consumes a value (of type T) produced by
+            the previous stage (or task) in the pipeline as the input argument to the function and returns an instance of
+            <span class="bold">CompletionStage&lt;U&gt;&gt;</span>. The <span class="underbold">*subtle*</span> point here is
+            that this callback method returns an instance of type <span class="bold">CompletionStage&lt;U&gt;&gt;</span>.
+            When this returned <span class="bold">CompletionStage&lt;U&gt;&gt;</span> completes execution, it will return a
+            value of type U.</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">thenComposeAsync(Function&lt;T, CompletionStage&lt;U&gt;&gt;)</span> :: This method is
+            similar to the method <span class="bold">thenCompose(Function&lt;T, CompletionStage&lt;U&gt;&gt;)</span>, except
+            that the specified <span class="bold">Function&lt;T, CompletionStage&lt;U&gt;&gt;</span> function is executed
+            asynchronously using the default fork-join thread pool. The method returns an instance of <span class="bold">
+            CompletionStage</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">thenComposeAsync(Function&lt;T, CompletionStage&lt;U&gt;&gt;, Executor)</span> :: This
+            method is similar to the method <span class="bold">thenComposeAsync(Function&lt;T, CompletionStage&lt;U&gt;&gt;)
+            </span>, except that the specified <span class="bold">Function&lt;T, CompletionStage&lt;U&gt;&gt;</span> function
+            is executed asynchronously using the specified custom executor. The method returns an instance of <span class="bold">
+            CompletionStage</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>On one hand, this may seem similar to the method <span class="bold">thenApply(Function&lt;T, U&gt;)</span>, which takes
+        an input value (of type T) from the current task in the pipeline and generates a result (of type U) immediately, when the
+        specified <span class="bold">Function&lt;T, U&gt;</span> completes execution. This is similar to a <span class="hi-green">
+        map()</span> operation on <span class="bold">Stream</span>s.</p>
+      <p>The following picture illustrates how <span class="bold">thenApply(Function)</span> works:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/thenapply.png" alt="theApply" />
+        <div class="img-cap">thenApply</div>
+    </div>
+    <div id="para-div">
+      <p>On the other hand, the method <span class="bold">thenCompose(Function&lt;T, CompletionStage&lt;U&gt;&gt;)</span> takes
+        an input value (of type T) from the current task in the pipeline and returns an instance of type <span class="bold">
+        CompletionStage&lt;U&gt;&gt;</span>. When this returned <span class="bold">CompletionStage&lt;U&gt;&gt;</span> completes
+        execution (in the future), that task will generate the desired result (of type U). This is similar to a <span
+        class="hi-green">flatmap()</span> operation on <span class="bold">Stream</span>s.</p>
+      <p>The following picture illustrates how <span class="bold">thenCompose(Function)</span> works:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/thencompose.png" alt="theCompose" />
+        <div class="img-cap">thenCompose</div>
+    </div>
+    <div id="para-div">
+      <p>Note, if we had used the method <span class="bold">thenApply(Function&lt;T, CompletionStage&lt;U&gt;&gt;)</span> instead
+        of the method <span class="bold">thenCompose(Function&lt;T, CompletionStage&lt;U&gt;&gt;)</span>, we would get a return
+        value of type <span class="bold">CompletionStage&lt;CompletionStage&lt;U&gt;&gt;</span>. Instead it is being
+        <span class="underbold">flattened</span> by using the method<span class="bold">
+        thenCompose(Function&lt;T, CompletionStage&lt;U&gt;&gt;)</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Moving on to the next example, we will demonstrate the case where two separate asynchronous tasks each produce a value,
+        which can then be consumed by the next task in the chain as inputs to generate a totally different value.</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.7</legend>
+      <pre>package com.polarsparc.cf.CompletableFuture;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class Sample07 {
+    public static void main(String[] args) {
+        {
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> "I am Cool");
+            CompletableFuture&lt;String&gt; cf2 = CompletableFuture.supplyAsync(() -> "am Slick !!!");
+            CompletableFuture&lt;Void&gt; cf3 = cf1.thenAcceptBoth(cf2, (s1, s2) -> 
+                System.out.printf("[1] [%s] %s and %s\n", Thread.currentThread().getName(), s1, s2));
+            
+            try {
+                cf3.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        {
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> "I am Fast");
+            CompletableFuture&lt;String&gt; cf2 = CompletableFuture.supplyAsync(() -> "am Nimble !!!");
+            CompletableFuture&lt;Void&gt; cf3 = cf1.thenAcceptBothAsync(cf2, (s1, s2) -> 
+                System.out.printf("[2] [%s] %s and %s\n", Thread.currentThread().getName(), s1, s2));
+            
+            try {
+                cf3.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        {
+            ExecutorService executor = Executors.newFixedThreadPool(3);
+            
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> "I am Stunning", executor);
+            CompletableFuture&lt;String&gt; cf2 = CompletableFuture.supplyAsync(() -> "am Quick !!!", executor);
+            CompletableFuture&lt;Void&gt; cf3 = cf1.thenAcceptBothAsync(cf2, (s1, s2) -> 
+                System.out.printf("[3] [%s] %s and %s\n", Thread.currentThread().getName(), s1, s2), executor);
+            
+            try {
+                cf3.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+            
+            executor.shutdown();
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the program from Listing.7 will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>[1] [main] I am Cool and am Slick !!!
+[2] [ForkJoinPool.commonPool-worker-3] I am Fast and am Nimble !!!
+[3] [pool-1-thread-3] I am Stunning and am Quick !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>The following are some of the concepts in the context of the code in Listing.7:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">BiConsumer&lt;T, U&gt;</span> :: A functional interface defined in the <span class="bold">
+            java.util.function</span> package that accepts two input values (of types T and U) and does not generate any output</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">thenAcceptBoth(CompletionStage&lt;U&gt;, BiConsumer&lt;T, U&gt;)</span> :: This method is
+            defined on the interface <span class="bold">CompletionStage</span> and accepts an instance of type <span class="bold">
+            CompletionStage&lt;U&gt;</span> as the first argument (let us refer to it as CF) and an instance of type
+            <span class="bold">BiConsumer&lt;T, U&gt;</span> as the second argument. The function instance (the second argument)
+            consumes two input values - the value (of type T) produced by the previous stage (or task) in the pipeline and the
+            value (of type U) produced by CF, but produces no output. This method returns an instance of <span class="bold">
+            CompletionStage</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">thenAcceptBothAsync(CompletionStage&lt;U&gt;, BiConsumer&lt;T, U&gt;)</span> :: This method
+            is similar to the method <span class="bold">thenAcceptBoth(CompletionStage&lt;U&gt;, BiConsumer&lt;T, U&gt;)</span>,
+            except that the specified <span class="bold">BiConsumer&lt;T, U&gt;</span> function is executed asynchronously using
+            the default fork-join thread pool. The method returns an instance of <span class="bold">CompletionStage</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">thenAcceptBothAsync(CompletionStage&lt;U&gt;, BiConsumer&lt;T, U&gt;, Executor)</span> :: This
+            method is similar to the method <span class="bold">thenAcceptBothAsync(CompletionStage&lt;U&gt;, BiConsumer&lt;T, U&gt;)
+            </span>, except that the specified <span class="bold">BiConsumer&lt;T, U&gt;</span> function is executed asynchronously
+            using the specified custom executor. The method returns an instance of <span class="bold">CompletionStage</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following table summarizes the methods we covered in this article from the <span class="bold">CompletableFuture</span>
+        class:</p>
+    </div>
+    <table id="col2-table">
+      <thead><tr>
+        <th>Method</th>
+        <th>Usage Description</th>
+      </tr>
+      </thead> <tbody>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">thenCombine(CompletionStage&lt;U&gt;, BiFunction&lt;T, U, R&gt;)</span></td>
+          <td class="col2-c2-odd">Takes an instance of type <span class="bold">CompletionStage&lt;U&gt;</span> (as the first
+            argument) and an instance of type <span class="bold">BiFunction&lt;T, U, R&gt;</span> (as the second argument). The
+            function in the second argument is executed once the prior task (or stage) in the pipeline as well as the task wrapped
+            in the <span class="bold">CompletionStage&lt;U&gt;</span> (first argument) have completed execution. The function
+            generates an output value of type R</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">thenCombineAsync(CompletionStage&lt;U&gt;, BiFunction&lt;T, U, R&gt;)</span></td>
+          <td class="col2-c2-even">Takes two input arguments of type <span class="bold">CompletionStage&lt;U&gt;</span> (first argument)
+            and of type <span class="bold">BiFunction&lt;T, U, R&gt;</span> (second argument). The function in the second argument is
+            executed asynchronously once the prior task (or stage) in the pipeline as well as the task wrapped in the first argument
+            have completed execution. The function generates an output value of type R</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">thenCompose(Function&lt;T, CompletionStage&lt;U&gt;&gt;)</span></td>
+          <td class="col2-c2-odd">Takes an instance of type <span class="bold">Function&lt;T, CompletionStage&lt;U&gt;&gt;</span> which
+            consumes the value (of type T) produced by the previous stage (or task) in the pipeline as an input and returns an instance
+            of type <span class="bold">CompletionStage&lt;U&gt;&gt;</span>. We get an output value (of type U) when this returned 
+            <span class="bold">CompletionStage&lt;U&gt;&gt;</span> completes execution</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">thenComposeAsync(Function&lt;T, CompletionStage&lt;U&gt;&gt;)</span></td>
+          <td class="col2-c2-even">Takes an instance of type <span class="bold">Function&lt;T, CompletionStage&lt;U&gt;&gt;</span>
+            which is executed asynchronously. The function consumes the value (of type T) produced by the previous stage (or task)
+            in the pipeline as an input and returns an instance of type <span class="bold">CompletionStage&lt;U&gt;&gt;</span>. We
+            get an output value (of type U) when this returned <span class="bold">CompletionStage&lt;U&gt;&gt;</span> completes
+            execution</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">thenAcceptBoth(CompletionStage&lt;U&gt;, BiConsumer&lt;T, U&gt;)</span></td>
+          <td class="col2-c2-odd">Takes two arguments - an instance of type <span class="bold">CompletionStage&lt;U&gt;</span> and
+            an instance of type <span class="bold">BiConsumer&lt;T, U&gt;</span>. The function in the second argument is executed
+            once the prior task (or stage) in the pipeline as well as the task wrapped in the first argument have completed execution.
+            No result is generated</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">thenAcceptBothAsync(CompletionStage&lt;U&gt;, BiConsumer&lt;T, U&gt;)</span></td>
+          <td class="col2-c2-even">Takes an instance of type <span class="bold">CompletionStage&lt;U&gt;</span> and an instance of type
+            <span class="bold">BiConsumer&lt;T, U&gt;</span>. The function in the second argument is executed asynchronously once the
+            prior task (or stage) in the pipeline as well as the task wrapped in the first argument have completed execution. No result
+            is generated</td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>More to come in <span class="bold">Part 3</span> of this article ...</p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

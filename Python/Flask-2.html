@@ -1,0 +1,537 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Web Applications using Python Flask - Part II">
+    <meta name="subject" content="Web Applications using Python Flask - Part II">
+    <meta name="keywords" content="python, flask">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Web Applications using Python Flask - Part II</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Web Applications using Python Flask - Part II</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">09/01/2021</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Hands-on Python Flask - Part II</p>
+    </div>
+    <div id="para-div">
+      <p>Shifting gears, we will now move into the next phase of integrating a database for our web application. Currently, the user
+        registration infomation is not being persisted anywhere. We will use the <span class="hi-yellow">sqlite</span> database to
+        create a table called <span class="hi-blue">user_tbl</span> for storing the user registration information.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the modified version of the Python script called <span class="bold">config.py</span> which configuration
+        details for the <span class="bold">sqlite</span> database via <span class="hi-yellow">sqlalchemy</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">config.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   30 Aug 2021
+#
+
+from flask import Flask
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+import logging
+import os
+
+app_name = 'SecureNotes'
+
+# Flask related config
+
+app = Flask(app_name)
+
+gunicorn_logger = logging.getLogger('gunicorn.error')
+app.logger.handlers = gunicorn_logger.handlers
+app.logger.setLevel(gunicorn_logger.level)
+
+app.config['SECRET_KEY'] = 's3_b4nd_$_1'
+
+app.logger.debug('Flask application root path: %s' % app.root_path)
+app.logger.debug('Flask application static folder: %s' % app.static_folder)
+app.logger.debug('Flask application template folder: %s' % os.path.join(app.root_path, app.template_folder))
+
+# sqlalchemy related config
+
+engine = create_engine('sqlite:///db/secure_notes.db')
+
+Base = declarative_base()
+Base.metadata.bind = engine
+
+DBSession = sessionmaker(bind=engine)
+session = DBSession()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">config.py</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-yellow">app.config['SECRET_KEY'] = 's3_b4nd_$_1'</span> :: allows one to set a secret key which will
+          be used to secure the web session, such as signing of the cookies to prevent against cookie tampering</p></li>
+        <li><p><span class="hi-yellow">Engine</span> :: represents the entry point through which one can interact with the underlying
+          database. It wraps a connection pool and a dialect to the underlying database</p></li>
+        <li><p><span class="hi-yellow">create_engine('sqlite:///db/secure_notes.db')</span> :: creates an instance of Engine using
+          the specified database url. A database called <span class="hi-yellow">secure_notes.db</span> is created in the directory
+          <span class="bold">SecureNotes/db</span></p></li>
+        <li><p><span class="hi-yellow">declarative_base()</span> :: a method that creates the object model base class, which needs
+          be extended by the user defined class to create the domain model objects</p></li>
+        <li><p><span class="hi-yellow">Session</span> :: an object that manages the database persistence operations of the domain
+          model object(s)</p></li>
+        <li><p><span class="hi-yellow">sessionmaker(bind=engine)</span> :: a factory method that creates an instance of
+          <span class="bold">Session</span> object</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>We will need a domain object class in Python that corresponds to the table <span class="bold">user_tbl</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Python script called <span class="hi-yellow">user.py</span> that will be located in the directory
+        <span class="bold">SecureNotes/model</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">user.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   01 Sep 2021
+#
+
+from sqlalchemy import Column, String
+from werkzeug.security import generate_password_hash, check_password_hash
+from config.config import Base, engine, session
+
+class User(Base):
+    __tablename__ = 'user_tbl'
+    email_id = Column(String(64), primary_key=True)
+    password_hash = Column(String(64))
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def verify_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def __repr__(self):
+        return '<User {0}>'.format(self.email_id)
+
+    @staticmethod
+    def register(email, password):
+        user = User(email_id=email)
+        user.set_password(password)
+        session.add(user)
+        session.commit()
+        return user
+
+    @staticmethod
+    def query_by_email(email):
+        return session.query(User).filter(User.email_id == email).first()
+
+Base.metadata.create_all(engine, checkfirst=True)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">user.py</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-yellow">__tablename__</span> :: sqlalchemy internal attribute that specifies the database table name
+          this user defined class represents</p></li>
+        <li><p><span class="hi-yellow">Column</span> :: represents a database column. One *DOES NOT* have to supply the column name
+          as the attribute name will be used as the column name</p></li>
+        <li><p><span class="hi-yellow">generate_password_hash(password)</span> :: a utility method that generates a SHA256 hash for
+          the specified password and is defined in the Python module <span class="hi-yellow">werkzeug.security</span></p></li>
+        <li><p><span class="hi-yellow">check_password_hash(self.password_hash, password)</span> :: a utility method that checks the
+          the specified password against the stored hash and is defined in the Python module
+          <span class="hi-yellow">werkzeug.security</span></p></li>
+        <li><p><span class="hi-yellow">session.add(user)</span> :: method to add the specified domain model object into the
+          <span class="bold">Session</span> object for persistence</p></li>
+        <li><p><span class="hi-yellow">session.commit()</span> :: method to flush and commit all the changes to the
+          <span class="bold">Session</span> object</p></li>
+        <li><p><span class="hi-yellow">session.query(User)</span> :: method that represents a database query operation and translates
+          into a SQL SELECT operation</p></li>
+        <li><p><span class="hi-yellow">session.query(User).filter(User.email_id == email)</span> :: method that applies the specified
+          search criteria and translates into a SQL WHERE clause</p></li>
+        <li><p><span class="hi-yellow">session.query(User).filter(User.email_id == email).first()</span> :: method that returns the
+          first row result from the SQL query</p></li>
+        <li><p><span class="hi-yellow">Base.metadata.create_all(engine, checkfirst=True)</span> :: method that creates database
+      table(s) for all the domain object class(es) in the metadata if not already present</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Next, we need to make changes to the view function <span class="bold">signup()</span> in the main Flask application to save
+        the valid user registration details to the database and redirect to the login HTML page.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the modified version of the Python script <span class="bold">main.py</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">main.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   30 Aug 2021
+#
+
+from flask import request, session
+from flask.templating import render_template
+from config.config import app
+from model.user import User
+
+@app.route('/')
+def index():
+    return render_template('welcome.html')
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'GET':
+        return render_template('signup.html')
+    email = None
+    if 'email' in request.form:
+        email = request.form['email']
+    if email is None or len(email.strip()) == 0:
+        return render_template('signup_error.html', message='Invalid email !!!')
+    password1 = None
+    if 'password1' in request.form:
+        password1 = request.form['password1']
+    if password1 is None or len(password1.strip()) == 0:
+        return render_template('signup_error.html', message='Invalid password !!!')
+    password2 = None
+    if 'password2' in request.form:
+        password2 = request.form['password2']
+    if password1 != password2:
+        return render_template('signup_error.html', message='Password confirmation failed !!!')
+    user = User.register(email, password1)
+    app.logger.info('User %s successfully registered!' % user)
+    return render_template('welcome.html')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Restart the <span class="bold">gunicorn</span> server and launch a browser and access the URL <span class="bold">
+        http://127.0.0.1:8080/</span>. Once the login page loads, click on the 'Sign Up' link. When the sign-up page loads, enter
+        an email-id, a password, re-enter the same password for confirmation and then click on the 'Register' button. The browser
+        be redirected to the login page on success. The following would be a typical output on the web server terminal:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>[2021-09-01 08:49:19 -0400] [5897] [DEBUG] GET /
+[2021-09-01 08:49:20 -0400] [5897] [DEBUG] GET /static/bootstrap.min.css
+[2021-09-01 08:49:20 -0400] [5897] [DEBUG] GET /static/images/polarsparc.png
+[2021-09-01 08:49:20 -0400] [5897] [DEBUG] GET /favicon.ico
+[2021-09-01 08:49:22 -0400] [5897] [DEBUG] GET /signup
+[2021-09-01 08:49:22 -0400] [5897] [DEBUG] GET /static/bootstrap.min.css
+[2021-09-01 08:49:22 -0400] [5897] [DEBUG] GET /static/images/polarsparc.png
+[2021-09-01 08:49:24 -0400] [5898] [DEBUG] Closing connection. 
+[2021-09-01 08:49:40 -0400] [5898] [DEBUG] POST /signup
+[2021-09-01 08:49:40 -0400] [5898] [INFO] User &lt;User alice@test.org&gt; successfully registered!
+[2021-09-01 08:49:40 -0400] [5898] [DEBUG] GET /static/bootstrap.min.css
+[2021-09-01 08:49:40 -0400] [5898] [DEBUG] GET /static/images/polarsparc.png</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now that we have the user registration working, we will handle the user login. There are two paths - successful and the
+        unsucessful path. For the unsuccessful path, we direct the user to an login error page. On successful login, we will direct
+        the user to the secure part of the web application.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the HTML page called <span class="hi-yellow">login_error.html</span> that will be located in the directory
+        <span class="bold">SecureNotes/templates</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">login_error.html</div>
+      <div class="src-body-1">
+<pre>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+    &lt;head&gt;
+        &lt;meta charset="UTF-8"&gt;
+        &lt;meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"&gt;
+        &lt;link rel="stylesheet" href="static/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous"&gt;
+        &lt;title&gt;Welcome to Secure Notes - Login Error&lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;div class="container"&gt;
+            &lt;div class="alert alert-secondary" role="alert"&gt;
+                &lt;div class="text-center"&gt;
+                    &lt;h3&gt;Welcome to Secure Notes - Login Error&lt;/h3&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+            &lt;br/&gt;
+            &lt;div class="alert alert-danger" role="alert"&gt;
+                &lt;p&gt;{{ message }}&lt;/p&gt;
+            &lt;/div&gt;
+            &lt;br/&gt;
+            &lt;span class="p-1 rounded-sm border border-primary"&gt;
+                &lt;a href="javascript:history.go(-1)" class="alert-link"&gt;Back&lt;/a&gt;
+            &lt;/span&gt;
+            &lt;div class="text-center"&gt;
+                &lt;hr/&gt;
+                &lt;img class="img-thumbnail" src="static/images/polarsparc.png" alt="PolarSPARC"&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;        
+    &lt;/body&gt;
+&lt;/html&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the HTML page called <span class="hi-yellow">secure_notes.html</span> that will be located in the directory
+        <span class="bold">SecureNotes/templates</span> and is routed to on successful login:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">secure_notes.html</div>
+      <div class="src-body-1">
+<pre>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+    &lt;head&gt;
+        &lt;meta charset="UTF-8"&gt;
+        &lt;meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"&gt;
+        &lt;link rel="stylesheet" href="static/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous"&gt;
+        &lt;title&gt;Welcome to Secure Notes - Authenticated&lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;div class="container"&gt;
+            &lt;div class="alert alert-secondary" role="alert"&gt;
+                &lt;div class="text-center"&gt;
+                    &lt;h3&gt;Welcome to Secure Notes - Authenticated&lt;/h3&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+            &lt;br/&gt;
+            &lt;div class="alert alert-primary" role="alert"&gt;
+                &lt;p&gt;This is a SECURE area !!!&lt;/p&gt;
+            &lt;/div&gt;
+            &lt;br/&gt;
+            &lt;span class="p-1 rounded-sm border border-primary"&gt;
+                &lt;a href="/logout" class="alert-link"&gt;Logout&lt;/a&gt;
+            &lt;/span&gt;
+            &lt;div class="text-center"&gt;
+                &lt;hr/&gt;
+                &lt;img class="img-thumbnail" src="static/images/polarsparc.png" alt="PolarSPARC"&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;        
+    &lt;/body&gt;
+&lt;/html&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the modified version of the HTML page <span class="bold">welcome.html</span> to route the login request to
+        the Flask application at the URL endpoint <span class="hi-yellow">/login</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">welcome.html</div>
+      <div class="src-body-1">
+<pre>&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+    &lt;head&gt;
+        &lt;meta charset="UTF-8"&gt;
+        &lt;meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"&gt;
+        &lt;link rel="stylesheet" href="static/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous"&gt;
+        &lt;title&gt;Welcome to Secure Notes - Login&lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;div class="container"&gt;
+            &lt;div class="alert alert-secondary" role="alert"&gt;
+                &lt;div class="text-center"&gt;
+                    &lt;h3&gt;Welcome to Secure Notes - Login&lt;/h3&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+            &lt;form action="/login" method="POST"&gt;
+                &lt;div class="form-group"&gt;
+                    &lt;label for="emailInput"&gt;Email&lt;/label&gt;
+                    &lt;input type="email" class="form-control" id="email" name="email" required placeholder="Enter email..."&gt;
+                &lt;/div&gt;
+                &lt;div class="form-group"&gt;
+                    &lt;label for="passwordInput"&gt;Password&lt;/label&gt;
+                    &lt;input type="password" class="form-control" id="password" name="password" required placeholder="Enter password..."&gt;
+                &lt;/div&gt;
+                &lt;button type="submit" class="btn btn-primary"&gt;Login&lt;/button&gt;
+            &lt;/form&gt;
+            &lt;br/&gt;
+            &lt;div class="alert alert-primary" role="alert"&gt;
+                Don't have an account - &lt;a href="/signup" class="alert-link"&gt;Sign Up&lt;/a&gt;
+            &lt;/div&gt;
+            &lt;div class="text-center"&gt;
+                &lt;hr/&gt;
+                &lt;img class="img-thumbnail" src="static/images/polarsparc.png" alt="PolarSPARC"&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;        
+    &lt;/body&gt;
+&lt;/html&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice the use of <span class="hi-yellow">action="/login"</span> and <span class="hi-yellow">method="POST"</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the modified version of the Python script <span class="bold">main.py</span> to handle additional URL endpoints
+        such as <span class="hi-yellow">/login</span>, <span class="hi-yellow">/secure</span>, and <span class="hi-yellow">/logout</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">main.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   30 Aug 2021
+#
+
+from flask import request, session, redirect
+from flask.templating import render_template
+from config.config import app
+from model.user import User
+
+@app.before_request
+def verify_logged():
+    app.logger.debug('Reuqest path: %s' % request.path)
+    if 'logged_user_id' not in session and request.path not in ['/', '/static/bootstrap.min.css', '/signup', '/login']:
+        return redirect('/login')
+
+@app.route('/')
+def index():
+    return render_template('welcome.html')
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'GET':
+        return render_template('signup.html')
+    email = None
+    if 'email' in request.form:
+        email = request.form['email']
+    if email is None or len(email.strip()) == 0:
+        return render_template('signup_error.html', message='Invalid email !!!')
+    password1 = None
+    if 'password1' in request.form:
+        password1 = request.form['password1']
+    if password1 is None or len(password1.strip()) == 0:
+        return render_template('signup_error.html', message='Invalid password !!!')
+    password2 = None
+    if 'password2' in request.form:
+        password2 = request.form['password2']
+    if password1 != password2:
+        return render_template('signup_error.html', message='Password confirmation failed !!!')
+    user = User.register(email, password1)
+    app.logger.info('User %s successfully registered!' % user)
+    return render_template('welcome.html')
+
+@app.route('/login', methods=['POST'])
+def login():
+    email = None
+    if 'email' in request.form:
+        email = request.form['email']
+    if email is None or len(email.strip()) == 0:
+        return render_template('login_error.html', message='Invalid email !!!')
+    password1 = None
+    if 'password' in request.form:
+        password = request.form['password']
+    if password is None or len(password.strip()) == 0:
+        return render_template('login_error.html', message='Invalid password !!!')
+    user = User.query_by_email(email)
+    if user is None:
+        return render_template('login_error.html', message='Invalid email !!!')
+    if not user.verify_password(password):
+        return render_template('login_error.html', message='Invalid password !!!')
+    session['logged_user_id'] = email
+    return redirect('/secure', code=307)
+
+@app.route('/secure', methods=['POST'])
+def secure():
+    return render_template('secure_notes.html')
+
+@app.route('/logout', methods=['GET'])
+def logoff():
+    session.pop('logged_user_id', None)
+    return render_template('welcome.html')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Some aspects of the <span class="bold">main.py</span> from the above needs a little explanation.</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-yellow">session['logged_user_id'] = email</span> :: is a Python dictionary under-the-hood and is used
+          to remember information from one request to another. The way Flask does the session tracking is using a signed cookie. This
+          is why it is *<span class="underbold">VERY IMPORTANT</span>* to set the app.config['SECRET_KEY']</p></li>
+        <li><p><span class="hi-yellow">redirect('/secure', code=307)</span> :: this method will handle redirect to the specified URL
+          endpoint using the HTTP POST method because we have specified the HTTP code of 307</p></li>
+        <li><p><span class="hi-yellow">login()</span> :: this view function will handle any HTTP POST request made to the URL endpoint
+          <span class="bold">/login</span>. On any error, the user is routed to the html error page <span class="bold">login_error.html
+          </span>. On successful user verification, the key <span class="hi-blue">logged_user_id</span> (in the session) is set to the
+          logged in user's email-id and then redirect to the URL endpoint <span class="bold">/secure</span></p></li>
+        <li><p><span class="hi-yellow">logoff()</span> :: this view function will handle the HTTP request made to the URL endpoint
+          <span class="bold">/logout</span>. This is effectively terminating the user session</p></li>
+        <li><p><span class="hi-yellow">@app.before_request</span> :: the Flask decorator for a method that is invoked before each
+          request. This allows one to check if a user is already logged-in before letting into the secure parts of the web application</p></li>
+        <li><p><span class="hi-yellow">secure()</span> :: this view function will handle any HTTP POST request made to the URL endpoint
+          <span class="bold">/secure</span>. It will display the html page <span class="bold">secure_notes.html</span></p></li>
+        </ul>
+    </div>
+    <div id="para-div">
+      <p>Restart the <span class="bold">gunicorn</span> server and launch a browser and access the URL <span class="bold">
+        http://127.0.0.1:8080/</span>. We need to ensure we have registered at least one user to test the login. Once the login page
+        loads, enter an invalid email-id, and any string for the password and then click on the 'Login' button. The following
+        illustration shows the response on the browser:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Invalid Email" src="./images/Flask-07.png" class="img-cls" />
+      <div class="img-cap">Figure.7</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Click on the <span class="bold">Back</span> button to go back and re-enter the correct email and the correct password and
+        then click on the 'Login' button. The following illustration shows the response on the browser:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Successful Login" src="./images/Flask-08.png" class="img-cls" />
+      <div class="img-cap">Figure.8</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">WALLA !!!</span> Click on the <span class="bold">Logout</span> button to go back to the login page.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://github.com/bhaskars-repo/SecureNotes" target="_blank"><span class="bold">GitHub - Source Code</span></a></p>
+      <p><a href="https://polarsparc.github.io/Python/Python-Flask-1.html" target="_blank"><span class="bold">Web Applications using Python Flask - Part I</span></a></p>
+      <p><a href="https://polarsparc.github.io/BigData/SQLAlchemy-2.html" target="_blank"><span class="bold">Introduction to SQLAlchemy :: Part - 2</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

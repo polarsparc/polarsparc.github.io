@@ -1,0 +1,272 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Failed Hard Drive Rescue">
+    <meta name="subject" content="Failed Hard Drive Rescue">
+    <meta name="keywords" content="general, linux">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Failed Hard Drive Rescue</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Failed Hard Drive Rescue</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">11/06/2022</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="para-div">
+      <p>This article documents the various steps in an attempt to rescue a failed hard drive (any type - NVMe, SSD, or HDD) using
+        tools available on Linux. In this example, the attempt was to rescue a Windows based NVMe drive.</p>
+      <p>In order to access the NVMe device on Linux, one should use a USB based NVMe enclosure. In this case, the enclosure used
+        was <a target="_blank" href="https://www.amazon.com/SSK-Aluminum-Enclosure-Adapter-External/dp/B07MNFH1PX">
+        <span class="bold">NVMe Enclosure</span></a>.</p>
+      <p>The following were the different Linux commands used in the process after attaching the enclosure (with the device) via USB:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>To determine the device the USB drive is mapped to, execute the following command:</p>
+          <div id="cmd-div">
+            <p>$ lsblk -f</p>
+          </div>
+          <p>The following would be a typical output:</p>
+          <div id="out-div">
+            <h4>Output.1</h4>
+            <pre>NAME   FSTYPE          FSVER  LABEL       UUID                                 FSAVAIL FSUSE% MOUNTPOINTS
+..... SNIP .....
+sdh    isw_raid_member 1.4.01                                                                 
+|--sdh1 vfat            FAT32  ESP         2086-F6DA                                           
+|--sdh2                                                                                        
+|--sdh3                                                                                        
+|--sdh4 ntfs                   WINRETOOLS  5C085CB8085C933E                                    
+|--sdh5 ntfs                   Image       FCC25D2CC25CED00                                    
+|--sdh6 ntfs                   DELLSUPPORT 809ACA979ACA88DC</pre>
+          </div>
+          <p>From the above Output.1, we know the attached USB device is <span class="hi-yellow">/dev/sdh</span></p>
+        </li>
+        <li>
+          <p>To detemine the various partitions on the attached USB device and their filesystem types, execute the following command:</p>
+          <div id="cmd-div">
+            <p>$ sudo fdisk -l /dev/sdh</p>
+          </div>
+          <p>The following would be a typical output:</p>
+          <div id="out-div">
+            <h4>Output.2</h4>
+            <pre>The backup GPT table is not on the end of the device.
+Disk /dev/sdh: 476.94 GiB, 512110190592 bytes, 1000215216 sectors
+Disk model:                 
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 4096 bytes
+I/O size (minimum/optimal): 4096 bytes / 4096 bytes
+Disklabel type: gpt
+Disk identifier: A74B302E-4F9C-4A07-A2E9-1A7588C926EE
+
+Device         Start        End   Sectors   Size Type
+/dev/sdh1       2048    1333247   1331200   650M EFI System
+/dev/sdh2    1333248    1595391    262144   128M Microsoft reserved
+/dev/sdh3    1595392  969586687 967991296 461.6G Microsoft basic data
+/dev/sdh4  969586688  971614207   2027520   990M Windows recovery environment
+/dev/sdh5  971614208  997605375  25991168  12.4G Windows recovery environment
+/dev/sdh6  997607424 1000187903   2580480   1.2G Windows recovery environment</pre>
+          </div>
+          <p>From the above Output.2, we are interested in salvaging the contents of <span class="hi-yellow">/dev/sdh3</span></p>
+        </li>
+        <li>
+          <p>Given that it is a Microsoft Windows partiton, the filesystem should be of type <span class="hi-blue">ntfs</span>. To mount
+            the attached USB device to a directory, execute the following commands:</p>
+          <div id="cmd-div">
+            <p>$ sudo mkdir /media/windows</p>
+            <p>$ sudo mount -t ntfs /dev/sdh3 /media/windows</p>
+          </div>
+          <p>The following could be a typical output:</p>
+          <div id="out-div">
+            <h4>Output.3</h4>
+            <pre>NTFS signature is missing.
+Failed to mount '/dev/sdh3': Invalid argument
+The device '/dev/sdh3' doesn't seem to have a valid NTFS.
+Maybe the wrong device is used? Or the whole disk instead of a
+partition (e.g. /dev/sda, not /dev/sda1)? Or the other way around?</pre>
+          </div>
+          <p>From the above Output.3, we see the filesystem type of the partition <span class="hi-yellow">/dev/sdh3</span> is incorrect</p>
+        </li>
+        <li>
+          <p>We will attempt to mount the attached USB device using the UUID of the device. To determine the UUID of the attached USB
+            device, execute the following command:</p>
+          <div id="cmd-div">
+            <p>$ sudo blkid /dev/sdh3</p>
+          </div>
+          <p>The following would be a typical output:</p>
+          <div id="out-div">
+            <h4>Output.4</h4>
+            <pre>/dev/sdh3: PARTLABEL="Basic data partition" PARTUUID="cd601dcf-fb1c-44a3-a86d-c15403c4422d"</pre>
+          </div>
+          <p>From the above Output.4, we see the UUID the attached USB device as <span class="hi-yellow">cd601dcf-fb1c-44a3-a86d-c15403c4422d</span></p>
+        </li>
+        <li>
+          <p>To mount the attached USB device to a directory using its UUID, execute the following command:</p>
+          <div id="cmd-div">
+            <p>$ sudo mount PARTUUID=cd601dcf-fb1c-44a3-a86d-c15403c4422d /media/windows</p>
+          </div>
+          <p>The following could be a typical output:</p>
+          <div id="out-div">
+            <h4>Output.5</h4>
+            <pre>mount: /media/windows: wrong fs type, bad option, bad superblock on /dev/sdh3, missing codepage or helper program, or other error.</pre>
+          </div>
+          <p>From the above Output.5, we see something is messed up with the partition <span class="hi-yellow">/dev/sdh3</span></p>
+        </li>
+        <li>
+          <p>We will make one more attempt to mount the attached USB device to a directory using a safer option. To do that, execute the
+            following command:</p>
+          <div id="cmd-div">
+            <p>$ sudo ntfs-3g -o force,rw /dev/sdh3 /media/windows</p>
+          </div>
+          <p>The following could be a typical output:</p>
+          <div id="out-div">
+            <h4>Output.6</h4>
+            <pre>NTFS signature is missing.
+Failed to mount '/dev/sdh3': Invalid argument
+The device '/dev/sdh3' doesn't seem to have a valid NTFS.
+Maybe the wrong device is used? Or the whole disk instead of a
+partition (e.g. /dev/sda, not /dev/sda1)? Or the other way around?</pre>
+          </div>
+          <p>From the above Output.6, it is clear we failed again</p>
+        </li>
+        <li>
+          <p>Next, we will attempt to fix the common ntfs errors of the attached USB device. To do that, execute the following command:</p>
+          <div id="cmd-div">
+            <p>$ sudo ntfsfix /dev/sdh3</p>
+          </div>
+          <p>The following could be a typical output:</p>
+          <div id="out-div">
+            <h4>Output.7</h4>
+            <pre>Mounting volume... NTFS signature is missing.
+FAILED
+Attempting to correct errors... NTFS signature is missing.
+FAILED
+Failed to startup volume: Invalid argument
+NTFS signature is missing.</pre>
+          </div>
+          <p>From the above Output.7, we know something is really wrong with the partition <span class="hi-yellow">/dev/sdh3</span></p>
+        </li>
+        <li>
+          <p>It is now time to switch to the next phase of the process with more advanced tools. We will use the <span class="hi-blue">
+            testdisk</span> toolset. To do that, execute the following command:</p>
+          <div id="cmd-div">
+            <p>$ sudo apt install testdisk -y</p>
+          </div>
+        </li>
+        <li>
+          <p>To launch the <span class="hi-yellow">testdisk</span> command, execute the following command:</p>
+          <div id="cmd-div">
+            <p>$ sudo testdisk</p>
+          </div>
+          <p>The following illustration shows the user session:</p>
+          <div id="img-outer-div"> <img src="./images/testdisk-1.png" class="img-cls" alt="TestDisk Launch" />
+            <div class="img-cap">Fig.1</div>
+          </div>
+          <p>Select the disk associated with the attached USB device and press the <span class="bold">Enter</span> key on the option
+            <span class="bold">[>Proceed]</span>.</p>
+        </li>
+        <li>
+          <p>Select the <span class="bold">[ Advanced ]</span> option and press the <span class="bold">Enter</span> key as shown in the
+            illustration below:</p>
+          <div id="img-outer-div"> <img src="./images/testdisk-2.png" class="img-cls" alt="Advanced Option" />
+            <div class="img-cap">Fig.2</div>
+          </div>
+        </li>
+        <li>
+          <p>Select the partition <span class="bold">3 P MS Data</span> and press the <span class="bold">Enter</span> key on the option
+            <span class="bold">[>Image Creation]</span> as shown in the illustration below:</p>
+          <div id="img-outer-div"> <img src="./images/testdisk-3.png" class="img-cls" alt="Image Creation" />
+            <div class="img-cap">Fig.3</div>
+          </div>
+        </li>
+        <li>
+          <p>The following illustration shows the image creation process in progress:</p>
+          <div id="img-outer-div"> <img src="./images/testdisk-4.png" class="img-cls" alt="Image Creation Progress" />
+            <div class="img-cap">Fig.4</div>
+          </div>
+          <p>This will take at least 1.5 hours to finish - so be patient !!!</p>
+        </li>
+        <li>
+          <p>Once the image creation process completes successfully, press the <span class="bold">Enter</span> key on the option
+            <span class="bold">[>Ok]</span> to exit as shown in the illustration below:</p>
+          <div id="img-outer-div"> <img src="./images/testdisk-5.png" class="img-cls" alt="Image Creation Success" />
+            <div class="img-cap">Fig.5</div>
+          </div>
+          <p>The disk image is stored in a file called <span class="hi-blue">image.dd</span>.</p>
+        </li>
+        <li>
+          <p>The next step is to recover the various data files (doc, docx, jpg, mp3, xls, xlsx, etc) from the just created disk image.</p>
+          <p>To recover files from the disk image we just created, launch the <span class="hi-yellow">photorec</span> command by executing
+            the following command:</p>
+          <div id="cmd-div">
+            <p>$ photorec</p>
+          </div>
+          <p>The following illustration shows the user session:</p>
+          <div id="img-outer-div"> <img src="./images/photorec-1.png" class="img-cls" alt="PhotoRec Launch" />
+            <div class="img-cap">Fig.6</div>
+          </div>
+          <p>Select the disk image and press the <span class="bold">Enter</span> key on the option <span class="bold">[>Proceed]</span>.</p>
+        </li>
+        <li>
+          <p>Select the <span class="bold">[ Search ]</span> option and press the <span class="bold">Enter</span> key as shown in the
+            illustration below:</p>
+          <div id="img-outer-div"> <img src="./images/photorec-2.png" class="img-cls" alt="Search Option" />
+            <div class="img-cap">Fig.7</div>
+          </div>
+        </li>
+        <li>
+          <p>Select the filesystem type <span class="bold">[ Other ]</span> and press the <span class="bold">Enter</span> key as shown
+            in the illustration below:</p>
+          <div id="img-outer-div"> <img src="./images/photorec-3.png" class="img-cls" alt="Filesystem Option" />
+            <div class="img-cap">Fig.8</div>
+          </div>
+        </li>
+        <li>
+          <p>Select location for the recoverd files and press the <span class="bold">C</span> key as shown in the illustration below:</p>
+          <div id="img-outer-div"> <img src="./images/photorec-4.png" class="img-cls" alt="Start Recovery" />
+            <div class="img-cap">Fig.9</div>
+          </div>
+        </li>
+        <li>
+          <p>The following illustration shows the data recovery process in progress:</p>
+          <div id="img-outer-div"> <img src="./images/photorec-5.png" class="img-cls" alt="Recovery Progress" />
+            <div class="img-cap">Fig.10</div>
+          </div>
+          <p>This will take few hours to finish - so be patient !!!</p>
+          <p>There were a bunch of files that were recovered but everyone of them seemed <span class="underbold">CORRUPTED</span>.</p>
+        </li>
+        <li>
+          <p>The next step was to dump the raw image of the attached USB device using the <span class="hi-blue">ddrescue</span> tool.
+            This operation took few hours to create the raw disk image. Trying to restore from the raw disk image FAILEd as well.</p>
+        </li>
+      </ul>
+      <p>The whole disk rescue experiment was <span class="underbold">UNSUCCESSFUL</span> in the end, but worthwhile as we learnt a
+        LOT from the process !!!</p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

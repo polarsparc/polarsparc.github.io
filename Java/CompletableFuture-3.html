@@ -1,0 +1,597 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="Java CompletableFuture :: Part 3" content="author: Bhaskar.S, category: java">
+    <title>Java CompletableFuture :: Part 3</title>
+    <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="htts://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Java CompletableFuture :: Part 3</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">11/04/2018</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="para-div">
+      <p>In <a href="http://polarsparc.github.io/Java/CompletableFuture-1.html" target="_blank"><span class="bold">
+        Part 1</span></a> and <a href="http://polarsparc.github.io/Java/CompletableFuture-2.html" target="_blank">
+        <span class="bold">Part 2</span></a> of this series, we demonstrated some of the capabilities and nuances of
+        <span class="bold">CompletableFuture</span>. In this part, we will illustrate few more features, including
+        exception handling in <span class="bold">CompletableFuture</span>.
+    </div>
+    <div id="para-div">
+      <p>Often times there are scenarios when either of the two outcomes is enough to proceed to the next stage in a
+        pipeline.</p>
+      <p>The following example demonstrates a pipeline with the ability to choose an output from either of the two
+        asynchronous tasks based on which of the two completes first and consume that output:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.8</legend>
+      <pre>package com.polarsparc.cf.CompletableFuture;
+
+import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class Sample08 {
+    private static final Random random = new Random();
+    
+    public static final void randomDelay() {
+        try {
+            Thread.sleep(random.nextInt(500));
+        }
+        catch (Exception ex) {
+            // Ignore
+        }
+    }
+    
+    // ----- Main -----
+    
+    public static void main(String[] args) {
+        {
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> {
+                randomDelay();
+                return "I am Awesome";
+            });
+            CompletableFuture&lt;String&gt; cf2 = CompletableFuture.supplyAsync(() -> {
+                randomDelay();
+                return "I am Cool";
+            });
+            CompletableFuture&lt;Void&gt; cf3 = cf1.acceptEither(cf2, msg -> 
+                System.out.printf("[1] [%s] %s and am NIMBLE !!!\n", Thread.currentThread().getName(), msg));
+            
+            try {
+                cf3.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        {
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> {
+                randomDelay();
+                return "I am Stunning";
+            });
+            CompletableFuture&lt;String&gt; cf2 = CompletableFuture.supplyAsync(() -> {
+                randomDelay();
+                return "I am Fast";
+            });
+            CompletableFuture&lt;Void&gt; cf3 = cf1.acceptEitherAsync(cf2, msg -> 
+                System.out.printf("[2] [%s] %s and am SLICK !!!\n", Thread.currentThread().getName(), msg));
+            
+            try {
+                cf3.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        {
+            ExecutorService executor = Executors.newFixedThreadPool(3);
+            
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> {
+                randomDelay();
+                return "I am Quick";
+            });
+            CompletableFuture&lt;String&gt; cf2 = CompletableFuture.supplyAsync(() -> {
+                randomDelay();
+                return "I am Elegant";
+            });
+            CompletableFuture&lt;Void&gt; cf3 = cf1.acceptEitherAsync(cf2, msg -> 
+                System.out.printf("[3] [%s] %s and am NEW !!!\n", Thread.currentThread().getName(), msg),
+                executor);
+            
+            try {
+                cf3.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+            
+            executor.shutdown();
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the program from Listing.8 will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>[1] [ForkJoinPool.commonPool-worker-3] I am Awesome and am NIMBLE !!!
+[2] [ForkJoinPool.commonPool-worker-9] I am Fast and am SLICK !!!
+[3] [pool-1-thread-1] I am Elegant and am NEW !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>Re-running the program from Listing.8 will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>[1] [ForkJoinPool.commonPool-worker-5] I am Cool and am NIMBLE !!!
+[2] [ForkJoinPool.commonPool-worker-9] I am Fast and am SLICK !!!
+[3] [pool-1-thread-1] I am Quick and am NEW !!!
+</pre>
+    </div>
+    <div id="para-div">
+      <p>From Listing.8, notice that we introduce random delays (upto 500ms) in the tasks that make up the pipeline. This
+        will allow for one of the tasks to finish executing first.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are some of the concepts in the context of the code in Listing.8:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">acceptEither(CompletionStage&lt;T&gt;, Consumer&lt;T&gt;)</span> :: This method takes two
+            arguments - a reference to the type <span class="bold">CompletionStage&lt;T&gt</span> and an instance of type
+            <span class="bold">Consumer&lt;T&gt;</span>. The function in the second argument is executed when either the prior
+            task (or stage) in the pipeline completes or the task wrapped in the first argument completes execution. The tasks
+            are executed using the default fork-join thread pool. The method returns an instance of <span class="bold">
+            CompletionStage</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">acceptEitherAsync(CompletionStage&lt;T&gt;, Consumer&lt;T&gt;)</span> :: This method is
+            similar to the method <span class="bold">acceptEither(CompletionStage&lt;T&gt;, Consumer&lt;T&gt;)</span>, except
+            that the specified <span class="bold">Consumer&lt;T&gt;</span> function is executed asynchronously using the default
+            fork-join thread pool. The method returns an instance of <span class="bold">CompletionStage</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">acceptEitherAsync(CompletionStage&lt;T&gt;, Consumer&lt;T&gt;, Executor)</span> :: This method
+            is similar to the method <span class="bold">acceptEitherAsync(CompletionStage&lt;T&gt;, Consumer&lt;T&gt;)</span>, except
+            that the specified <span class="bold">Consumer&lt;T&gt;</span> function is executed asynchronously using the specified
+            custom executor. The method returns an instance of <span class="bold">CompletionStage</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>In the next example, we will demonstrate a pipeline with the ability to choose an output from either of the two
+        asynchronous tasks based on which of the two completes first and apply a function on that output to produce a new
+        result.</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.9</legend>
+      <pre>package com.polarsparc.cf.CompletableFuture;
+
+import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class Sample09 {
+    private static final Random random = new Random();
+    
+    public static final void randomDelay() {
+        try {
+            Thread.sleep(random.nextInt(500));
+        }
+        catch (Exception ex) {
+            // Ignore
+        }
+    }
+    
+    // ----- Main -----
+    
+    public static void main(String[] args) {
+        {
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> {
+                randomDelay();
+                return "I am Awesome";
+            });
+            CompletableFuture&lt;String&gt; cf2 = CompletableFuture.supplyAsync(() -> {
+                randomDelay();
+                return "I am Bold";
+            });
+            CompletableFuture&lt;Void&gt; cf3 = cf1.applyToEither(cf2, msg -> String.format("%s and am Cool !!!", msg))
+                .thenAccept(msg -> System.out.printf("[1] [%s] %s\n", Thread.currentThread().getName(), msg));
+            
+            try {
+                cf3.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        {
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> {
+                randomDelay();
+                return "I am Elegant";
+            });
+            CompletableFuture&lt;String&gt; cf2 = CompletableFuture.supplyAsync(() -> {
+                randomDelay();
+                return "I am Fast";
+            });
+            CompletableFuture&lt;Void&gt; cf3 = cf1.applyToEitherAsync(cf2, msg -> String.format("%s and am New !!!",
+                    msg))
+                .thenAcceptAsync(msg -> System.out.printf("[2] [%s] %s\n", Thread.currentThread().getName(), msg));
+            
+            try {
+                cf3.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        {
+            ExecutorService executor = Executors.newFixedThreadPool(3);
+            
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> {
+                randomDelay();
+                return "I am Practical";
+            });
+            CompletableFuture&lt;String&gt; cf2 = CompletableFuture.supplyAsync(() -> {
+                randomDelay();
+                return "I am Quick";
+            });
+            CompletableFuture&lt;Void&gt; cf3 = cf1.applyToEitherAsync(cf2, msg -> String.format("%s and am Radical !!!",
+                    msg), executor)
+                .thenAcceptAsync(msg -> System.out.printf("[3] [%s] %s\n", Thread.currentThread().getName(), msg),
+                    executor);
+            
+            try {
+                cf3.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+            
+            executor.shutdown();
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the program from Listing.9 will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>[1] [ForkJoinPool.commonPool-worker-5] I am Bold and am Cool !!!
+[2] [ForkJoinPool.commonPool-worker-9] I am Fast and am New !!!
+[2] [pool-1-thread-2] I am Practical and am Radical !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>Re-running the program from Listing.9 will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>[1] [ForkJoinPool.commonPool-worker-3] I am Awesome and am Cool !!!
+[2] [ForkJoinPool.commonPool-worker-5] I am Elegant and am New !!!
+[3] [pool-1-thread-2] I am Practical and am Radical !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>The following are some of the concepts in the context of the code in Listing.9:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">applyToEither(CompletionStage&lt;T&gt;, Function&lt;T, U&gt;)</span> :: This method takes
+            two arguments - first argument is a reference to the type <span class="bold">CompletionStage&lt;T&gt</span> and the
+            second argument is an instance of type <span class="bold">Function&lt;T, U&gt;</span>. The function in the second
+            argument is executed by consuming a value (of type T) produced by either the prior task (or stage) in the pipeline
+            or the task wrapped in the first argument and generating an output value of type U. The tasks are executed using the
+            default fork-join thread pool. The method returns an instance of <span class="bold">CompletionStage</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">applyToEitherAsync(CompletionStage&lt;T&gt;, Function&lt;T, U&gt;)</span> :: This method is
+            similar to the method <span class="bold">applyToEither(CompletionStage&lt;T&gt;, Function&lt;T, U&gt;)</span>, except
+            that the specified <span class="bold">Function&lt;T, U&gt;</span> function is executed asynchronously using the default
+            fork-join thread pool. The method returns an instance of <span class="bold">CompletionStage</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">applyToEitherAsync(CompletionStage&lt;T&gt;, Function&lt;T, U&gt;, Executor)</span> :: This
+            method is similar to the method <span class="bold">applyToEitherAsync(CompletionStage&lt;T&gt;, Function&lt;T, U&gt;)
+            </span>, except that the specified <span class="bold">Function&lt;T, U&gt;</span> function is executed asynchronously
+            using the specified custom executor. The method returns an instance of <span class="bold">CompletionStage</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Business processes often experience exceptions in one or more stages in the pipeline. In the next example below, we
+        demonstrate how to handle exception cases. The pipeline consists of two asynchronous tasks generating two random
+        numbers, which is consumed by the next task in the pipeline to generate a modulus value. If the modulus value is zero,
+        we thrown an exception.</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.10</legend>
+      <pre>package com.polarsparc.cf.CompletableFuture;
+
+import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class Sample10 {
+    private static final Random random = new Random();
+    
+    // ----- Main -----
+    
+    public static void main(String[] args) {
+        // No explicit exception handling
+        {
+            ExecutorService executor = Executors.newFixedThreadPool(4);
+            
+            CompletableFuture&lt;Integer&gt; cf1 = CompletableFuture.supplyAsync(() -> random.nextInt(1000)+1, executor);
+            CompletableFuture&lt;Integer&gt; cf2 = CompletableFuture.supplyAsync(() -> random.nextInt(100)+1, executor);
+            CompletableFuture&lt;Void&gt; cf3 = cf1.thenCombineAsync(cf2, (n1, n2) -> {
+                int ret = n1.intValue() % n2.intValue();
+                if (ret <= 0) {
+                    throw new RuntimeException(String.format("n1 = %d, n2 = %d => Invalid combination", 
+                        n1.intValue(), n2.intValue()));
+                }
+                return ret;
+            }, executor)
+            .thenAcceptAsync(n -> System.out.printf("[1] [%s] Magic number is %d\n", Thread.currentThread().getName(), 
+                n), executor);
+            
+            try {
+                cf3.get();
+            } catch (Exception ex) {
+                System.out.printf("[1] EXCEPTION:: %s\n", ex.getMessage());
+            }
+            
+            executor.shutdown();
+        }
+        
+        // Using exceptionally
+        {
+            ExecutorService executor = Executors.newFixedThreadPool(4);
+            
+            CompletableFuture&lt;Integer&gt; cf1 = CompletableFuture.supplyAsync(() -> random.nextInt(1000)+1, executor);
+            CompletableFuture&lt;Integer&gt; cf2 = CompletableFuture.supplyAsync(() -> random.nextInt(100)+1, executor);
+            CompletableFuture&lt;Void&gt; cf3 = cf1.thenCombineAsync(cf2, (n1, n2) -> {
+                int ret = n1.intValue() % n2.intValue();
+                if (ret <= 0) {
+                    throw new RuntimeException(String.format("n1 = %d, n2 = %d => Invalid combination", 
+                        n1.intValue(), n2.intValue()));
+                }
+                return ret;
+            }, executor)
+            .exceptionally(ex -> {
+                System.out.printf("[2] ERROR:: %s\n", ex.getMessage());
+                return -1;
+            })
+            .thenAcceptAsync(n -> System.out.printf("[2] [%s] Magic number is %d\n", Thread.currentThread().getName(), 
+                n), executor);
+            
+            try {
+                cf3.get();
+            } catch (Exception ex) {
+                System.out.printf("[2] EXCEPTION:: %s\n", ex.getMessage());
+            }
+            
+            executor.shutdown();
+        }
+        
+        // Using handle (or handleAsync)
+        {
+            ExecutorService executor = Executors.newFixedThreadPool(4);
+            
+            CompletableFuture&lt;Integer&gt; cf1 = CompletableFuture.supplyAsync(() -> random.nextInt(1000)+1, executor);
+            CompletableFuture&lt;Integer&gt; cf2 = CompletableFuture.supplyAsync(() -> random.nextInt(100)+1, executor);
+            CompletableFuture&lt;Void&gt; cf3 = cf1.thenCombineAsync(cf2, (n1, n2) -> {
+                int ret = n1.intValue() % n2.intValue();
+                if (ret <= 0) {
+                    throw new RuntimeException(String.format("n1 = %d, n2 = %d => Invalid combination", 
+                        n1.intValue(), n2.intValue()));
+                }
+                return ret;
+            }, executor)
+            .handle((n, ex) -> {
+                if (n != null) {
+                    return n;
+                } else {
+                    System.out.printf("[3] ERROR:: %s\n", ex.getMessage());
+                    return -1;
+                }
+            })
+            .thenAcceptAsync(n -> System.out.printf("[3] [%s] Magic number is %d\n", Thread.currentThread().getName(), 
+                n), executor);
+            
+            try {
+                cf3.get();
+            } catch (Exception ex) {
+                System.out.printf("[3] EXCEPTION:: %s\n", ex.getMessage());
+            }
+            
+            executor.shutdown();
+        }
+        
+        // Using whenComplete
+        {
+            ExecutorService executor = Executors.newFixedThreadPool(4);
+            
+            CompletableFuture&lt;Integer&gt; cf1 = CompletableFuture.supplyAsync(() -> random.nextInt(1000)+1, executor);
+            CompletableFuture&lt;Integer&gt; cf2 = CompletableFuture.supplyAsync(() -> random.nextInt(100)+1, executor);
+            CompletableFuture&lt;Integer&gt; cf3 = cf1.thenCombineAsync(cf2, (n1, n2) -> {
+                int ret = n1.intValue() % n2.intValue();
+                if (ret <= 0) {
+                    throw new RuntimeException(String.format("n1 = %d, n2 = %d => Invalid combination", 
+                        n1.intValue(), n2.intValue()));
+                }
+                return ret;
+            }, executor)
+            .whenComplete((n, ex) -> {
+                if (n != null) {
+                    System.out.printf("[4] [%s] Magic number is %d\n", Thread.currentThread().getName(), n);
+                } else {
+                    System.out.printf("[4] ERROR:: %s\n", ex.getMessage());
+                }
+            });
+            
+            try {
+                cf3.get();
+            } catch (Exception ex) {
+                System.out.printf("[4] EXCEPTION:: %s\n", ex.getMessage());
+            }
+            
+            executor.shutdown();
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the program from Listing.10 will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>[1] [pool-1-thread-4] Magic number is 6
+[2] [pool-2-thread-4] Magic number is 10
+[3] [pool-3-thread-4] Magic number is 7
+[4] [main] Magic number is 11</pre>
+    </div>
+    <div id="para-div">
+      <p>Re-running the program from Listing.10 a few times will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>[1] EXCEPTION:: java.lang.RuntimeException: n1 = 99, n2 = 1 => Invalid combination
+[2] [pool-2-thread-4] Magic number is 2
+[3] [pool-3-thread-4] Magic number is 1
+[4] [main] Magic number is 8</pre>
+    </div>
+    <div id="para-div">
+      <p>When a task (or stage) in a pipeline throws an exception, the subsequent task(s) downstream from the
+        current task will be skipped and the exception is thrown when the <span class="bold">get()</span>
+        method is invoked on the <span class="bold">CompletableFuture</span>. This is evident from the
+        Output.15 above.</p>
+    </div>
+    <div id="para-div">
+      <p>Again, re-running the program from Listing.10 a few times will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>[1] [pool-1-thread-4] Magic number is 3
+[2] ERROR:: java.lang.RuntimeException: n1 = 962, n2 = 37 => Invalid combination
+[2] [pool-2-thread-4] Magic number is -1
+[3] [pool-3-thread-4] Magic number is 39
+[4] [main] Magic number is 31</pre>
+    </div>
+    <div id="para-div">
+      <p>Once again, re-running the program from Listing.10 a few times will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.17</h4>
+      <pre>[1] [pool-1-thread-4] Magic number is 12
+[2] [pool-2-thread-4] Magic number is 19
+[3] [pool-3-thread-4] Magic number is 43
+[4] ERROR:: java.lang.RuntimeException: n1 = 27, n2 = 9 => Invalid combination
+[4] EXCEPTION:: java.lang.RuntimeException: n1 = 27, n2 = 9 => Invalid combination</pre>
+    </div>
+    <div id="para-div">
+      <p>The following are some of the concepts in the context of the code in Listing.10:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">exceptionally(Function&lt;Throwable, T&gt;)</span> :: This method is defined on the interface
+            <span class="bold">CompletionStage</span> and accepts an instance of type <span class="bold">
+            Function&lt;Throwable, T&gt;</span>. If the previous task (or stage) completes normally, then this callback also
+            completes normally and passes along the value from the previous task (of type T). On the other hand, if the previous
+            (or stage) encounters any exception, then this callback executes the specified function with the exception as the
+            function argument and returns a different value (of the same type T) thereby effectively <span class="underbold">
+            swallow</span>ing the thrown exception. This method returns an instance of <span class="bold">CompletionStage</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">handle(BiFunction&lt;T, Throwable, U&gt;)</span> :: This method is defined on the interface
+            <span class="bold">CompletionStage</span> and accepts an instance of type <span class="bold">
+            BiFunction&lt;T, Throwable, U&gt;</span>. If the previous task (or stage) completes normally, this callback will
+            execute the specified function with the value from the previous task (of type T) as the first argument and a <span
+            class="bold">null</span> as the second argument (since there is no exception). However, if the previous task (or
+            stage) encounters any exception, then this callback executes the specified function with a <span class="bold">null
+            </span> as the first argument and the exception as the second argument. The specified function will return a value
+            of type U on execution. This method allows one to <span class="underbold">swallow</span> exceptions throw by any
+            task in the pipeline. This method returns an instance of <span class="bold">CompletionStage</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">whenComplete(BiConsumer&lt;T, Throwable&gt;)</span> :: This method is defined on the interface
+            <span class="bold">CompletionStage</span> and accepts an instance of type <span class="bold">
+            BiConsumer&lt;T, Throwable&gt;</span>. If the previous task (or stage) completes normally, this callback will execute
+            the specified function with the value from the previous task (of type T) as the first argument and a <span class="bold">
+            null</span> as the second argument (since there is no exception). However, if the previous task (or stage) encounters
+            any exception, then this callback executes the specified function with a <span class="bold">null</span> as the first
+            argument and the exception as the second argument. The specifed function will not return any results. This method will
+            propagate any exceptions thrown by prior tasks in the pipeline. This method returns an instance of <span class="bold">
+            CompletionStage</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Just like the other methods we have seen so far on the interface <span class="bold">CompletionStage</span>, both the
+        methods <span class="bold">handle(BiFunction&lt;T, Throwable, U&gt;)</span> and <span class="bold">
+        whenComplete(BiConsumer&lt;T, Throwable&gt;)</span> have their async counterparts, with and without the custom executor.</p>
+    </div>
+    <div id="para-div">
+      <p>The following table summarizes the methods we covered in this article from the <span class="bold">CompletableFuture</span>
+        class:</p>
+    </div>
+    <table id="col2-table">
+      <thead><tr>
+        <th>Method</th>
+        <th>Usage Description</th>
+      </tr>
+      </thead> <tbody>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">exceptionally(Function&lt;Throwable, T&gt;)</span></td>
+          <td class="col2-c2-odd">Takes an instance of <span class="bold">Function&lt;Throwable, T&gt;</span>. The specified
+            function is executed only when the prior task (or stage) encounters an exception. For normal operation, this method
+            transparently passes along the value from the previous task in the pipeline. This method allows one to
+            <span class="underbold">swallow</span> exceptions</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">handle(BiFunction&lt;T, Throwable, U&gt;)</span></td>
+          <td class="col2-c2-even">Takes an instance of <span class="bold">BiFunction&lt;T, Throwable, U&gt;</span>. The specified
+            function in called irrespective of whether or not an exception occurs. One of the two arguments to the specified
+            function will be <span class="bold">null</span> based on whether the previous task (or stage) encounters some
+            exception. The specified function must return a value. This method allows one to <span class="underbold">swallow</span>
+            exceptions</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">whenComplete(BiConsumer&lt;T, Throwable&gt;)</span></td>
+          <td class="col2-c2-odd">Takes an instance of <span class="bold">BiConsumer&lt;T, Throwable&gt;</span>. The specified
+            function in called irrespective of whether or not an exception occurs. One of the two arguments to the specified
+            function will be <span class="bold">null</span> based on whether the previous task (or stage) encounters some
+            exception. This method will propagate any thrown exceptions</td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>More to come in <span class="bold">Part 4</span> of this article ...</p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

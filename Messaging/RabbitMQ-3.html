@@ -1,0 +1,363 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+  <title>Quick Tour of RabbitMQ - Part 3</title>
+  <link rel="stylesheet" type="text/css" href="../css/polarsparc-v2.0.css"/>
+</head>
+<body>
+  <br />
+  <div id="title-div">
+    <p>Quick Tour of RabbitMQ - Part 3</p>
+  </div>
+  <br/>
+  <table id="ad-table">
+    <tbody>
+      <tr>
+        <td class="author-td">Bhaskar S</td>
+        <td class="date-td">11/19/2017</td>
+      </tr>
+    </tbody>
+  </table>
+  <hr class="line-hr" /> <br />
+  <div id="step-div">
+    <p>Overview</p>
+  </div>
+  <div id="para-div">
+    <p>Continuing from <a href="http://polarsparc.github.io/Messaging/RabbitMQ-2.html" target="_blank"><span class="bold">
+      Part-2</span></a> of this series, we will demonstrate the <span class="hi-yellow">Topic</span>
+      <span class="bold">Exchange</span> type in this final part of the series.</p>
+  </div>
+  <div id="step-div">
+    <p>Hands-on with RabbitMQ using Java</p>
+  </div>
+  <div id="para-div">
+    <p>A <span class="bold">Topic Exchange</span> routes messages to <span class="bold">Queue</span>(s) based on some
+      <span class="bold">Routing Key</span> pattern match. Consumer(s) bind to a <span class="bold">Topic Exchange</span>
+      specifying a wildcard pattern for the <span class="bold">Routing Key</span>. A wildcard pattern can be formed using
+      a list of one or more words plus the charaters '<span class="hi-yellow">*</span>' (asterisk) or
+      '<span class="hi-yellow">#</span>' (hash), each separated by a '<span class="hi-yellow">.</span>' (period).</p>
+    <p>The wildcard character '<span class="hi-yellow">*</span>' (asterisk) matches a word at the specified position in
+       the <span class="bold">Routing Key</span>, while the wildcard character '<span class="hi-yellow">#</span>' (hash)
+       matches zero or more words.</p>
+    <p>For example, the <span class="bold">Routing Key</span> wildcard pattern <span class="hi-blue">deal.tech.*</span>
+       will match the <span class="bold">Routing Key</span>s 'deal.tech.mobile' or 'deal.tech.laptop' but not 'deal' or
+       'deal.tech'. On the other hand, the <span class="bold">Routing Key</span> wildcard pattern <span class="hi-blue">deal.#</span>
+       will match the <span class="bold">Routing Key</span>s 'deal', 'deal.tech', 'deal.furniture', 'deal.tech.mobile', etc.</p>
+  </div>
+  <div id="para-div">
+    <p>The following picture illustrates the high level view of the <span class="bold">Topic Exchange</span>:</p>
+  </div>
+  <div id="img-outer-div"> <img class="img-cls" src="./images/rabbitmq-8.png" alt="Topic" />
+    <div class="img-cap">Topic</div>
+  </div>
+  <div id="para-div">
+    <p>Now, to demonstrate the hypothetical deals alerting system with a deals alerter (publisher) and two consumers - one for all
+      deals and the other for tech deals, we will implement the publisher and consumer classes <span class="bold">DealAlerter</span>
+      and <span class="bold">DealListener</span>.
+    <p>The following is the common class that captures and exposes some constants:</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>DealsConstants.java</legend>
+    <pre>/*
+ *
+ *  Name:        DealsConstants
+ *  
+ *  Description: Common constants used between the deals alerter (publisher) and the two listeners (consumers)
+ *  
+ */
+
+package com.polarsparc.rabbitmq.common;
+
+public interface DealsConstants {
+    public final static String DEALS_EXCHANGE        = "deals";
+    public final static String ROUTING_KEY_PATTERN_1 = "deal.#";
+    public final static String ROUTING_KEY_PATTERN_2 = "deal.tech.*";
+    public final static String ALL_DEALS_QUEUE_NAME  = "alldeals";
+    public final static String TECH_DEALS_QUEUE_NAME = "techdeals";
+}</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>The following is the code for the publisher of the deal alert messages:</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>DealAlerter.java</legend>
+    <pre>/*
+ *
+ *  Name:        DealAlerter
+ *  
+ *  Description: The hypothetical deals alerting system that will publish deal alert messages
+ *               as a string in a CSV format to a topic exchange
+ *  
+ */
+
+package com.polarsparc.rabbitmq.topic;
+
+import java.util.logging.Logger;
+import java.util.logging.Level;
+
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.BuiltinExchangeType;
+import com.rabbitmq.client.AMQP;
+import com.polarsparc.rabbitmq.common.DealsConstants;
+import com.polarsparc.rabbitmq.common.RabbitMqUtils;
+
+public class DealAlerter {
+    private static String[][] _DEAL_ALERTS = {
+        { "deal.tech.mobile", "iPhone 8 64GB" , "699.99" , "T-Mobile" },
+        { "deal.tech.laptop" , "Dell 15.6 i7 16GB" , "899.99", "Best Buy" },
+        { "deal.furniture.desk", "Bush Computer Desk", "249.99", "Amazon" },
+        { "deal.airfare", "Round-trip NY JFK", "79.99", "CheapAir" }
+    };
+    
+    public static void main(String[] args) {
+        if (args.length != 3) {
+            System.out.printf("Usage: java com.polarsparc.rabbitmq.topic.DealAlerter &lt;host&gt; &lt;user&gt; &lt;password&gt;\n");
+            System.exit(1);
+        }
+        
+        Logger _logger = Logger.getLogger(DealAlerter.class.getName());
+        
+        try {
+            String exchange = DealsConstants.DEALS_EXCHANGE;
+            
+            RabbitMqUtils.initRabbitMq(args[0], args[1], args[2]);
+            
+            _logger.log(Level.INFO, "Ready to create a communication channel ...");
+            
+            Channel channel = RabbitMqUtils.getRabbitMqChannel();
+            
+            _logger.log(Level.INFO, "Ready to create a topic exchange " + exchange);
+            
+            channel.exchangeDeclare(exchange, BuiltinExchangeType.TOPIC);
+            
+            _logger.log(Level.INFO, "Ready to publish test deal alert messages");
+            
+            AMQP.BasicProperties properties = new AMQP.BasicProperties.Builder()
+                    .appId("DealAlerter")
+                    .contentType("text/plain")
+                    .expiration("5000")
+                    .build();
+            
+            for (String[] deal : _DEAL_ALERTS) {
+                String msg = String.join(",", deal);
+                channel.basicPublish(exchange, deal[0], properties, msg.getBytes());
+            }
+            
+            _logger.log(Level.INFO, "Ready to close the communication channel");
+            
+            RabbitMqUtils.closeRabbitMqChannel(channel);
+            
+            _logger.log(Level.INFO, "Deal alerts processing done !!!");
+        }
+        catch (Exception ex) {
+            _logger.log(Level.SEVERE, "Error in DealAlerter!", ex);
+        }
+        finally {
+            RabbitMqUtils.cleanRabbitMq();
+        }
+    }
+}</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>The following is the code for the consumer that will receive specific deal alert messages based on the wildcard
+      <span class="bold">Routing Key</span> pattern:</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>DealListener.java</legend>
+    <pre>/*
+ *
+ *  Name:        DealListener
+ *  
+ *  Description: A hypothetical deal alert messages listener that will use routing key
+ *               wildcard patterns when binding queues
+ *  
+ */
+
+package com.polarsparc.rabbitmq.topic;
+
+import java.util.logging.Logger;
+import java.util.logging.Level;
+import java.io.IOException;
+
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.BuiltinExchangeType;
+import com.rabbitmq.client.Consumer;
+import com.rabbitmq.client.DefaultConsumer;
+import com.rabbitmq.client.Envelope;
+import com.rabbitmq.client.AMQP;
+import com.polarsparc.rabbitmq.common.DealsConstants;
+import com.polarsparc.rabbitmq.common.RabbitMqUtils;
+
+public class DealListener {
+    public static void main(String[] args) {
+        if (args.length != 4) {
+            System.out.printf("Usage: java com.polarsparc.rabbitmq.topic.DealListener &lt;host&gt; &lt;user&gt; &lt;password&gt; 'all|tech'\n");
+            System.exit(1);
+        }
+        
+        Logger _logger = Logger.getLogger(DealListener.class.getName());
+        
+        try {
+            String queue = "all";
+            if (args[3].equalsIgnoreCase("tech")) {
+                queue = args[3];
+            }
+            String exchange = DealsConstants.DEALS_EXCHANGE;
+            String routingKey = DealsConstants.ROUTING_KEY_PATTERN_1;
+            if (args[3].equalsIgnoreCase("tech")) {
+                routingKey = DealsConstants.ROUTING_KEY_PATTERN_2;
+            }
+            
+            RabbitMqUtils.initRabbitMq(args[0], args[1], args[2]);
+            
+            _logger.log(Level.INFO, "Ready to create communication channel for " + queue);
+            
+            Channel channel = RabbitMqUtils.getRabbitMqChannel();
+            
+            _logger.log(Level.INFO, "Ready to create a topic exchange " + exchange);
+            
+            channel.exchangeDeclare(exchange, BuiltinExchangeType.TOPIC);
+            
+            _logger.log(Level.INFO, "Ready to bind the queue " + queue + " to exchange " + exchange 
+                    + " with routing key " + routingKey);
+            
+            channel.queueDeclare(queue, false, false, false, null);
+            channel.queueBind(queue, exchange, routingKey);
+            
+            _logger.log(Level.INFO, "Ready to create a consumer for " + queue);
+            
+            Consumer consumer = new DefaultConsumer(channel) {
+                @Override
+                public void handleDelivery(String consumerTag, 
+                        Envelope envelope,
+                        AMQP.BasicProperties properties,
+                        byte[] body) throws IOException {
+                    String msg = new String(body, "UTF-8");
+                    _logger.log(Level.INFO, "Received deal alert message (body): " + msg);
+                }
+            };
+            
+            _logger.log(Level.INFO, "Ready to consume test deal alert messages for " + routingKey);
+            
+            channel.basicConsume(queue, true, consumer);
+        }
+        catch (Exception ex) {
+            _logger.log(Level.SEVERE, "Error in DealListener!", ex);
+        }
+    }
+}</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>Now, for the demostration of messaging using <span class="bold">Topic Exchange</span>, open three terminal
+      windows. Lets refer to them as the <span class="bold">publisher</span>, <span class="bold">consumer-all</span>, and
+      <span class="bold">consumer-tech</span> respectively.</p>
+  </div>
+  <div id="para-div">
+    <p>In the consumer-all terminal, execute the following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>java -cp ./build/classes:./lib/amqp-client-5.0.0.jar:./lib/slf4j-api-1.7.25.jar:./lib/slf4j-simple-1.7.25.jar com.polarsparc.rabbitmq.topic.DealListener 172.17.0.2 rabbitusr s3cr3t all</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.1</h4>
+    <pre>Nov 19, 2017 3:38:35 PM com.polarsparc.rabbitmq.topic.DealListener main
+INFO: Ready to create communication channel for all
+Nov 19, 2017 3:38:35 PM com.polarsparc.rabbitmq.topic.DealListener main
+INFO: Ready to create a topic exchange deals
+Nov 19, 2017 3:38:35 PM com.polarsparc.rabbitmq.topic.DealListener main
+INFO: Ready to bind the queue all to exchange deals with routing key deal.#
+Nov 19, 2017 3:38:35 PM com.polarsparc.rabbitmq.topic.DealListener main
+INFO: Ready to create a consumer for all
+Nov 19, 2017 3:38:35 PM com.polarsparc.rabbitmq.topic.DealListener main
+INFO: Ready to consume test deal alert messages for deal.#</pre>
+  </div>
+  <div id="para-div">
+    <p>In the consumer-tech terminal, execute the following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>java -cp ./build/classes:./lib/amqp-client-5.0.0.jar:./lib/slf4j-api-1.7.25.jar:./lib/slf4j-simple-1.7.25.jar com.polarsparc.rabbitmq.topic.DealListener 172.17.0.2 rabbitusr s3cr3t tech</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.2</h4>
+    <pre>Nov 19, 2017 3:39:12 PM com.polarsparc.rabbitmq.topic.DealListener main
+INFO: Ready to create communication channel for tech
+Nov 19, 2017 3:39:12 PM com.polarsparc.rabbitmq.topic.DealListener main
+INFO: Ready to create a topic exchange deals
+Nov 19, 2017 3:39:12 PM com.polarsparc.rabbitmq.topic.DealListener main
+INFO: Ready to bind the queue tech to exchange deals with routing key deal.tech.*
+Nov 19, 2017 3:39:12 PM com.polarsparc.rabbitmq.topic.DealListener main
+INFO: Ready to create a consumer for tech
+Nov 19, 2017 3:39:12 PM com.polarsparc.rabbitmq.topic.DealListener main
+INFO: Ready to consume test deal alert messages for deal.tech.*</pre>
+  </div>
+  <div id="para-div">
+    <p>In the publisher terminal, execute the following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>java -cp ./build/classes:./lib/amqp-client-5.0.0.jar:./lib/slf4j-api-1.7.25.jar:./lib/slf4j-simple-1.7.25.jar com.polarsparc.rabbitmq.topic.DealAlerter 172.17.0.2 rabbitusr s3cr3t</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.3</h4>
+    <pre>Nov 19, 2017 3:41:12 PM com.polarsparc.rabbitmq.topic.DealAlerter main
+INFO: Ready to create a communication channel ...
+Nov 19, 2017 3:41:12 PM com.polarsparc.rabbitmq.topic.DealAlerter main
+INFO: Ready to create a topic exchange deals
+Nov 19, 2017 3:41:12 PM com.polarsparc.rabbitmq.topic.DealAlerter main
+INFO: Ready to publish test deal alert messages
+Nov 19, 2017 3:41:12 PM com.polarsparc.rabbitmq.topic.DealAlerter main
+INFO: Ready to close the communication channel
+Nov 19, 2017 3:41:12 PM com.polarsparc.rabbitmq.topic.DealAlerter main
+INFO: Deal alerts processing done !!!</pre>
+  </div>
+  <div id="para-div">
+    <p>In the consumer-all terminal, we should see the following messages pop-up:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.4</h4>
+    <pre>Nov 19, 2017 3:41:12 PM com.polarsparc.rabbitmq.topic.DealListener$1 handleDelivery
+INFO: Received deal alert message (body): deal.tech.mobile,iPhone 8 64GB,699.99,T-Mobile
+Nov 19, 2017 3:41:12 PM com.polarsparc.rabbitmq.topic.DealListener$1 handleDelivery
+INFO: Received deal alert message (body): deal.tech.laptop,Dell 15.6 i7 16GB,899.99,Best Buy
+Nov 19, 2017 3:41:12 PM com.polarsparc.rabbitmq.topic.DealListener$1 handleDelivery
+INFO: Received deal alert message (body): deal.furniture.desk,Bush Computer Desk,249.99,Amazon
+Nov 19, 2017 3:41:12 PM com.polarsparc.rabbitmq.topic.DealListener$1 handleDelivery
+INFO: Received deal alert message (body): deal.airfare,Round-trip NY JFK,79.99,CheapAir</pre>
+  </div>
+  <div id="para-div">
+    <p>In the consumer-tech terminal, we should see the following messages pop-up:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.5</h4>
+    <pre>Nov 19, 2017 3:41:12 PM com.polarsparc.rabbitmq.topic.DealListener$1 handleDelivery
+INFO: Received deal alert message (body): deal.tech.mobile,iPhone 8 64GB,699.99,T-Mobile
+Nov 19, 2017 3:41:12 PM com.polarsparc.rabbitmq.topic.DealListener$1 handleDelivery
+INFO: Received deal alert message (body): deal.tech.laptop,Dell 15.6 i7 16GB,899.99,Best Buy</pre>
+  </div>
+  <div id="para-div">
+    <p>From the consumer-all terminal, we infer that the DealListener consumer received all the deal alert messages
+      that were published by the DealAlerter.</p>
+    <p>From the consumer-tech terminal, we infer that the DealListener consumer received *ONLY* the tech deal alert
+      messages that were published by the DealAlerter.</p>
+  </div>
+  <div id="para-div">
+    <p>We have successfully demonstrated <span class="bold">RabbitMQ</span> messaging using the
+      <span class="bold">Topic Exchange</span> !!!</p>
+  </div>
+  <div id="step-div">
+    <p>References</p>
+  </div>
+  <div id="para-div">
+    <p><a href="http://polarsparc.github.io/Messaging/RabbitMQ-1.html" target="_blank">
+      <span class="bold">Quick Tour of RabbitMQ - Part 1</span></a></p>
+    <p><a href="http://polarsparc.github.io/Messaging/RabbitMQ-2.html" target="_blank">
+      <span class="bold">Quick Tour of RabbitMQ - Part 2</span></a></p>
+    <p><a href="https://www.rabbitmq.com" target="_blank"><span class="bold">RabbitMQ Official Site</span></a></p>
+  </div>
+</body>
+</html>

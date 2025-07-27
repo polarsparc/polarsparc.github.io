@@ -1,0 +1,1796 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <title>Exploring Apache ZooKeeper :: Part-2</title>
+    <link href="../css/polarsparc-v1.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body> <br />
+    <div id="title-div">
+      <p>Exploring Apache ZooKeeper :: Part-2</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">05/24/2014</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/Messaging/ZooKeeper-1.html" target="_blank"><span class="bold">Part-1</span></a>
+        we laid out the basic concepts of <span class="bold">ZooKeeper</span>
+        and got our hands dirty with <span class="bold">ZooKeeper</span>
+        primitives using the command-line interface.</p>
+      <p>In this part, we will implement the same primitives using the <span class="bold">ZooKeeper</span>
+        Java API.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with ZooKeeper Java API</p>
+    </div>
+    <div id="step-div">
+      <p>ZooKeeper Connection</p>
+    </div>
+    <div id="para-div">
+      <p>The main class that defines all the <span class="bold">ZooKeeper</span>
+        primitives is the class <span class="hi-yellow">org.apache.zookeeper.ZooKeeper</span>.</p>
+      <p>The first step for any client to use the <span class="bold">ZooKeeper</span>
+        is to establish a connection with the <span class="bold">ensemble</span>.</p>
+      <p>The following Java code snippet shows how to connect to an <span class="bold">ensemble</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.1</legend>
+      <pre>    final static ZooKeeper connect(String hostPortList, int sessionTimeout)
+        throws Exception {
+        CountDownLatch signal = new CountDownLatch(1);
+        
+        ZooKeeper zk = new ZooKeeper(hostPortList, sessionTimeout, (WatchedEvent event) -&gt; {
+            if (event.getState() == Watcher.Event.KeeperState.SyncConnected) {
+                log.info("ZK[" + hostPortList + "] -&gt; Connected !!!");
+                signal.countDown();
+            }
+        });
+        
+        signal.await();
+        
+        return zk;
+    }</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>To connect to the <span class="bold">ensemble</span> and establish a <span
+          class="bold">ZooKeeper</span> session, we instantiate a <span class="bold">org.apache.zookeeper.ZooKeeper</span>
+        object.</p>
+      <p>The first parameter is the connection string which is a comma separated
+        list of host:port pairs for each of the <span class="bold">ZooKeeper</span>
+        servers in the <span class="bold">ensemble</span>.</p>
+      <p>The second parameter is the session timeout in milliseconds.</p>
+      <p>The third parameter is an object of type <span class="hi-yellow">org.apache.zookeeper.Watcher</span>
+        that behaves like a notification (callback) mechanism.</p>
+      <p>Connection to the <span class="bold">ensemble</span> is established in
+        an asynchronous manner. The call to the <span class="bold">org.apache.zookeeper.ZooKeeper</span>
+        constructor will return immediately. When the connection is established
+        with one of the servers in the the <span class="bold">ensemble</span>,
+        we are notified via the specified <span class="bold">org.apache.zookeeper.Watcher</span>.</p>
+    </div>
+    <div id="step-div">
+      <p>ZNode Creation</p>
+    </div>
+    <div id="para-div">
+      <p>To create a <span class="bold">znode</span> (be it persistent or
+        ephemeral) in the <span class="bold">ZooKeeper</span> namespace, invoke
+        the <span class="hi-green">create()</span> method on the <span class="bold">org.apache.zookeeper.ZooKeeper</span>
+        object.</p>
+      <p>The following Java code snippet shows how to create a <span class="bold">znode</span>
+        via a synchronous blocking call:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.2</legend>
+      <pre>    final static boolean createZnode(ZooKeeper zk, CreateMode mode, String path, byte[] data) {
+        boolean success = false;
+        
+        try {
+            zk.create(path,
+                      data,
+                      ZooDefs.Ids.OPEN_ACL_UNSAFE,
+                      mode);
+            success = true;
+        }
+        catch (InterruptedException | KeeperException ex) {
+            log.error("createZnode: Exception", ex);
+        }
+        
+        return success;
+    }
+</pre> </fieldset>
+    <div id="para-div">
+      <p>The synchronous version of the <span class="bold">create()</span> call
+        takes four parameters.</p>
+      <p>The first parameter is the path to the <span class="bold">znode</span>.</p>
+      <p>The second parameter is the data as a byte array.</p>
+      <p>The third parameter is an interface of type <span class="hi-yellow">org.apache.zookeeper.ZooDefs</span>
+        which defines a set of access control list (ACL). The ACL <span class="hi-yellow">ZooDefs.Ids.OPEN_ACL_UNSAFE</span>
+        allows anyone to access the <span class="bold">znode</span> without any
+        restrictions.</p>
+      <p>The fourth parameter is an enum of type <span class="hi-yellow">org.apache.zookeeper.CreateMode</span>
+        that indicates the type of the <span class="bold">znode</span> -
+        persistent or ephemeral.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Java code snippet shows how to create a <span class="bold">znode</span>
+        via an asynchronous version of the call:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.3</legend>
+      <pre>    final static boolean asyncCreateZnode(ZooKeeper zk, CreateMode mode, String path, byte[] data) {
+        CountDownLatch signal = new CountDownLatch(1);
+        
+        class CreateZnodeContext {
+            boolean success = false;
+            CreateMode type;
+            byte[] data;
+
+            CreateZnodeContext(CreateMode type, byte[] data) {
+                this.type = type;
+                this.data = data;
+            }
+            
+            void setSuccess() {
+                success = true;
+            }
+        }
+        
+        final CreateZnodeContext ctx = new CreateZnodeContext(mode, data);
+        
+        class CreateZnodeStringCallback implements StringCallback {
+            @Override
+            public void processResult(int rc, String path, Object ctx, String name) {
+                switch(KeeperException.Code.get(rc)) {
+                    case OK:
+                    {
+                        ((CreateZnodeContext)ctx).setSuccess();
+                        log.info("ZK[" + path + "] -&gt; Created !!!");
+                        signal.countDown();
+                        break;
+                    }
+                    case NODEEXISTS:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Already Exists !!!");
+                        signal.countDown();
+                        break;
+                    }
+                    case CONNECTIONLOSS:
+                    case SESSIONEXPIRED:
+                    case SESSIONMOVED:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc) + ", Will Retry !!!");
+                        try {
+                            zk.create(path,
+                                      ((CreateZnodeContext)ctx).data,
+                                      ZooDefs.Ids.OPEN_ACL_UNSAFE,
+                                      ((CreateZnodeContext)ctx).type,
+                                      new CreateZnodeStringCallback(),
+                                      ctx);
+                        }
+                        catch (Exception ex) {
+                            log.error("asyncCreateZnode: Exception", ex);
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc) + ", Failed !!!");
+                        signal.countDown();
+                        break;
+                    }
+                }
+            }
+        }
+        
+        zk.create(path,
+                  ctx.data,
+                  ZooDefs.Ids.OPEN_ACL_UNSAFE,
+                  ctx.type,
+                  new CreateZnodeStringCallback(),
+                  ctx);
+        
+        try {
+            signal.await();
+        }
+        catch (InterruptedException ex) {
+        }
+        
+        return ctx.success;
+    }
+
+</pre> </fieldset>
+    <div id="para-div">
+      <p>The asynchronous version of the <span class="bold">create()</span>
+        call takes six parameters.</p>
+      <p>The first parameter is the path to the <span class="bold">znode</span>.</p>
+      <p>The second parameter is the data as a byte array.</p>
+      <p>The third parameter is an interface of type <span class="hi-yellow">org.apache.zookeeper.ZooDefs</span>
+        which defines a set of access control list (ACL). The ACL <span class="hi-yellow">ZooDefs.Ids.OPEN_ACL_UNSAFE</span>
+        allows anyone to access the <span class="bold">znode</span> without any
+        restrictions.</p>
+      <p>The fourth parameter is an enum of type <span class="hi-yellow">org.apache.zookeeper.CreateMode</span>
+        that indicates the type of the <span class="bold">znode</span> -
+        persistent or ephemeral.</p>
+      <p>The fifth parameter is a notification object of type <span class="hi-yellow">org.apache.zookeeper.AsyncCallback.StringCallback</span>.
+        The result (success or failure) of the creation of the <span class="bold">znode</span>
+        is notified via a call to the <span class="hi-green">processResult()</span>
+        method.</p>
+      <p>The sixth parameter is a user defined context object which when
+        specified will be returned in the notification call to <span class="bold">processResult()</span>.</p>
+      <p>In our case, we have defined both the context object and the
+        notification callback as inner classes inside the method.</p>
+    </div>
+    <div id="step-div">
+      <p>ZNode Existence</p>
+    </div>
+    <div id="para-div">
+      <p>To check if a <span class="bold">znode</span> (be it persistent or
+        ephemeral) is present in the <span class="bold">ZooKeeper</span>
+        namespace, invoke the <span class="hi-green">exists()</span> method on
+        the <span class="bold">org.apache.zookeeper.ZooKeeper</span> object.</p>
+      <p>The following Java code snippet shows how to check for the existence of
+        a <span class="bold">znode</span> via a synchronous blocking call:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.4</legend>
+      <pre>    final static boolean checkZnode(ZooKeeper zk, String path, Watcher watcher) {
+        boolean success = false;
+        
+        try {
+            Stat stat = zk.exists(path,
+                                  watcher);
+            if (stat != null) {
+                success = true;
+                log.info("ZK[" + path + "] -&gt; Exists, Stat: {ctime = " + new Date(stat.getCtime())
+                    + ", mtime = " + new Date(stat.getMtime())
+                    + ", version = " + stat.getVersion() + "}");
+            }
+        }
+        catch (InterruptedException | KeeperException ex) {
+            log.error("checkZnode: Exception", ex);
+        }
+        
+        return success;
+    }</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The synchronous version of the <span class="bold">exists()</span> call
+        takes two parameters.</p>
+      <p>The first parameter is the path to the <span class="bold">znode</span>.</p>
+      <p>The second parameter is an instance of <span class="bold">org.apache.zookeeper.Watcher</span>.
+        Whenever the data associated with the <span class="bold">znode</span>
+        changes, we get a callback on the watcher.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Java code snippet shows how to check for the existence of
+        a <span class="bold">znode</span> via an asynchronous version of the
+        call:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.5</legend>
+      <pre>    final static boolean asyncCheckZnode(ZooKeeper zk, String path, Watcher watcher) {
+        CountDownLatch signal = new CountDownLatch(1);
+        
+        class CheckZnodeContext {
+            boolean success = false;
+            
+            void setSuccess() {
+                success = true;
+            }
+        }
+        
+        final CheckZnodeContext ctx = new CheckZnodeContext();
+        
+        class CheckZnodeStatCallback implements StatCallback {
+            @Override
+            public void processResult(int rc, String path, Object ctx, Stat stat) {
+                switch(KeeperException.Code.get(rc)) {
+                    case OK:
+                    {
+                        ((CheckZnodeContext)ctx).setSuccess();
+                        log.info("ZK[" + path + "] -&gt; Exists, Stat: {ctime = " + new Date(stat.getCtime())
+                            + ", mtime = " + new Date(stat.getMtime())
+                            + ", version = " + stat.getVersion() + "}");
+                        signal.countDown();
+                        break;
+                    }
+                    case NONODE:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Does not Exists !!!");
+                        signal.countDown();
+                        break;
+                    }
+                    case CONNECTIONLOSS:
+                    case SESSIONEXPIRED:
+                    case SESSIONMOVED:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc));
+                        try {
+                            zk.exists(path,
+                                      watcher,
+                                      new CheckZnodeStatCallback(),
+                                      ctx);
+                        }
+                        catch (Exception ex) {
+                            log.error("asyncCheckZnode: Exception", ex);
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc) + ", Failed !!!");
+                        signal.countDown();
+                        break;
+                    }
+                }
+            }
+        }
+        
+        zk.exists(path,
+                  watcher,
+                  new CheckZnodeStatCallback(),
+                  ctx);
+        
+        try {
+            signal.await();
+        }
+        catch (InterruptedException ex) {
+        }
+        
+        return ctx.success;
+    }
+</pre> </fieldset>
+    <div id="para-div">
+      <p>The asynchronous version of the <span class="bold">exists()</span>
+        call takes four parameters.</p>
+      <p>The first parameter is the path to the <span class="bold">znode</span>.</p>
+      <p>The second parameter is an instance of <span class="bold">org.apache.zookeeper.Watcher</span>.</p>
+      <p>The third parameter is a notification object of type <span class="hi-yellow">org.apache.zookeeper.AsyncCallback.StatCallback</span>.
+        The result (success or failure) of the check for existence of the <span
+          class="bold">znode</span> is notified via a call to the <span class="hi-green">processResult()</span>
+        method. The <span class="hi-yellow">org.apache.zookeeper.data.Stat</span>
+        object encapsulates the metadata information associated with a <span class="bold">znode</span>.</p>
+      <p>The fourth parameter is a user defined context object which when
+        specified will be returned in the notification call to <span class="bold">processResult()</span>.</p>
+      <p>In our case, we have defined both the context object and the
+        notification callback as inner classes inside the method.</p>
+    </div>
+    <div id="step-div">
+      <p>ZNode Get Children</p>
+    </div>
+    <div id="para-div">
+      <p>To get all the children <span class="bold">znode</span>s under a given
+        <span class="bold">znode</span> in the <span class="bold">ZooKeeper</span>
+        namespace, invoke the <span class="hi-green">getChildren()</span>
+        method on the <span class="bold">org.apache.zookeeper.ZooKeeper</span>
+        object.</p>
+      <p>The following Java code snippet shows how to fetch all the children
+        under a <span class="bold">znode</span> via a synchronous blocking
+        call:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.6</legend>
+      <pre>    final static List&lt;String&gt; getZnodeChildren(ZooKeeper zk, String path, Watcher watcher) {
+        List&lt;String&gt; children = null;
+        
+        try {
+            children = zk.getChildren(path,
+                                      watcher);
+        }
+        catch (InterruptedException | KeeperException ex) {
+            log.error("getZnodeChildren: Exception", ex);
+        }
+        
+        return children;
+    }</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The synchronous version of the <span class="bold">getChildren()</span>
+        call takes two parameters.</p>
+      <p>The first parameter is the path to the <span class="bold">znode</span>.</p>
+      <p>The second parameter is an instance of <span class="bold">org.apache.zookeeper.Watcher</span>.
+        Whenever the children under the <span class="bold">znode</span> change
+        (created or deleted), we get a callback on the watcher.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Java code snippet shows how to fetch all the children
+        under a <span class="bold">znode</span> via an asynchronous version of
+        the call:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.7</legend>
+      <pre>    final static List&lt;String&gt; asyncGetZnodeChildren(ZooKeeper zk, String path, Watcher watcher) {
+        CountDownLatch signal = new CountDownLatch(1);
+        
+        final List&lt;String&gt; children = new ArrayList&lt;&gt;();
+        
+        class GetZnodeChildrenCallback implements ChildrenCallback {
+            @Override
+            public void processResult(int rc, String path, Object ctx, List&lt;String&gt; list) {
+                switch(KeeperException.Code.get(rc)) {
+                    case OK:
+                    {
+                        if (list != null) {
+                            children.addAll(list);
+                        }
+                        log.info("ZK[" + path + "] -&gt; Children: " + list);
+                        signal.countDown();
+                        break;
+                    }
+                    case NONODE:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Does not Exists !!!");
+                        signal.countDown();
+                        break;
+                    }
+                    case CONNECTIONLOSS:
+                    case SESSIONEXPIRED:
+                    case SESSIONMOVED:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc));
+                        try {
+                            zk.getChildren(path,
+                                           watcher,
+                                           new GetZnodeChildrenCallback(),
+                                           null);
+                        }
+                        catch (Exception ex) {
+                            log.error("asyncGetZnodeChildren: Exception", ex);
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc) + ", Failed !!!");
+                        signal.countDown();
+                        break;
+                    }
+                }
+            }
+        }
+        
+        zk.getChildren(path,
+                       watcher,
+                       new GetZnodeChildrenCallback(),
+                       null);
+        
+        try {
+            signal.await();
+        }
+        catch (InterruptedException ex) {
+        }
+        
+        return children;
+    }
+</pre> </fieldset>
+    <div id="para-div">
+      <p>The asynchronous version of the <span class="bold">getChildren()</span>
+        call takes four parameters.</p>
+      <p>The first parameter is the path to the <span class="bold">znode</span>.</p>
+      <p>The second parameter is an instance of <span class="bold">org.apache.zookeeper.Watcher</span>.</p>
+      <p>The third parameter is a notification object of type <span class="hi-yellow">org.apache.zookeeper.AsyncCallback.ChildrenCallback</span>.
+        The result (success or failure) of the operation to get all the children
+        under <span class="bold">znode</span> is notified via a call to the <span
+          class="hi-green">processResult()</span> method.</p>
+      <p>The fourth parameter is a user defined context object which when
+        specified will be returned in the notification call to <span class="bold">processResult()</span>.</p>
+      <p>In this case, we do not have a context object and have the notification
+        callback as inner class inside the method.</p>
+    </div>
+    <div id="step-div">
+      <p>ZNode Get Data</p>
+    </div>
+    <div id="para-div">
+      <p>To get the data associated with a <span class="bold">znode</span> in
+        the <span class="bold">ZooKeeper</span> namespace, invoke the <span class="hi-green">getData()</span>
+        method on the <span class="bold">org.apache.zookeeper.ZooKeeper</span>
+        object.</p>
+      <p>The following Java code snippet shows how to fetch the data associated
+        with a <span class="bold">znode</span> via a synchronous blocking call:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.8</legend>
+      <pre>    final static String getDataZnode(ZooKeeper zk, String path) {
+        String data = null;
+        
+        try {
+            Stat stat = new Stat();
+            
+            byte[] ba = zk.getData(path,
+                                   false,
+                                   stat);
+            if (ba != null) {
+                data = new String(ba);
+            }
+        }
+        catch (InterruptedException | KeeperException ex) {
+            log.error("getDataZnode: Exception", ex);
+        }
+        
+        return data;
+    }
+</pre> </fieldset>
+    <div id="para-div">
+      <p>The synchronous version of the <span class="bold">getData()</span>
+        call takes three parameters.</p>
+      <p>The first parameter is the path to the <span class="bold">znode</span>.</p>
+      <p>The second parameter is a boolean to indicate if we want to watch for
+        any changes to the data associated with the <span class="bold">znode</span>.</p>
+      <p>The third parameter is an instance of <span class="bold">org.apache.zookeeper.data.Stat</span>
+        which encapsulates the metadata information of the <span class="bold">znode</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Java code snippet shows how to fetch the data associated
+        with a <span class="bold">znode</span> via an asynchronous version of
+        the call:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.9</legend>
+      <pre>    final static String asyncGetDataZnode(ZooKeeper zk, String path) {
+        CountDownLatch signal = new CountDownLatch(1);
+        
+        class GetDataZnodeContext {
+            String data = null;
+            
+            void setData(String data) {
+                this.data = data;
+            }
+        }
+        
+        final GetDataZnodeContext ctx = new GetDataZnodeContext();
+        
+        class GetZnodeDataCallback implements DataCallback {
+            @Override
+            public void processResult(int rc, String path, Object ctx, byte[] data, Stat stat)  {
+                switch(KeeperException.Code.get(rc)) {
+                    case OK:
+                    {
+                        ((GetDataZnodeContext)ctx).setData(new String(data));
+                        log.info("ZK[" + path + "] -&gt; Exists, Data = " + new String(data));
+                        signal.countDown();
+                        break;
+                    }
+                    case NONODE:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Does not Exists !!!");
+                        signal.countDown();
+                        break;
+                    }
+                    case CONNECTIONLOSS:
+                    case SESSIONEXPIRED:
+                    case SESSIONMOVED:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc));
+                        try {
+                            zk.getData(path,
+                                       false,
+                                       new GetZnodeDataCallback(),
+                                       ctx);
+                        }
+                        catch (Exception ex) {
+                            log.error("asyncGetDataZnode: Exception", ex);
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc) + ", Failed !!!");
+                        signal.countDown();
+                        break;
+                    }
+                }
+            }
+        }
+    
+        zk.getData(path,
+                   false,
+                   new GetZnodeDataCallback(),
+                   ctx);
+        
+        try {
+            signal.await();
+        }
+        catch (InterruptedException ex) {
+        }
+        
+        return ctx.data;
+    }</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The asynchronous version of the <span class="bold">getData()</span>
+        call takes four parameters.</p>
+      <p>The first parameter is the path to the <span class="bold">znode</span>.</p>
+      <p>The second parameter is a boolean to indicate if we want to watch for
+        any changes to the data associated with the <span class="bold">znode</span>.</p>
+      <p>The third parameter is a notification object of type <span class="hi-yellow">org.apache.zookeeper.AsyncCallback.DataCallback</span>.
+        The result (success or failure) of fetching the data associate with the
+        <span class="bold">znode</span> is notified via a call to the <span class="hi-green">processResult()</span>
+        method.</p>
+      <p>The fourth parameter is a user defined context object which when
+        specified will be returned in the notification call to <span class="bold">processResult()</span>.
+        We use the context object as a holder of the data that is returned in
+        the asynchronous call to <span class="bold">processResult()</span>.</p>
+      <p>In our case, we have defined both the context object and the
+        notification callback as inner classes inside the method.</p>
+    </div>
+    <div id="step-div">
+      <p>ZNode Set Data</p>
+    </div>
+    <div id="para-div">
+      <p>To set the data associated with a <span class="bold">znode</span> in
+        the <span class="bold">ZooKeeper</span> namespace, invoke the <span class="hi-green">setData()</span>
+        method on the <span class="bold">org.apache.zookeeper.ZooKeeper</span>
+        object.</p>
+      <p>The following Java code snippet shows how to change the data associated
+        with a <span class="bold">znode</span> via a synchronous blocking call:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.10</legend>
+      <pre>    final static boolean setDataZnode(ZooKeeper zk, String path, byte[] data) {
+        boolean success = false;
+        
+        try {
+            Stat stat = zk.setData(path,
+                                   data,
+                                   -1);
+            if (stat != null) {
+                success = true;
+            }
+        }
+        catch (InterruptedException | KeeperException ex) {
+            log.error("setDataZnode: Exception", ex);
+        }
+        
+        return success;
+    }</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The synchronous version of the <span class="bold">setData()</span>
+        call takes three parameters.</p>
+      <p>The first parameter is the path to the <span class="bold">znode</span>.</p>
+      <p>The second parameter is the data as a byte array.</p>
+      <p>The third parameter is the matching version from the metadata
+        information of the <span class="bold">znode</span>. We use a value of
+        -1 to match any version.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Java code snippet shows how to change the data associated
+        with a <span class="bold">znode</span> via an asynchronous version of
+        the call:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.11</legend>
+      <pre>    final static boolean asyncSetDataZnode(ZooKeeper zk, String path, byte[] data) {
+        CountDownLatch signal = new CountDownLatch(1);
+        
+        class SetZnodeDataContext {
+            boolean success = false;
+            
+            void setSuccess() {
+                success = true;
+            }
+        }
+        
+        final SetZnodeDataContext ctx = new SetZnodeDataContext();
+        
+        class SetZnodeDataCallback implements StatCallback {
+            @Override
+            public void processResult(int rc, String path, Object ctx, Stat stat) {
+                switch(KeeperException.Code.get(rc)) {
+                    case OK:
+                    {
+                        ((SetZnodeDataContext)ctx).setSuccess();
+                        log.info("ZK[" + path + "] -&gt; Exists, Stat: {ctime = " + new Date(stat.getCtime())
+                            + ", mtime = " + new Date(stat.getMtime())
+                            + ", version = " + stat.getVersion() + "}");
+                        signal.countDown();
+                        break;
+                    }
+                    case NONODE:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Does not Exists !!!");
+                        signal.countDown();
+                        break;
+                    }
+                    case CONNECTIONLOSS:
+                    case SESSIONEXPIRED:
+                    case SESSIONMOVED:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc));
+                        try {
+                            zk.setData(path,
+                                       data,
+                                       -1,
+                                       new SetZnodeDataCallback(),
+                                       ctx);
+                        }
+                        catch (Exception ex) {
+                            log.error("asyncSetDataZnode: Exception", ex);
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc) + ", Failed !!!");
+                        signal.countDown();
+                        break;
+                    }
+                }
+            }
+        }
+    
+        zk.setData(path,
+                   data,
+                   -1,
+                   new SetZnodeDataCallback(),
+                   ctx);
+        
+        try {
+            signal.await();
+        }
+        catch (InterruptedException ex) {
+        }
+        
+        return ctx.success;
+    }</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The asynchronous version of the <span class="bold">setData()</span>
+        call takes five parameters.</p>
+      <p>The first parameter is the path to the <span class="bold">znode</span>.</p>
+      <p>The second parameter is the data as a byte array.</p>
+      <p>The third parameter is the matching version from the metadata
+        information of the <span class="bold">znode</span>. We use a value of
+        -1 to match any version.</p>
+      <p>The fourth parameter is a notification object of type <span class="hi-yellow">org.apache.zookeeper.AsyncCallback.StatCallback</span>.
+        The result (success or failure) of changing the data associate with the
+        <span class="bold">znode</span> is notified via a call to the <span class="hi-green">processResult()</span>
+        method.</p>
+      <p>The fifth parameter is a user defined context object which when
+        specified will be returned in the notification call to <span class="bold">processResult()</span>.</p>
+      <p>In our case, we have defined both the context object and the
+        notification callback as inner classes inside the method.</p>
+    </div>
+    <div id="step-div">
+      <p>ZNode Deletion</p>
+    </div>
+    <div id="para-div">
+      <p>To delete a <span class="bold">znode</span> (be it persistent or
+        ephemeral) from the <span class="bold">ZooKeeper</span> namespace,
+        invoke the <span class="hi-green">delete()</span> method on the <span
+          class="bold">org.apache.zookeeper.ZooKeeper</span> object.</p>
+      <p>The following Java code snippet shows how to delete a <span class="bold">znode</span>
+        via a synchronous blocking call:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.12</legend>
+      <pre>    final static boolean deleteZnode(ZooKeeper zk, String path) {
+        boolean success = false;
+        
+        try {
+            zk.delete(path,
+                      -1);
+            
+            success = true;
+        }
+        catch (InterruptedException | KeeperException ex) {
+            log.error("deleteZnode: Exception", ex);
+        }
+        
+        return success;
+    }</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The synchronous version of the <span class="bold">delete()</span> call
+        takes two parameters.</p>
+      <p>The first parameter is the path to the <span class="bold">znode</span>.</p>
+      <p>The second parameter is the matching version from the metadata
+        information of the <span class="bold">znode</span>. We use a value of
+        -1 to match any version.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Java code snippet shows how to delete a <span class="bold">znode</span>
+        via an asynchronous version of the call:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.13</legend>
+      <pre>    final static boolean asyncDeleteZnode(ZooKeeper zk, String path) {
+        CountDownLatch signal = new CountDownLatch(1);
+        
+        class DeleteZnodeContext {
+            boolean success = false;
+            
+            void setSuccess() {
+                success = true;
+            }
+        }
+        
+        final DeleteZnodeContext ctx = new DeleteZnodeContext();
+        
+        class DeleteZnodeVoidCallback implements VoidCallback {
+            @Override
+            public void processResult(int rc, String path, Object ctx) {
+                switch(KeeperException.Code.get(rc)) {
+                    case OK:
+                    {
+                        ((DeleteZnodeContext)ctx).setSuccess();
+                        log.info("ZK[" + path + "] -&gt; Deleted !!!");
+                        signal.countDown();
+                        break;
+                    }
+                    case NONODE:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Does not Exists !!!");
+                        signal.countDown();
+                        break;
+                    }
+                    case CONNECTIONLOSS:
+                    case SESSIONEXPIRED:
+                    case SESSIONMOVED:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc));
+                        try {
+                            zk.delete(path,
+                                      -1,
+                                      new DeleteZnodeVoidCallback(),
+                                      ctx);
+                        }
+                        catch (Exception ex) {
+                            log.error("asyncDeleteZnode: Exception", ex);
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc) + ", Failed !!!");
+                        signal.countDown();
+                        break;
+                    }
+                }
+            }
+        }
+        
+        zk.delete(path,
+                  -1,
+                  new DeleteZnodeVoidCallback(),
+                  ctx);
+        
+        try {
+            signal.await();
+        }
+        catch (InterruptedException ex) {
+        }
+        
+        return ctx.success;
+    }</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The asynchronous version of the <span class="bold">delete()</span>
+        call takes four parameters.</p>
+      <p>The first parameter is the path to the <span class="bold">znode</span>.</p>
+      <p>The second parameter is the matching version from the metadata
+        information of the <span class="bold">znode</span>. We use a value of
+        -1 to match any version.</p>
+      <p>The third parameter is a notification object of type <span class="hi-yellow">org.apache.zookeeper.AsyncCallback.VoidCallback</span>.
+        The result (success or failure) of the deletion of the <span class="bold">znode</span>
+        is notified via a call to the <span class="hi-green">processResult()</span>
+        method.</p>
+      <p>The fourth parameter is a user defined context object which when
+        specified will be returned in the notification call to <span class="bold">processResult()</span>.</p>
+      <p>In our case, we have defined both the context object and the
+        notification callback as inner classes inside the method.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Java code puts together all the functionality we explored
+        thus far into a helper class called <span class="hi-yellow">ZkHelper</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.14</legend>
+      <pre>/*
+ * 
+ * Name:   ZkHelper
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   05/24/2014
+ * 
+ */
+
+package com.polarsparc.zookeeper;
+
+import java.util.List;
+import java.util.ArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.Date;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.zookeeper.AsyncCallback.StringCallback;
+import org.apache.zookeeper.AsyncCallback.StatCallback;
+import org.apache.zookeeper.AsyncCallback.ChildrenCallback;
+import org.apache.zookeeper.AsyncCallback.DataCallback;
+import org.apache.zookeeper.AsyncCallback.VoidCallback;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.data.Stat;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.ZooDefs;
+import org.apache.zookeeper.ZooKeeper;
+
+public final class ZkHelper {
+    private static final Logger log = LoggerFactory.getLogger(ZkHelper.class);
+    
+    // ----- Setup Connection to ZooKeeper -----
+    
+    final static ZooKeeper connect(String hostPortList, int sessionTimeout)
+        throws Exception {
+        CountDownLatch signal = new CountDownLatch(1);
+        
+        ZooKeeper zk = new ZooKeeper(hostPortList, sessionTimeout, (WatchedEvent event) -&gt; {
+            if (event.getState() == Watcher.Event.KeeperState.SyncConnected) {
+                log.info("ZK[" + hostPortList + "] -&gt; Connected !!!");
+                signal.countDown();
+            }
+        });
+        
+        signal.await();
+        
+        return zk;
+    }
+    
+    // ----- Create a Znode (Persistent or Ephemeral) -----
+    
+    final static boolean createZnode(ZooKeeper zk, CreateMode mode, String path, byte[] data) {
+        boolean success = false;
+        
+        try {
+            zk.create(path,
+                      data,
+                      ZooDefs.Ids.OPEN_ACL_UNSAFE,
+                      mode);
+            success = true;
+        }
+        catch (InterruptedException | KeeperException ex) {
+            log.error("createZnode: Exception", ex);
+        }
+        
+        return success;
+    }
+    
+    final static boolean asyncCreateZnode(ZooKeeper zk, CreateMode mode, String path, byte[] data) {
+        CountDownLatch signal = new CountDownLatch(1);
+        
+        class CreateZnodeContext {
+            boolean success = false;
+            CreateMode type;
+            byte[] data;
+
+            CreateZnodeContext(CreateMode type, byte[] data) {
+                this.type = type;
+                this.data = data;
+            }
+            
+            void setSuccess() {
+                success = true;
+            }
+        }
+        
+        final CreateZnodeContext ctx = new CreateZnodeContext(mode, data);
+        
+        class CreateZnodeStringCallback implements StringCallback {
+            @Override
+            public void processResult(int rc, String path, Object ctx, String name) {
+                switch(KeeperException.Code.get(rc)) {
+                    case OK:
+                    {
+                        ((CreateZnodeContext)ctx).setSuccess();
+                        log.info("ZK[" + path + "] -&gt; Created !!!");
+                        signal.countDown();
+                        break;
+                    }
+                    case NODEEXISTS:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Already Exists !!!");
+                        signal.countDown();
+                        break;
+                    }
+                    case CONNECTIONLOSS:
+                    case SESSIONEXPIRED:
+                    case SESSIONMOVED:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc) + ", Will Retry !!!");
+                        try {
+                            zk.create(path,
+                                      ((CreateZnodeContext)ctx).data,
+                                      ZooDefs.Ids.OPEN_ACL_UNSAFE,
+                                      ((CreateZnodeContext)ctx).type,
+                                      new CreateZnodeStringCallback(),
+                                      ctx);
+                        }
+                        catch (Exception ex) {
+                            log.error("asyncCreateZnode: Exception", ex);
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc) + ", Failed !!!");
+                        signal.countDown();
+                        break;
+                    }
+                }
+            }
+        }
+        
+        zk.create(path,
+                  ctx.data,
+                  ZooDefs.Ids.OPEN_ACL_UNSAFE,
+                  ctx.type,
+                  new CreateZnodeStringCallback(),
+                  ctx);
+        
+        try {
+            signal.await();
+        }
+        catch (InterruptedException ex) {
+        }
+        
+        return ctx.success;
+    }
+    
+    // ----- Check for Znode Existence and Get Stats -----
+    
+    final static boolean checkZnode(ZooKeeper zk, String path, Watcher watcher) {
+        boolean success = false;
+        
+        try {
+            Stat stat = zk.exists(path,
+                                  watcher);
+            if (stat != null) {
+                success = true;
+                log.info("ZK[" + path + "] -&gt; Exists, Stat: {ctime = " + new Date(stat.getCtime())
+                    + ", mtime = " + new Date(stat.getMtime())
+                    + ", version = " + stat.getVersion() + "}");
+            }
+        }
+        catch (InterruptedException | KeeperException ex) {
+            log.error("checkZnode: Exception", ex);
+        }
+        
+        return success;
+    }
+    
+    final static boolean asyncCheckZnode(ZooKeeper zk, String path, Watcher watcher) {
+        CountDownLatch signal = new CountDownLatch(1);
+        
+        class CheckZnodeContext {
+            boolean success = false;
+            
+            void setSuccess() {
+                success = true;
+            }
+        }
+        
+        final CheckZnodeContext ctx = new CheckZnodeContext();
+        
+        class CheckZnodeStatCallback implements StatCallback {
+            @Override
+            public void processResult(int rc, String path, Object ctx, Stat stat) {
+                switch(KeeperException.Code.get(rc)) {
+                    case OK:
+                    {
+                        ((CheckZnodeContext)ctx).setSuccess();
+                        log.info("ZK[" + path + "] -&gt; Exists, Stat: {ctime = " + new Date(stat.getCtime())
+                            + ", mtime = " + new Date(stat.getMtime())
+                            + ", version = " + stat.getVersion() + "}");
+                        signal.countDown();
+                        break;
+                    }
+                    case NONODE:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Does not Exists !!!");
+                        signal.countDown();
+                        break;
+                    }
+                    case CONNECTIONLOSS:
+                    case SESSIONEXPIRED:
+                    case SESSIONMOVED:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc));
+                        try {
+                            zk.exists(path,
+                                      watcher,
+                                      new CheckZnodeStatCallback(),
+                                      ctx);
+                        }
+                        catch (Exception ex) {
+                            log.error("asyncCheckZnode: Exception", ex);
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc) + ", Failed !!!");
+                        signal.countDown();
+                        break;
+                    }
+                }
+            }
+        }
+        
+        zk.exists(path,
+                  watcher,
+                  new CheckZnodeStatCallback(),
+                  ctx);
+        
+        try {
+            signal.await();
+        }
+        catch (InterruptedException ex) {
+        }
+        
+        return ctx.success;
+    }
+    
+    // ----- Get Children from Existing Znode -----
+    
+    final static List&lt;String&gt; getZnodeChildren(ZooKeeper zk, String path, Watcher watcher) {
+        List&lt;String&gt; children = null;
+        
+        try {
+            children = zk.getChildren(path,
+                                      watcher);
+        }
+        catch (InterruptedException | KeeperException ex) {
+            log.error("getZnodeChildren: Exception", ex);
+        }
+        
+        return children;
+    }
+    
+    final static List&lt;String&gt; asyncGetZnodeChildren(ZooKeeper zk, String path, Watcher watcher) {
+        CountDownLatch signal = new CountDownLatch(1);
+        
+        final List&lt;String&gt; children = new ArrayList&lt;&gt;();
+        
+        class GetZnodeChildrenCallback implements ChildrenCallback {
+            @Override
+            public void processResult(int rc, String path, Object ctx, List&lt;String&gt; list) {
+                switch(KeeperException.Code.get(rc)) {
+                    case OK:
+                    {
+                        if (list != null) {
+                            children.addAll(list);
+                        }
+                        log.info("ZK[" + path + "] -&gt; Children: " + list);
+                        signal.countDown();
+                        break;
+                    }
+                    case NONODE:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Does not Exists !!!");
+                        signal.countDown();
+                        break;
+                    }
+                    case CONNECTIONLOSS:
+                    case SESSIONEXPIRED:
+                    case SESSIONMOVED:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc));
+                        try {
+                            zk.getChildren(path,
+                                           watcher,
+                                           new GetZnodeChildrenCallback(),
+                                           null);
+                        }
+                        catch (Exception ex) {
+                            log.error("asyncGetZnodeChildren: Exception", ex);
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc) + ", Failed !!!");
+                        signal.countDown();
+                        break;
+                    }
+                }
+            }
+        }
+        
+        zk.getChildren(path,
+                       watcher,
+                       new GetZnodeChildrenCallback(),
+                       null);
+        
+        try {
+            signal.await();
+        }
+        catch (InterruptedException ex) {
+        }
+        
+        return children;
+    }
+    
+    // ----- Get Data from Existing Znode -----
+    
+    final static String getDataZnode(ZooKeeper zk, String path) {
+        String data = null;
+        
+        try {
+            Stat stat = new Stat();
+            
+            byte[] ba = zk.getData(path,
+                                   false,
+                                   stat);
+            if (ba != null) {
+                data = new String(ba);
+            }
+        }
+        catch (InterruptedException | KeeperException ex) {
+            log.error("getDataZnode: Exception", ex);
+        }
+        
+        return data;
+    }
+    
+    final static String asyncGetDataZnode(ZooKeeper zk, String path) {
+        CountDownLatch signal = new CountDownLatch(1);
+        
+        class GetDataZnodeContext {
+            String data = null;
+            
+            void setData(String data) {
+                this.data = data;
+            }
+        }
+        
+        final GetDataZnodeContext ctx = new GetDataZnodeContext();
+        
+        class GetZnodeDataCallback implements DataCallback {
+            @Override
+            public void processResult(int rc, String path, Object ctx, byte[] data, Stat stat)  {
+                switch(KeeperException.Code.get(rc)) {
+                    case OK:
+                    {
+                        ((GetDataZnodeContext)ctx).setData(new String(data));
+                        log.info("ZK[" + path + "] -&gt; Exists, Data = " + new String(data));
+                        signal.countDown();
+                        break;
+                    }
+                    case NONODE:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Does not Exists !!!");
+                        signal.countDown();
+                        break;
+                    }
+                    case CONNECTIONLOSS:
+                    case SESSIONEXPIRED:
+                    case SESSIONMOVED:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc));
+                        try {
+                            zk.getData(path,
+                                       false,
+                                       new GetZnodeDataCallback(),
+                                       ctx);
+                        }
+                        catch (Exception ex) {
+                            log.error("asyncGetDataZnode: Exception", ex);
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc) + ", Failed !!!");
+                        signal.countDown();
+                        break;
+                    }
+                }
+            }
+        }
+    
+        zk.getData(path,
+                   false,
+                   new GetZnodeDataCallback(),
+                   ctx);
+        
+        try {
+            signal.await();
+        }
+        catch (InterruptedException ex) {
+        }
+        
+        return ctx.data;
+    }
+    
+    // ----- Set Data for an Existing Znode -----
+    
+    final static boolean setDataZnode(ZooKeeper zk, String path, byte[] data) {
+        boolean success = false;
+        
+        try {
+            Stat stat = zk.setData(path,
+                                   data,
+                                   -1);
+            if (stat != null) {
+                success = true;
+            }
+        }
+        catch (InterruptedException | KeeperException ex) {
+            log.error("setDataZnode: Exception", ex);
+        }
+        
+        return success;
+    }
+    
+    final static boolean asyncSetDataZnode(ZooKeeper zk, String path, byte[] data) {
+        CountDownLatch signal = new CountDownLatch(1);
+        
+        class SetZnodeDataContext {
+            boolean success = false;
+            
+            void setSuccess() {
+                success = true;
+            }
+        }
+        
+        final SetZnodeDataContext ctx = new SetZnodeDataContext();
+        
+        class SetZnodeDataCallback implements StatCallback {
+            @Override
+            public void processResult(int rc, String path, Object ctx, Stat stat) {
+                switch(KeeperException.Code.get(rc)) {
+                    case OK:
+                    {
+                        ((SetZnodeDataContext)ctx).setSuccess();
+                        log.info("ZK[" + path + "] -&gt; Exists, Stat: {ctime = " + new Date(stat.getCtime())
+                            + ", mtime = " + new Date(stat.getMtime())
+                            + ", version = " + stat.getVersion() + "}");
+                        signal.countDown();
+                        break;
+                    }
+                    case NONODE:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Does not Exists !!!");
+                        signal.countDown();
+                        break;
+                    }
+                    case CONNECTIONLOSS:
+                    case SESSIONEXPIRED:
+                    case SESSIONMOVED:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc));
+                        try {
+                            zk.setData(path,
+                                       data,
+                                       -1,
+                                       new SetZnodeDataCallback(),
+                                       ctx);
+                        }
+                        catch (Exception ex) {
+                            log.error("asyncSetDataZnode: Exception", ex);
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc) + ", Failed !!!");
+                        signal.countDown();
+                        break;
+                    }
+                }
+            }
+        }
+    
+        zk.setData(path,
+                   data,
+                   -1,
+                   new SetZnodeDataCallback(),
+                   ctx);
+        
+        try {
+            signal.await();
+        }
+        catch (InterruptedException ex) {
+        }
+        
+        return ctx.success;
+    }
+    
+    // ----- Delete an Existing Znode -----
+    
+    final static boolean deleteZnode(ZooKeeper zk, String path) {
+        boolean success = false;
+        
+        try {
+            zk.delete(path,
+                      -1);
+            
+            success = true;
+        }
+        catch (InterruptedException | KeeperException ex) {
+            log.error("deleteZnode: Exception", ex);
+        }
+        
+        return success;
+    }
+    
+    final static boolean asyncDeleteZnode(ZooKeeper zk, String path) {
+        CountDownLatch signal = new CountDownLatch(1);
+        
+        class DeleteZnodeContext {
+            boolean success = false;
+            
+            void setSuccess() {
+                success = true;
+            }
+        }
+        
+        final DeleteZnodeContext ctx = new DeleteZnodeContext();
+        
+        class DeleteZnodeVoidCallback implements VoidCallback {
+            @Override
+            public void processResult(int rc, String path, Object ctx) {
+                switch(KeeperException.Code.get(rc)) {
+                    case OK:
+                    {
+                        ((DeleteZnodeContext)ctx).setSuccess();
+                        log.info("ZK[" + path + "] -&gt; Deleted !!!");
+                        signal.countDown();
+                        break;
+                    }
+                    case NONODE:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Does not Exists !!!");
+                        signal.countDown();
+                        break;
+                    }
+                    case CONNECTIONLOSS:
+                    case SESSIONEXPIRED:
+                    case SESSIONMOVED:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc));
+                        try {
+                            zk.delete(path,
+                                      -1,
+                                      new DeleteZnodeVoidCallback(),
+                                      ctx);
+                        }
+                        catch (Exception ex) {
+                            log.error("asyncDeleteZnode: Exception", ex);
+                        }
+                        break;
+                    }
+                    default:
+                    {
+                        log.info("ZK[" + path + "] -&gt; Code = " + KeeperException.Code.get(rc) + ", Failed !!!");
+                        signal.countDown();
+                        break;
+                    }
+                }
+            }
+        }
+        
+        zk.delete(path,
+                  -1,
+                  new DeleteZnodeVoidCallback(),
+                  ctx);
+        
+        try {
+            signal.await();
+        }
+        catch (InterruptedException ex) {
+        }
+        
+        return ctx.success;
+    }
+    
+    // ----- Close Connection to ZooKeeper -----
+    
+    final static void close(ZooKeeper zk)
+        throws Exception {
+        zk.close();
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The following Java client tests the synchronous version of the <span class="bold">ZooKeeper</span>
+        primitives defined in the class <span class="bold">ZkHelper</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.15</legend>
+      <pre>/*
+ * 
+ * Name:   ZNodeTests
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   05/24/2014
+ * 
+ */
+
+package com.polarsparc.zookeeper;
+
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.WatchedEvent;
+
+// ----- Usage -----
+// java com.polarsparc.zookeeper.ZNodeTests &lt;host-port-list&gt;
+//
+public class ZNodeTests {
+    private static final int SESSION_TIMEOUT = 10000;
+    private static final String ppath = "/mytest";
+    private static final String spath1 = "/mytest/child-1";
+    private static final String spath2 = "/mytest/child-2";
+    private static final String tpath = "/mytmp";
+    private static final byte[] data = "".getBytes();
+    private static final byte[] data2 = "hello".getBytes();
+    
+    private static final Logger log = LoggerFactory.getLogger(ZNodeTests.class);
+    
+    // ----- Main Method -----
+    
+    public static void main(String[] args) {
+        if (args.length != 1) {
+            System.out.printf("Specify &lt;host-port-list&gt;\n");
+            System.exit(1);
+        }
+        
+        try {
+            ZooKeeper zk = ZkHelper.connect(args[0], SESSION_TIMEOUT);
+            
+            boolean status = ZkHelper.createZnode(zk, CreateMode.PERSISTENT, ppath, data);
+            
+            log.info("Create ZNode " + ppath + " Status = " + status);
+            
+            status = ZkHelper.checkZnode(zk, ppath, (WatchedEvent event) -&gt; {
+                if (event.getType() == Watcher.Event.EventType.NodeDataChanged) {
+                    log.info("-----&gt; Data at znode " + event.getPath() + " changed &lt;-----");
+                }
+            });
+            
+            log.info("Check ZNode " + ppath + " Status = " + status);
+            
+            ZkHelper.createZnode(zk, CreateMode.PERSISTENT, spath1, data);
+            ZkHelper.createZnode(zk, CreateMode.PERSISTENT, spath2, data);
+            
+            List&lt;String&gt; children = ZkHelper.getZnodeChildren(zk, ppath, null);
+            
+            log.info("Get ZNode " + ppath + " Children = " + children);
+            
+            String str = ZkHelper.getDataZnode(zk, ppath);
+            
+            log.info("Get ZNode " + ppath + " Data = " + str);
+            
+            status = ZkHelper.setDataZnode(zk, ppath, data2);
+            
+            log.info("Set ZNode Data " + ppath + " Status = " + status);
+            
+            status = ZkHelper.deleteZnode(zk, spath2);
+            
+            log.info("Delete ZNode " + spath2 + " Status = " + status);
+            
+            status = ZkHelper.deleteZnode(zk, spath1);
+            
+            log.info("Delete ZNode " + spath1 + " Status = " + status);
+            
+            status = ZkHelper.deleteZnode(zk, ppath);
+            
+            log.info("Delete ZNode " + ppath + " Status = " + status);
+            
+            status = ZkHelper.createZnode(zk, CreateMode.EPHEMERAL, tpath, data);
+            
+            log.info("Create ZNode " + tpath + " Status = " + status);
+            
+            ZkHelper.close(zk);
+        }
+        catch (Exception ex) {
+            log.error("ZNodeTests.main(): Exception", ex);
+        }
+    }
+}
+</pre> </fieldset>
+    <div id="para-div">
+      <p>Executing the above Java code will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>2014-05-24 23:19:17 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:zookeeper.version=3.4.6-1569965, built on 02/20/2014 09:09 GMT
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:host.name=my-host
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.version=1.8.0_05
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.vendor=Oracle Corporation
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.home=/usr/lib/jvm/java-8-oracle/jre
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.class.path=/home/zkuser/zookeeper/resources:/home/zkuser/zookeeper/lib/jline-0.9.94.jar:/home/zkuser/zookeeper/lib/log4j-1.2.16.jar:/home/zkuser/zookeeper/lib/netty-3.7.0.Final.jar:/home/zkuser/zookeeper/lib/slf4j-api-1.6.1.jar:/home/zkuser/zookeeper/lib/slf4j-log4j12-1.6.1.jar:/home/zkuser/zookeeper/lib/zookeeper-3.4.6.jar:/home/zkuser/zookeeper/build/classes
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.library.path=/usr/lib/jvm/java-8-oracle/jre/lib/amd64:/usr/lib/jvm/java-8-oracle/jre/lib/i386::/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.io.tmpdir=/tmp
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.compiler=&lt;NA&gt;
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.name=Linux
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.arch=amd64
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.version=3.13.0-27-generic
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.name=zkuser
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.home=/home/zkuser
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.dir=/home/zkuser/zookeeper
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZooKeeper:438 - Initiating client connection, connectString=192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181 sessionTimeout=10000 watcher=com.polarsparc.zookeeper.ZkHelper$$Lambda$1/758705033@4d76f3f8
+2014-05-24 23:19:17 &lt;main-SendThread(192.168.1.1:2181)&gt; INFO  ClientCnxn:975 - Opening socket connection to server 192.168.1.1/192.168.1.1:2181. Will not attempt to authenticate using SASL (unknown error)
+2014-05-24 23:19:17 &lt;main-SendThread(192.168.1.1:2181)&gt; INFO  ClientCnxn:852 - Socket connection established to 192.168.1.1/192.168.1.1:2181, initiating session
+2014-05-24 23:19:17 &lt;main-SendThread(192.168.1.1:2181)&gt; INFO  ClientCnxn:1235 - Session establishment complete on server 192.168.1.1/192.168.1.1:2181, sessionid = 0x14648a673e00001, negotiated timeout = 10000
+2014-05-24 23:19:17 &lt;main-EventThread&gt; INFO  ZkHelper:45 - ZK[192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181] -&gt; Connected !!!
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZNodeTests:50 - Create ZNode /mytest Status = true
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZkHelper:165 - ZK[/mytest] -&gt; Exists, Stat: {ctime = Sat May 24 23:19:17 EDT 2014, mtime = Sat May 24 23:19:17 EDT 2014, version = 0}
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZNodeTests:58 - Check ZNode /mytest Status = true
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZNodeTests:65 - Get ZNode /mytest Children = [child-2, child-1]
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZNodeTests:69 - Get ZNode /mytest Data = 
+2014-05-24 23:19:17 &lt;main-EventThread&gt; INFO  ZNodeTests:54 - -----&gt; Data at znode /mytest changed &lt;-----
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZNodeTests:73 - Set ZNode Data /mytest Status = true
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZNodeTests:77 - Delete ZNode /mytest/child-2 Status = true
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZNodeTests:81 - Delete ZNode /mytest/child-1 Status = true
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZNodeTests:85 - Delete ZNode /mytest Status = true
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZNodeTests:89 - Create ZNode /mytmp Status = true
+2014-05-24 23:19:17 &lt;main&gt; INFO  ZooKeeper:684 - Session: 0x14648a673e00001 closed
+2014-05-24 23:19:17 &lt;main-EventThread&gt; INFO  ClientCnxn:512 - EventThread shut down</pre>
+    </div>
+    <div id="para-div">
+      <p>The following Java client tests the asynchronous version of the <span
+          class="bold">ZooKeeper</span> primitives defined in the class <span class="bold">ZkHelper</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.16</legend>
+      <pre>/*
+ * 
+ * Name:   ZNodeAsyncTests
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   05/24/2014
+ * 
+ */
+
+package com.polarsparc.zookeeper;
+
+import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.WatchedEvent;
+
+// ----- Usage -----
+// java com.polarsparc.zookeeper.ZNodeAsyncTests &lt;host-port-list&gt;
+//
+public class ZNodeAsyncTests {
+    private static final int SESSION_TIMEOUT = 10000;
+    private static final String ppath = "/mytest";
+    private static final String spath1 = "/mytest/child-1";
+    private static final String spath2 = "/mytest/child-2";
+    private static final String tpath = "/mytmp";
+    private static final byte[] data = "".getBytes();
+    private static final byte[] data2 = "hello".getBytes();
+    
+    private static final Logger log = LoggerFactory.getLogger(ZNodeAsyncTests.class);
+    
+    // ----- Main Method -----
+    
+    public static void main(String[] args) {
+        if (args.length != 1) {
+            System.out.printf("Specify &lt;host-port-list&gt;\n");
+            System.exit(1);
+        }
+        
+        try {
+            ZooKeeper zk = ZkHelper.connect(args[0], SESSION_TIMEOUT);
+            
+            boolean status = ZkHelper.asyncCreateZnode(zk, CreateMode.PERSISTENT, ppath, data);
+            
+            log.info("Create ZNode " + ppath + " Status = " + status);
+            
+            status = ZkHelper.asyncCheckZnode(zk, ppath, (WatchedEvent event) -&gt; {
+                if (event.getType() == Watcher.Event.EventType.NodeDataChanged) {
+                    log.info("-----&gt; Data at znode " + event.getPath() + " changed &lt;-----");
+                }
+            });
+            
+            log.info("Check ZNode " + ppath + " Status = " + status);
+            
+            ZkHelper.asyncCreateZnode(zk, CreateMode.PERSISTENT, spath1, data);
+            ZkHelper.asyncCreateZnode(zk, CreateMode.PERSISTENT, spath2, data);
+            
+            List&lt;String&gt; children = ZkHelper.asyncGetZnodeChildren(zk, ppath, null);
+            
+            log.info("Get ZNode " + ppath + " Children = " + children);
+            
+            String str = ZkHelper.asyncGetDataZnode(zk, ppath);
+            
+            log.info("Get ZNode " + ppath + " Data = " + str);
+            
+            status = ZkHelper.asyncSetDataZnode(zk, ppath, data2);
+            
+            log.info("Set ZNode Data " + ppath + " Status = " + status);
+            
+            status = ZkHelper.asyncDeleteZnode(zk, spath2);
+            
+            log.info("Delete ZNode " + spath2 + " Status = " + status);
+            
+            status = ZkHelper.asyncDeleteZnode(zk, spath1);
+            
+            log.info("Delete ZNode " + spath1 + " Status = " + status);
+            
+            status = ZkHelper.asyncDeleteZnode(zk, ppath);
+            
+            log.info("Delete ZNode " + ppath + " Status = " + status);
+            
+            status = ZkHelper.asyncCreateZnode(zk, CreateMode.EPHEMERAL, tpath, data);
+            
+            log.info("Create ZNode " + tpath + " Status = " + status);
+            
+            ZkHelper.close(zk);
+        }
+        catch (Exception ex) {
+            log.error("ZNodeAsyncTests.main(): Exception", ex);
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the above Java code will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>2014-05-24 23:19:53 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:zookeeper.version=3.4.6-1569965, built on 02/20/2014 09:09 GMT
+2014-05-24 23:19:53 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:host.name=my-host
+2014-05-24 23:19:53 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.version=1.8.0_05
+2014-05-24 23:19:53 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.vendor=Oracle Corporation
+2014-05-24 23:19:53 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.home=/usr/lib/jvm/java-8-oracle/jre
+2014-05-24 23:19:53 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.class.path=/home/zkuser/zookeeper/resources:/home/zkuser/zookeeper/lib/jline-0.9.94.jar:/home/zkuser/zookeeper/lib/log4j-1.2.16.jar:/home/zkuser/zookeeper/lib/netty-3.7.0.Final.jar:/home/zkuser/zookeeper/lib/slf4j-api-1.6.1.jar:/home/zkuser/zookeeper/lib/slf4j-log4j12-1.6.1.jar:/home/zkuser/zookeeper/lib/zookeeper-3.4.6.jar:/home/zkuser/zookeeper/build/classes
+2014-05-24 23:19:53 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.library.path=/usr/lib/jvm/java-8-oracle/jre/lib/amd64:/usr/lib/jvm/java-8-oracle/jre/lib/i386::/usr/java/packages/lib/amd64:/usr/lib64:/lib64:/lib:/usr/lib
+2014-05-24 23:19:53 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.io.tmpdir=/tmp
+2014-05-24 23:19:53 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:java.compiler=&lt;NA&gt;
+2014-05-24 23:19:53 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.name=Linux
+2014-05-24 23:19:53 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.arch=amd64
+2014-05-24 23:19:53 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:os.version=3.13.0-27-generic
+2014-05-24 23:19:53 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.name=zkuser
+2014-05-24 23:19:53 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.home=/home/zkuser
+2014-05-24 23:19:53 &lt;main&gt; INFO  ZooKeeper:100 - Client environment:user.dir=/home/zkuser/zookeeper
+2014-05-24 23:19:53 &lt;main&gt; INFO  ZooKeeper:438 - Initiating client connection, connectString=192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181 sessionTimeout=10000 watcher=com.polarsparc.zookeeper.ZkHelper$$Lambda$1/758705033@4d76f3f8
+2014-05-24 23:19:53 &lt;main-SendThread(192.168.1.2:2181)&gt; INFO  ClientCnxn:975 - Opening socket connection to server 192.168.1.2/192.168.1.2:2181. Will not attempt to authenticate using SASL (unknown error)
+2014-05-24 23:19:53 &lt;main-SendThread(192.168.1.2:2181)&gt; INFO  ClientCnxn:852 - Socket connection established to 192.168.1.2/192.168.1.2:2181, initiating session
+2014-05-24 23:19:53 &lt;main-SendThread(192.168.1.2:2181)&gt; INFO  ClientCnxn:1235 - Session establishment complete on server 192.168.1.2/192.168.1.2:2181, sessionid = 0x24648a66eba0000, negotiated timeout = 10000
+2014-05-24 23:19:53 &lt;main-EventThread&gt; INFO  ZkHelper:45 - ZK[192.168.1.1:2181,192.168.1.2:2181,192.168.1.3:2181] -&gt; Connected !!!
+2014-05-24 23:19:53 &lt;main-EventThread&gt; INFO  ZkHelper:101 - ZK[/mytest] -&gt; Created !!!
+2014-05-24 23:19:53 &lt;main&gt; INFO  ZNodeAsyncTests:50 - Create ZNode /mytest Status = true
+2014-05-24 23:19:53 &lt;main-EventThread&gt; INFO  ZkHelper:197 - ZK[/mytest] -&gt; Exists, Stat: {ctime = Sat May 24 23:19:53 EDT 2014, mtime = Sat May 24 23:19:53 EDT 2014, version = 0}
+2014-05-24 23:19:53 &lt;main&gt; INFO  ZNodeAsyncTests:58 - Check ZNode /mytest Status = true
+2014-05-24 23:19:53 &lt;main-EventThread&gt; INFO  ZkHelper:101 - ZK[/mytest/child-1] -&gt; Created !!!
+2014-05-24 23:19:53 &lt;main-EventThread&gt; INFO  ZkHelper:101 - ZK[/mytest/child-2] -&gt; Created !!!
+2014-05-24 23:19:54 &lt;main-EventThread&gt; INFO  ZkHelper:279 - ZK[/mytest] -&gt; Children: [child-2, child-1]
+2014-05-24 23:19:54 &lt;main&gt; INFO  ZNodeAsyncTests:65 - Get ZNode /mytest Children = [child-2, child-1]
+2014-05-24 23:19:54 &lt;main-EventThread&gt; INFO  ZkHelper:371 - ZK[/mytest] -&gt; Exists, Data = 
+2014-05-24 23:19:54 &lt;main&gt; INFO  ZNodeAsyncTests:69 - Get ZNode /mytest Data = 
+2014-05-24 23:19:54 &lt;main-EventThread&gt; INFO  ZNodeAsyncTests:54 - -----&gt; Data at znode /mytest changed &lt;-----
+2014-05-24 23:19:54 &lt;main-EventThread&gt; INFO  ZkHelper:461 - ZK[/mytest] -&gt; Exists, Stat: {ctime = Sat May 24 23:19:54 EDT 2014, mtime = Sat May 24 23:19:54 EDT 2014, version = 1}
+2014-05-24 23:19:54 &lt;main&gt; INFO  ZNodeAsyncTests:73 - Set ZNode Data /mytest Status = true
+2014-05-24 23:19:54 &lt;main-EventThread&gt; INFO  ZkHelper:553 - ZK[/mytest/child-2] -&gt; Deleted !!!
+2014-05-24 23:19:54 &lt;main&gt; INFO  ZNodeAsyncTests:77 - Delete ZNode /mytest/child-2 Status = true
+2014-05-24 23:19:54 &lt;main-EventThread&gt; INFO  ZkHelper:553 - ZK[/mytest/child-1] -&gt; Deleted !!!
+2014-05-24 23:19:54 &lt;main&gt; INFO  ZNodeAsyncTests:81 - Delete ZNode /mytest/child-1 Status = true
+2014-05-24 23:19:54 &lt;main-EventThread&gt; INFO  ZkHelper:553 - ZK[/mytest] -&gt; Deleted !!!
+2014-05-24 23:19:54 &lt;main&gt; INFO  ZNodeAsyncTests:85 - Delete ZNode /mytest Status = true
+2014-05-24 23:19:54 &lt;main-EventThread&gt; INFO  ZkHelper:101 - ZK[/mytmp] -&gt; Created !!!
+2014-05-24 23:19:54 &lt;main&gt; INFO  ZNodeAsyncTests:89 - Create ZNode /mytmp Status = true
+2014-05-24 23:19:54 &lt;main&gt; INFO  ZooKeeper:684 - Session: 0x24648a66eba0000 closed
+2014-05-24 23:19:54 &lt;main-EventThread&gt; INFO  ClientCnxn:512 - EventThread shut down</pre>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/Messaging/ZooKeeper-1.html" target="_blank"><span class="bold">Exploring
+            Apache ZooKeeper :: Part-1</span></a></p>
+    </div>
+  </body>
+</html>

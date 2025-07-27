@@ -1,0 +1,875 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+  <title>Exploring Apache Kafka - Part 2</title>
+  <link rel="stylesheet" type="text/css" href="../css/polarsparc-v2.0.css"/>
+</head>
+<body>
+  <br />
+  <div id="title-div">
+    <p>Exploring Apache Kafka - Part 2</p>
+  </div>
+  <br/>
+  <table id="ad-table">
+    <tbody>
+      <tr>
+        <td class="author-td">Bhaskar S</td>
+        <td class="date-td">03/24/2018</td>
+      </tr>
+    </tbody>
+  </table>
+  <hr class="line-hr" /> <br />
+  <div id="step-div">
+    <p>Overview</p>
+  </div>
+  <div id="para-div">
+    <p>In <a href="http://polarsparc.github.io/Messaging/Kafka-1.html" target="_blank"><span class="bold">Part-1</span></a>
+      of this series, we setup <span class="bold">Apache Kafka</span> using <span class="bold">Docker</span> and
+      demonstrated the messaging semantics using the provided command-line tools for the <span class="bold">Producer</span>
+      and the <span class="bold">Consumer</span>.</p>
+    <p>In this article, we will leverage the Java <span class="bold">Producer</span> API and the Java <span class="bold">Consumer</span>
+      API to implement a <span class="bold">Producer</span> and a <span class="bold">Consumer</span> to demonstrate the messaging
+      semantics.</p>
+  </div>
+  <div id="step-div">
+    <p>Setup</p>
+  </div>
+  <div id="para-div">
+    <p>Ensure that the directories <span class="hi-yellow">logs</span>, <span class="hi-yellow">kafka/data</span>, and
+      <span class="hi-yellow">zk/data</span> under <span class="bold">/home/alice</span> are all cleaned up for a fresh start.</p>
+  </div>
+  <div id="para-div">
+    <p>Create the directories called <span class="hi-yellow">classes</span>, <span class="hi-yellow">lib</span>, and
+      <span class="hi-yellow">src</span> under <span class="bold">/home/alice</span> by executing the following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>mkdir -p classes lib src</p>
+  </div>
+  <div id="para-div">
+    <p>Since we will be implementing the code for the <span class="bold">Producer</span> and the <span class="bold">Consumer</span>
+      in Java (for demonstration purposes), we need to download some dependent JARs. Download and copy the following JAR files to
+      the directory <span class="bold">/home/alice/lib</span>:</p>
+  </div>
+  <div id="para-div">
+    <ul id="blue-sqr-ul">
+      <li>
+        <p><a href="http://central.maven.org/maven2/org/slf4j/slf4j-api/1.7.25/slf4j-api-1.7.25.jar" target="_blank">
+             <span class="hi-bold">slf4j-api-1.7.25.jar</span></a></p>
+      </li>
+      <li>
+        <p><a href="http://central.maven.org/maven2/org/slf4j/slf4j-api/1.7.25/slf4j-simple-1.7.25.jar" target="_blank">
+             <span class="hi-bold">slf4j-simple-1.7.25.jar</span></a></p>
+      </li>
+      <li>
+        <p><a href="http://central.maven.org/maven2/commons-beanutils/commons-beanutils/1.9.3/commons-beanutils-1.9.3.jar" target="_blank">
+             <span class="hi-bold">commons-beanutils-1.9.3.jar</span></a></p>
+      </li>
+      <li>
+        <p><a href="http://central.maven.org/maven2/org/apache/commons/commons-configuration2/2.2/commons-configuration2-2.2.jar" target="_blank">
+             <span class="hi-bold">commons-configuration2-2.2.jar</span></a></p>
+      </li>
+      <li>
+        <p><a href="http://central.maven.org/maven2/org/apache/commons/commons-lang3/3.6/commons-lang3-3.6.jar" target="_blank">
+             <span class="hi-bold">commons-lang3-3.6.jar</span></a></p>
+      </li>
+      <li>
+        <p><a href="http://central.maven.org/maven2/commons-logging/commons-logging/1.2/commons-logging-1.2.jar" target="_blank">
+             <span class="hi-bold">commons-logging-1.2.jar</span></a></p>
+      </li>
+      <li>
+        <p><a href="http://central.maven.org/maven2/org/apache/kafka/kafka-clients/1.0.0/kafka-clients-1.0.0.jar" target="_blank">
+             <span class="hi-bold">kafka-clients-1.0.0.jar</span></a></p>
+      </li>
+    </ul>
+    <p>Before continuing further, ensure that the <span class="bold">ZooKeeper</span> and the <span class="bold">Kafka Broker</span>
+      instances are up and running.</p>
+  </div>
+  <div id="step-div">
+    <p>Hands-on with Kafka Producer/Consumer using Java</p>
+  </div>
+  <div id="para-div">
+    <p>The following are the contents of the properties file called <span class="bold">kafka_producer.properties</span>:</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>kafka_producer.properties</legend>
+    <pre>#
+# Kafka producer properties
+#
+
+bootstrap.servers = localhost:20001
+key.serializer = org.apache.kafka.common.serialization.StringSerializer
+value.serializer = org.apache.kafka.common.serialization.StringSerializer
+acks = 1
+producer.topic = MyTestMessages</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>The following Java class called <span class="bold">MyKafkaProducerApp</span> implements our <span class="bold">Producer</span>:</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>MyKafkaProducerApp.java</legend>
+    <pre>/*
+ * Name:        MyKafkaProducerApp
+ * 
+ * Description: A simple Kafka message producer that publishes messages to a specified topic
+ * 
+ */
+
+package com.polarsparc.Kafka;
+
+import java.io.File;
+import java.util.Properties;
+
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.builder.fluent.Configurations;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Kafka Producer
+ *
+ */
+public class MyKafkaProducerApp 
+{
+    public static void main( String[] args )
+    {
+        if (args.length != 2) {
+            System.out.printf("Usage: java %s &lt;count&gt; &lt;prefix&gt;\n", MyKafkaProducerApp.class.getName());
+            System.exit(1);
+        }
+        
+        final String PROPERTIES_FILE = "kafka_producer.properties";
+        
+        Logger logger = LoggerFactory.getLogger(MyKafkaProducerApp.class);
+        
+        /* Determine the count of message to publish to Kafka */
+        int count = 0;
+        try {
+            count = Integer.parseInt(args[0]);
+            if (count &lt;= 0) {
+                count = 10;
+            }
+        }
+        catch (Exception ex) {
+            logger.warn("Invalid &lt;count&gt; value - using default 10");
+            count = 10;
+        }
+        
+        logger.info("Message count = " + count);
+        
+        Configuration config = null;
+        
+        Configurations configs = new Configurations();
+        try {
+            config = configs.properties(new File(PROPERTIES_FILE));
+        }
+        catch (Exception ex) {
+            logger.error("Error loading " + PROPERTIES_FILE, ex);
+            System.exit(1);
+        }
+        
+        /* Initialize the properties from kafka_producer.properties */
+        Properties props = new Properties();
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                config.getString(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG));
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
+                config.getString(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG));
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
+                config.getString(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG));
+        props.put(ProducerConfig.ACKS_CONFIG,
+                config.getString(ProducerConfig.ACKS_CONFIG));
+        
+        /* Create an instance of a kafka producer */
+        Producer&lt;String, String&gt; producer = new KafkaProducer&lt;&gt;(props);
+        
+        for (int i = 0; i &lt; count; i++) {
+            /* Create an instance of ProducerRecord using the Topic name, the key, and the message content */
+            ProducerRecord&lt;String, String&gt; record = new ProducerRecord&lt;&gt;(config.getString("producer.topic"), 
+                    String.valueOf(i), args[1] + " - " + (i+1));
+            
+            /* Send the data record to kafka */
+            try {
+                producer.send(record).get();
+            }
+            catch (Exception ex) {
+                logger.error("Error sending message ["+i+"]", ex);
+            }
+        }
+        
+        /* Close the kafka producer */
+        producer.close();
+    }
+}</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>Let us explain and understand some of the classes/methods used in the <span class="bold">MyKafkaProducerApp</span>
+      code shown above.</p>
+    <p>The class <span class="hi-yellow">org.apache.commons.configuration2.builder.fluent.Configurations</span> is an utility
+      class used for creating configuration objects. It simplifies reading of configuration data from different sources. In our
+      example, we are accessing a properties file for creating a configuration object.</p>
+    <p>The interface <span class="hi-yellow">org.apache.commons.configuration2.Configuration</span> provides a common
+      abstraction for accessing and manipulating the configuration object.</p>
+    <p>The interface <span class="hi-yellow">org.apache.kafka.clients.producer.Producer</span> provides a common abstraction
+      for a Kafka producer.</p>
+    <p>The class <span class="hi-yellow">org.apache.kafka.clients.producer.ProducerConfig</span> encapsulates the various
+      Kafka producer configuration options as <span class="bold">java.lang.String</span> constants.</p>
+    <p>The property <span class="hi-blue">ProducerConfig.BOOTSTRAP_SERVERS_CONFIG</span> allows one to specify a comma-separated
+      list of Kafka brokers as host:port pairs. In our case, we have one Kafka broker at <span class="bold">localhost:20001</span>.</p>
+    <p>The property <span class="hi-blue">ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG</span> allows one to specify the serializer
+      class for the key associated with the published message. In our case, we are using a <span class="bold">java.lang.String</span>
+      based key and hence use <span class="bold">org.apache.kafka.common.serialization.StringSerializer</span>.</p>
+    <p>The property <span class="hi-blue">ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG</span> allows one to specify the serializer
+      class for the data value associated with the published message. In our case, we are using a <span class="bold">java.lang.String</span>
+      based data value and hence use <span class="bold">org.apache.kafka.common.serialization.StringSerializer</span>.</p>
+    <p>The property <span class="hi-blue">ProducerConfig.ACKS_CONFIG</span> allows one to control when a sent message is
+      considered published. A value of <span class="bold">1</span> indicates acknowledgement from one Kafka broker.</p>
+    <p>The class <span class="hi-yellow">org.apache.kafka.clients.producer.ProducerRecord</span> represents a data record
+      that is sent to the Kafka broker for persistence and distribution. It consists of a topic name, an associated key,
+      and a data value. In our article, this is what is referred to as the message published by a Kafka producer.</p>
+    <p>The class <span class="hi-yellow">org.apache.kafka.clients.producer.KafkaProducer</span> is the Kafka publishing
+      client for sending data records (also referred to as messages) to the Kafka broker. The <span class="hi-green">send()</span>
+      method is asynchronous and returns immediately with a <span class="bold">java.util.concurrent.Future</span> object.
+      The <span class="hi-green">get()</span> method on the Future object will block till the send request completes.</p>
+  </div>
+  <div id="para-div">
+    <p>To run our simple Kafka message producer to publish 10 messages, execute the <span class="bold">java</span> command
+      as shown below:</p>
+  </div>
+  <div id="cmd-div">
+    <p>java -cp ./classes:./lib/commons-beanutils-1.9.3.jar:./lib/commons-configuration2-2.2.jar:./lib/commons-lang3-3.6.jar:./lib/commons-logging-1.2.jar:./lib/kafka-clients-1.0.0.jar:./lib/slf4j-api-1.7.25.jar:./lib/slf4j-simple-1.7.25.jar com.polarsparc.Kafka.MyKafkaProducerApp 10 "Java Producer Msgs"</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.1</h4>
+    <pre>[main] INFO com.polarsparc.Kafka.MyKafkaProducerApp - Message count = 10
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka version : 1.0.0
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka commitId : aaa7af6d4a11b29d
+[main] INFO org.apache.kafka.clients.producer.KafkaProducer - [Producer clientId=producer-1] Closing the Kafka producer with timeoutMillis = 9223372036854775807 ms.</pre>
+  </div>
+  <div id="para-div">
+    <p>To verify the test messages have been published to the <span class="bold">Kafka Topic</span> called
+      <span class="bold">MyTestMessages</span>, execute the following docker command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>docker run -it --rm --net=host confluentinc/cp-kafka:4.0.0-3 kafka-console-consumer --bootstrap-server localhost:20001 --topic MyTestMessages --group mycmdtest --from-beginning</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.2</h4>
+    <pre>Java Producer Msgs - 1
+Java Producer Msgs - 2
+Java Producer Msgs - 3
+Java Producer Msgs - 4
+Java Producer Msgs - 5
+Java Producer Msgs - 6
+Java Producer Msgs - 7
+Java Producer Msgs - 8
+Java Producer Msgs - 9
+Java Producer Msgs - 10</pre>
+  </div>
+  <div id="para-div">
+    <p>The following are the contents of the properties file called <span class="bold">kafka_consumer.properties</span>:</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>kafka_consumer.properties</legend>
+    <pre>#
+# Kafka consumer properties
+#
+
+bootstrap.servers = localhost:20001
+key.deserializer = org.apache.kafka.common.serialization.StringDeserializer
+value.deserializer = org.apache.kafka.common.serialization.StringDeserializer
+consumer.topic = MyTestMessages
+group.id = mytestgroup
+auto.offset.reset = earliest
+enable.auto.commit = true
+consumer.start.beginning = true</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>The following Java class called <span class="bold">MyKafkaConsumerApp</span> implements our <span class="bold">Consumer</span>:</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>MyKafkaConsumerApp.java</legend>
+    <pre>/*
+ * Name:        MyKafkaConsumerApp
+ * 
+ * Description: A simple Kafka message consumer that subscribes messages from a specified topic
+ * 
+ */
+
+package com.polarsparc.Kafka;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.builder.fluent.Configurations;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Kafka Consumer
+ *
+ */
+public class MyKafkaConsumerApp {
+    public static void main(String[] args) {
+        final String PROPERTIES_FILE = "kafka_consumer.properties";
+        
+        Logger logger = LoggerFactory.getLogger(MyKafkaConsumerApp.class);
+        
+        Configuration config = null;
+        
+        Configurations configs = new Configurations();
+        try {
+            config = configs.properties(new File(PROPERTIES_FILE));
+        }
+        catch (Exception ex) {
+            logger.error("Error loading " + PROPERTIES_FILE, ex);
+            System.exit(1);
+        }
+        
+        /* Initialize the properties from kafka_consumer.properties */
+        Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                config.getString(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG));
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                config.getString(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG));
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                config.getString(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG));
+        props.put(ConsumerConfig.GROUP_ID_CONFIG,
+                config.getString(ConsumerConfig.GROUP_ID_CONFIG));
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+                config.getString(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG));
+        
+        /* Create an instance of a kafka consumer */
+        Consumer&lt;String, String&gt; consumer = new KafkaConsumer&lt;&gt;(props);
+        
+        /* Initialize the list of topic(s) to subscribe to */
+        List&lt;String&gt; topics = new ArrayList&lt;&gt;();
+        topics.add(config.getString("consumer.topic"));
+        
+        /* Subscribe to the desired topics */
+        consumer.subscribe(topics);
+        
+        try {
+            for (int cnt = 0; cnt &lt; 10; cnt++) {
+                /* Poll for a set of ConsumerRecord instances */
+                ConsumerRecords&lt;String, String&gt; records = consumer.poll(1000);
+                
+                /* Display the messages */
+                records.forEach(rec -&gt; {
+                    logger.info("Partition: " + rec.partition() + ", Offset: " + rec.offset() + ", Value: " + rec.value());
+                });
+            }
+        }
+        catch (Exception ex) {
+            logger.error("Error receiving message(s)", ex);
+        }
+        
+        consumer.close();
+    }
+}</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>Let us explain and understand some of the classes/methods used in the <span class="bold">MyKafkaConsumerApp</span>
+      code shown above.</p>
+    <p>The interface <span class="hi-yellow">org.apache.kafka.clients.consumer.Consumer</span> provides a common abstraction
+      for a Kafka consumer.</p>
+    <p>The class <span class="hi-yellow">org.apache.kafka.clients.consumer.ConsumerConfig</span> encapsulates the various
+      Kafka consumer configuration options as <span class="bold">java.lang.String</span> constants.</p>
+    <p>The property <span class="hi-blue">ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG</span> allows one to specify a comma-separated
+      list of Kafka brokers as host:port pairs. In our case, we have one Kafka broker at <span class="bold">localhost:20001</span>.</p>
+    <p>The property <span class="hi-blue">ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG</span> allows one to specify the deserializer
+      class for the key associated with the messages to be consumed. In our case, we are using a <span class="bold">java.lang.String</span>
+      based key and hence use <span class="bold">org.apache.kafka.common.serialization.StringDeserializer</span>.</p>
+    <p>The property <span class="hi-blue">ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG</span> allows one to specify the deserializer
+      class for the data value associated with the messages to be consumed. In our case, we are using a <span class="bold">java.lang.String</span>
+      based data value and hence use <span class="bold">org.apache.kafka.common.serialization.StringDeserializer</span>.</p>
+    <p>The property <span class="hi-blue">ConsumerConfig.GROUP_ID_CONFIG</span> allows one to specify the consumer group
+      name this Kafka consumer belongs to. In our case, we are using the name <span class="bold">mytestgroup</span>.</p>
+    <p>The property <span class="hi-blue">ConsumerConfig.AUTO_OFFSET_RESET_CONFIG</span> allows one to specify the action to
+      take when the Kafka consumer is started for the very first time (there is no committed offset(s) for the consumer). In our case,
+      we have specified a value of <span class="bold">earliest</span> indicating we want to consume messages from the beginning.</p>
+    <p>The class <span class="hi-yellow">org.apache.kafka.clients.consumer.ConsumerRecords</span> represents a collection of data
+      records received from the Kafka broker for every poll by the Kafka consumer.</p>
+    <p>The class <span class="hi-yellow">org.apache.kafka.clients.consumer.KafkaConsumer</span> is the Kafka subscribing
+      client for receiving data records (also referred to as messages) from the Kafka broker. The <span class="hi-green">poll(interval)</span>
+      method fetches data records from the Kafka partition(s) of the specified topic(s) in batches. If there are no more data records,
+      it will timeout in the specified interval. By default, the offset(s) for the partition(s) of the specified topic(s) are
+      automatically updated in the Kafka broker when the <span class="bold">poll(interval)</span> method returns.</p>
+  </div>
+  <div id="para-div">
+    <p>To run our simple Kafka message consumer, execute the <span class="bold">java</span> command as shown below:</p>
+  </div>
+  <div id="cmd-div">
+    <p>java -cp ./classes:./lib/commons-beanutils-1.9.3.jar:./lib/commons-configuration2-2.2.jar:./lib/commons-lang3-3.6.jar:./lib/commons-logging-1.2.jar:./lib/kafka-clients-1.0.0.jar:./lib/slf4j-api-1.7.25.jar:./lib/slf4j-simple-1.7.25.jar com.polarsparc.Kafka.MyKafkaConsumerApp</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.3</h4>
+    <pre>[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka version : 1.0.0
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka commitId : aaa7af6d4a11b29d
+[main] INFO org.apache.kafka.clients.consumer.internals.AbstractCoordinator - [Consumer clientId=consumer-1, groupId=mytestgroup] Discovered coordinator localhost:20001 (id: 2147483646 rack: null)
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-1, groupId=mytestgroup] Revoking previously assigned partitions []
+[main] INFO org.apache.kafka.clients.consumer.internals.AbstractCoordinator - [Consumer clientId=consumer-1, groupId=mytestgroup] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.AbstractCoordinator - [Consumer clientId=consumer-1, groupId=mytestgroup] Successfully joined group with generation 1
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-1, groupId=mytestgroup] Setting newly assigned partitions [MyTestMessages-0]
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp - Partition: 0, Offset: 0, Value: Java Producer Msgs - 1
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp - Partition: 0, Offset: 1, Value: Java Producer Msgs - 2
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp - Partition: 0, Offset: 2, Value: Java Producer Msgs - 3
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp - Partition: 0, Offset: 3, Value: Java Producer Msgs - 4
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp - Partition: 0, Offset: 4, Value: Java Producer Msgs - 5
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp - Partition: 0, Offset: 5, Value: Java Producer Msgs - 6
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp - Partition: 0, Offset: 6, Value: Java Producer Msgs - 7
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp - Partition: 0, Offset: 7, Value: Java Producer Msgs - 8
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp - Partition: 0, Offset: 8, Value: Java Producer Msgs - 9
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp - Partition: 0, Offset: 9, Value: Java Producer Msgs - 10</pre>
+  </div>
+  <div id="para-div">
+    <p>If we re-run our simple Kafka message consumer again, we will not see any messages (not even the ones from the very beginning).
+      This is because the current committed offset for our simple Kafka consumer is at 10 from the previous run.</p>
+  </div>
+  <div id="para-div">
+    <p>To verify the current offset for our consumer group called <span class="bold">mytestgroup</span>, execute the following docker command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>docker run --rm --net=host confluentinc/cp-kafka:4.0.0-3 kafka-consumer-groups --bootstrap-server localhost:20001 --describe --group mytestgroup</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.4</h4>
+    <pre>Note: This will not show information about old Zookeeper-based consumers.
+
+Consumer group 'mytestgroup' has no active members.
+
+TOPIC                          PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG        CONSUMER-ID                                       HOST                           CLIENT-ID
+MyTestMessages                 0          10              10              0          -                                                 -                              -</pre>
+  </div>
+  <div id="para-div">
+    <p>In order to support the ability to subscribe to all the messages (from the very beginning), we will need to add logic to reset
+      the Kafka topic partition(s) offset to the beginning (offset 0).</p>
+  </div>
+  <div id="para-div">
+    <p>The following Java class called <span class="bold">MyKafkaConsumerApp2</span> implements our <span class="bold">Consumer</span>
+      with the ability to subscribe to messages from the beginning of Kafka topic(s):</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>MyKafkaConsumerApp2.java</legend>
+    <pre>/*
+ * Name:        MyKafkaConsumerApp2
+ * 
+ * Description: A simple Kafka message consumer that subscribes messages from a specified topic
+ *              with the ability to rewind offset(s)
+ * 
+ */
+
+package com.polarsparc.Kafka;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
+
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.builder.fluent.Configurations;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Kafka Consumer
+ *
+ */
+public class MyKafkaConsumerApp2 {
+    public static void main(String[] args) {
+        final String PROPERTIES_FILE = "kafka_consumer.properties";
+        
+        Logger logger = LoggerFactory.getLogger(MyKafkaConsumerApp2.class);
+        
+        Configuration config = null;
+        
+        Configurations configs = new Configurations();
+        try {
+            config = configs.properties(new File(PROPERTIES_FILE));
+        }
+        catch (Exception ex) {
+            logger.error("Error loading " + PROPERTIES_FILE, ex);
+            System.exit(1);
+        }
+        
+        /* Determine if start from beginning */
+        boolean beginning = false;
+        try {
+            beginning = Boolean.parseBoolean(config.getString("consumer.start.beginning"));
+        }
+        catch (Exception ex) {
+            logger.warn("Invalid &lt;consumer.start.beginning&gt; value - using default false");
+            beginning = false;
+        }
+        
+        logger.info("Consumer start from beginning = " + beginning);
+        
+        /* Initialize the properties from kafka_consumer.properties */
+        Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                config.getString(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG));
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                config.getString(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG));
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                config.getString(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG));
+        props.put(ConsumerConfig.GROUP_ID_CONFIG,
+                config.getString(ConsumerConfig.GROUP_ID_CONFIG));
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+                config.getString(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG));
+        
+        Set&lt;Integer&gt; partitionSet = new HashSet&lt;&gt;();
+        
+        /* Create an instance of a kafka consumer */
+        Consumer&lt;String, String&gt; consumer = new KafkaConsumer&lt;&gt;(props);
+        
+        /* Initialize the list of topic(s) to subscribe to */
+        List&lt;String&gt; topics = new ArrayList&lt;&gt;();
+        topics.add(config.getString("consumer.topic"));
+        
+        logger.info("Subscribed topics: " + topics);
+        
+        /* Subscribe to the desired topics with callback */
+        consumer.subscribe(topics, new ConsumerRebalanceListener() {
+            @Override
+            public void onPartitionsRevoked(Collection&lt;TopicPartition&gt; partitions) {
+                partitions.forEach(par -&gt; {
+                    logger.info("REVOKED -&gt; Topic: " + par.topic() + ", Partition: " + par.partition());
+                    
+                    partitionSet.remove(par.partition());
+                });
+            }
+
+            @Override
+            public void onPartitionsAssigned(Collection&lt;TopicPartition&gt; partitions) {
+                partitions.forEach(par -&gt; {
+                    logger.info("ASSIGNED -&gt; Topic: " + par.topic() + ", Partition: " + par.partition());
+                    
+                    partitionSet.add(par.partition());
+                });
+            }
+        });
+        
+        try {
+            boolean once = true;
+            
+            for (int cnt = 0; cnt &lt; 10; cnt++) {
+                /* Poll for a set of ConsumerRecord instances */
+                ConsumerRecords&lt;String, String&gt; records = consumer.poll(1000);
+                
+                if (beginning) {
+                    if (once) {
+                        String topic = config.getString("consumer.topic");
+                        
+                        partitionSet.forEach(par -&gt; {
+                            /* Set the topic partition offset to beginning */
+                            consumer.seek(new TopicPartition(topic, par), 0);
+                        });
+                        
+                        once = false;
+                    }
+                }
+                
+                /* Display the messages */
+                records.forEach(rec -&gt; {
+                    logger.info("Partition: " + rec.partition() + ", Offset: " + rec.offset() + ", Value: " + rec.value());
+                });
+            }
+        }
+        catch (Exception ex) {
+            logger.error("Error receiving message(s)", ex);
+        }
+        
+        consumer.close();
+    }
+}</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>Let us explain and understand some of the classes/methods used in the <span class="bold">MyKafkaConsumerApp2</span>
+      code shown above.</p>
+    <p>The class <span class="hi-yellow">org.apache.kafka.common.TopicPartition</span> is a holder that wraps the Kafka
+      topic name and a Kafka topic partition number.</p>
+    <p>The interface <span class="hi-yellow">org.apache.kafka.clients.consumer.ConsumerRebalanceListener</span> provides a
+      callback mechanism for the Kafka broker to notify the Kafka consumer of the assignments and revocations of the various
+      Kafka topic(s) and their partition(s). Since Kafka is managing the consumer group membership, Kafka topic partition
+      assignment/revocation can be triggered if the consumers in a group change (new consumers added or existing consumers
+      exit).</p>
+    <p>The <span class="hi-green">seek(TopicPartition, offset)</span> method allows one to manually reset the offset corresponding
+      to a Kafka topic and partition.</p>
+  </div>
+  <div id="para-div">
+    <p>To run our simple Kafka message consumer (with the ability to start from the beginning), execute the <span class="bold">java</span>
+      command as shown below:</p>
+  </div>
+  <div id="cmd-div">
+    <p>java -cp ./classes:./lib/commons-beanutils-1.9.3.jar:./lib/commons-configuration2-2.2.jar:./lib/commons-lang3-3.6.jar:./lib/commons-logging-1.2.jar:./lib/kafka-clients-1.0.0.jar:./lib/slf4j-api-1.7.25.jar:./lib/slf4j-simple-1.7.25.jar com.polarsparc.Kafka.MyKafkaConsumerApp2</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.5</h4>
+    <pre>[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka version : 1.0.0
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka commitId : aaa7af6d4a11b29d
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp2 - Subscribed topics: [MyTestMessages]
+[main] INFO org.apache.kafka.clients.consumer.internals.AbstractCoordinator - [Consumer clientId=consumer-1, groupId=mytestgroup] Discovered coordinator localhost:20001 (id: 2147483646 rack: null)
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-1, groupId=mytestgroup] Revoking previously assigned partitions []
+[main] INFO org.apache.kafka.clients.consumer.internals.AbstractCoordinator - [Consumer clientId=consumer-1, groupId=mytestgroup] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.AbstractCoordinator - [Consumer clientId=consumer-1, groupId=mytestgroup] Successfully joined group with generation 5
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-1, groupId=mytestgroup] Setting newly assigned partitions [MyTestMessages-0]
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp2 - ASSIGNED -> Topic: MyTestMessages, Partition: 0
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp2 - Partition: 0, Offset: 0, Value: Java Producer Msgs - 1
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp2 - Partition: 0, Offset: 1, Value: Java Producer Msgs - 2
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp2 - Partition: 0, Offset: 2, Value: Java Producer Msgs - 3
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp2 - Partition: 0, Offset: 3, Value: Java Producer Msgs - 4
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp2 - Partition: 0, Offset: 4, Value: Java Producer Msgs - 5
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp2 - Partition: 0, Offset: 5, Value: Java Producer Msgs - 6
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp2 - Partition: 0, Offset: 6, Value: Java Producer Msgs - 7
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp2 - Partition: 0, Offset: 7, Value: Java Producer Msgs - 8
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp2 - Partition: 0, Offset: 8, Value: Java Producer Msgs - 9
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp2 - Partition: 0, Offset: 9, Value: Java Producer Msgs - 10</pre>
+  </div>
+  <div id="para-div">
+    <p>As indicated earlier, by default, Kafka implicitly commits offsets for consumers once the <span class="bold">poll()</span>
+      method completes. In some use-cases, it may be desirable for the consumer application to explicitly commit offsets after
+      successful processing of data records.</p>
+  </div>
+  <div id="para-div">
+    <p>The following Java class called <span class="bold">MyKafkaConsumerApp3</span> implements our <span class="bold">Consumer</span>
+      with the ability to explicitly commit message offsets:</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>MyKafkaConsumerApp3.java</legend>
+    <pre>/*
+ * Name:        MyKafkaConsumerApp3
+ * 
+ * Description: A simple Kafka message consumer that subscribes messages from a specified topic
+ *              with the ability to explicitly commit offset(s)
+ * 
+ */
+
+package com.polarsparc.Kafka;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
+
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.builder.fluent.Configurations;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Kafka Consumer
+ *
+ */
+public class MyKafkaConsumerApp3 {
+    public static void main(String[] args) {
+        final String PROPERTIES_FILE = "kafka_consumer.properties";
+        
+        Logger logger = LoggerFactory.getLogger(MyKafkaConsumerApp3.class);
+        
+        Configuration config = null;
+        
+        Configurations configs = new Configurations();
+        try {
+            config = configs.properties(new File(PROPERTIES_FILE));
+        }
+        catch (Exception ex) {
+            logger.error("Error loading " + PROPERTIES_FILE, ex);
+            System.exit(1);
+        }
+        
+        /* Determine if start from beginning */
+        boolean beginning = false;
+        try {
+            beginning = Boolean.parseBoolean(config.getString("consumer.start.beginning"));
+        }
+        catch (Exception ex) {
+            logger.warn("Invalid &lt;consumer.start.beginning&gt; value - using default false");
+            beginning = false;
+        }
+        
+        logger.info("Consumer start from beginning = " + beginning);
+        
+        /* Initialize the properties from kafka_consumer.properties */
+        Properties props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                config.getString(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG));
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
+                config.getString(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG));
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+                config.getString(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG));
+        props.put(ConsumerConfig.GROUP_ID_CONFIG,
+                config.getString(ConsumerConfig.GROUP_ID_CONFIG));
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+                config.getString(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG));
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
+                config.getString(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG));
+        
+        Set&lt;Integer&gt; partitionSet = new HashSet&lt;&gt;();
+        
+        /* Create an instance of a kafka consumer */
+        Consumer&lt;String, String&gt; consumer = new KafkaConsumer&lt;&gt;(props);
+        
+        /* Initialize the list of topic(s) to subscribe to */
+        List&lt;String&gt; topics = new ArrayList&lt;&gt;();
+        topics.add(config.getString("consumer.topic"));
+        
+        logger.info("Subscribed topics: " + topics);
+        
+        /* Subscribe to the desired topics with callback */
+        consumer.subscribe(topics, new ConsumerRebalanceListener() {
+            @Override
+            public void onPartitionsRevoked(Collection&lt;TopicPartition&gt; partitions) {
+                partitions.forEach(par -&gt; {
+                    logger.info("REVOKED -&gt; Topic: " + par.topic() + ", Partition: " + par.partition());
+                    
+                    partitionSet.remove(par.partition());
+                });
+            }
+
+            @Override
+            public void onPartitionsAssigned(Collection&lt;TopicPartition&gt; partitions) {
+                partitions.forEach(par -&gt; {
+                    logger.info("ASSIGNED -&gt; Topic: " + par.topic() + ", Partition: " + par.partition());
+                    
+                    partitionSet.add(par.partition());
+                });
+            }
+        });
+        
+        try {
+            boolean once = true;
+            
+            for (int cnt = 0; cnt &lt; 10; cnt++) {
+                /* Poll for a set of ConsumerRecord instances */
+                ConsumerRecords&lt;String, String&gt; records = consumer.poll(1000);
+                
+                if (beginning) {
+                    if (once) {
+                        String topic = config.getString("consumer.topic");
+                        
+                        partitionSet.forEach(par -&gt; {
+                            /* Set the topic partition offset to beginning */
+                            consumer.seek(new TopicPartition(topic, par), 0);
+                        });
+                        
+                        once = false;
+                    }
+                }
+                
+                /* Display the messages */
+                records.forEach(rec -&gt; {
+                    logger.info("Partition: " + rec.partition() + ", Offset: " + rec.offset() + ", Value: " + rec.value());
+                });
+                
+                /* Explicitly commit offset(s) to Kafka - Synchronous blocking call */
+                consumer.commitSync();
+            }
+        }
+        catch (Exception ex) {
+            logger.error("Error receiving message(s)", ex);
+        }
+        
+        consumer.close();
+    }
+}</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>Let us explain and understand some of the classes/methods used in the <span class="bold">MyKafkaConsumerApp3</span>
+      code shown above.</p>
+    <p>Setting the property <span class="hi-blue">ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG</span> to <span class="bold">false</span>
+      allows one to turn-off the default behavior of Kafka, which implicitly commits offsets on behalf of consumers, after a successful
+      invocation of the <span class="bold">poll()</span> method.</p>
+    <p>The <span class="hi-green">commitSync()</span> method allows one to explicitly commit the offset(s) corresponding to
+      Kafka topic(s) and partition(s). This is a synchronous blocking call.</p>
+  </div>
+  <div id="para-div">
+    <p>Run the simple Kafka message producer to publish 10 more messages by executing the <span class="bold">java</span> command
+      as shown below:</p>
+  </div>
+  <div id="cmd-div">
+    <p>java -cp ./classes:./lib/commons-beanutils-1.9.3.jar:./lib/commons-configuration2-2.2.jar:./lib/commons-lang3-3.6.jar:./lib/commons-logging-1.2.jar:./lib/kafka-clients-1.0.0.jar:./lib/slf4j-api-1.7.25.jar:./lib/slf4j-simple-1.7.25.jar com.polarsparc.Kafka.MyKafkaProducerApp 10 "Java Producer Msgs (2nd)"</p>
+  </div>
+  <div id="para-div">
+    <p>Modify the value of the property <span class="bold">enable.auto.commit</span> from <span class="bold">true</span> to
+      <span class="hi-yellow">false</span> in the properties file <span class="bold">kafka_consumer.properties</span>.</p>
+    <p>Now run our simple Kafka message consumer (with the ability to explicitly commit offsets) by executing the <span class="bold">java</span>
+      command as shown below:</p>
+  </div>
+  <div id="cmd-div">
+    <p>java -cp ./classes:./lib/commons-beanutils-1.9.3.jar:./lib/commons-configuration2-2.2.jar:./lib/commons-lang3-3.6.jar:./lib/commons-logging-1.2.jar:./lib/kafka-clients-1.0.0.jar:./lib/slf4j-api-1.7.25.jar:./lib/slf4j-simple-1.7.25.jar com.polarsparc.Kafka.MyKafkaConsumerApp3</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.6</h4>
+    <pre>[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp3 - Consumer start from beginning = false
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka version : 1.0.0
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka commitId : aaa7af6d4a11b29d
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp3 - Subscribed topics: [MyTestMessages]
+[main] INFO org.apache.kafka.clients.consumer.internals.AbstractCoordinator - [Consumer clientId=consumer-1, groupId=mytestgroup] Discovered coordinator localhost:20001 (id: 2147483646 rack: null)
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-1, groupId=mytestgroup] Revoking previously assigned partitions []
+[main] INFO org.apache.kafka.clients.consumer.internals.AbstractCoordinator - [Consumer clientId=consumer-1, groupId=mytestgroup] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.AbstractCoordinator - [Consumer clientId=consumer-1, groupId=mytestgroup] Successfully joined group with generation 11
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-1, groupId=mytestgroup] Setting newly assigned partitions [MyTestMessages-0]
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp3 - ASSIGNED -> Topic: MyTestMessages, Partition: 0
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp3 - Partition: 0, Offset: 10, Value: Java Producer Msgs (2nd) - 1
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp3 - Partition: 0, Offset: 11, Value: Java Producer Msgs (2nd) - 2
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp3 - Partition: 0, Offset: 12, Value: Java Producer Msgs (2nd) - 3
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp3 - Partition: 0, Offset: 13, Value: Java Producer Msgs (2nd) - 4
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp3 - Partition: 0, Offset: 14, Value: Java Producer Msgs (2nd) - 5
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp3 - Partition: 0, Offset: 15, Value: Java Producer Msgs (2nd) - 6
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp3 - Partition: 0, Offset: 16, Value: Java Producer Msgs (2nd) - 7
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp3 - Partition: 0, Offset: 17, Value: Java Producer Msgs (2nd) - 8
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp3 - Partition: 0, Offset: 18, Value: Java Producer Msgs (2nd) - 9
+[main] INFO com.polarsparc.Kafka.MyKafkaConsumerApp3 - Partition: 0, Offset: 19, Value: Java Producer Msgs (2nd) - 10</pre>
+  </div>
+  <div id="step-div">
+    <p>References</p>
+  </div>
+  <div id="para-div">
+    <p><a href="https://polarsparc.github.io/Messaging/Kafka-1.html" target="_blank"><span class="bold">Exploring Apache Kafka - Part 1</span></a></p>
+    <p><a href="https://docs.confluent.io/current/" target="_blank"><span class="bold">Confluent Apache Kafka</span></a></p>
+    <p><a href="http://polarsparc.github.io/Docker/Docker.html" target="_blank"><span class="bold">Introduction to Docker</span></a></p>
+    <p><a href="https://polarsparc.github.io/Messaging/ZooKeeper-1.html" target="_blank"><span class="bold">Exploring Apache ZooKeeper :: Part-1</span></a></p>
+    <p><a href="https://polarsparc.github.io/Messaging/ZooKeeper-2.html" target="_blank"><span class="bold">Exploring Apache ZooKeeper :: Part-2</span></a></p>
+    <p><a href="https://polarsparc.github.io/Messaging/ZooKeeper-3.html" target="_blank"><span class="bold">Exploring Apache ZooKeeper :: Part-3</span></a></p>
+  </div>
+</body>
+</html>

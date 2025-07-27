@@ -1,0 +1,572 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="Java CompletableFuture :: Part 1" content="author: Bhaskar.S, category: java">
+    <title>Java CompletableFuture :: Part 1</title>
+    <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Java CompletableFuture :: Part 1</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">10/26/2018</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="para-div">
+      <p>Straight-through business process(es) typically involve multiple step(s) and todays Enterprises have many of 
+      	them. Some of those step(s) could be time consuming and hence performed in parallel (asynchronously) and some
+      	in sequential (synchronous) fashion. In other words, a straight-through business process can be thought as a
+        pipeline of task(s), some of which could be executed in parallel.</p>
+      <p>In Java, one could perform those asynchronous step(s) using <span class="bold">Thread</span>s. However, one
+      	needs to carefully plan out the orchestration of the various step(s) in the business process without blocking
+        and locking for optimal performance, which could be complex, error-prone, and difficult to reason about.</p>
+      <p>What if Java provided an out-of-the-box capability to chain a series of task(s), with some task(s) executing
+        in parallel, without one having to write complex multi-threaded code ???</p>
+      <p>Please welcome <span class="hi-yellow">CompletableFuture</span> from Java 8!!!</p>
+      <p><span class="hi-orange">NOTE</span>: that we are referring to the tasks (or steps) within a single JVM and not
+        distributed computing.</p>
+    </div>
+    <div id="para-div">
+      <p>Lets jump right into some examples to illustrate the power and intricacies of <span class="bold">
+        CompletableFuture</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is one of the simplest examples that uses <span class="bold">CompletableFuture</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.1</legend>
+      <pre>package com.polarsparc.cf.CompletableFuture;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class Sample01 {
+    public static void main(String[] args) {
+        {
+            CompletableFuture&lt;Void&gt; cf = CompletableFuture.runAsync(() -> {
+                System.out.printf("[%s] I am Cool\n", Thread.currentThread().getName());
+            });
+            
+            try {
+                cf.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+
+        {
+            CompletableFuture&lt;Void&gt; cf = CompletableFuture.supplyAsync(() -> {
+                System.out.printf("[%s] Am Awesome\n", Thread.currentThread().getName());
+                return null;
+            });
+            
+            try {
+                cf.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+    
+        {
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            
+            CompletableFuture&lt;Void&gt; cf = CompletableFuture.supplyAsync(() -> {
+                System.out.printf("[%s] And am Smart\n", Thread.currentThread().getName());
+                return null;
+            }, executor);
+            
+            executor.shutdown();
+            
+            try {
+                cf.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the program from Listing.1 will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>[ForkJoinPool.commonPool-worker-3] I am Cool
+[ForkJoinPool.commonPool-worker-3] Am Awesome
+[pool-1-thread-1] And am Smart</pre>
+    </div>
+    <div id="para-div">
+      <p>The following are some of the concepts in the context of the code in Listing.1:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">Future</span> :: An interface that represents the result of an asynchronous task which
+            may complete in the future. It provides the <span class="hi-green">get()</span> method to wait for the completion
+            of the asynchronous task and return some result</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">CompletionStage</span> :: An interface that represents the completion state of a task
+          	(or stage) in the chain (or pipeline) of tasks (may be asynchronous computations), that upon completion may
+            trigger the next task (or stage) in the chain</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">CompletableFuture</span> :: An implementation that supports a chain (or pipeline) of
+          	tasks (may be synchronous or asynchronous computations) that progresses from one task to the next, on the
+          	completion of the prior task(s). This class implements both the <span class="bold">Future</span> interface and the
+          	<span class="bold">CompletionStage</span> interface. By default, this class leverages the default fork-join thread
+            pool instantiated by the JVM for executing task(s). It provides the <span class="hi-green">get()</span> method
+            to wait for the completion of the asynchronous task and return some result</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Runnable</span> :: An interface that should be implemented by a class for it to be
+            executed in a <span class="bold">Thread</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">CompletableFuture.runAsync(Runnable)</span> :: This method takes an instance of <span
+          	class="bold">Runnable</span> that is asynchronously executed as a task using the default fork-join thread pool.
+          	The method returns an instance of <span class="bold">CompletableFuture</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Supplier&lt;T&gt;</span> :: A functional interface defined in the <span class="bold">
+            java.util.function</span> package that is implemented by a class that generates a value of type T</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">CompletableFuture.supplyAsync(Supplier&lt;T&gt;)</span> :: This method takes an instance
+            of type <span class="bold">Supplier&lt;T&gt;</span> that will supply a value of type T when the task completes.
+            The task is executed asynchronously using the default fork-join thread pool. This method returns an instance of
+            <span class="bold">CompletableFuture</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Executor</span> :: An interface that allows for execution of <span class="bold">Runnable
+            </span> tasks</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">ExecutorService</span> :: An interface that allows for asynchronous execution of tasks.
+            It extends the interface <span class="bold">Executor</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Executors</span> :: A factory class used in the creation of various types of <span
+            class="bold">ExecutorService</span> implementations</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Executors.newSingleThreadExecutor()</span> :: Allows for the creation of an <span class="bold">
+            ExecutorService</span> implementation that uses a single thread in the pool</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">CompletableFuture.supplyAsync(Supplier&lt;T&gt;, Executor)</span> :: This method takes
+            two arguments - an instance of type <span class="bold">Supplier&lt;T&gt;</span> and an instance of type <span
+            class="bold">Executor</span>. When the task completes execution, it returns a value of type T. The task is executed
+            asynchronously using the specified custom executor. This method returns an instance of <span class="bold">
+            CompletableFuture</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>As seen from Listing.1 above, there are two ways to initiate an asynchronous operation - using <span class="bold">
+        runAsync()</span> or using <span class="bold">supplyAsync()</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>In the next example, we will demonstrate the case where an asynchronous task produces some value, which can then
+        be consumed by the next task in the chain.</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.2</legend>
+      <pre>package com.polarsparc.cf.CompletableFuture;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class Sample02 {
+    public static void main(String[] args) {
+        {
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> "I am Cool");
+            CompletableFuture&lt;Void&gt; cf2 = cf1.thenAccept(msg -> 
+                System.out.printf("[1] [%s] %s and am also Awesome\n", Thread.currentThread().getName(), msg));
+            
+            try {
+                cf2.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        {
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> "I am New", executor);
+            CompletableFuture&lt;Void&gt; cf2 = cf1.thenAccept(msg -> 
+                System.out.printf("[2] [%s] %s and am also Smart\n", Thread.currentThread().getName(), msg));
+            
+            executor.shutdown();
+            
+            try {
+                cf2.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        {
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> "I am Fast");
+            CompletableFuture&lt;Void&gt; cf2 = cf1.thenAcceptAsync(msg -> 
+                System.out.printf("[3] [%s] %s and am also Elegant\n", Thread.currentThread().getName(), msg));
+            
+            try {
+                cf2.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        {
+            ExecutorService executor = Executors.newFixedThreadPool(2);
+            
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> "I am Slick", executor);
+            CompletableFuture&lt;Void&gt; cf2 = cf1.thenAcceptAsync(msg -> 
+                System.out.printf("[4] [%s] %s and am also Nimble\n", Thread.currentThread().getName(), msg),
+                executor);
+            
+            executor.shutdown();
+            
+            try {
+                cf2.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the program from Listing.2 will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>[1] [main] I am Cool and am also Awesome
+[2] [main] I am New and am also Smart
+[3] [ForkJoinPool.commonPool-worker-3] I am Fast and am also Elegant
+[4] [pool-2-thread-2] I am Slick and am also Nimble</pre>
+    </div>
+    <div id="para-div">
+      <p>Re-running the program from Listing.2 once more will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>[1] [ForkJoinPool.commonPool-worker-3] I am Cool and am also Awesome
+[2] [main] I am New and am also Smart
+[3] [ForkJoinPool.commonPool-worker-3] I am Fast and am also Elegant
+[4] [pool-2-thread-2] I am Slick and am also Nimble</pre>
+    </div>
+    <div id="para-div">
+      <p>Notice the change in the thread name of the first line between Output.2 and Output.3. We will explain that shortly
+        in the following section.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are some of the concepts in the context of the code in Listing.2:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">Consumer&lt;T&gt;</span> :: A functional interface defined in the <span class="bold">
+            java.util.function</span> package that accepts an input value of type T and does not generate any result</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Executors.newFixedThreadPool(int)</span> :: Allows for the creation of an <span class="bold">
+            ExecutorService</span> implementation that uses a fixed number of threads in the pool</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">thenAccept(Consumer&lt;T&gt;)</span> :: This method is defined on the interface <span
+            class="bold">CompletionStage</span> and accepts an instance of type <span class="bold">Consumer&lt;T&gt;</span>,
+            which consumes a value (of type T) produced by the previous stage (or task). This method is triggered upon the
+            completion of the previous stage (or task). Think of this as a callback function for the previous task to invoke
+            upon completion. The execution of the task can happen in one of the two ways - <span class="underbold">EITHER</span>
+            executed by the same thread as the prior task (or stage) from the default fork-join thread pool if the prior
+            task has not yet completed before this task <span class="underbold">OR</span> executed by the <span class="bold">
+            main</span> thread (the calling thread) if the prior task has completed execution before this task. This is the
+            reason why we see the difference between <span class="bold">Output.2</span> and <span class="bold">Output.3</span>.
+            This method returns an instance of <span class="bold">CompletionStage</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">thenAcceptAsync(Consumer&lt;T&gt;)</span> :: This method is similar to the method <span
+          	class="bold">thenAccept(Consumer&lt;T&gt;)</span>, except that the specified <span class="bold">Consumer&lt;T&gt;
+            </span> function is executed asynchronously using the default fork-join thread pool. The method returns an instance
+            of <span class="bold">CompletionStage</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">thenAcceptAsync(Consumer&lt;T&gt;, Executor)</span> :: This method is similar to the method
+          	<span class="bold">thenAcceptAsync(Consumer&lt;T&gt;)</span>, except that the specified <span class="bold">Consumer
+          	&lt;T&gt;</span> function is executed asynchronously using the specified custom executor. The method returns an
+          	instance of <span class="bold">CompletionStage</span></p>
+        </li>
+      </ul>
+    </div>
+	<div id="warn-div">
+	  <h4>CAUTION</h4>
+	  <pre>The default fork-join thread pool is used in other cases, such as, the parallel <span class="bold">Stream</span>s, etc., and is hard to<br/>customize since it is created by the JVM. It is therefore better to create and use a custom <span class="bold">Executor</span>.</pre>
+	</div>
+    <div id="para-div">
+      <p>Moving on to the next example, we will demonstrate the case where an asynchronous task produces some value,
+        which can then be consumed by the next task in the chain as input and then generate a totally different value.
+        This is similar to a <span class="hi-green">map()</span> operation on <span class="bold">Stream</span>s.</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.3</legend>
+      <pre>package com.polarsparc.cf.CompletableFuture;
+
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class Sample03 {
+    public static void main(String[] args) {
+        {
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> "I am Cool");
+            CompletableFuture&lt;String&gt; cf2 = cf1.thenApply(msg -> {
+                System.out.printf("[1] [%s] %s\n", Thread.currentThread().getName(), msg);
+                return String.format("%s and AWESOME !!!", msg);
+            });
+        
+            try {
+                String msg = cf2.get();
+                System.out.printf("[1] %s\n", msg);
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        {
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> "I am New");
+            CompletableFuture&lt;String&gt; cf2 = cf1.thenApply(msg -> {
+                System.out.printf("[2] [%s] %s\n", Thread.currentThread().getName(), msg);
+                return String.format("%s and SMART !!!", msg);
+            });
+            
+            executor.shutdown();
+            
+            try {
+                String msg = cf2.get();
+                
+                System.out.printf("[2] %s\n", msg);
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        {
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> "I am Fast");
+            CompletableFuture&lt;String&gt; cf2 = cf1.thenApplyAsync(msg -> {
+                System.out.printf("[3] [%s] %s\n", Thread.currentThread().getName(), msg);
+                return String.format("%s and ELEGANT !!!", msg);
+            });
+        
+            try {
+                String msg = cf2.get();
+                
+                System.out.printf("[3] %s\n", msg);
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        {
+            ExecutorService executor = Executors.newFixedThreadPool(2);
+            
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> "I am Slick");
+            CompletableFuture&lt;String&gt; cf2 = cf1.thenApplyAsync(msg -> {
+                System.out.printf("[4] [%s] %s\n", Thread.currentThread().getName(), msg);
+                return String.format("%s and NIMBLE !!!", msg);
+            }, executor);
+            
+            executor.shutdown();
+        
+            try {
+                String msg = cf2.get();
+                
+                System.out.printf("[4] %s\n", msg);
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the program from Listing.3 will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>[1] [ForkJoinPool.commonPool-worker-3] I am Cool
+[1] I am Cool and AWESOME !!!
+[2] [main] I am New
+[2] I am New and SMART !!!
+[3] [ForkJoinPool.commonPool-worker-3] I am Fast
+[3] I am Fast and ELEGANT !!!
+[4] [pool-2-thread-1] I am Slick
+[4] I am Slick and NIMBLE !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>The following are some of the concepts in the context of the code in Listing.3:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">Function&lt;T, U&gt;</span> :: A functional interface defined in the <span
+            class="bold">java.util.function</span> package that accepts an input value of type T and generates an output
+            result of type U. This as similar to the <span class="bold">map()</span> operation on a <span class="bold">
+            Stream</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">thenApply(Function&lt;T, U&gt;)</span> :: This method is defined on the interface <span
+            class="bold">CompletionStage</span> and accepts an instance of type <span class="bold">Function&lt;T, U&gt;</span>,
+            which consumes the value (of type T) produced by the previous stage (or task) and generates an output value of type
+            U. This method is triggered upon completion of the previous stage (or task). Think of this as a callback function
+            for the previous task to invoke upon completion. The execution of the task can happen in one of the two ways -
+            <span class="underbold">EITHER</span> executed by the same thread as the prior task (or stage) from the default
+            fork-join thread pool if the prior task has not yet completed before this task <span class="underbold">OR</span>
+            executed by the <span class="bold">main</span> thread (the calling thread) if the prior task has completed
+            execution before this task. This method returns an instance of <span class="bold">CompletionStage</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">thenApplyAsync(Function&lt;T, U&gt;)</span> :: This method is similar to the method
+            <span class="bold">thenApply(Function&lt;T, U&gt;)</span>, except that the specified <span class="bold">
+            Function&lt;T, U&gt;</span> function is executed asynchronously using the default fork-join thread pool. The
+            method returns an instance of <span class="bold">CompletionStage</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">thenApplyAsync(Function&lt;T, U&gt;, Executor)</span> :: This method is similar to the
+            method <span class="bold">thenApplyAsync(Function&lt;T, U&gt;)</span>, except that the specified <span
+            class="bold">Function&lt;T, U&gt;</span> function is executed asynchronously using the specified custom executor.
+            The method returns an instance of <span class="bold">CompletionStage</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>In the next example, we will demonstrate the case where an asynchronous task produces some value, that is then
+        consumed by a second task in the chain to produce some output, which is finally consumed by a third task in the
+        chain.</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.4</legend>
+      <pre>package com.polarsparc.cf.CompletableFuture;
+
+import java.util.concurrent.CompletableFuture;
+
+public class Sample04 {
+    public static void main(String[] args) {
+        {
+            CompletableFuture&lt;String&gt; cf1 = CompletableFuture.supplyAsync(() -> "I'm Cool");
+            CompletableFuture&lt;String&gt; cf2 = cf1.thenApply(msg -> 
+                String.format("%s and am Super AWESOME !!!", msg));
+            CompletableFuture&lt;Void&gt; cf3 = cf2.thenAccept(msg -> 
+                System.out.printf("[1] %s\n", msg));
+            
+            try {
+                cf3.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+        
+        // Fluent style
+        {
+            CompletableFuture&lt;Void&gt; cf = CompletableFuture.supplyAsync(() -> "I'm Awesome")
+                .thenApply(msg -> String.format("%s and am Super COOL !!!", msg))
+                .thenAccept(msg ->     System.out.printf("[2] %s\n", msg));
+            
+            try {
+                cf.get();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the program from Listing.4 will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>[1] I'm Cool and am Super AWESOME !!!
+[2] I'm Awesome and am Super COOL !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>The first block of code in Listing.4 shows how one can chain the tasks explicitly, while the second block shows
+        the same code in the fluent style.</p>
+    </div>
+    <div id="para-div">
+      <p>The following table summarizes the methods we covered in this article from the <span class="bold">CompletableFuture</span>
+        class:</p>
+    </div>
+    <table id="col2-table">
+      <thead><tr>
+        <th>Method</th>
+        <th>Usage Description</th>
+      </tr>
+      </thead> <tbody>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">runAsync(Runnable)</span></td>
+          <td class="col2-c2-odd">Uses an instance of <span class="bold">Runnable</span> to start the pipeline. Does not generate
+             any output value</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">supplyAsync(Supplier&lt;T&gt;)</span></td>
+          <td class="col2-c2-even">Uses an instance of <span class="bold">Supplier&lt;T&gt;</span> to start the pipeline. Generates
+            an output value of type T</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">thenAccept(Consumer&lt;T&gt;)</span></td>
+          <td class="col2-c2-odd">Uses an instance of <span class="bold">Consumer&lt;T&gt;</span> to accept a value of type T from
+            the prior task in the pipeline. Does not generate any output value</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">thenAcceptAsync(Consumer&lt;T&gt;)</span></td>
+          <td class="col2-c2-even">Uses an instance of <span class="bold">Consumer&lt;T&gt;</span> to accept a value of type T
+            from the prior task in the pipeline in an asynchronous fashion. Does not generate any output value</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">thenApply(Function&lt;T, U&gt;)</span></td>
+          <td class="col2-c2-odd">Uses an instance of <span class="bold">Function&lt;T, U&gt;</span> to accept a value of type T
+            from the prior task in the pipeline. Generates an output value of type U</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">thenApplyAsync(Function&lt;T, U&gt;)</span></td>
+          <td class="col2-c2-even">Uses an instance of <span class="bold">Function&lt;T, U&gt;</span> to accept a value of type T
+            from the prior task in the pipeline in an asynchronous fashion. Generates an output value of type U</td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>More to come in <span class="bold">Part 2</span> of this article ...</p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
