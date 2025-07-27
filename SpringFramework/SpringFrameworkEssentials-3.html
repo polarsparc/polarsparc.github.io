@@ -1,0 +1,741 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+      <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+      <meta name="author" content="Bhaskar.S">
+      <meta name="description" content="Spring Framework Core Essentials - Part 3">
+      <meta name="subject" content="Spring Framework Core Essentials - Part 3">
+      <meta name="keywords" content="java, spring">
+      <meta name="robots" content="index,follow">
+      <meta name="googlebot" content="index,follow">
+      <title>Spring Framework Core Essentials - Part 3</title>
+      <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Spring Framework Core Essentials - Part 3</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">07/19/2019</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="step-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="http://polarsparc.github.io/SpringFramework/SpringFrameworkEssentials-2.html" target="_blank"><span class="bold">
+        Part 2</span></a> of this series, we got our hands dirty with constructor injection using the 3 different approaches.</p>
+      <p>In this part, we will explore the use-case where an application bean is initialized and/or destroyed via a method
+        call using the 3 different approaches.</p>
+      <p>There will be situations where we want the state of the collaborator (dependee) object(s) to be initialized with data
+        from external resource(s), such as file(s) or a database. Typically, in those situations there will be a separate method
+        defined to initialize the bean and a separate method to clean-up (on shutdown).</p>
+    </div>
+    <div id="step-div">
+      <p>Hands-on with Spring Framework Core - 3</p>
+    </div>
+    <div id="para-div">
+      <p>We will demonstrate each of the 3 approaches using the simple <span class="bold">Hello</span> greeter (in different
+        languages) example with a little twist - the <span class="bold">Hello</span> greetings for the different languages will
+        be initialized from a file.</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">XML based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The simple <span class="bold">Hello</span> greeter standalone application will output a greetings message for a
+        chosen language (English, French, etc) and a specified name. In addition, it will tag the sales tax for the country of
+        the chosen language. The hello message (for a chosen language) and the sales tax (for the country of the chosen
+        language) are abstracted in the data package, while the greeter is abstracted in the service package.</p>
+    </div>
+    <div id="para-div">
+      <p>The interface <span class="bold">WorldHelloDAO</span> from the data package has no change and remains the same.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the POJO <span class="hi-green">SimpleFileWorldHelloDAO</span> from the data package that implements
+        the interface <span class="bold">WorldHelloDAO</span>. It reads 'Hello' for a predefined set of languages (English,
+        French, German, Italian, and Spanish) from a file and stores the data in a <span class="bold">java.util.Map</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>SimpleFileWorldHelloDAO.java</legend>
+      <pre>/*
+ * Topic:  Spring Framework Core Essentials
+ * 
+ * Name:   Simple File World Hello DAO
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.springframework.data;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+public class SimpleFileWorldHelloDAO implements WorldHelloDAO {
+    private static String COMMA = ",";
+    
+    private static Log LOG = LogFactory.getLog(SimpleFileWorldHelloDAO.class);
+    
+    private String fileName = null;
+    
+    private Map<String, String> helloByLang = null;
+    
+    private Stream<String> stream = null;
+    
+    public SimpleFileWorldHelloDAO() {
+        LOG.info("Created new instance of SimpleFileWorldHelloDAO");
+    }
+    
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String filename) {
+        this.fileName = filename;
+    }
+
+    public void init() throws Exception {
+        LOG.info("Initializing cache from the file " + fileName);
+        
+        Path path = Paths.get(getClass().getClassLoader().getResource(fileName).toURI());
+        
+        stream = Files.lines(path);
+        
+        helloByLang = stream.map(line -> line.split(COMMA))
+                            .collect(Collectors.toMap(tokens -> tokens[0].toLowerCase(), 
+                                                      tokens -> tokens[1]));
+        
+        LOG.info("Cache successfully initialized with " + helloByLang.toString());
+    }
+    
+    public void destroy() {
+        LOG.info("Closing the stream resource");
+        
+        if (stream != null) {
+            stream.close();
+        }
+        
+        LOG.info("Successfully closed the stream resource");
+    }
+    
+    @Override
+    public String fetch(String lang) {
+        String msg = null;
+        
+        if (lang != null && lang.trim().isEmpty() == false) {
+            msg = helloByLang.get(lang.toLowerCase());
+        }
+        
+        if (msg == null) {
+            msg = helloByLang.get("english");
+        }
+        
+        return msg;
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The method <span class="hi-blue">init()</span> opens and reads from the I/O stream for the specified file with
+        the 'Hello' data for a predefined set of languages. To work in <span class="bold">Spring</span>, the method must
+        take no parameter arguments and return a <span class="bold">void</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The method <span class="hi-blue">destroy()</span> closes the I/O stream when the application shutsdown. To work
+        in <span class="bold">Spring</span>, the method must take no parameter arguments and return a <span class="bold">
+        void</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The interface <span class="bold">HelloGreeter</span> as well as its implementation POJO <span class="bold">
+        SimpleHelloGreeter</span> from the service package have no changes and remains the same.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the data file <span class="hi-green">sample7.csv</span> that contains the
+        'Hello' data for a predefined set of languages:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>sample7.csv</legend>
+      <pre>English,H3ll0
+French,B0nj0ur
+German,Gut3n T4g
+Italian,S4lv3
+Spanish,H0l4</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The following XML file <span class="hi-green">sample7-beans.xml</span> specifies the configuration metadata
+        for the <span class="bold">Spring Framework</span> IoC container:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>sample7-beans.xml</legend>
+      <pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd"&gt;
+                        
+    &lt;bean id="simpleWorldHello" class="com.polarsparc.springframework.data.SimpleFileWorldHelloDAO"
+          init-method="init" destroy-method="destroy"&gt;
+        &lt;property name="fileName" value="sample7.csv" /&gt;
+    &lt;/bean&gt;
+    
+    &lt;bean name="simpleHelloGreeter" class="com.polarsparc.springframework.service.SimpleHelloGreeter"&gt;
+        &lt;property name="separator" value=":" /&gt;
+        &lt;property name="worldHello" ref="simpleWorldHello" /&gt;
+    &lt;/bean&gt;
+&lt;/beans&gt;</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>To indicate the initialization method to invoke, use the <span class="hi-green">init-method</span> attribute on the
+        corresponding <span class="bold">&lt;bean&gt;</span> element.</p>
+      <p>Similarly, to indicate the clean-up method to invoke, use the <span class="hi-green">destroy-method</span> attribute
+        on the corresponding <span class="bold">&lt;bean&gt;</span> element.</p>
+      <p>See <span class="bold">Figure.1</span> below.</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/springframework-14.png" alt="Init and Destroy" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <div id="para-div">
+      <p>Note that one cannot pass any parameter arguments to either the initialization or the clean-up methods.</p>
+      <p>The initialization method will be invoked by the <span class="bold">Spring Framework</span> <span class="bold">IoC
+        </span> container *<span class="underbold">ONLY</span>* after all the bean properties have been autowired.</p>
+    </div>
+    <div id="para-div">
+      <p>Now that we have got the application POJOs and the configuration metadata defined in an XML file, it is time
+        to bring them together into the <span class="bold">Spring Framework</span> IoC container as a standalone
+        <span class="bold">Java</span> application.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the <span class="bold">Spring Framework</span> application <span class="hi-green">Sample7</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Sample7.java</legend>
+      <pre>/*
+ * Topic:  Spring Framework Core Essentials
+ * 
+ * Name:   Sample 7
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.springframework;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+import com.polarsparc.springframework.service.HelloGreeter;
+
+public class Sample7 {
+    private static Log LOG = LogFactory.getLog(Sample7.class);
+
+    public static void main(String[] args) {
+        ApplicationContext applicationContext =
+            new ClassPathXmlApplicationContext("/sample7-beans.xml");
+        
+        HelloGreeter greeter = applicationContext.getBean("simpleHelloGreeter", HelloGreeter.class);
+        
+        LOG.info(greeter.greetings("German", "Alligator"));
+        LOG.info(greeter.greetings("French", "Bear"));
+        
+        ((ClassPathXmlApplicationContext)applicationContext).close();
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Notice that we are calling the <span class="hi-blue">close()</span> method on the instance of the <span class="bold">
+        Spring Framework</span> container (<span class="bold">applicationContext</span>). This will shutdown the container in
+        an appropriate way.</p>
+    </div>
+    <div id="para-div">
+      <p>Executing the Java program <span class="bold">Sample07</span> listed above should generate an output similar to
+        the following:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Jul 19, 2019 8:09:20 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO <init>
+INFO: Created new instance of SimpleFileWorldHelloDAO
+Jul 19, 2019 8:09:20 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO init
+INFO: Initializing cache from the file sample7.csv
+Jul 19, 2019 8:09:20 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO init
+INFO: Cache successfully initialized with {german=Gut3n T4g, spanish=H0l4, english=H3ll0, italian=S4lv3, french=B0nj0ur}
+Jul 19, 2019 8:09:20 PM com.polarsparc.springframework.Sample7 main
+INFO: Gut3n T4g: Alligator
+Jul 19, 2019 8:09:20 PM com.polarsparc.springframework.Sample7 main
+INFO: B0nj0ur: Bear
+Jul 19, 2019 8:09:20 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO destroy
+INFO: Closing the stream resource
+Jul 19, 2019 8:09:20 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO destroy
+INFO: Successfully closed the stream resource</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Annotation based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The interface <span class="bold">WorldHelloDAO</span> from the data package has no change and remains the same.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the POJO <span class="hi-green">SimpleFileWorldHelloDAO2</span> from the data package that implements
+        the interface <span class="bold">WorldHelloDAO</span>. It reads 'Hello' for a predefined set of languages (English,
+        French, German, Italian, and Spanish) from a file and stores the data in a <span class="bold">java.util.Map</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>SimpleFileWorldHelloDAO2.java</legend>
+      <pre>/*
+ * Topic:  Spring Framework Core Essentials
+ * 
+ * Name:   Simple File World Hello DAO 2
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.springframework.data;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Repository;
+
+@Repository("fileWorldHello")
+public class SimpleFileWorldHelloDAO2 implements WorldHelloDAO {
+    private static String COMMA = ",";
+    
+    private static Log LOG = LogFactory.getLog(SimpleFileWorldHelloDAO2.class);
+    
+    private String fileName = null;
+    
+    private Map<String, String> helloByLang = null;
+    
+    private Stream<String> stream = null;
+    
+    public SimpleFileWorldHelloDAO2() {
+        LOG.info("Created new instance of SimpleFileWorldHelloDAO");
+    }
+    
+    public String getFileName() {
+        return fileName;
+    }
+
+    @Value("${env.csv.file:sample7.csv}")
+    public void setFileName(String filename) {
+        this.fileName = filename;
+    }
+
+    @PostConstruct
+    public void init() throws Exception {
+        LOG.info("Initializing cache from the file " + fileName);
+        
+        Path path = Paths.get(getClass().getClassLoader().getResource(fileName).toURI());
+        
+        stream = Files.lines(path);
+        
+        helloByLang = stream.map(line -> line.split(COMMA))
+                            .collect(Collectors.toMap(tokens -> tokens[0].toLowerCase(), 
+                                                      tokens -> tokens[1]));
+        
+        LOG.info("Cache successfully initialized with " + helloByLang.toString());
+    }
+    
+    @PreDestroy
+    public void destroy() {
+        LOG.info("Closing the stream resource");
+        
+        if (stream != null) {
+            stream.close();
+        }
+        
+        LOG.info("Successfully closed the stream resource");
+    }
+    
+    @Override
+    public String fetch(String lang) {
+        String msg = null;
+        
+        if (lang != null && lang.trim().isEmpty() == false) {
+            msg = helloByLang.get(lang.toLowerCase());
+        }
+        
+        if (msg == null) {
+            msg = helloByLang.get("english");
+        }
+        
+        return msg;
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Notice the use of the annotation <span class="hi-yellow">@Repository</span> in the code <span class="bold">
+        SimpleFileWorldHelloDAO2</span> above. The value inside the <span class="bold">@Repository</span> annotation
+        specifies the bean id.</p>
+    </div>
+    <div id="para-div">
+      <p>Notice the use of the <span class="hi-yellow">@PostConstruct</span> annotation in the code <span class="bold">
+        SimpleFileWorldHelloDAO2</span> above on the method <span class="bold">init()</span>. This annotation signals
+        the container to invoke the corresponding method after the bean creation and autowiring of the bean properties.</p>
+    </div>
+    <div id="para-div">
+      <p>Also, notice the use of the <span class="hi-yellow">@PreDestroy</span> annotation in the code <span class="bold">
+        SimpleFileWorldHelloDAO2</span> above on the method <span class="bold">destroy()</span>. This annotation signals
+        the container to invoke the corresponding method before the container shutdown.</p>
+    </div>
+    <div id="para-div">
+      <p>See <span class="bold">Figure.2</span> below.</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/springframework-15.png" alt="PostConstruct and PreDestroy" />
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <div id="para-div">
+      <p>The interface <span class="bold">HelloGreeter</span> from the service package has no change and remains the same.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the POJO <span class="hi-green">SimpleHelloGreeter7</span> from the service package that implements
+        the interface <span class="bold">HelloGreeter</span>. It returns a greetings message that consists of the 'Hello' for
+        the chosen language and the specified name:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>SimpleHelloGreeter7.java</legend>
+      <pre>/*
+ * Topic:  Spring Framework Core Essentials
+ * 
+ * Name:   Simple Hello Greeter 7
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.springframework.service;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import com.polarsparc.springframework.data.WorldHelloDAO;
+
+@Service("fileHelloGreeter")
+public class SimpleHelloGreeter7 implements HelloGreeter {
+    private static String SPACE = " ";
+    private static String STRANGER = "Stranger";
+    
+    private String separator = null;
+    
+    private WorldHelloDAO worldHello = null;
+    
+    public SimpleHelloGreeter7() {
+    }
+    
+    public String getSeparator() {
+        return separator;
+    }
+
+    @Value("${env.greeter.sep:-}")
+    public void setSeparator(String separator) {
+        this.separator = separator;
+    }
+
+    public WorldHelloDAO getWorldHello() {
+        return worldHello;
+    }
+
+    @Autowired
+    @Qualifier("fileWorldHello")
+    public void setWorldHello(WorldHelloDAO worldHello) {
+        this.worldHello = worldHello;
+    }
+
+    @Override
+    public String greetings(String lang, String name) {
+        String msg = null;
+        
+        if (name != null && name.trim().isEmpty() == false) {
+            msg = new StringBuilder()
+                      .append(worldHello.fetch(lang.toLowerCase()))
+                      .append(separator)
+                      .append(SPACE)
+                      .append(name)
+                      .toString();
+        }
+        else {
+            msg = new StringBuilder()
+                      .append(worldHello.fetch(lang.toLowerCase()))
+                      .append(separator)
+                      .append(SPACE)
+                      .append(STRANGER)
+                      .toString();
+        }
+        
+        return msg;
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Notice the use of the <span class="hi-yellow">@Qualifier</span> annotation on the method <span class="bold">
+        setWorldHello</span> in the code <span class="bold">SimpleHelloGreeter7</span> above. The string value inside should
+        match the name of the bean specified inside the <span class="bold">@Repository</span> annotation in the code
+        <span class="bold">SimpleFileWorldHelloDAO2</span>. The <span class="bold">@Qualifier</span> annotation is used
+        in conjunction with the <span class="bold">@Autowired</span> annotation to indicate which bean to use for autowiring.</p>
+    </div>
+    <div id="para-div">
+      <p>We will reuse the XML file <span class="hi-green">sample2-beans.xml</span> from
+        <a href="http://polarsparc.github.io/SpringFramework/SpringFrameworkEssentials-1.html" target="_blank"><span class="bold">
+        Part 1</span></a> of this series.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the <span class="bold">Spring Framework</span> application <span class="hi-green">Sample8</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Sample8.java</legend>
+      <pre>/*
+ * Topic:  Spring Framework Core Essentials
+ * 
+ * Name:   Sample 8
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.springframework;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.GenericXmlApplicationContext;
+
+import com.polarsparc.springframework.service.HelloGreeter;
+
+public class Sample8 {
+    private static Log LOG = LogFactory.getLog(Sample8.class);
+
+    public static void main(String[] args) {
+        ApplicationContext applicationContext =
+            new GenericXmlApplicationContext("/sample2-beans.xml");
+        
+        HelloGreeter greeter = applicationContext.getBean("fileHelloGreeter", HelloGreeter.class);
+        
+        LOG.info(greeter.greetings("English", "Zebra"));
+        LOG.info(greeter.greetings("Spanish", "Mule"));
+        
+        ((GenericXmlApplicationContext)applicationContext).close();
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the Java program <span class="bold">Sample08</span> listed above should generate an output similar
+        to the following:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Jul 19, 2019 8:52:21 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO2 <init>
+INFO: Created new instance of SimpleFileWorldHelloDAO
+Jul 19, 2019 8:52:21 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO2 init
+INFO: Initializing cache from the file sample7.csv
+Jul 19, 2019 8:52:21 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO2 init
+INFO: Cache successfully initialized with {german=Gut3n T4g, spanish=H0l4, english=H3ll0, italian=S4lv3, french=B0nj0ur}
+Jul 19, 2019 8:52:21 PM com.polarsparc.springframework.data.SimpleMemoryWorldHelloDAO2 <init>
+INFO: Initialized a new instance of SimpleMemoryWorldHelloDAO2
+Jul 19, 2019 8:52:21 PM com.polarsparc.springframework.data.SimpleMemoryWorldHelloDAO3 <init>
+INFO: Initialized a new instance of SimpleMemoryWorldHelloDAO3
+Jul 19, 2019 8:52:21 PM com.polarsparc.springframework.data.SimpleMemoryWorldSalesTaxDAO2 <init>
+INFO: Initialized a new instance of SimpleMemoryWorldSalesTaxDAO2
+Jul 19, 2019 8:52:21 PM com.polarsparc.springframework.Sample8 main
+INFO: H3ll0- Zebra
+Jul 19, 2019 8:52:21 PM com.polarsparc.springframework.Sample8 main
+INFO: H0l4- Mule
+Jul 19, 2019 8:52:21 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO2 destroy
+INFO: Closing the stream resource
+Jul 19, 2019 8:52:21 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO2 destroy
+INFO: Successfully closed the stream resource</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">JavaConfig based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The interface <span class="bold">WorldHelloDAO</span> as well as its implementation POJO <span class="bold">
+        SimpleFileWorldHelloDAO</span> from the data package have no changes and remains the same.</p>
+    </div>
+    <div id="para-div">
+      <p>The interface <span class="bold">HelloGreeter</span> as well as its implementation POJO <span class="bold">
+        SimpleHelloGreeter3</span> from the service package have no changes and remains the same.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the <span class="bold">JavaConfig</span> POJO <span class="hi-green">Sample9Config</span> from
+        the config package:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Sample9Config.java</legend>
+      <pre>/*
+ * Topic:  Spring Framework Core Essentials
+ * 
+ * Name:   Sample 9 Config
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.springframework.config;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import com.polarsparc.springframework.data.SimpleFileWorldHelloDAO;
+import com.polarsparc.springframework.data.WorldHelloDAO;
+import com.polarsparc.springframework.service.HelloGreeter;
+import com.polarsparc.springframework.service.SimpleHelloGreeter3;
+
+@Configuration
+public class Sample9Config {
+    @Bean(initMethod="init", destroyMethod="destroy")
+    public WorldHelloDAO simpleWorldHello(@Value("${env.csv.file:sample7.csv}") String filename) {
+        SimpleFileWorldHelloDAO worldHello = new SimpleFileWorldHelloDAO();
+        worldHello.setFileName(filename);
+        
+        return worldHello;
+    }
+    
+    @Bean
+    public HelloGreeter simpleHelloGreeter() {
+        return new SimpleHelloGreeter3();
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Notice the use of two attributes <span class="hi-green">initMethod</span> and <span class="hi-green">destroyMethod</span>
+        inside the <span class="hi-yellow">@Bean</span> annotation. These attributes indicate the initialization and clean-up
+        methods respectively.</p>
+    </div>
+    <div id="para-div">
+      <p>See <span class="bold">Figure.3</span> below.</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/springframework-16.png" alt="initMethod and destroyMethod" />
+      <div class="img-cap">Figure.3</div>
+    </div>
+    <div id="para-div">
+      <p>The following is the <span class="bold">Spring Framework</span> application <span class="hi-green">Sample9</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Sample9.java</legend>
+      <pre>/*
+ * Topic:  Spring Framework Core Essentials
+ * 
+ * Name:   Sample 9
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.springframework;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+import com.polarsparc.springframework.config.Sample9Config;
+import com.polarsparc.springframework.service.HelloGreeter;
+
+public class Sample9 {
+    private static Log LOG = LogFactory.getLog(Sample9.class);
+
+    public static void main(String[] args) {
+        ApplicationContext applicationContext =
+            new AnnotationConfigApplicationContext(Sample9Config.class);
+        
+        HelloGreeter greeter = applicationContext.getBean("simpleHelloGreeter", HelloGreeter.class);
+        
+        LOG.info(greeter.greetings("french", "Dog"));
+        LOG.info(greeter.greetings("italian", "Snake"));
+        
+        ((AnnotationConfigApplicationContext)applicationContext).close();
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the Java program <span class="bold">Sample09</span> listed above should generate an output similar to
+        the following:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>Jul 19, 2019 9:07:28 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO <init>
+INFO: Created new instance of SimpleFileWorldHelloDAO
+Jul 19, 2019 9:07:28 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO init
+INFO: Initializing cache from the file sample7.csv
+Jul 19, 2019 9:07:28 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO init
+INFO: Cache successfully initialized with {german=Gut3n T4g, spanish=H0l4, english=H3ll0, italian=S4lv3, french=B0nj0ur}
+Jul 19, 2019 9:07:28 PM com.polarsparc.springframework.Sample9 main
+INFO: B0nj0ur- Dog
+Jul 19, 2019 9:07:28 PM com.polarsparc.springframework.Sample9 main
+INFO: S4lv3- Snake
+Jul 19, 2019 9:07:28 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO destroy
+INFO: Closing the stream resource
+Jul 19, 2019 9:07:28 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO destroy
+INFO: Successfully closed the stream resource</pre>
+    </div>
+    <div id="para-div">
+      <p>More to be covered in the next part of this series ...</p>
+    </div>
+    <div id="step-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p>[1] <a href="http://polarsparc.github.io/SpringFramework/SpringFrameworkEssentials-1.html" target="_blank"><span class="bold">Spring Framework Core Essentials - Part 1</span></a></p>
+      <p>[2] <a href="http://polarsparc.github.io/SpringFramework/SpringFrameworkEssentials-2.html" target="_blank"><span class="bold">Spring Framework Core Essentials - Part 2</span></a></p>
+      <p>[3] <span class="bold"></span><a href="https://spring.io/projects/spring-framework" target="_blank"><span class="bold">Spring Framework</span></a></p>
+      <p>[4] <span class="bold"></span><a href="https://docs.spring.io/spring-framework/docs/current/spring-framework-reference/core.html" target="_blank"><span class="bold">Spring Framework Core</span></a></p>
+      <p>[5] <span class="bold"></span><a href="https://docs.spring.io/spring-framework/docs/current/javadoc-api/overview-summary.html" target="_blank"><span class="bold">Spring Framework API</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,816 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <title>Introduction to WebSockets :: Part - 4</title>
+    <link rel="stylesheet" type="text/css" href="../css/polarsparc-v1.0.css" />
+  </head>
+  <body> <br />
+    <div id="title-div">
+      <p>Introduction to WebSockets :: Part - 4</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">02/16/2014</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Introduction</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/Networking/WebSockets-01.html" target="_blank"><span class="bold">Part-1</span></a>
+        as well as in <a href="./WebSockets-03.html" target="_blank"><span class="bold">Part-3</span></a>
+        we got our hands dirty with simple <span class="bold">WebSockets</span>
+        examples that passed text <span class="bold">WebSocket</span> messages
+        between the client and the server.</p>
+      <p>In a real world web application, typically we pass <span class="bold">JSON</span>
+        objects between the client and the server.</p>
+      <p>In this part, we will do just that - create and send a <span class="bold">JSON</span>
+        object from the client as a request to the <span class="bold">WebSocket</span>
+        server endpoint and in response the server endpoint will send both the <span
+          class="bold">CPU</span> and <span class="bold">MEMORY</span> metrics
+        as <span class="bold">JSON</span> object.</p>
+    </div>
+    <div id="section-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>Since we will be using <span class="bold">JSON</span> for message
+        passing between the client and the server, we need a Java framework that
+        can encode and decode <span class="bold">JSON</span>. For this we will
+        leverage the Java API for <span class="bold">JSON</span> Processing
+        (JSR 353) Reference Implemention.</p>
+    </div>
+    <div id="para-div">
+      <p>Download the Java API for <span class="bold">JSON</span> Processing
+        (JSR 353) Reference Implementation JARs from the following site:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>Java API for <span class="bold">JSON</span> Processing (<span class="bold"><a
+                target="_blank" href="https://jsonp.java.net/index.html">https://jsonp.java.net/index.html</a>)</span></p>
+          <p>We need:</p>
+          <p>The API jar: <span class="bold"><a target="_blank" href="http://search.maven.org/remotecontent?filepath=javax/json/javax.json-api/1.0/javax.json-api-1.0.jar">API</a></span></p>
+          <p>AND</p>
+          <p>The RI jar: <span class="bold"><a target="_blank" href="http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.0.4/javax.json-1.0.4.jar">RI</a></span></p>
+        </li>
+      </ul>
+      <p>Copy the just downloaded JARs to the directory <span class="bold">$CATALINA_HOME/lib</span>.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with WebSockets - 3</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Java POJO class that encapsulates the client
+        request to the server endpoint:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.1</legend>
+      <pre>/*
+ * 
+ * Name:   MetricsRequest
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   02/16/2014
+ * 
+ */
+
+package com.polarsparc.websockets;
+
+/*
+ * Represents the client metrics request POJO
+ */
+public class MetricsRequest {
+    private boolean cpu = false;
+    private boolean mem = false;
+    
+    public boolean isCPU() {
+        return cpu;
+    }
+    
+    public void setCPU(boolean flag) {
+        cpu = flag;
+    }
+    
+    public boolean isMEM() {
+        return mem;
+    }
+    
+    public void setMEM(boolean flag) {
+        mem = flag;
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>When the client web application initiates a <span class="bold">WebSocket</span>
+        connection, it sends a <span class="bold">JSON</span> string. How do we
+        convert the <span class="bold">JSON</span> request into an object of
+        type <span class="hi-yellow">com.polarsparc.websockets.MetricsRequest</span>
+        ???</p>
+      <p>Enter <span class="hi-yellow">javax.websocket.Decoder</span>. The <span
+          class="bold">Decoder</span> class is an interface that allows one to
+        extend and implement a concrete class which the <span class="bold">WebSocket</span>
+        server can invoke on incoming client <span class="bold">WebSocket</span>
+        messages to convert to the corresponding application specific <span class="bold">POJO</span>s.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is our custom <span class="bold">Decoder</span> class
+        that will convert the incoming client <span class="bold">JSON</span>
+        request to an object of type <span class="bold">MetricsRequest</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.2</legend>
+      <pre>/*
+ * 
+ * Name:   MetricsRequestDecoder
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   02/16/2014
+ * 
+ */
+
+package com.polarsparc.websockets;
+
+import java.io.StringReader;
+
+import javax.json.Json;
+import javax.json.JsonObject;
+
+import javax.websocket.Decoder;
+import javax.websocket.DecodeException;
+import javax.websocket.EndpointConfig;
+
+/*
+ * A custom Decoder class that will take the incoming client websocket text
+ * message (which is in JSON format) and convert it into a Java POJO of type
+ * MetricsRequest
+ */
+public class MetricsRequestDecoder implements Decoder.Text&lt;MetricsRequest&gt; {
+    @Override
+    public void init(EndpointConfig config) {
+        // Ignore - not used
+    }
+
+    @Override
+    public void destroy() {
+        // Ignore - not used
+    }
+
+    /*
+     * This method will decode the given JSON message into an object of type
+     * MetricsRequest.
+     */
+    @Override
+    public MetricsRequest decode(String msg)
+        throws DecodeException {
+        JsonObject json = Json.createReader(new StringReader(msg)).readObject();
+        
+        MetricsRequest request = new MetricsRequest();
+        
+        if (json.getString("cpu").equalsIgnoreCase("yes")) {
+            request.setCPU(true);
+        }
+        
+        if (json.getString("memory").equalsIgnoreCase("yes")) {
+            request.setMEM(true);
+        }
+        
+        return request;
+    }
+
+    /*
+     * This method will answer whether the given JSON message can be decoded into
+     * an object of type MetricsRequest. We will assume the client will always
+     * send a valid JSON text
+     */
+    @Override
+    public boolean willDecode(String msg) {
+        return true;
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The following is the Java POJO class that encapsulates the server CPU
+        and MEMORY metrics alert to the client:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.3</legend>
+      <pre>/*
+ * 
+ * Name:   MetricsAlert
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   02/16/2014
+ * 
+ */
+
+package com.polarsparc.websockets;
+
+/*
+ * Represents the server metrics alert POJO
+ */
+public class MetricsAlert {
+    private String user = null;
+    private String kernel = null;
+    private String total = null;
+    private String free = null;
+    
+    public String getUser() {
+        return user;
+    }
+    
+    public void setUser(String user) {
+        this.user = user;
+    }
+    
+    public String getKernel() {
+        return kernel;
+    }
+    
+    public void setKernel(String kernel) {
+        this.kernel = kernel;
+    }
+    
+    public String getTotal() {
+        return total;
+    }
+    
+    public void setTotal(String total) {
+        this.total = total;
+    }
+    
+    public String getFree() {
+        return free;
+    }
+    
+    public void setFree(String free) {
+        this.free = free;
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The client web application will be expecting the metrics information
+        from the server as <span class="bold">WebSocket</span> messages in a <span
+          class="bold">JSON</span> format. The server creates and populates an
+        object of type <span class="hi-yellow">com.polarsparc.websockets.MetricsAlert</span>.
+        How do we convert an object of type <span class="bold">MetricsAlert</span>
+        into a <span class="bold">JSON</span> format ???</p>
+      <p>Enter <span class="hi-yellow">javax.websocket.Encoder</span>. The <span
+          class="bold">Encoder</span> class is an interface that allows one to
+        extend and implement a concrete class which the <span class="bold">WebSocket</span>
+        server can invoke on an outgoing application specific <span class="bold">POJO</span>
+        to convert it into the corresponding <span class="bold">WebSocket</span>
+        message which in our example will be a <span class="bold">JSON</span>
+        message.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is our custom <span class="bold">Encoder</span> class
+        that will convert an outgoing object of type <span class="bold">MetricsAlert</span>
+        to a <span class="bold">JSON</span> message:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.4</legend>
+      <pre>/*
+ * 
+ * Name:   MetricsAlertEncoder
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   02/16/2014
+ * 
+ */
+
+package com.polarsparc.websockets;
+
+import java.util.logging.Logger;
+import java.util.logging.Level;
+
+import javax.json.Json;
+import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
+
+import javax.websocket.Encoder;
+import javax.websocket.EncodeException;
+import javax.websocket.EndpointConfig;
+
+/*
+ * A custom Encoder class that will take the a Java POJO of type MetricsAlert
+ * and convert it into a server websocket text message (which is in JSON format)
+ */
+public class MetricsAlertEncoder implements Encoder.Text&lt;MetricsAlert&gt; {
+    private final static Logger LOGGER = Logger.getLogger(MetricsAlertEncoder.class.getName());
+    
+    public MetricsAlertEncoder() {
+        LOGGER.setLevel(Level.INFO);
+    }
+    
+    @Override
+    public void init(EndpointConfig arg0) {
+        // Ignore - not used
+    }
+    
+    @Override
+    public void destroy() {
+        // Ignore - not used
+    }
+    
+    /*
+     * This method will encode the given object of type MetricsAlert into a text
+     * message (in JSON format).
+     */
+    @Override
+    public String encode(MetricsAlert alert)
+        throws EncodeException {
+        JsonObjectBuilder builder = Json.createObjectBuilder();
+
+        // CPU metrics
+        if (alert.getUser() != null) {
+            builder.add("user", alert.getUser()).add("kernel", alert.getKernel());
+        }
+
+        // MEM metrics
+        if (alert.getTotal() != null) {
+            builder.add("total", alert.getTotal()).add("free", alert.getFree());
+        }
+        
+        JsonObject json = builder.build();
+        
+        LOGGER.info("MetricsAlertEncoder: encode() invoked, json = " + json.toString());
+        
+        return json.toString();
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The following is the custom <span class="bold">ServerEndpointConfig.Configurator</span>
+        Java code that will create a single instance of the server endpoint
+        class <span class="bold">com.polarsparc.websockets.SimpleMonitor3</span>
+        and reuse it for each of the client connections:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.5</legend>
+      <pre>/*
+ * 
+ * Name:   SimpleMonitor3Configurator
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   02/16/2014
+ * 
+ */
+
+package com.polarsparc.websockets;
+
+import java.util.logging.Logger;
+import java.util.logging.Level;
+
+import javax.websocket.server.ServerEndpointConfig.Configurator;
+
+public class SimpleMonitor3Configurator extends Configurator {
+    private final static Logger LOGGER = Logger.getLogger(SimpleMonitor3Configurator.class.getName());
+    
+    private final static SimpleMonitor3 monitor3 = new SimpleMonitor3();
+    
+    public SimpleMonitor3Configurator() {
+        LOGGER.setLevel(Level.INFO);
+    }
+    
+    @SuppressWarnings("unchecked")
+    @Override
+    public &lt;T&gt; T getEndpointInstance(Class&lt;T&gt; endpointClass)
+        throws InstantiationException {
+        LOGGER.info("SimpleMonitor3Configurator: getEndpointInstance() invoked, endpointClass = " + endpointClass.getName());
+            
+        return (T) monitor3;
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The following is the server-side Java code that will push both the <span
+          class="bold">CPU</span> and <span class="bold">MEMORY</span> metrics
+        at a regular interval of 5 seconds:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.6</legend>
+      <pre>/*
+ * 
+ * Name:   SimpleMonitor3
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   02/16/2014
+ * 
+ */
+
+package com.polarsparc.websockets;
+
+import java.util.logging.Logger;
+import java.util.logging.Level;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.StringTokenizer;
+import java.io.FileReader;
+import java.io.BufferedReader;
+
+import javax.websocket.server.ServerEndpoint;
+import javax.websocket.Session;
+import javax.websocket.OnOpen;
+import javax.websocket.OnClose;
+import javax.websocket.CloseReason;
+import javax.websocket.OnError;
+import javax.websocket.OnMessage;
+
+/*
+ * There will be only one instance of this class. Notice the use of the configurator, the encoder, and the
+ * decoder attributes
+ */
+@ServerEndpoint(value="/SimpleMonitor3",
+    configurator=com.polarsparc.websockets.SimpleMonitor3Configurator.class,
+    encoders=com.polarsparc.websockets.MetricsAlertEncoder.class, 
+    decoders=com.polarsparc.websockets.MetricsRequestDecoder.class
+)
+public class SimpleMonitor3 {
+    private final static Logger LOGGER = Logger.getLogger(SimpleMonitor2.class.getName());
+    
+    private List&lt;Session&gt; sessionList = new ArrayList&lt;Session&gt;();
+    
+    private Thread thread;
+    
+    public SimpleMonitor3() {
+        LOGGER.setLevel(Level.INFO);
+        
+        thread = new Thread(new DispatcherThread()); 
+        thread.setName("DispatcherThread");
+        thread.start();
+    }
+    
+    @OnOpen
+    public void onOpen(Session session) {
+        LOGGER.info("SimpleMonitor3: onOpen() invoked, session-id: " + session.getId());
+        
+        synchronized(sessionList) {
+            sessionList.add(session);
+        }
+    }
+    
+    @OnClose
+    public void onClose(Session session, CloseReason reason) {
+        LOGGER.info("SimpleMonitor3: onClose() invoked, session-id: " + session.getId() +
+            ", reason = " + reason.toString());
+        
+        closeSession(session);
+    }
+    
+    @OnError
+    public void onError(Session session, Throwable t) throws Throwable {
+        LOGGER.severe("SimpleMonitor3: onError() invoked, Exception = " + t.getMessage());
+    }
+    
+    @OnMessage
+    public void onMessage(String text, Session session) {
+        if (text != null) {
+            LOGGER.info("SimpleMonitor3: onMessage() invoked, text = " + text);
+        }
+    }
+    
+    // ----- Private Method(s) -----
+    
+    /*
+     * NOTE: This will only work on Linux platform.
+     * 
+     * We will open the /proc/stat system file to read the line beginning with 'cpu'
+     * to get the first and third values which represent the user and kernel usage
+     * 
+     */
+    private void getCurrentCPUMetrics(MetricsAlert alert) {
+        int COUNT = 4;
+        
+        String PROC_STAT_FILE = "/proc/stat";
+        String CPU = "cpu";
+        String DELIMITER = " ";
+        
+        BufferedReader br = null;
+        try {
+            br = new BufferedReader(new FileReader(PROC_STAT_FILE));
+            for (String line; (line = br.readLine()) != null;) {
+                if (line.trim().startsWith(CPU)) {
+                    StringTokenizer tokens = new StringTokenizer(line, DELIMITER);
+                    if (tokens.countTokens() &gt; COUNT) {
+                        tokens.nextToken(); // Ignore cpu
+                        String user = tokens.nextToken(); // User CPU usage
+                        tokens.nextToken(); // Ignore cpu
+                        String kernel = tokens.nextToken(); // Kernel CPU usage
+                        alert.setUser(user);
+                        alert.setKernel(kernel);
+                    }
+                    break;
+                }
+            }
+            br.close();
+        }
+        catch (Throwable ex) {
+            LOGGER.severe("SimpleMonitor: getCurrentCPUMetrics() invoked, Exception = " + ex.getMessage());
+        }
+        finally {
+            if (br != null) {
+                try {
+                    br.close();
+                }
+                catch (Throwable e) {
+                    // Ignore
+                }
+            }
+        }
+    }
+    
+    /*
+     * NOTE: This will only work on Linux platform.
+     * 
+     * We will open the /proc/meminfo system file to read the line beginning with 'MemTotal:'
+     * to get the second numeric value which the total memory. Similarly, read the line
+     * beginning with 'MemFree:' to get the second numeric value which the free memory.
+     * 
+     */
+    private void getCurrentMemoryMetrics(MetricsAlert alert) {
+        int COUNT = 2;
+        
+        String PROC_MEMINFO_FILE = "/proc/meminfo";
+        String MEMTOTAL = "MemTotal:";
+        String MEMFREE = "MemFree:";
+        String DELIMITER = " ";
+        
+        String total = null;
+        String free = null;
+        
+        BufferedReader br = null;
+        try {
+            br = new BufferedReader(new FileReader(PROC_MEMINFO_FILE));
+            for (String line; (line = br.readLine()) != null;) {
+                if (line.trim().startsWith(MEMTOTAL)) {
+                    StringTokenizer tokens = new StringTokenizer(line, DELIMITER);
+                    if (tokens.countTokens() &gt; COUNT) {
+                        tokens.nextToken(); // Ignore MemTotal:
+                        total = tokens.nextToken(); // Memory total
+                    }
+                }
+                else if (line.trim().startsWith(MEMFREE)) {
+                    StringTokenizer tokens = new StringTokenizer(line, DELIMITER);
+                    if (tokens.countTokens() &gt; COUNT) {
+                        tokens.nextToken(); // Ignore MemFree:
+                        free = tokens.nextToken(); // Memory free
+                    }
+                }
+                if (total != null &amp;&amp; free != null) {
+                    alert.setTotal(total);
+                    alert.setFree(free);
+                    break;
+                }
+            }
+            br.close();
+        }
+        catch (Throwable ex) {
+            LOGGER.severe("SimpleMonitor3: getCurrentMemoryMetrics() invoked, Exception = " + ex.getMessage());
+        }
+        finally {
+            if (br != null) {
+                try {
+                    br.close();
+                }
+                catch (Throwable e) {
+                    // Ignore
+                }
+            }
+        }
+    }
+    
+    private void closeSession(Session s) {
+        synchronized(sessionList) {
+            try {
+                s.close();
+            }
+            catch (Throwable e) {
+                // Ignore
+            }
+            
+            sessionList.remove(s);
+        }
+    }
+    
+    // ----- Inner Class(es) -----
+
+    /*
+     * This background thread wakes-up every 5 secs, invokes the method
+     * getCurrentMemoryMetrics() and distributes the formatted metrics
+     * to all the WebSocket client session(s)
+     */
+    private class DispatcherThread implements Runnable {
+        @Override
+        public void run() {
+            int SLEEP_INTERVAL = 5000; // 5 secs
+            
+            MetricsAlert alert = new MetricsAlert();
+            
+            for (;;) {
+                Session[] sessions = null;
+                
+                synchronized(sessionList) {
+                    sessions = sessionList.toArray(new Session[0]);
+                }
+                
+                if (sessions != null &amp;&amp; sessions.length &gt; 0) {
+                    getCurrentCPUMetrics(alert);
+                    getCurrentMemoryMetrics(alert);
+                    
+                    for (Session s : sessions) {
+                        if (s.isOpen()) {
+                            try {
+                                s.getBasicRemote().sendObject(alert);
+                            }
+                            catch (Throwable e) {
+                                LOGGER.severe("SimpleMonitor3: DispatcherThread: run() invoked, session-id: " +
+                                    s.getId() + ", Exception = " + e.getMessage());
+                                
+                                closeSession(s);
+                            }
+                        }
+                        else {
+                            closeSession(s);
+                        }
+                    }
+                }
+                
+                try {
+                    Thread.sleep(SLEEP_INTERVAL);
+                }
+                catch (Throwable e) {
+                    // Ignore
+                }
+            }
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>We will highlight the most important aspect from the source code in
+        Listing.6 above as follows:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>Notice how the annotation <span class="hi-yellow">@ServerEndpoint</span>
+            defines the server endpoint using the <span class="hi-green">value</span>
+            attribute, the custom server endpoint configurator java class using
+            the <span class="hi-green">configurator</span> attribute, the
+            custom server object encoder java class using the <span class="hi-green">encoder</span>
+            attribute, and the custom server object decoder java class using the
+            <span class="hi-green">decoder</span> attribute.</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the client-side <span class="bold">HTML/JavaScript</span>
+        code that initializes and uses a <span class="bold">WebSocket</span>
+        connection:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.7</legend>
+      <pre>&lt;html&gt;
+    &lt;head&gt;
+        &lt;title&gt;Simple Monitor 3&lt;/title&gt;
+    &lt;/head&gt;
+    
+    &lt;body&gt;
+        &lt;script type="text/javascript"&gt;
+            var webSocket = null;
+            
+            function start() {
+                if (! webSocket) {
+                    webSocket = new WebSocket('ws://localhost:8080/polarsparc/SimpleMonitor3');
+    
+                    webSocket.onopen = function(event) {
+                        document.getElementById('status').innerHTML = "Connection open";
+                    };
+                
+                    webSocket.onclose = function(event) {
+                        document.getElementById('status').innerHTML = "Connection closed";
+                    };
+    
+                    webSocket.onerror = function(event) {
+                        document.getElementById('status').innerHTML = "Error: " + event.data;
+                    };
+    
+                    webSocket.onmessage = function(event) {
+                        var json = JSON.parse(event.data);
+                        
+                        document.getElementById('user').innerHTML = json.user;
+                        document.getElementById('kernel').innerHTML = json.kernel;
+                        document.getElementById('total').innerHTML = json.total;
+                        document.getElementById('free').innerHTML = json.free;
+                    };
+                    
+                    var json = {
+                        'cpu': 'yes',
+                        'memory': 'yes'
+                    };
+                
+                    webSocket.send(JSON.stringify(json));
+                }
+                
+                return false;
+            }
+            
+            function stop() {
+                if (webSocket) {
+                    webSocket.close();
+                    webSocket = null;
+                }
+            }
+        &lt;/script&gt;
+        
+        &lt;table style="border: 5px solid brown"&gt;
+            &lt;tr&gt;
+                &lt;td style="border: 1px solid darkgreen"&gt;&lt;div style="color:blue; font-size: 10px; font-family: verdana, arial, sans-serif"&gt;CPU (User)&lt;/div&gt;&lt;/td&gt;
+                &lt;td style="border: 1px solid darkgreen"&gt;&lt;div id="user" style="color:purple; font-size: 10px; font-family: verdana, arial, sans-serif"&gt;-&lt;/div&gt;&lt;/td&gt;
+            &lt;/tr&gt;
+            &lt;tr&gt;
+                &lt;td style="border: 1px solid darkgreen"&gt;&lt;div style="color:blue; font-size: 10px; font-family: verdana, arial, sans-serif"&gt;CPU (Kernel)&lt;/div&gt;&lt;/td&gt;
+                &lt;td style="border: 1px solid darkgreen"&gt;&lt;div id="kernel" style="color:purple; font-size: 10px; font-family: verdana, arial, sans-serif"&gt;-&lt;/div&gt;&lt;/td&gt;
+            &lt;/tr&gt;
+            &lt;tr&gt;
+                &lt;td style="border: 1px solid darkgreen"&gt;&lt;div style="color:red; font-size: 10px; font-family: verdana, arial, sans-serif"&gt;MEM (Total)&lt;/div&gt;&lt;/td&gt;
+                &lt;td style="border: 1px solid darkgreen"&gt;&lt;div id="total" style="color:darkgreen; font-size: 10px; font-family: verdana, arial, sans-serif"&gt;-&lt;/div&gt;&lt;/td&gt;
+            &lt;/tr&gt;
+            &lt;tr&gt;
+                &lt;td style="border: 1px solid darkgreen"&gt;&lt;div style="color:red; font-size: 10px; font-family: verdana, arial, sans-serif"&gt;MEM (Free)&lt;/div&gt;&lt;/td&gt;
+                &lt;td style="border: 1px solid darkgreen"&gt;&lt;div id="free" style="color:darkgreen; font-size: 10px; font-family: verdana, arial, sans-serif"&gt;-&lt;/div&gt;&lt;/td&gt;
+            &lt;/tr&gt;
+            &lt;tr&gt;
+                &lt;td&gt;&lt;input type="submit" value="Start Monitor" onclick="start()" /&gt;&lt;/td&gt;
+                &lt;td&gt;&lt;input type="submit" value="Stop Monitor" onclick="stop()" /&gt;&lt;/td&gt;
+            &lt;/tr&gt;
+            &lt;tr&gt;
+                &lt;td colspan="2" style="border: 1px solid brown"&gt;&lt;/td&gt;
+            &lt;/tr&gt;
+            &lt;tr&gt;
+                &lt;td colspan="2" style="border: 1px solid brown"&gt;&lt;div id="status" style="font-size: 10px; font-family: verdana, arial, sans-serif"&gt;Status&lt;/div&gt;&lt;/td&gt;
+            &lt;/tr&gt;
+        &lt;/table&gt;
+    &lt;/body&gt;
+&lt;/html&gt;</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Now that we have the code for both the <span class="bold">WebSocket</span>
+        server and client, we need to perform some setup as follows:</p>
+    </div>
+    <div id="para-div">
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>Copy all the java classes related to the server <span class="bold">SimpleMonitor3</span>
+            under the directory <span class="bold">$CATALINA_HOME/webapps/polarsparc/WEB-INF/classes/com/polarsparc/websockets</span></p>
+        </li>
+        <li>
+          <p>Copy the html file of the client <span class="bold">SimpleMonitor3.html</span>
+            under the directory <span class="bold">$CATALINA_HOME/webapps/polarsparc</span></p>
+        </li>
+        <li>
+          <p>Start the <span class="bold">Tomcat 8.x</span> server</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Now launch the <span class="bold">Firefox</span> browser and enter the following URL:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="bold"><a href="http://localhost:8080/polarsparc/SimpleMonitor3.html"
+                target="_blank">http://localhost:8080/polarsparc/SimpleMonitor3.html</a></span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>By clicking on the <span class="bold">Start Monitor</span> button and after few
+        seconds on the <span class="bold">Stop Monitor</span> button in
+        the browser window, we should see something like the following
+        Figure-1 below:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="SimpleMonitor3 Browser" class="img-cls"
+        src="./images/WebSockets-12.png" />
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <div id="para-div">
+      <p>The following Figure-2 below shows the output from the <span class="bold">Tomcat</span>
+        logs:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Tomcat Logs" class="img-cls" src="./images/WebSockets-13.png" />
+      <div class="img-cap">Figure-2</div>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/Networking/WebSockets-01.html" target="_blank"><span class="bold">Introduction
+            to WebSockets :: Part - 1</span></a></p>
+      <p><a href="https://polarsparc.github.io/Networking/WebSockets-02.html" target="_blank"><span class="bold">Introduction
+            to WebSockets :: Part - 2</span></a></p>
+      <p><a href="https://polarsparc.github.io/Networking/WebSockets-03.html" target="_blank"><span class="bold">Introduction
+            to WebSockets :: Part - 3</span></a></p>
+    </div>
+  </body>
+</html>

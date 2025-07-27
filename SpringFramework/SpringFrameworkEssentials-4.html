@@ -1,0 +1,639 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+      <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+      <meta name="author" content="Bhaskar.S">
+      <meta name="description" content="Spring Framework Core Essentials - Part 4">
+      <meta name="subject" content="Spring Framework Core Essentials - Part 4">
+      <meta name="keywords" content="java, spring">
+      <meta name="robots" content="index,follow">
+      <meta name="googlebot" content="index,follow">
+      <title>Spring Framework Core Essentials - Part 4</title>
+      <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Spring Framework Core Essentials - Part 4</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">07/20/2019</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="step-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="http://polarsparc.github.io/SpringFramework/SpringFrameworkEssentials-3.html" target="_blank"><span class="bold">
+        Part 3</span></a> of this series, we got our hands dirty on injecting application beans that contained initialization
+        and clean-up methods using the 3 different approaches.</p>
+      <p>In this part, we will explore the use-case where we get the reference to a singleton collaborator (dependee) bean via
+        a factory method. We will demonstrate this use-case using the 3 different approaches.</p>
+    </div>
+    <div id="step-div">
+      <p>Hands-on with Spring Framework Core - 4</p>
+    </div>
+    <div id="para-div">
+      <p>We will demonstrate each of the 3 approaches using a simple <span class="bold">Hello</span> greeter (in different
+        languages) example with a little twist - we will also display the sales tax corresponding to the country (associated
+        with the language).</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">XML based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The simple <span class="bold">Hello</span> greeter standalone application will output a greetings message for a
+        chosen language (English, French, etc) and a specified name. In addition, it will tag the sales tax for the country of
+        the chosen language. The hello message (for a chosen language) and the sales tax (for the country of the chosen
+        language) are abstracted in the data package, while the greeter is abstracted in the service package.</p>
+    </div>
+    <div id="para-div">
+      <p>The interface <span class="bold">WorldHelloDAO</span> as well as its implementation POJO <span class="bold">
+        SimpleMemoryWorldHelloDAO</span> from the data package have no changes and remains the same.</p>
+    </div>
+    <div id="para-div">
+      <p>The interface <span class="bold">WorldSalesTax</span> from the data package has no change and remains the same.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the POJO <span class="hi-green">SimpleMemoryWorldSalesTaxDAO3</span> from the data package that
+        implements the interface <span class="bold">WorldSalesTax</span> and stores the sales tax rates for a predefined
+        set of languages (English, French, German, Italian, and Spanish) in a <span class="bold">java.util.Map</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>SimpleMemoryWorldSalesTaxDAO3.java</legend>
+      <pre>/*
+ * Topic:  Spring Framework Core Essentials
+ * 
+ * Name:   Simple Memory World Sales Tax DAO 3
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.springframework.data;
+
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+public enum SimpleMemoryWorldSalesTaxDAO3 implements WorldSalesTax {
+    INSTANCE;
+    
+    private Log LOG = LogFactory.getLog(SimpleMemoryWorldSalesTaxDAO3.class);
+    
+    private Map<String, Float> salesTaxByState = null;
+    
+    public static WorldSalesTax getInstance() {
+        INSTANCE.LOG.info("Fetching the instance of WorldSalesTax");
+        
+        return INSTANCE;
+    }
+    
+    private SimpleMemoryWorldSalesTaxDAO3() {
+        salesTaxByState = Stream.of(new String[][] {
+            { "english", "10.0" },
+            { "french", "15.0" },
+            { "german", "20.0" },
+            { "italian", "25.0" },
+            { "spanish", "30.0" }
+        }).collect(Collectors.toMap(str -> str[0], str -> Float.valueOf(str[1])));
+        
+        LOG.info("Initialized a new instance of SimpleMemoryWorldSalesTaxDAO3");
+    }
+    
+    @Override
+    public float fetch(String lang) {
+        if (lang != null && lang.trim().isEmpty() == false) {
+            return salesTaxByState.getOrDefault(lang.toLowerCase(), 10.0f);
+        }
+        
+        return 15.0f;
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Notice the use of <span class="hi-yellow">enum</span> in the code <span class="bold">SimpleMemoryWorldSalesTaxDAO3
+        </span> above to force a singleton instance.</p>
+      <p>See <span class="bold">Figure.1</span> below.</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/springframework-17.png" alt="Singleton Factory" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <div id="para-div">
+      <p>The following XML file <span class="hi-green">sample8-beans.xml</span> specifies the configuration metadata for the
+        <span class="bold">Spring Framework</span> IoC container:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>sample8-beans.xml</legend>
+      <pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd"&gt;
+                        
+    &lt;bean id="simpleWorldHello" class="com.polarsparc.springframework.data.SimpleMemoryWorldHelloDAO" /&gt;
+    
+    &lt;bean id="simpleWorldSalesTax" class="com.polarsparc.springframework.data.SimpleMemoryWorldSalesTaxDAO3"
+          factory-method="getInstance" /&gt;
+    
+    &lt;bean name="simpleHelloGreeter" class="com.polarsparc.springframework.service.SimpleHelloGreeter4"&gt;
+        &lt;constructor-arg index="0" type="java.lang.Integer" value="3" /&gt;
+        &lt;constructor-arg index="1" type="java.lang.String" value="&gt;" /&gt;
+        &lt;constructor-arg index="2" ref="simpleWorldSalesTax" /&gt;
+        &lt;property name="separator" value="," /&gt;
+        &lt;property name="worldHello" ref="simpleWorldHello" /&gt;
+    &lt;/bean&gt;
+&lt;/beans&gt;</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>To create an instance of a bean via its factory method, use the <span class="hi-green">factory-method</span>
+        attribute on the corresponding <span class="bold">&lt;bean&gt;</span> element.</p>
+      <p>See <span class="bold">Figure.2</span> below.</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/springframework-18.png" alt="Factory Method" />
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <div id="para-div">
+      <p>Now that we have got the application POJOs and the configuration metadata defined in an XML file, it is time
+        to bring them together into the <span class="bold">Spring Framework</span> IoC container as a standalone
+        <span class="bold">Java</span> application.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the <span class="bold">Spring Framework</span> application <span class="hi-green">Sample10</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Sample10.java</legend>
+      <pre>/*
+ * Topic:  Spring Framework Core Essentials
+ * 
+ * Name:   Sample 10
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.springframework;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
+
+import com.polarsparc.springframework.service.HelloGreeter;
+
+public class Sample10 {
+    private static Log LOG = LogFactory.getLog(Sample10.class);
+
+    public static void main(String[] args) {
+        @SuppressWarnings("resource")
+        ApplicationContext applicationContext =
+            new ClassPathXmlApplicationContext("/sample8-beans.xml");
+        
+        HelloGreeter greeter = applicationContext.getBean("simpleHelloGreeter", HelloGreeter.class);
+        
+        LOG.info(greeter.greetings("german", "Eagle"));
+        LOG.info(greeter.greetings("italian", "Goose"));
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the Java program <span class="bold">Sample10</span> listed above should generate an output similar to
+        the following:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Jul 20, 2019 11:28:49 AM com.polarsparc.springframework.data.SimpleMemoryWorldHelloDAO <init>
+INFO: Initialized a new instance of SimpleMemoryWorldHelloDAO
+Jul 20, 2019 11:28:49 AM com.polarsparc.springframework.data.SimpleMemoryWorldSalesTaxDAO3 <init>
+INFO: Initialized a new instance of SimpleMemoryWorldSalesTaxDAO3
+Jul 20, 2019 11:28:49 AM com.polarsparc.springframework.data.SimpleMemoryWorldSalesTaxDAO3 getInstance
+INFO: Fetching the instance of WorldSalesTax
+Jul 20, 2019 11:28:49 AM com.polarsparc.springframework.Sample10 main
+INFO: Guten Tag, Eagle >>> Sales Tax: 20.0
+Jul 20, 2019 11:28:49 AM com.polarsparc.springframework.Sample10 main
+INFO: Salve, Goose >>> Sales Tax: 25.0</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Annotation based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The interface <span class="bold">WorldHelloDAO</span> as well as its implementation POJO <span class="bold">
+        SimpleFileWorldHelloDAO2</span> from the data package have no changes and remains the same.</p>
+    </div>
+    <div id="para-div">
+      <p>The interface <span class="bold">WorldSalesTax</span> as well as its implementation POJO <span class="bold">
+        SimpleMemoryWorldSalesTaxDAO3</span> from the data package has no changes and remains the same.</p>
+    </div>
+    <div id="para-div">
+      <p>The interface <span class="bold">HelloGreeter</span> from the service package has no change and remains the same.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the POJO <span class="hi-green">SimpleHelloGreeter8</span> from the service package that implements
+        the interface <span class="bold">HelloGreeter</span>. It returns a greetings message that consists of the 'Hello' for
+        the chosen language and the specified name along with the sales tax rate of the country corresponding to the chosen
+        language:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>SimpleHelloGreeter8.java</legend>
+      <pre>/*
+ * Topic:  Spring Framework Core Essentials
+ * 
+ * Name:   Simple Hello Greeter 8
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.springframework.service;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.stereotype.Service;
+
+import com.polarsparc.springframework.data.WorldHelloDAO;
+import com.polarsparc.springframework.data.WorldSalesTax;
+
+@Lazy
+@Service("simpleHelloGreeterWithTax8")
+public class SimpleHelloGreeter8 implements HelloGreeter {
+    private static int MAX_COUNT = 3;
+    
+    private static String SPACE = " ";
+    private static String STRANGER = "Stranger";
+    private static String SALES_TAX = "Sales Tax:";
+    
+    private int count = 0;
+    
+    private String separator = null;
+    private String sep = null;
+    
+    private WorldHelloDAO worldHello = null;
+    private WorldSalesTax worldSalesTax = null;
+    
+    @Autowired
+    public SimpleHelloGreeter8(@Value("${prop.sep.count:1}") Integer count,
+                               @Value("${prop.sep.char:#}") String sep,
+                               @Qualifier("worldSalesTax3") WorldSalesTax worldSalesTax) {
+        if (count < 1) {
+            this.count = count;
+        }
+        if (count > MAX_COUNT) {
+            this.count = MAX_COUNT;
+        }
+        this.count = count;
+        this.sep = sep;
+        this.worldSalesTax = worldSalesTax;
+    }
+    
+    public String getSeparator() {
+        return separator;
+    }
+
+    @Value("${prop.greeter.sep:-}")
+    public void setSeparator(String separator) {
+        this.separator = separator;
+    }
+
+    public WorldHelloDAO getWorldHello() {
+        return worldHello;
+    }
+
+    @Autowired
+    @Qualifier("fileWorldHello")
+    public void setWorldHello(WorldHelloDAO worldHello) {
+        this.worldHello = worldHello;
+    }
+
+    @Override
+    public String greetings(String lang, String name) {
+        String msg = null;
+        
+        if (name != null && name.trim().isEmpty() == false) {
+            StringBuilder sb = new StringBuilder()
+                                   .append(worldHello.fetch(lang.toLowerCase()))
+                                   .append(separator)
+                                   .append(SPACE)
+                                   .append(name)
+                                   .append(SPACE);
+            for (int i = 0; i < count; i++) {
+                sb.append(sep);
+            }
+            msg = sb.append(SPACE)
+                    .append(SALES_TAX)
+                    .append(SPACE)
+                    .append(worldSalesTax.fetch(lang.toLowerCase()))
+                    .toString();
+        }
+        else {
+            StringBuilder sb = new StringBuilder()
+                                   .append(worldHello.fetch(lang.toLowerCase()))
+                                   .append(separator)
+                                   .append(SPACE)
+                                   .append(STRANGER)
+                                   .append(SPACE);
+            for (int i = 0; i < count; i++) {
+                sb.append(sep);
+            }
+            msg = sb.append(SPACE)
+                    .append(SALES_TAX)
+                    .append(SPACE)
+                    .append(worldSalesTax.fetch(lang.toLowerCase()))
+                    .toString();
+        }
+        
+        return msg;
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Notice the use of the <span class="hi-yellow">@Lazy</span> annotation on the class <span class="bold">
+        SimpleHelloGreeter8</span> above. By default, the <span class="bold">Spring Framework</span> IoC container creates and
+        initializes the application bean(s) eagerly on startup. This annotation indicates to the <span class="bold">Spring
+        Framework</span> IoC container that it initialize the application bean(s) only when they are referenced at runtime.</p>
+    </div>
+    <div id="para-div">
+      <p>The following XML file <span class="hi-green">sample9-beans.xml</span> indicates to the <span class="bold">
+        Spring Framework</span> IoC container that it perform component scanning at the specified package level for
+        annotation processing:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>sample9-beans.xml</legend>
+      <pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/context
+                           http://www.springframework.org/schema/context/spring-context.xsd"&gt;
+    
+    &lt;context:property-placeholder location="classpath:sample5.properties" /&gt;
+    
+    &lt;bean id="worldSalesTax3" class="com.polarsparc.springframework.data.SimpleMemoryWorldSalesTaxDAO3"
+          factory-method="getInstance" primary="true" /&gt;
+          
+    &lt;context:component-scan base-package="com.polarsparc.springframework.data" /&gt;
+    &lt;context:component-scan base-package="com.polarsparc.springframework.service" /&gt;
+&lt;/beans&gt;</pre>
+    </fieldset>
+    <div id="para-div">
+      <p><span class="bold">Spring Framework</span> does not have any annotation to indicate the use of factory method. Hence,
+        we define the application bean (with id <span class="bold">worldSalesTax3</span>) in the XML configuration metadata
+        file and specify the <span class="bold">factory-method</span> attribute.</p>
+      <p>The <span class="hi-green">primary</span> attribute with the value of <span class="bold">true</span> on the associated
+        <span class="bold">&lt;bean&gt;</span> element indicates this bean will be preferred (primary) over the other instances
+        of the same type.</p>
+    </div>
+    <div id="error-div">
+      <h4>&#9888; ATTENTION &#9888;</h4>
+      <pre>Not using the <span class="bold">primary</span> attribute will cause the following exception:<br/><br/><span class="bold">No qualifying bean of type 'com.polarsparc.springframework.data.WorldSalesTax' available: expected single matching bean but found 2: worldSalesTax3,simpleMemoryWorldSalesTaxDAO2</span></pre>
+    </div>
+    <div id="para-div">
+      <p>The following is the <span class="bold">Spring Framework</span> application <span class="hi-green">Sample11</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Sample11.java</legend>
+      <pre>/*
+ * Topic:  Spring Framework Core Essentials
+ * 
+ * Name:   Sample 11
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.springframework;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.support.GenericXmlApplicationContext;
+
+import com.polarsparc.springframework.service.HelloGreeter;
+
+public class Sample11 {
+    private static Log LOG = LogFactory.getLog(Sample11.class);
+
+    public static void main(String[] args) {
+        @SuppressWarnings("resource")
+        ApplicationContext applicationContext =
+            new GenericXmlApplicationContext("/sample9-beans.xml");
+        
+        HelloGreeter greeter = applicationContext.getBean("simpleHelloGreeterWithTax8", HelloGreeter.class);
+        
+        LOG.info(greeter.greetings("English", "Monkey"));
+        LOG.info(greeter.greetings("Spanish", "Chimp"));
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the Java program <span class="bold">Sample11</span> listed above should generate an output similar to the
+        following:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Jul 20, 2019 12:52:21 PM com.polarsparc.springframework.data.SimpleMemoryWorldSalesTaxDAO3 <init>
+INFO: Initialized a new instance of SimpleMemoryWorldSalesTaxDAO3
+Jul 20, 2019 12:52:21 PM com.polarsparc.springframework.data.SimpleMemoryWorldSalesTaxDAO3 getInstance
+INFO: Fetching the instance of WorldSalesTax
+Jul 20, 2019 12:52:21 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO2 <init>
+INFO: Created new instance of SimpleFileWorldHelloDAO
+Jul 20, 2019 12:52:21 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO2 init
+INFO: Initializing cache from the file sample7.csv
+Jul 20, 2019 12:52:21 PM com.polarsparc.springframework.data.SimpleFileWorldHelloDAO2 init
+INFO: Cache successfully initialized with {german=Gut3n T4g, spanish=H0l4, english=H3ll0, italian=S4lv3, french=B0nj0ur}
+Jul 20, 2019 12:52:21 PM com.polarsparc.springframework.data.SimpleMemoryWorldHelloDAO2 <init>
+INFO: Initialized a new instance of SimpleMemoryWorldHelloDAO2
+Jul 20, 2019 12:52:21 PM com.polarsparc.springframework.data.SimpleMemoryWorldHelloDAO3 <init>
+INFO: Initialized a new instance of SimpleMemoryWorldHelloDAO3
+Jul 20, 2019 12:52:21 PM com.polarsparc.springframework.data.SimpleMemoryWorldSalesTaxDAO2 <init>
+INFO: Initialized a new instance of SimpleMemoryWorldSalesTaxDAO2
+Jul 20, 2019 12:52:22 PM com.polarsparc.springframework.Sample11 main
+INFO: H3ll0, Monkey >>> Sales Tax: 10.0
+Jul 20, 2019 12:52:22 PM com.polarsparc.springframework.Sample11 main
+INFO: H0l4, Chimp >>> Sales Tax: 30.0</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">JavaConfig based Approach</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The interface <span class="bold">WorldHelloDAO</span> as well as its implementation POJO <span class="bold">
+        SimpleFileWorldHelloDAO</span> from the data package have no changes and remains the same.</p>
+    </div>
+    <div id="para-div">
+      <p>The interface <span class="bold">WorldSalesTax</span> as well as its implementation POJO <span class="bold">
+        SimpleMemoryWorldSalesTaxDAO3</span> from the data package have no changes and remains the same.</p>
+    </div>
+    <div id="para-div">
+      <p>The interface <span class="bold">HelloGreeter</span> as well as its implementation POJO <span class="bold">
+        SimpleHelloGreeter6</span> from the service package have no changes and remains the same.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the <span class="bold">JavaConfig</span> POJO <span class="hi-green">Sample12Config</span> from
+        the config package:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Sample12Config.java</legend>
+      <pre>/*
+ * Topic:  Spring Framework Core Essentials
+ * 
+ * Name:   Sample 12 Config
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.springframework.config;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.core.env.Environment;
+
+import com.polarsparc.springframework.data.SimpleMemoryWorldHelloDAO;
+import com.polarsparc.springframework.data.SimpleMemoryWorldSalesTaxDAO3;
+import com.polarsparc.springframework.data.WorldHelloDAO;
+import com.polarsparc.springframework.data.WorldSalesTax;
+import com.polarsparc.springframework.service.HelloGreeter;
+import com.polarsparc.springframework.service.SimpleHelloGreeter6;
+
+@Configuration
+@PropertySource("classpath:sample5.properties")
+public class Sample12Config {
+    @Autowired
+    private Environment env;
+    
+    @Bean
+    public WorldHelloDAO simpleWorldHello() {
+        return new SimpleMemoryWorldHelloDAO();
+    }
+    
+    @Bean
+    public HelloGreeter simpleHelloGreeter() {
+        Integer sepCount = env.getProperty("prop.sep.count", Integer.class);
+        
+        String sepChar = env.getProperty("prop.sep.char");
+        String greeterSep = env.getProperty("prop.greeter.sep");
+        
+        WorldSalesTax worldSalesTax = SimpleMemoryWorldSalesTaxDAO3.getInstance();
+        
+        SimpleHelloGreeter6 greeter = new SimpleHelloGreeter6(sepCount, sepChar, worldSalesTax);
+        greeter.setSeparator(greeterSep);
+        
+        return greeter;
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The following is the <span class="bold">Spring Framework</span> application <span class="hi-green">Sample12</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Sample12.java</legend>
+      <pre>/*
+ * Topic:  Spring Framework Core Essentials
+ * 
+ * Name:   Sample 12
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.springframework;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+import com.polarsparc.springframework.config.Sample12Config;
+import com.polarsparc.springframework.service.HelloGreeter;
+
+public class Sample12 {
+    private static Log LOG = LogFactory.getLog(Sample12.class);
+
+    public static void main(String[] args) {
+        ApplicationContext applicationContext =
+            new AnnotationConfigApplicationContext(Sample12Config.class);
+        
+        HelloGreeter greeter = applicationContext.getBean("simpleHelloGreeter", HelloGreeter.class);
+        
+        LOG.info(greeter.greetings("German", "Dragon"));
+        LOG.info(greeter.greetings("Italian", "Mongoose"));
+        
+        ((AnnotationConfigApplicationContext)applicationContext).close();
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the Java program <span class="bold">Sample12</span> listed above should generate an output similar to
+        the following:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>Jul 20, 2019 1:07:48 PM com.polarsparc.springframework.data.SimpleMemoryWorldHelloDAO <init>
+INFO: Initialized a new instance of SimpleMemoryWorldHelloDAO
+Jul 20, 2019 1:07:48 PM com.polarsparc.springframework.data.SimpleMemoryWorldSalesTaxDAO3 <init>
+INFO: Initialized a new instance of SimpleMemoryWorldSalesTaxDAO3
+Jul 20, 2019 1:07:48 PM com.polarsparc.springframework.data.SimpleMemoryWorldSalesTaxDAO3 getInstance
+INFO: Fetching the instance of WorldSalesTax
+Jul 20, 2019 1:07:48 PM com.polarsparc.springframework.Sample12 main
+INFO: Guten Tag, Dragon >>> Sales Tax: 20.0
+Jul 20, 2019 1:07:48 PM com.polarsparc.springframework.Sample12 main
+INFO: Salve, Mongoose >>> Sales Tax: 25.0</pre>
+    </div>
+    <div id="para-div">
+      <p>With this, we wrap this series on <span class="bold">Spring Framework</span> Core Essentials.</p>
+    </div>
+    <div id="step-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p>[1] <a href="http://polarsparc.github.io/SpringFramework/SpringFrameworkEssentials-1.html" target="_blank"><span class="bold">Spring Framework Core Essentials - Part 1</span></a></p>
+      <p>[2] <a href="http://polarsparc.github.io/SpringFramework/SpringFrameworkEssentials-2.html" target="_blank"><span class="bold">Spring Framework Core Essentials - Part 2</span></a></p>
+      <p>[3] <a href="http://polarsparc.github.io/SpringFramework/SpringFrameworkEssentials-3.html" target="_blank"><span class="bold">Spring Framework Core Essentials - Part 3</span></a></p>
+      <p>[4] <span class="bold"></span><a href="https://spring.io/projects/spring-framework" target="_blank"><span class="bold">Spring Framework</span></a></p>
+      <p>[5] <span class="bold"></span><a href="https://docs.spring.io/spring-framework/docs/current/spring-framework-reference/core.html" target="_blank"><span class="bold">Spring Framework Core</span></a></p>
+      <p>[6] <span class="bold"></span><a href="https://docs.spring.io/spring-framework/docs/current/javadoc-api/overview-summary.html" target="_blank"><span class="bold">Spring Framework API</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

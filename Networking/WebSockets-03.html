@@ -1,0 +1,466 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <title>Introduction to WebSockets :: Part - 3</title>
+    <link rel="stylesheet" type="text/css" href="../css/polarsparc-v1.0.css" />
+  </head>
+  <body> <br />
+    <div id="title-div">
+      <p>Introduction to WebSockets :: Part - 3</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">02/15/2014</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Introduction</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/Networking/WebSockets-01.html" target="_blank"><span class="bold">Part-1</span></a>
+        we got our hands dirty with a simple <span class="bold">WebSockets</span>
+        example.</p>
+      <p>For each new client connection, a separate new instance of the server
+        endpoint class <span class="bold">com.polarsparc.websockets.SimpleMonitor</span>
+        is created.</p>
+      <p>Is it possible to create a single instance of the server endpoint class
+        and manage the client sessions within ???</p>
+      <p>In this part, we will do just that by creating a custom factory by
+        extending the class <span class="hi-yellow">javax.websocket.server.ServerEndpointConfig.Configurator</span>.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with WebSockets - 2</p>
+    </div>
+    <div id="para-div">
+      <p>We will demonstrate the use of <span class="bold">ServerEndpointConfig.Configurator</span>
+        to create a single instance of the server endpoint class for all of the
+        client connections with another simple monitoring example that will
+        display the <span class="bold">Memory</span> Total and Free space.</p>
+      <p>Note that this example will work only on the Linux platforms.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the custom <span class="bold">ServerEndpointConfig.Configurator</span>
+        Java code that will create a single instance of the server endpoint
+        class <span class="bold">com.polarsparc.websockets.SimpleMonitor2</span>
+        and reuse it for each of the client connections:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.1</legend>
+      <pre>/*
+ * 
+ * Name:   SimpleMonitor2Configurator
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   02/15/2014
+ * 
+ */
+
+package com.polarsparc.websockets;
+
+import java.util.logging.Logger;
+import java.util.logging.Level;
+
+import javax.websocket.server.ServerEndpointConfig.Configurator;
+
+public class SimpleMonitor2Configurator extends Configurator {
+    private final static Logger LOGGER = Logger.getLogger(SimpleMonitor2Configurator.class.getName());
+    
+    private final static SimpleMonitor2 monitor2 = new SimpleMonitor2();
+    
+    public SimpleMonitor2Configurator() {
+        LOGGER.setLevel(Level.INFO);
+    }
+    
+    @SuppressWarnings("unchecked")
+    @Override
+    public &lt;T&gt; T getEndpointInstance(Class&lt;T&gt; endpointClass)
+        throws InstantiationException {
+        LOGGER.info("SimpleMonitor2Configurator: getEndpointInstance() invoked, endpointClass = " + endpointClass.getName());
+        
+        return (T) monitor2;
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The java class <span class="hi-yellow">javax.websocket.server.ServerEndpointConfig.Configurator</span>
+        can be extended to create a custom configurator which can then be
+        applied to a server endpoint to modify the default configuration
+        behavior. In our example, we use it to create a single instance of the
+        server endpoint class and associate it with each client that connects.</p>
+      <p>The method <span class="hi-blue">getEndpointInstance()</span> is
+        invoked by the container each time a new client connects to the server
+        endpoint. This method returns an instance of the server endpoint that
+        will handle all the interactions from the client.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the server-side Java code that will push the <span class="bold">Memory</span>
+        metrics at a regular interval of 5 seconds:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.2</legend>
+      <pre>/*
+ * 
+ * Name:   SimpleMonitor2
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   02/15/2014
+ * 
+ */
+
+package com.polarsparc.websockets;
+
+import java.util.logging.Logger;
+import java.util.logging.Level;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.StringTokenizer;
+import java.io.FileReader;
+import java.io.BufferedReader;
+
+import javax.websocket.server.ServerEndpoint;
+import javax.websocket.Session;
+import javax.websocket.OnOpen;
+import javax.websocket.OnClose;
+import javax.websocket.CloseReason;
+import javax.websocket.OnError;
+import javax.websocket.OnMessage;
+
+/*
+ * There will be only one instance of this class. Notice the use of the configurator attribute
+ */
+@ServerEndpoint(value="/SimpleMonitor2", configurator=com.polarsparc.websockets.SimpleMonitor2Configurator.class)
+public class SimpleMonitor2 {
+    private final static Logger LOGGER = Logger.getLogger(SimpleMonitor2.class.getName());
+    
+    private List&lt;Session&gt; sessionList = new ArrayList&lt;Session&gt;();
+    
+    private Thread thread;
+    
+    public SimpleMonitor2() {
+        LOGGER.setLevel(Level.INFO);
+        
+        thread = new Thread(new DispatcherThread()); 
+        thread.setName("DispatcherThread");
+        thread.start();
+    }
+    
+    @OnOpen
+    public void onOpen(Session session) {
+        LOGGER.info("SimpleMonitor2: onOpen() invoked, session-id: " + session.getId());
+        
+        synchronized(sessionList) {
+            sessionList.add(session);
+        }
+    }
+    
+    @OnClose
+    public void onClose(Session session, CloseReason reason) {
+        LOGGER.info("SimpleMonitor2: onClose() invoked, session-id: " + session.getId() +
+            ", reason = " + reason.toString());
+        
+        closeSession(session);
+    }
+    
+    @OnError
+    public void onError(Session session, Throwable t) throws Throwable {
+        LOGGER.severe("SimpleMonitor2: onError() invoked, Exception = " + t.getMessage());
+    }
+    
+    @OnMessage
+    public void onMessage(String text, Session session) {
+        if (text != null) {
+            LOGGER.info("SimpleMonitor2: onMessage() invoked, text = " + text);
+        }
+    }
+    
+    // ----- Private Method(s) -----
+    
+    /*
+     * NOTE: This will only work on Linux platform.
+     * 
+     * We will open the /proc/meminfo system file to read the line beginning with 'MemTotal:'
+     * to get the second numeric value which the total memory. Similarly, read the line
+     * beginning with 'MemFree:' to get the second numeric value which the free memory.
+     * 
+     */<br />   �private String getCurrentMemoryMetrics() {
+        int COUNT = 2;
+        
+        String PROC_MEMINFO_FILE = "/proc/meminfo";
+        String MEMTOTAL = "MemTotal:";
+        String MEMFREE = "MemFree:";
+        String DELIMITER = " ";
+        String FORMAT = "Memory Total: %s (kB), Memory Free: %s (kB)";
+        
+        String total = null;
+        String free = null;
+        String metrics = null;
+        
+        BufferedReader br = null;
+        try {
+            br = new BufferedReader(new FileReader(PROC_MEMINFO_FILE));
+            for (String line; (line = br.readLine()) != null;) {
+                if (line.trim().startsWith(MEMTOTAL)) {
+                    StringTokenizer tokens = new StringTokenizer(line, DELIMITER);
+                    if (tokens.countTokens() &gt; COUNT) {
+                        tokens.nextToken(); // Ignore MemTotal:
+                        total = tokens.nextToken(); // Memory total
+                    }
+                }
+                else if (line.trim().startsWith(MEMFREE)) {
+                    StringTokenizer tokens = new StringTokenizer(line, DELIMITER);
+                    if (tokens.countTokens() &gt; COUNT) {
+                        tokens.nextToken(); // Ignore MemFree:
+                        free = tokens.nextToken(); // Memory free
+                    }
+                }
+                if (total != null &amp;&amp; free != null) {
+                    metrics = String.format(FORMAT, total, free);
+                    break;
+                }
+            }
+            br.close();
+        }
+        catch (Throwable ex) {
+            LOGGER.severe("SimpleMonitor2: getCurrentMemoryMetrics() invoked, Exception = " + ex.getMessage());
+        }
+        finally {
+            if (br != null) {
+                try {
+                    br.close();
+                }
+                catch (Throwable e) {
+                    // Ignore
+                }
+            }
+        }
+        
+        return metrics;
+    }
+    
+    private void closeSession(Session s) {
+        synchronized(sessionList) {
+            try {
+                s.close();
+            }
+            catch (Throwable e) {
+                // Ignore
+            }
+            
+            sessionList.remove(s);
+        }
+    }
+    
+    // ----- Inner Class(es) -----
+
+    /*
+     * This background thread wakes-up every 5 secs, invokes the method
+     * getCurrentMemoryMetrics() and distributes the formatted metrics
+     * to all the WebSocket client session(s)
+     */
+    private class DispatcherThread implements Runnable {
+        @Override
+        public void run() {
+            int SLEEP_INTERVAL = 5000; // 5 secs
+            
+            for (;;) {
+                Session[] sessions = null;
+                
+                synchronized(sessionList) {
+                    sessions = sessionList.toArray(new Session[0]);
+                }
+                
+                if (sessions != null &amp;&amp; sessions.length &gt; 0) {
+                    String text = getCurrentMemoryMetrics();
+                    
+                    for (Session s : sessions) {
+                        if (s.isOpen()) {
+                            try {
+                                s.getBasicRemote().sendText(text);
+                            }
+                            catch (Throwable e) {
+                                LOGGER.severe("SimpleMonitor2: DispatcherThread: run() invoked, session-id: " +<br />                                    s.getId() + ", Exception = " + e.getMessage());
+                                
+                                closeSession(s);
+                            }
+                        }
+                        else {
+                            closeSession(s);
+                        }
+                    }
+                }
+                
+                try {
+                    Thread.sleep(SLEEP_INTERVAL);
+                }
+                catch (Throwable e) {
+                    // Ignore
+                }
+            }
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>We will highlight some of the aspects from the source code in Listing.2
+        above as follows:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>Notice how the annotation <span class="hi-yellow">@ServerEndpoint</span>
+            defines the server endpoint using the <span class="hi-green">value</span>
+            attribute and the custom server endpoint configurator java class
+            using the <span class="hi-green">configurator</span> attribute.</p>
+        </li>
+        <li>
+          <p>The annotation <span class="hi-yellow">@OnClose</span> can be
+            applied to a method that takes two arguments: a <span class="hi-yellow">javax.websocket.Session</span>
+            and a <span class="hi-yellow">javax.websocket.CloseReason</span>.</p>
+          <p>The class <span class="bold">CloseReason</span> encapsulates the
+            reason (code and text) why a <span class="bold">WebSocket</span>
+            between a client and the server was closed.</p>
+        </li>
+        <li>
+          <p>The annotation <span class="hi-yellow">@OnMessage</span> can be
+            applied to a method that takes two arguments: a <span class="hi-yellow">java.lang.String</span>
+            and a <span class="hi-yellow">javax.websocket.Session</span>.</p>
+        </li>
+        <li>
+          <p>The annotation <span class="hi-yellow">@OnError</span> can be
+            applied to a method that takes two arguments: a <span class="hi-yellow">javax.websocket.Session</span>
+            and a <span class="hi-yellow">java.lang.Throwable</span>.</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the client-side <span class="bold">HTML/JavaScript</span>
+        code that initializes and uses a <span class="bold">WebSocket</span>
+        connection:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.3</legend>
+      <pre>&lt;html&gt;
+    &lt;head&gt;
+        &lt;title&gt;Simple Monitor 2&lt;/title&gt;
+    &lt;/head&gt;
+    
+    &lt;body&gt;
+        &lt;script type="text/javascript"&gt;
+            var webSocket = null;
+            
+            function start() {
+                if (! webSocket) {
+                    webSocket = new WebSocket('ws://localhost:8080/polarsparc/SimpleMonitor2');
+    
+                    webSocket.onopen = function(event) {
+                        document.getElementById('status').innerHTML = "Connection open";
+                    };
+                
+                    webSocket.onclose = function(event) {
+                        document.getElementById('status').innerHTML = "Connection closed";
+                    };
+    
+                    webSocket.onerror = function(event) {
+                        document.getElementById('status').innerHTML = "Error: " + event.data;
+                    };
+    
+                    webSocket.onmessage = function(event) {
+                        document.getElementById('memory').innerHTML = event.data;
+                    };
+                
+                    webSocket.send('start');
+                }
+                else {
+                    alert("WebSocket already open .....");
+                }
+                
+                return false;
+            }
+            
+            function stop() {
+                if (webSocket) {
+                    webSocket.close();
+                    webSocket = null;
+                }
+            }
+        &lt;/script&gt;
+        
+        &lt;table style="border: 1px solid red"&gt;
+            &lt;tr&gt;
+                &lt;td colspan="2" style="border: 1px solid blue"&gt;&lt;div id="memory" style="color:blue; font-size: 10px; font-family: verdana, arial, sans-serif"&gt;Memory Metrics&lt;/div&gt;&lt;/td&gt;
+            &lt;/tr&gt;
+            &lt;tr&gt;
+                &lt;td&gt;&lt;input type="submit" value="Start Monitor" onclick="start()" /&gt;&lt;/td&gt;
+                &lt;td&gt;&lt;input type="submit" value="Stop Monitor" onclick="stop()" /&gt;&lt;/td&gt;
+            &lt;/tr&gt;
+            &lt;tr&gt;
+                &lt;td colspan="2" style="border: 1px solid blue"&gt;&lt;div id="status" style="font-size: 10px; font-family: verdana, arial, sans-serif"&gt;Status&lt;/div&gt;&lt;/td&gt;
+            &lt;/tr&gt;
+        &lt;/table&gt;
+    &lt;/body&gt;
+&lt;/html&gt;</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Now that we have the code for both the <span class="bold">WebSocket</span>
+        server and client, we need to perform some setup as follows:</p>
+    </div>
+    <div id="para-div">
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>Copy the java classes of the server <span class="bold">SimpleMonitor2</span>
+            under the directory <span class="bold">$CATALINA_HOME/webapps/polarsparc/WEB-INF/classes/com/polarsparc/websockets</span></p>
+        </li>
+        <li>
+          <p>Copy the html file of the client <span class="bold">SimpleMonitor2.html</span>
+            under the directory <span class="bold">$CATALINA_HOME/webapps/polarsparc</span></p>
+        </li>
+        <li>
+          <p>Start the <span class="bold">Tomcat 8.x</span> server</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Now launch two separate instances of the <span class="bold">Firefox</span>
+        browser and enter the following URL in both the browser instances:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="bold"><a href="http://localhost:8080/polarsparc/SimpleMonitor2.html"
+                target="_blank">http://localhost:8080/polarsparc/SimpleMonitor2.html</a></span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Clicking on the <span class="bold">Start Monitor</span> button in both
+        the browser instances and we should see something like the following
+        Figure-1 below:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="SimpleMonitor2 Browsers" class="img-cls"
+        src="./images/WebSockets-10.png" />
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <div id="para-div">
+      <p>Clicking on the <span class="bold">Stop Monitor</span> button closes
+        the <span class="bold">WebSocket</span> connection and stops the
+        message stream.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Figure-2 below shows the output from the <span class="bold">Tomcat</span>
+        logs:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Tomcat Logs" class="img-cls" src="./images/WebSockets-11.png" />
+      <div class="img-cap">Figure-2</div>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/Networking/WebSockets-01.html" target="_blank"><span class="bold">Introduction
+            to WebSockets :: Part - 1</span></a></p>
+      <p><a href="https://polarsparc.github.io/Networking/WebSockets-02.html" target="_blank"><span class="bold">Introduction
+            to WebSockets :: Part - 2</span></a></p>
+    </div>
+  </body>
+</html>

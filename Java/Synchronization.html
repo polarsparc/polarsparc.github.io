@@ -1,0 +1,596 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <title>Multi-Thread Synchronization - CountDownLatch, CyclicBarrier, &amp;
+      Phaser</title>
+    <link rel="stylesheet" type="text/css" href="../css/polarsparc-v1.0.css" />
+  </head>
+  <body> <br />
+    <div id="title-div">
+      <p>Multi-Thread Synchronization - CountDownLatch, CyclicBarrier, &amp;
+        Phaser</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">04/12/2014</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In this article, we will explore the use of the following multi-thread
+        synchronization aids in Java:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="bold">CountDownLatch</span></p>
+        </li>
+        <li>
+          <p><span class="bold">CyclicBarrier</span></p>
+        </li>
+        <li>
+          <p><span class="bold">Phaser</span></p>
+        </li>
+      </ul>
+      <p>All these synchronization classes are defined in the Java package <span
+          class="hi-blue">java.util.concurrent</span>.</p>
+      <p>For our code samples, we will consider a hypothetical Debit Processing
+        System with 3 services - an Authentication Service to verify a card
+        number and pin, an Account Balance Service to verify if there is enough
+        money in the account for the debit transaction, and a Fraud Service to
+        check for fraud activity.</p>
+      <p>So without further ado, lets get started !!!</p>
+    </div>
+    <div id="section-div">
+      <p>CountDownLatch</p>
+    </div>
+    <div id="para-div">
+      <p>When we start-up our Debit Processing System, we can initialize and
+        setup each of the 3 services in a serial fashion, one after the other.
+        This can delay the start-up time. The other approach is to initialize
+        and setup the services in parallel threads. For this we need to ensure
+        we do not begin processing any debit transactions until all the 3
+        services are initialized and setup. This is a one-time synchronization
+        that needs to happen at start-up. This is where the <span class="bold">CountDownLatch</span>
+        synchronization mechanism comes in handy.</p>
+      <p>A <span class="bold">CountDownLatch</span> allows one <span class="bold">Thread</span>
+        to wait for the other <span class="bold">Thread</span>s to complete
+        some action(s).</p>
+      <p>A <span class="bold">CountDownLatch</span> is initialized with an
+        integer count which represents the number of <span class="bold">Thread</span>s
+        to wait for.</p>
+      <p>The <span class="bold">Thread</span> that needs to wait will invoke
+        the <span class="hi-yellow">await()</span> method.</p>
+      <p>Each of the <span class="bold">Thread</span>s performing some
+        action(s) will invoke the <span class="hi-yellow">countDown()</span>
+        method to signal the completion of some action(s).</p>
+      <p>Each instance of <span class="bold">CountDownLatch</span> object is
+        good for one-time use.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the example that demonstrates the use of the
+        synchronization mechanism <span class="bold">CountDownLatch</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.1</legend>
+      <pre>/*
+ * 
+ * Name:   MyCountDownLatch
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   04/05/2014
+ * 
+ */
+
+package com.polarsparc.java.synchronization;
+
+import java.util.concurrent.CountDownLatch;
+
+public class MyCountDownLatch {
+    public static void main(String[] args) {
+        final int COUNT = 3; // 3 Threads
+        
+        CountDownLatch latch = new CountDownLatch(COUNT);
+        
+        Thread as = new Thread(new AuthenticationService(latch));
+        as.setName("AuthenticationServiceThread");
+        
+        Thread bs = new Thread(new AccountBalanceService(latch));
+        bs.setName("AccountBalanceServiceThread");
+        
+        Thread fs = new Thread(new FraudService(latch));
+        fs.setName("FraudServiceThread");
+        
+        System.out.printf("Initialization started ...\n");
+        
+        as.start();
+        bs.start();
+        fs.start();
+        
+        try {
+            latch.await();
+        }
+        catch (Exception ex) {
+            ex.printStackTrace(System.err);
+        }
+        
+        System.out.printf("Initialization completed !!!\n");
+    }
+    
+    static class AuthenticationService implements Runnable {
+        private final CountDownLatch latch;
+        
+        AuthenticationService(CountDownLatch latch) {
+            this.latch = latch;
+        }
+        
+        @Override
+        public void run() {
+            try {
+                System.out.printf("Initializing authentication service ...\n");
+                Thread.sleep(2000); // 2 seconds
+                System.out.printf("Authentication service ready !!!\n");
+                latch.countDown();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+    }
+    
+    static class AccountBalanceService implements Runnable {
+        private final CountDownLatch latch;
+        
+        AccountBalanceService(CountDownLatch latch) {
+            this.latch = latch;
+        }
+        
+        @Override
+        public void run() {
+            try {
+                System.out.printf("Initializing account balance service ...\n");
+                Thread.sleep(2000); // 2 seconds
+                System.out.printf("Account balance service ready !!!\n");
+                latch.countDown();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+    }
+    
+    static class FraudService implements Runnable {
+        private final CountDownLatch latch;
+        
+        FraudService(CountDownLatch latch) {
+            this.latch = latch;
+        }
+        
+        @Override
+        public void run() {
+            try {
+                System.out.printf("Initializing fraud service ...\n");
+                Thread.sleep(2000); // 2 seconds
+                System.out.printf("Fraud service ready !!!\n");
+                latch.countDown();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the program will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Initialization started ...
+Initializing authentication service ...
+Initializing account balance service ...
+Initializing fraud service ...
+Authentication service ready !!!
+Account balance service ready !!!
+Fraud service ready !!!
+Initialization completed !!!</pre>
+    </div>
+    <div id="section-div">
+      <p>CyclicBarrier</p>
+    </div>
+    <div id="para-div">
+      <p>Now that our Debit Processing System is up and running, we will start
+        processing debit transactions. Each debit transaction involves 3 steps -
+        authentication, balance verification, and fraud verification. We can
+        process these steps in a serial fashion, one after the other. This will
+        reduce the processing throughput. The other approach is to process the 3
+        steps in parallel threads. For this we need to ensure that the main
+        processing thread waits for the 3 steps to complete. Debit transaction
+        processing is not a one-time synchronization operation. This is where
+        the <span class="bold">CyclicBarrier</span> synchronization mechanism
+        comes in handy.</p>
+      <p>A <span class="bold">CyclicBarrier</span> allows one or more <span class="bold">Thread</span>s
+        to wait for the other <span class="bold">Thread</span>s in the set to
+        arrive at a common synchronization point called the barrier point.</p>
+      <p>A <span class="bold">CyclicBarrier</span> is initialized with an
+        integer count which represents the fixed number of <span class="bold">Thread</span>s
+        in the set.</p>
+      <p>Each of the <span class="bold">Thread</span>s will invoke the <span class="hi-yellow">await()</span>
+        method which will block and wait for the other <span class="bold">Thread</span>s
+        in the set to arrive at the barrier point.</p>
+      <p>Each instance of <span class="bold">CyclicBarrier</span> object is
+        cyclic as they can be re-used again once all the <span class="bold">Thread</span>s
+        in the set have crossed the barrier point.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the example that demonstrates the use of the
+        synchronization mechanism <span class="bold">CyclicBarrier</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.2</legend>
+      <pre>/*
+ * 
+ * Name:   MyCyclicBarrier
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   04/05/2014
+ * 
+ */
+
+package com.polarsparc.java.synchronization;
+
+import java.util.concurrent.CyclicBarrier;
+
+public class MyCyclicBarrier {
+    public static void main(String[] args) {
+        final int COUNT = 4; // 1 main thread and 3 verify threads
+        
+        final String[] CARD_NOS = { "1234-5678-9000-1111", "1234-5678-9000-2222" };
+        final String[] PINS = { "1234", "5678" };
+        final double[] AMOUNTS = { 1500.99, 1249.99 };
+        
+        CyclicBarrier barrier = new CyclicBarrier(COUNT);
+        
+        for (int i = 0; i &lt; CARD_NOS.length; i++) {
+            Thread ac = new Thread(new AuthenticationCheck(barrier, CARD_NOS[i], PINS[i]));
+            ac.setName("AuthenticationCheckThread");
+
+            Thread bc = new Thread(new BalanceCheck(barrier, CARD_NOS[i], AMOUNTS[i]));
+            bc.setName("BalanceCheckThread");
+
+            Thread fc = new Thread(new FraudCheck(barrier, CARD_NOS[i], AMOUNTS[i]));
+            fc.setName("FraudCheckThread");
+
+            System.out.printf("Transaction processing started for %s\n", CARD_NOS[i]);
+
+            barrier.reset();
+
+            ac.start();
+            bc.start();
+            fc.start();
+
+            try {
+                barrier.await();
+            }
+            catch (Exception ex) {
+            }
+
+            System.out.printf("Transaction processing completed for %s\n", CARD_NOS[i]);
+        }
+    }
+    
+    static class AuthenticationCheck implements Runnable {
+        private final String cardNo;
+        private final String pin;
+        private final CyclicBarrier barrier;
+        
+        AuthenticationCheck(CyclicBarrier barrier, String cardNo, String pin) {
+            this.barrier = barrier;
+            this.cardNo = cardNo;
+            this.pin = pin;
+        }
+        
+        @Override
+        public void run() {
+            try {
+                System.out.printf("Ready to perform authentication check for %s\n", cardNo);
+                Thread.sleep(3000); // 3 seconds
+                System.out.printf("Completed authentication check for %s\n", cardNo);
+                barrier.await();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+    }
+    
+    static class BalanceCheck implements Runnable {
+        private final String cardNo;
+        private final double amount;
+        private final CyclicBarrier barrier;
+        
+        BalanceCheck(CyclicBarrier barrier, String cardNo, double amount) {
+            this.barrier = barrier;
+            this.cardNo = cardNo;
+            this.amount = amount;
+        }
+        
+        @Override
+        public void run() {
+            try {
+                System.out.printf("Ready to perform balance check on %s for amount %.02f\n", cardNo, amount);
+                Thread.sleep(2000); // 2 seconds
+                System.out.printf("Completed balance check for %s for amount %.02f\n", cardNo, amount);
+                barrier.await();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+    }
+    
+    static class FraudCheck implements Runnable {
+        private final String cardNo;
+        private final double amount;
+        private final CyclicBarrier barrier;
+        
+        FraudCheck(CyclicBarrier barrier, String cardNo, double amount) {
+            this.barrier = barrier;
+            this.cardNo = cardNo;
+            this.amount = amount;
+        }
+        
+        @Override
+        public void run() {
+            try {
+                System.out.printf("Ready to perform fraud check on %s for amount %.02f\n", cardNo, amount);
+                Thread.sleep(1000); // 1 second
+                System.out.printf("Completed fraud check on %s for amount %.02f\n", cardNo, amount);
+                barrier.await();
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the program will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Transaction processing started for 1234-5678-9000-1111
+Ready to perform authentication check for 1234-5678-9000-1111
+Ready to perform fraud check on 1234-5678-9000-1111 for amount 1500.99
+Ready to perform balance check on 1234-5678-9000-1111 for amount 1500.99
+Completed fraud check on 1234-5678-9000-1111 for amount 1500.99
+Completed balance check for 1234-5678-9000-1111 for amount 1500.99
+Completed authentication check for 1234-5678-9000-1111
+Transaction processing completed for 1234-5678-9000-1111
+Transaction processing started for 1234-5678-9000-2222
+Ready to perform authentication check for 1234-5678-9000-2222
+Ready to perform balance check on 1234-5678-9000-2222 for amount 1249.99
+Ready to perform fraud check on 1234-5678-9000-2222 for amount 1249.99
+Completed fraud check on 1234-5678-9000-2222 for amount 1249.99
+Completed balance check for 1234-5678-9000-2222 for amount 1249.99
+Completed authentication check for 1234-5678-9000-2222
+Transaction processing completed for 1234-5678-9000-2222</pre>
+    </div>
+    <div id="section-div">
+      <p>Phaser</p>
+    </div>
+    <div id="para-div">
+      <p>A <span class="bold">Phaser</span> is similar to a <span class="bold">CyclicBarrier</span>
+        except that it is more flexible and dynamic in terms of usage. With
+        either the <span class="bold">CountDownLatch</span> or the <span class="bold">CyclicBarrier</span>
+        one needs to specify the count of threads involved in the
+        synchronization. With the <span class="bold">Phaser</span>, the number
+        of threads can be dynamic and vary with time.</p>
+      <p>A <span class="bold">Phaser</span> allows one or more <span class="bold">Thread</span>s
+        to wait for the other <span class="bold">Thread</span>s in the set to
+        arrive at a common synchronization point called a phase.</p>
+      <p>To participate in the synchronization, a <span class="bold">Thread</span> (also referred to as a party)
+        has to invoke the <span class="hi-yellow">register()</span> method on
+        an instance of <span class="bold">Phaser</span>.</p>
+      <p>A <span class="bold">Thread</span> will invoke the <span class="hi-yellow">arriveAndAwaitAdvance()</span>
+        method to block and wait for the other <span class="bold">Thread</span>s (or parties)
+        in the set to arrive at the barrier point.</p>
+      <p>A <span class="bold">Thread</span> will invoke the <span class="hi-yellow">arriveAndDeregister()</span>
+        method to signal that it has arrived at the barrier point (without waiting for others) and also
+        deregister from an instance of the <span class="bold">Phaser</span>.</p>
+      <p>Like the <span class="bold">CyclicBarrier</span>, an instance of the <span
+          class="bold">Phaser</span> object can be re-used again once all the <span
+          class="bold">Thread</span>s in the set have crossed the barrier point.</p>
+      <p>Invoking the method <span class="hi-yellow">getPhase()</span>, returns the current phase.</p>
+      <p>Invoking the method <span class="hi-yellow">getRegisteredParties()</span>, returns the current count of <span class="bold">Thread</span>s (or parties)
+        registered with the <span class="bold">Phaser</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the example that demonstrates the use of the
+        synchronization mechanism <span class="bold">Phaser</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Listing.3</legend>
+      <pre>/*
+ * 
+ * Name:   MyPhaser
+ * 
+ * Author: Bhaskar S
+ * 
+ * Date:   04/05/2014
+ * 
+ */
+
+package com.polarsparc.java.synchronization;
+
+import java.util.concurrent.Phaser;
+
+public class MyPhaser {
+    public static void main(String[] args) {
+        final String[] CARD_NOS = { "1234-5678-9000-1111", "1234-5678-9000-2222" };
+        final String[] PINS = { "1234", "5678" };
+        final double[] AMOUNTS = { 1500.99, 1249.99 };
+        
+        Phaser phaser = new Phaser();
+        
+        for (int i = 0; i &lt; CARD_NOS.length; i++) {
+            System.out.printf("Current phase %d, Registered threads %d (begin)\n", phaser.getPhase(), phaser.getRegisteredParties());
+
+            phaser.register(); // For main thread
+
+            System.out.printf("Current phase %d, Registered threads %d (main)\n", phaser.getPhase(), phaser.getRegisteredParties());
+
+            Thread ac = new Thread(new AuthenticationCheck(phaser, CARD_NOS[i], PINS[i]));
+            ac.setName("AuthenticationCheckThread");
+
+            Thread bc = new Thread(new BalanceCheck(phaser, CARD_NOS[i], AMOUNTS[i]));
+            bc.setName("BalanceCheckThread");
+
+            Thread fc = new Thread(new FraudCheck(phaser, CARD_NOS[i], AMOUNTS[i]));
+            fc.setName("FraudCheckThread");
+
+            System.out.printf("Transaction processing started for %s\n", CARD_NOS[i]);
+
+            ac.start();
+            bc.start();
+            fc.start();
+
+            phaser.arriveAndAwaitAdvance();
+
+            System.out.printf("Transaction processing completed for %s\n", CARD_NOS[i]);
+
+            System.out.printf("Current phase %d, Registered threads %d (end)\n", phaser.getPhase(), phaser.getRegisteredParties());
+        }
+    }
+    
+    static class AuthenticationCheck implements Runnable {
+        private final String cardNo;
+        private final String pin;
+        private final Phaser phaser;
+        
+        AuthenticationCheck(Phaser phaser, String cardNo, String pin) {
+            this.phaser = phaser;
+            this.cardNo = cardNo;
+            this.pin = pin;
+        }
+        
+        @Override
+        public void run() {
+            try {
+                phaser.register();
+                System.out.printf("Current phase %d, Registered threads %d (ac-begin)\n", phaser.getPhase(), phaser.getRegisteredParties());
+                System.out.printf("[Phase: %d] Ready to perform authentication check for %s\n", phaser.getPhase(), cardNo);
+                Thread.sleep(3000); // 3 seconds
+                System.out.printf("[Phase: %d] Completed authentication check for %s\n", phaser.getPhase(), cardNo);
+                phaser.arriveAndDeregister();
+                System.out.printf("Current phase %d, Registered threads %d (ac-end)\n", phaser.getPhase(), phaser.getRegisteredParties());
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+    }
+    
+    static class BalanceCheck implements Runnable {
+        private final String cardNo;
+        private final double amount;
+        private final Phaser phaser;
+        
+        BalanceCheck(Phaser phaser, String cardNo, double amount) {
+            this.phaser = phaser;
+            this.cardNo = cardNo;
+            this.amount = amount;
+        }
+        
+        @Override
+        public void run() {
+            try {
+                phaser.register();
+                System.out.printf("Current phase %d, Registered threads %d (bc-begin)\n", phaser.getPhase(), phaser.getRegisteredParties());
+                System.out.printf("[Phase: %d] Ready to perform balance check on %s for amount %.02f\n", phaser.getPhase(), cardNo, amount);
+                Thread.sleep(2000); // 2 seconds
+                System.out.printf("[Phase: %d] Completed balance check for %s for amount %.02f\n", phaser.getPhase(), cardNo, amount);
+                phaser.arriveAndDeregister();
+                System.out.printf("Current phase %d, Registered threads %d (bc-end)\n", phaser.getPhase(), phaser.getRegisteredParties());
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+    }
+    
+    static class FraudCheck implements Runnable {
+        private final String cardNo;
+        private final double amount;
+        private final Phaser phaser;
+        
+        FraudCheck(Phaser phaser, String cardNo, double amount) {
+            this.phaser = phaser;
+            this.cardNo = cardNo;
+            this.amount = amount;
+        }
+        
+        @Override
+        public void run() {
+            try {
+                phaser.register();
+                System.out.printf("Current phase %d, Registered threads %d (fc-begin)\n", phaser.getPhase(), phaser.getRegisteredParties());
+                System.out.printf("[Phase: %d] Ready to perform fraud check on %s for amount %.02f\n", phaser.getPhase(), cardNo, amount);
+                Thread.sleep(1000); // 1 second
+                System.out.printf("[Phase: %d] Completed fraud check on %s for amount %.02f\n", phaser.getPhase(), cardNo, amount);
+                phaser.arriveAndDeregister();
+                System.out.printf("Current phase %d, Registered threads %d (fc-end)\n", phaser.getPhase(), phaser.getRegisteredParties());
+            }
+            catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Executing the program will generate the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>Current phase 0, Registered threads 0 (begin)
+Current phase 0, Registered threads 1 (main)
+Transaction processing started for 1234-5678-9000-1111
+Current phase 0, Registered threads 2 (ac-begin)
+[Phase: 0] Ready to perform authentication check for 1234-5678-9000-1111
+Current phase 0, Registered threads 3 (bc-begin)
+[Phase: 0] Ready to perform balance check on 1234-5678-9000-1111 for amount 1500.99
+Current phase 0, Registered threads 4 (fc-begin)
+[Phase: 0] Ready to perform fraud check on 1234-5678-9000-1111 for amount 1500.99
+[Phase: 0] Completed fraud check on 1234-5678-9000-1111 for amount 1500.99
+Current phase 0, Registered threads 3 (fc-end)
+[Phase: 0] Completed balance check for 1234-5678-9000-1111 for amount 1500.99
+Current phase 0, Registered threads 2 (bc-end)
+[Phase: 0] Completed authentication check for 1234-5678-9000-1111
+Current phase 1, Registered threads 1 (ac-end)
+Transaction processing completed for 1234-5678-9000-1111
+Current phase 1, Registered threads 1 (end)
+Current phase 1, Registered threads 1 (begin)
+Current phase 1, Registered threads 2 (main)
+Transaction processing started for 1234-5678-9000-2222
+Current phase 1, Registered threads 3 (bc-begin)
+[Phase: 1] Ready to perform balance check on 1234-5678-9000-2222 for amount 1249.99
+Current phase 1, Registered threads 5 (fc-begin)
+[Phase: 1] Ready to perform fraud check on 1234-5678-9000-2222 for amount 1249.99
+Current phase 1, Registered threads 4 (ac-begin)
+[Phase: 1] Ready to perform authentication check for 1234-5678-9000-2222
+[Phase: 1] Completed fraud check on 1234-5678-9000-2222 for amount 1249.99
+Current phase 1, Registered threads 4 (fc-end)
+[Phase: 1] Completed balance check for 1234-5678-9000-2222 for amount 1249.99
+Current phase 1, Registered threads 3 (bc-end)
+[Phase: 1] Completed authentication check for 1234-5678-9000-2222
+Current phase 1, Registered threads 2 (ac-end)
+</pre> </div>
+  </body>
+</html>
