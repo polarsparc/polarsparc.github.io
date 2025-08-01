@@ -1,0 +1,1348 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Setup Hyperledger Fabric 2.x Test Network (ARM64 Edition)">
+    <meta name="subject" content="Setup Hyperledger Fabric 2.x Test Network (ARM64 Edition)">
+    <meta name="keywords" content="arm64, blockchain, docker, hyperledger_fabric">
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <title>Setup Hyperledger Fabric 2.x Test Network (ARM64 Edition)</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Setup Hyperledger Fabric 2.x Test Network (ARM64 Edition)</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">09/18/2022</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="step-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+	  <p>In the article <a href="https://polarsparc.github.io/HyperledgerFabric/Hyperledger-ARM-Build.html" target="_blank"><span class
+      ="bold">Building Docker Images for Hyperledger Fabric 2.x</span></a>, we demonstrated how one can build the docker images from
+      the source.</p>
+    <p>In this article, we will use those same docker images to prove we can setup a test network on the 64-bit hex-core single board
+      computer <a href="https://www.hardkernel.com/shop/odroid-n2-with-4gbyte-ram-2/" target="_blank"><span class="bold">ODroid-N2</span></a>
+      running <a href="https://www.armbian.com/odroid-n2/" target="_blank"><span class="bold">Armbian 22.08 Jammy</span></a> Linux OS.</p>
+    </div>
+    </div>
+    <div id="step-div">
+      <p>Pre-requisites</p>
+    </div>
+    <div id="para-div">
+      <p>Assuming that we are logged in as <span class="hi-yellow">bswamina</span> and the current working directory is the home
+        directory <span class="hi-yellow">/home/bswamina</span>.</p>
+      <p>Also, we will assume that the host is using a static ip address and is set to <span class="hi-yellow">192.168.1.45</span>
+        (one can pick their favorite).</p>
+    </div>
+    <div id="para-div">
+      <p>We need to install the JSON processor cli <span class="bold">jq</span> by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt install jq -y</p>
+    </div>
+    <div id="para-div">
+      <p>Next, it is time to clone the <span class="bold">Hyperledger Fabric Samples</span> source code that is distributed via the
+        <span class="bold">GIT</span> repository - <span class="hi-yellow">fabric-samples</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To clone the <span class="bold">fabric-samples</span> repository, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/hyperledger</p>
+      <p>$ cd $HOME/hyperledger</p>
+      <p>$ git clone https://github.com/hyperledger/fabric-samples.git</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Cloning into 'fabric-samples'...
+remote: Enumerating objects: 10823, done.
+remote: Counting objects: 100% (164/164), done.
+remote: Compressing objects: 100% (132/132), done.
+remote: Total 10823 (delta 63), reused 102 (delta 29), pack-reused 10659
+Receiving objects: 100% (10823/10823), 19.17 MiB | 14.35 MiB/s, done.
+Resolving deltas: 100% (5816/5816), done.</pre>
+    </div>
+    <div id="para-div">
+      <p>The test network setup is located under the directory <span class="hi-yellow">$HOME/hyperledger/test-network</span>.</p>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>The test network setup is coded in the main script <span class="bold">network.sh</span>, which invokes other scripts.
+
+We will <span class="underbold">IGNORE</span> that script and instead invoke the various commands using just the docker images.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Ensure we have all the the <span class="bold">Docker</span> images by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker images</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>REPOSITORY                TAG                 IMAGE ID       CREATED          SIZE
+bswamina/fabric-tools     2.4.6               773fcf5b8132   6 minutes ago    469MB
+bswamina/fabric-peer      2.4.6               b9e6c7a86e29   11 minutes ago   50.2MB
+bswamina/fabric-orderer   2.4.6               25668ac89999   15 minutes ago   35.2MB
+bswamina/fabric-ccenv     2.4.6               7ade519a0116   19 minutes ago   530MB
+bswamina/fabric-baseos    2.4.6               d420699eef0d   20 minutes ago   6.56MB
+bswamina/fabric-ca        1.5.5               dc9e62641828   29 minutes ago   78.2MB</pre>
+    </div>
+    <div id="step-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>Now, it is time to setup the directory structure for our test network setup by executing the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME</p>
+      <p>$ mkdir -p hlf_v2/config/peercfg</p>
+      <p>$ mkdir -p hlf_v2/docker</p>
+      <p>$ mkdir -p hlf_v2/channel-artifacts</p>
+    </div>
+    <div id="para-div">
+      <p>Now, it is time to copy the appropriate configuration files by executing the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/hlf_v2</p>
+      <p>$ cp -R ../hyperledger/fabric-samples/test-network/organizations/ .</p>
+      <p>$ cp ../hyperledger/fabric-samples/test-network/compose/compose-test-net.yaml ./docker</p>
+      <p>$ cp ../hyperledger/fabric-samples/test-network/configtx/configtx.yaml ./config</p>
+      <p>$ cp ../hyperledger/fabric-samples/test-network/compose/docker/peercfg/core.yaml ./config/peercfg</p>
+    </div>
+    <div id="para-div">
+      <p>The test network involves three participants - an <span class="bold">Ordering</span> entity (referred to as <span class="bold">
+        Orderer</span>) and two <span class="bold">Peer</span> entities (referred to as <span class="bold">Org1</span> and
+        <span class="bold">Org2</span> respectively).</p>
+      <p>Peers store the blockchain ledger and validate transactions before they are committed to the ledger. Peers run the smart
+        contracts that contain the business logic that is used to manage the assets on the blockchain ledger.</p>
+      <p>The Ordering service allows peers to focus on validating transactions and committing them to the ledger. After ordering
+        node(s) receive endorsed transactions from clients, they come to consensus on the order of transactions and then add them
+        to blocks. The blocks are then distributed to the peer nodes, which add the blocks the blockchain ledger.</p>
+      <p>Hyperledger Fabric uses PKI to verify the actions of all the participants in the network. Every participant needs to have
+        a public certificate and private key to verify their identity and has to be issued by an organization that is a member of
+        the network.</p>
+      <p>In the directory <span class="hi-yellow">$HOME/hlf_v2/organizations/cryptogen</span>, we will find 3 configuration files
+        <span class="hi-blue">crypto-config-orderer.yaml</span>, <span class="hi-blue">crypto-config-org1.yaml</span>, and
+        <span class="hi-blue">crypto-config-org2.yaml</span> for generating the crypto material for the 3 participants - orderer,
+        org1, and org2.</p>
+    </div>
+    <div id="para-div">
+      <p>We will need to modify the 3 yaml configurations files to fit our purpose.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the modified crypto yaml file for the orderer:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">crypto-config-orderer.yaml</div>
+      <div class="src-body-1">
+<pre># ---------------------------------------------------------------------------
+# "OrdererOrgs" - Definition of organizations managing orderer nodes
+# ---------------------------------------------------------------------------
+OrdererOrgs:
+  - Name: Orderer
+    Domain: example.com
+    EnableNodeOUs: true
+
+    Specs:
+      - Hostname: orderer
+        SANS:
+          - "192.168.1.45"</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the modified crypto yaml file for the org1:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">crypto-config-org1.yaml</div>
+      <div class="src-body-1">
+<pre># ---------------------------------------------------------------------------
+# "PeerOrgs" - Definition of organizations managing peer nodes
+# ---------------------------------------------------------------------------
+PeerOrgs:
+  - Name: Org1
+    Domain: org1.example.com
+    EnableNodeOUs: true
+
+    Template:
+      Count: 1
+      SANS:
+        - "192.168.1.45"
+      # Start: 5
+      # Hostname: {{.Prefix}}{{.Index}} # default
+
+    Users:
+      Count: 1</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the modified crypto yaml file for the org2:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">crypto-config-org2.yaml</div>
+      <div class="src-body-1">
+<pre># ---------------------------------------------------------------------------
+# "PeerOrgs" - Definition of organizations managing peer nodes
+# ---------------------------------------------------------------------------
+PeerOrgs:
+  - Name: Org2
+    Domain: org2.example.com
+    EnableNodeOUs: true
+
+    Template:
+      Count: 1
+      SANS:
+        - "192.168.1.45"
+      # Start: 5
+      # Hostname: {{.Prefix}}{{.Index}} # default
+
+    Users:
+      Count: 1</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To generate the crypto material for each of the 3 participants, we will need to use the <span class="hi-green">cryptogen</span>
+        command from the <span class="bold">bswamina/fabric-tools:2.4.6</span> docker image.</p>
+    </div>
+    <div id="para-div">
+      <p>To generate the crypto material for the org1, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2/organizations:/organizations bswamina/fabric-tools:2.4.6 /usr/local/bin/cryptogen generate --config=/organizations/cryptogen/crypto-config-org1.yaml --output="/organizations"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>org1.example.com</pre>
+    </div>
+    <div id="para-div">
+      <p>Next, to generate the crypto material for the org2, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2/organizations:/organizations bswamina/fabric-tools:2.4.6 /usr/local/bin/cryptogen generate --config=/organizations/cryptogen/crypto-config-org2.yaml --output="/organizations"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>org2.example.com</pre>
+    </div>
+    <div id="para-div">
+      <p>Finally, to generate the crypto material for the orderer, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2/organizations:/organizations bswamina/fabric-tools:2.4.6 /usr/local/bin/cryptogen generate --config=/organizations/cryptogen/crypto-config-orderer.yaml --output="/organizations"</p>
+    </div>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>In the directory <span class="hi-yellow">$HOME/hlf_v2/config/peercfg</span>, is the shared configuration file called
+        <span class="hi-blue">core.yaml</span> used by the 2 peers - org1 and org2.</p>
+      <p>We will need to modify the peer yaml configuration file to fit our purpose.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the modified peer yaml file for both org1 and org2:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">core.yaml</div>
+      <div class="src-body-1">
+<pre>###############################################################################
+#
+#    Peer section
+#
+###############################################################################
+peer:
+    id: jdoe
+
+    networkId: dev
+
+    listenAddress: 0.0.0.0:7051
+
+    # The endpoint this peer uses to listen for inbound chaincode connections.
+    # If this is commented-out, the listen address is selected to be
+    # the peer's address (see below) with port 7052
+    # chaincodeListenAddress: 0.0.0.0:7052
+
+    # The endpoint the chaincode for this peer uses to connect to the peer.
+    # If this is not specified, the chaincodeListenAddress address is selected.
+    # And if chaincodeListenAddress is not specified, address is selected from
+    # peer address (see below). If specified peer address is invalid then it
+    # will fallback to the auto detected IP (local IP) regardless of the peer
+    # addressAutoDetect value.
+    # chaincodeAddress: 0.0.0.0:7052
+
+    address: 0.0.0.0:7051
+
+    addressAutoDetect: false
+
+    gateway:
+        enabled: true
+        endorsementTimeout: 30s
+        dialTimeout: 2m
+
+    keepalive:
+        interval: 7200s
+        timeout: 20s
+        minInterval: 60s
+
+        client:
+            interval: 60s
+            timeout: 20s
+
+        deliveryClient:
+            interval: 60s
+            timeout: 20s
+
+    gossip:
+        bootstrap: 127.0.0.1:7051
+        useLeaderElection: false
+        orgLeader: true
+        membershipTrackerInterval: 5s
+
+        # Overrides the endpoint that the peer publishes to peers
+        # in its organization. For peers in foreign organizations
+        # see 'externalEndpoint'
+        endpoint:
+
+        maxBlockCountToStore: 10
+        maxPropagationBurstLatency: 10ms
+        maxPropagationBurstSize: 10
+        propagateIterations: 1
+        propagatePeerNum: 3
+        pullInterval: 4s
+        pullPeerNum: 3
+        requestStateInfoInterval: 4s
+        publishStateInfoInterval: 4s
+        stateInfoRetentionInterval:
+        publishCertPeriod: 10s
+        skipBlockVerification: false
+        dialTimeout: 3s
+        connTimeout: 2s
+        recvBuffSize: 20
+        sendBuffSize: 200
+        digestWaitTime: 1s
+        requestWaitTime: 1500ms
+        responseWaitTime: 2s
+        aliveTimeInterval: 5s
+        aliveExpirationTimeout: 25s
+        reconnectInterval: 25s
+        maxConnectionAttempts: 120
+        msgExpirationFactor: 20
+
+        # This is an endpoint that is published to peers outside of the organization.
+        # If this isn't set, the peer will not be known to other organizations.
+        externalEndpoint:
+
+        election:
+            startupGracePeriod: 15s
+            membershipSampleInterval: 1s
+            leaderAliveThreshold: 10s
+            leaderElectionDuration: 5s
+
+        pvtData:
+            pullRetryThreshold: 60s
+            transientstoreMaxBlockRetention: 1000
+            pushAckTimeout: 3s
+            btlPullMargin: 10
+            reconcileBatchSize: 10
+            reconcileSleepInterval: 1m
+            reconciliationEnabled: true
+            skipPullingInvalidTransactionsDuringCommit: false
+
+            implicitCollectionDisseminationPolicy:
+                requiredPeerCount: 0
+                maxPeerCount: 1
+
+        state:
+            enabled: false
+            checkInterval: 10s
+            responseTimeout: 3s
+            batchSize: 10
+            blockBufferSize: 20
+            maxRetries: 3
+
+    tls:
+        enabled:  false
+        clientAuthRequired: false
+
+        cert:
+            file: tls/server.crt
+
+        key:
+            file: tls/server.key
+
+        rootcert:
+            file: tls/ca.crt
+
+        clientRootCAs:
+            files:
+              - tls/ca.crt
+
+        # Private key used for TLS when making client connections.
+        # If not set, peer.tls.key.file will be used instead
+        clientKey:
+            file:
+
+        # X.509 certificate used for TLS when making client connections.
+        # If not set, peer.tls.cert.file will be used instead
+        clientCert:
+            file:
+
+    authentication:
+        timewindow: 15m
+
+    fileSystemPath: /var/hyperledger/production
+
+    BCCSP:
+        Default: SW
+
+        SW:
+            Hash: SHA2
+            Security: 256
+
+            FileKeyStore:
+                # If "", defaults to 'mspConfigPath'/keystore
+                KeyStore:
+
+        # Settings for the PKCS#11 crypto provider (i.e. when DEFAULT: PKCS11)
+        PKCS11:
+            # Location of the PKCS11 module library
+            Library:
+            # Token Label
+            Label:
+            # User PIN
+            Pin:
+            Hash:
+            Security:
+
+    # Path on the file system where peer will find MSP local configurations
+    mspConfigPath: mspreally
+
+    localMspId: SampleOrg
+
+    client:
+        # connection timeout
+        connTimeout: 3s
+
+    deliveryclient:
+        blockGossipEnabled: true
+        reconnectTotalTimeThreshold: 3600s
+        connTimeout: 3s
+        reConnectBackoffThreshold: 3600s
+
+        # A list of orderer endpoint addresses which should be overridden
+        # when found in channel configurations.
+        addressOverrides:
+        #  - from:
+        #    to:
+        #    caCertsFile:
+        #  - from:
+        #    to:
+        #    caCertsFile:
+
+    localMspType: bccsp
+
+    profile:
+        enabled:     false
+        listenAddress: 0.0.0.0:6060
+
+    handlers:
+        authFilters:
+          -
+            name: DefaultAuth
+          -
+            name: ExpirationCheck    # This filter checks identity x509 certificate expiration
+        decorators:
+          -
+            name: DefaultDecorator
+        endorsers:
+          escc:
+            name: DefaultEndorsement
+            library:
+        validators:
+          vscc:
+            name: DefaultValidation
+            library:
+
+    #    library: /etc/hyperledger/fabric/plugin/escc.so
+    # Number of goroutines that will execute transaction validation in parallel.
+    # By default, the peer chooses the number of CPUs on the machine. Set this
+    # variable to override that choice.
+    # NOTE: overriding this value might negatively influence the performance of
+    # the peer so please change this value only if you know what you're doing
+    validatorPoolSize:
+
+    discovery:
+        enabled: true
+        authCacheEnabled: true
+        authCacheMaxSize: 1000
+        authCachePurgeRetentionRatio: 0.75
+        orgMembersAllowedAccess: false
+
+    limits:
+        concurrency:
+            endorserService: 2500
+            deliverService: 2500
+
+    maxRecvMsgSize: 104857600
+    maxSendMsgSize: 104857600
+
+vm:
+    endpoint: unix:///var/run/docker.sock
+
+    docker:
+        tls:
+            enabled: false
+            ca:
+                file: docker/ca.crt
+            cert:
+                file: docker/tls.crt
+            key:
+                file: docker/tls.key
+
+        attachStdout: false
+
+        hostConfig:
+            NetworkMode: docker_default
+            Dns:
+              # - 192.168.0.1
+            LogConfig:
+                Type: json-file
+                Config:
+                    max-size: "50m"
+                    max-file: "5"
+            Memory: 2147483648
+
+chaincode:
+    # The id is used by the Chaincode stub to register the executing Chaincode
+    # ID with the Peer and is generally supplied through ENV variables
+    # the `path` form of ID is provided when installing the chaincode.
+    # The `name` is used for all other requests and can be any string.
+    id:
+        path:
+        name:
+
+    builder: bswamina/fabric-ccenv:2.4.6
+
+    pull: false
+
+    golang:
+        runtime: bswamina/fabric-baseos:2.4.6
+        dynamicLink: false
+
+    externalBuilders:
+        - name: ccaas_builder
+          path: /opt/hyperledger/ccaas_builder
+          propagateEnvironment:
+            - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG
+
+    installTimeout: 300s
+    startuptimeout: 300s
+    executetimeout: 30s
+    mode: net
+    keepalive: 0
+
+    system:
+        _lifecycle: enable
+        cscc: enable
+        lscc: enable
+        qscc: enable
+
+    logging:
+      level:  info
+      shim:   info
+      format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
+
+ledger:
+
+  blockchain:
+
+  state:
+    stateDatabase: goleveldb
+    totalQueryLimit: 100000
+
+    couchDBConfig:
+        couchDBAddress: 127.0.0.1:5984
+        # This username must have read and write authority on CouchDB
+        username:
+        # The password is recommended to pass as an environment variable
+        password:
+
+        maxRetries: 3
+        maxRetriesOnStartup: 10
+        requestTimeout: 35s
+        internalQueryLimit: 1000
+        maxBatchUpdateSize: 1000
+        createGlobalChangesDB: false
+        cacheSize: 64
+
+  history:
+    enableHistoryDatabase: true
+
+  pvtdataStore:
+    collElgProcMaxDbBatchSize: 5000
+    collElgProcDbBatchesInterval: 1000
+    deprioritizedDataReconcilerInterval: 60m
+
+  snapshots:
+    rootDir: /var/hyperledger/production/snapshots
+
+operations:
+    listenAddress: 127.0.0.1:9443
+
+    tls:
+        enabled: false
+
+        # path to PEM encoded server certificate for the operations server
+        cert:
+            file:
+
+        # path to PEM encoded server key for the operations server
+        key:
+            file:
+
+        clientAuthRequired: false
+
+        # paths to PEM encoded ca certificates to trust for client authentication
+        clientRootCAs:
+            files: []
+
+metrics:
+    provider: disabled
+
+    statsd:
+        network: udp
+        address: 127.0.0.1:8125
+        writeInterval: 10s
+
+        # prefix is prepended to all emitted statsd metrics
+        prefix:</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that the <span class="hi-green">NetworkMode:</span> tag under <span class="hi-vanila">vm:</span> tag in the peer yaml
+        file above <span class="underbold">MUST</span> match the name of the docker network, which in our case is equal to
+        <span class="hi-grey">docker_default</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to have the 3 participants (orderer, org1, and org2) up and running. For that we will modify and make use
+        of the docker compose file <span class="hi-blue">compose-test-net.yaml</span> located under the directory
+        <span class="hi-yellow">$HOME/hlf_v2/docker</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the modified docker compose file:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">compose-test-net.yaml</div>
+      <div class="src-body-1">
+<pre>version: '3.7'
+
+volumes:
+  orderer.example.com:
+  peer0.org1.example.com:
+  peer0.org2.example.com:
+
+services:
+
+  orderer.example.com:
+    container_name: orderer.example.com
+    image: bswamina/fabric-orderer:2.4.6
+    labels:
+      service: hyperledger-fabric
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_LISTENPORT=7050
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_GENERAL_BOOTSTRAPMETHOD=none
+      - ORDERER_CHANNELPARTICIPATION_ENABLED=true
+      - ORDERER_ADMIN_TLS_ENABLED=true
+      - ORDERER_ADMIN_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_ADMIN_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_ADMIN_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_ADMIN_TLS_CLIENTROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7053
+      - ORDERER_OPERATIONS_LISTENADDRESS=orderer.example.com:9443
+      - ORDERER_METRICS_PROVIDER=prometheus
+    working_dir: /root
+    command: orderer
+    volumes:
+        - /home/bswamina/hlf_v2/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp
+        - /home/bswamina/hlf_v2/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/:/var/hyperledger/orderer/tls
+        - orderer.example.com:/var/hyperledger/production/orderer
+    ports:
+      - "192.168.1.45:7050:7050"
+      - "192.168.1.45:7053:7053"
+      - "192.168.1.45:9443:9443"
+
+  peer0.org1.example.com:
+    container_name: peer0.org1.example.com
+    image: bswamina/fabric-peer:2.4.6
+    labels:
+      service: hyperledger-fabric
+    environment:
+      - FABRIC_CFG_PATH=/etc/hyperledger/peercfg
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_PROFILE_ENABLED=false
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      - CORE_PEER_ID=peer0.org1.example.com
+      - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org1.example.com:7051
+      - CORE_PEER_LOCALMSPID=Org1MSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.org1.example.com:9444
+      - CORE_METRICS_PROVIDER=prometheus
+      - CORE_CHAINCODE_EXECUTETIMEOUT=300s
+      - CORE_VM_ENDPOINT=unix:///var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=docker_default
+    volumes:
+        - /home/bswamina/hlf_v2/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com:/etc/hyperledger/fabric
+        - /home/bswamina/hlf_v2/config/peercfg:/etc/hyperledger/peercfg
+        - peer0.org1.example.com:/var/hyperledger/production
+        - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /root
+    command: peer node start
+    ports:
+      - "192.168.1.45:7051:7051"
+      - "192.168.1.45:9444:9444"
+
+  peer0.org2.example.com:
+    container_name: peer0.org2.example.com
+    image: bswamina/fabric-peer:2.4.6
+    labels:
+      service: hyperledger-fabric
+    environment:
+      - FABRIC_CFG_PATH=/etc/hyperledger/peercfg
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_PROFILE_ENABLED=false
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      - CORE_PEER_ID=peer0.org2.example.com
+      - CORE_PEER_ADDRESS=peer0.org2.example.com:9051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:9051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org2.example.com:9051
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org2.example.com:9051
+      - CORE_PEER_LOCALMSPID=Org2MSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp      
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.org2.example.com:9445
+      - CORE_METRICS_PROVIDER=prometheus
+      - CORE_CHAINCODE_EXECUTETIMEOUT=300s
+      - CORE_VM_ENDPOINT=unix:///var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=docker_default
+    volumes:
+        - /home/bswamina/hlf_v2/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com:/etc/hyperledger/fabric
+        - /home/bswamina/hlf_v2/config/peercfg:/etc/hyperledger/peercfg
+        - peer0.org2.example.com:/var/hyperledger/production
+        - /var/run/docker.sock:/var/run/docker.sock
+    working_dir: /root
+    command: peer node start
+    ports:
+      - "192.168.1.45:9051:9051"
+      - "192.168.1.45:9445:9445"</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that the variables <span class="hi-green">CORE_VM_ENDPOINT=unix:///var/run/docker.sock</span> and
+        <span class="hi-green">CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=docker_default</span> under the
+        <span class="hi-vanila">environment:</span> tag as well as the volume mapping
+        <span class="hi-green">/var/run/docker.sock:/var/run/docker.sock</span> under the <span class="hi-vanila">volumes:</span>
+        tag (for the peer containers) in the docker compose file above are <span class="underbold">EXTREMELY IMPORTANT</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To bring up the 3 participants of the network (orderer, org1, and org2) using docker compose, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker-compose -f docker/compose-test-net.yaml up</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>Creating peer0.org1.example.com ... done
+Creating orderer.example.com    ... done
+Creating peer0.org2.example.com ... done
+Attaching to orderer.example.com, peer0.org2.example.com, peer0.org1.example.com
+orderer.example.com       | 2022-09-17 19:59:13.902 UTC 0001 INFO [localconfig] completeInitialization -> Kafka.Version unset, setting to 0.10.2.0
+orderer.example.com       | 2022-09-17 19:59:13.903 UTC 0002 INFO [orderer.common.server] prettyPrintStruct -> Orderer config values:
+orderer.example.com       | 	General.ListenAddress = "0.0.0.0"
+                     ------------
+                     --- SNIP ---
+                     ------------
+orderer.example.com       | 2022-09-17 19:59:13.911 UTC 0003 INFO [orderer.common.server] initializeServerConfig -> Starting orderer with TLS enabled
+orderer.example.com       | 2022-09-17 19:59:13.966 UTC 0004 INFO [orderer.commmon.multichannel] InitJoinBlockFileRepo -> Channel Participation API enabled, registrar initializing with file repo /var/hyperledger/production/orderer/pendingops
+orderer.example.com       | 2022-09-17 19:59:13.973 UTC 0005 INFO [orderer.common.server] Main -> Starting without a system channel
+orderer.example.com       | 2022-09-17 19:59:13.974 UTC 0006 INFO [orderer.common.server] Main -> Setting up cluster
+orderer.example.com       | 2022-09-17 19:59:13.974 UTC 0007 INFO [orderer.common.server] reuseListener -> Cluster listener is not configured, defaulting to use the general listener on port 7050
+orderer.example.com       | 2022-09-17 19:59:13.974 UTC 0008 INFO [certmonitor] trackCertExpiration -> The enrollment certificate will expire on 2032-09-14 19:54:00 +0000 UTC
+orderer.example.com       | 2022-09-17 19:59:13.974 UTC 0009 INFO [certmonitor] trackCertExpiration -> The server TLS certificate will expire on 2032-09-14 19:54:00 +0000 UTC
+orderer.example.com       | 2022-09-17 19:59:13.975 UTC 000a INFO [certmonitor] trackCertExpiration -> The client TLS certificate will expire on 2032-09-14 19:54:00 +0000 UTC
+orderer.example.com       | 2022-09-17 19:59:13.975 UTC 000b INFO [orderer.commmon.multichannel] InitJoinBlockFileRepo -> Channel Participation API enabled, registrar initializing with file repo /var/hyperledger/production/orderer/pendingops
+orderer.example.com       | 2022-09-17 19:59:13.993 UTC 000c INFO [orderer.commmon.multichannel] startChannels -> Registrar initializing without a system channel, number of application channels: 0, with 0 consensus.Chain(s) and 0 follower.Chain(s)
+orderer.example.com       | 2022-09-17 19:59:13.994 UTC 000d INFO [orderer.common.server] Main -> Starting orderer:
+orderer.example.com       |  Version: 2.4.6
+orderer.example.com       |  Commit SHA: 8359607
+orderer.example.com       |  Go version: go1.18.2
+orderer.example.com       |  OS/Arch: linux/arm64
+orderer.example.com       | 2022-09-17 19:59:13.994 UTC 000e INFO [orderer.common.server] Main -> Beginning to serve requests
+peer0.org2.example.com    | 2022-09-17 19:59:14.056 UTC 0001 INFO [nodeCmd] serve -> Starting peer:
+peer0.org2.example.com    |  Version: 2.4.6
+peer0.org2.example.com    |  Commit SHA: 8359607
+peer0.org2.example.com    |  Go version: go1.18.2
+peer0.org2.example.com    |  OS/Arch: linux/arm64
+peer0.org2.example.com    |  Chaincode:
+peer0.org2.example.com    |   Base Docker Label: org.hyperledger.fabric
+peer0.org2.example.com    |   Docker Namespace: hyperledger
+peer0.org2.example.com    | 2022-09-17 19:59:14.056 UTC 0002 INFO [peer] getLocalAddress -> Auto-detected peer address: 172.19.0.4:9051
+peer0.org2.example.com    | 2022-09-17 19:59:14.057 UTC 0003 INFO [peer] getLocalAddress -> Returning peer0.org2.example.com:9051
+peer0.org2.example.com    | 2022-09-17 19:59:14.060 UTC 0004 INFO [nodeCmd] initGrpcSemaphores -> concurrency limit for endorser service is 2500
+peer0.org2.example.com    | 2022-09-17 19:59:14.061 UTC 0005 INFO [nodeCmd] initGrpcSemaphores -> concurrency limit for deliver service is 2500
+peer0.org2.example.com    | 2022-09-17 19:59:14.061 UTC 0006 INFO [nodeCmd] serve -> Starting peer with TLS enabled
+peer0.org1.example.com    | 2022-09-17 19:59:14.078 UTC 0001 INFO [nodeCmd] serve -> Starting peer:
+peer0.org1.example.com    |  Version: 2.4.6
+peer0.org1.example.com    |  Commit SHA: 8359607
+peer0.org1.example.com    |  Go version: go1.18.2
+peer0.org1.example.com    |  OS/Arch: linux/arm64
+peer0.org1.example.com    |  Chaincode:
+peer0.org1.example.com    |   Base Docker Label: org.hyperledger.fabric
+peer0.org1.example.com    |   Docker Namespace: hyperledger
+peer0.org1.example.com    | 2022-09-17 19:59:14.079 UTC 0002 INFO [peer] getLocalAddress -> Auto-detected peer address: 172.19.0.3:7051
+peer0.org1.example.com    | 2022-09-17 19:59:14.079 UTC 0003 INFO [peer] getLocalAddress -> Returning peer0.org1.example.com:7051
+peer0.org1.example.com    | 2022-09-17 19:59:14.082 UTC 0004 INFO [nodeCmd] initGrpcSemaphores -> concurrency limit for endorser service is 2500
+peer0.org1.example.com    | 2022-09-17 19:59:14.082 UTC 0005 INFO [nodeCmd] initGrpcSemaphores -> concurrency limit for deliver service is 2500
+peer0.org1.example.com    | 2022-09-17 19:59:14.082 UTC 0006 INFO [nodeCmd] serve -> Starting peer with TLS enabled
+peer0.org2.example.com    | 2022-09-17 19:59:14.173 UTC 0007 INFO [certmonitor] trackCertExpiration -> The enrollment certificate will expire on 2032-09-14 19:54:00 +0000 UTC
+peer0.org2.example.com    | 2022-09-17 19:59:14.173 UTC 0008 INFO [certmonitor] trackCertExpiration -> The server TLS certificate will expire on 2032-09-14 19:54:00 +0000 UTC
+peer0.org2.example.com    | 2022-09-17 19:59:14.173 UTC 0009 INFO [ledgermgmt] NewLedgerMgr -> Initializing LedgerMgr
+peer0.org1.example.com    | 2022-09-17 19:59:14.204 UTC 0007 INFO [certmonitor] trackCertExpiration -> The enrollment certificate will expire on 2032-09-14 19:54:00 +0000 UTC
+peer0.org1.example.com    | 2022-09-17 19:59:14.204 UTC 0008 INFO [certmonitor] trackCertExpiration -> The server TLS certificate will expire on 2032-09-14 19:54:00 +0000 UTC
+peer0.org1.example.com    | 2022-09-17 19:59:14.206 UTC 0009 INFO [ledgermgmt] NewLedgerMgr -> Initializing LedgerMgr
+peer0.org2.example.com    | 2022-09-17 19:59:14.700 UTC 000a INFO [ledgermgmt] NewLedgerMgr -> Initialized LedgerMgr
+peer0.org2.example.com    | 2022-09-17 19:59:14.703 UTC 000b INFO [gossip.service] New -> Initialize gossip with endpoint peer0.org2.example.com:9051
+peer0.org2.example.com    | 2022-09-17 19:59:14.705 UTC 000c INFO [gossip.gossip] New -> Creating gossip service with self membership of Endpoint: peer0.org2.example.com:9051, InternalEndpoint: peer0.org2.example.com:9051, PKI-ID: 1e9b9c3fe3222f84f92c45715d5ef7274e2f692ce52d2581e28bf57718820d0f, Metadata: 
+peer0.org2.example.com    | 2022-09-17 19:59:14.706 UTC 000d INFO [lifecycle] InitializeLocalChaincodes -> Initialized lifecycle cache with 0 already installed chaincodes
+peer0.org2.example.com    | 2022-09-17 19:59:14.706 UTC 000e INFO [gossip.gossip] start -> Gossip instance peer0.org2.example.com:9051 started
+peer0.org2.example.com    | 2022-09-17 19:59:14.707 UTC 000f INFO [nodeCmd] computeChaincodeEndpoint -> Entering computeChaincodeEndpoint with peerHostname: peer0.org2.example.com
+peer0.org2.example.com    | 2022-09-17 19:59:14.707 UTC 0010 INFO [nodeCmd] computeChaincodeEndpoint -> Exit with ccEndpoint: peer0.org2.example.com:9052
+peer0.org2.example.com    | 2022-09-17 19:59:14.710 UTC 0011 INFO [sccapi] DeploySysCC -> deploying system chaincode 'lscc'
+peer0.org2.example.com    | 2022-09-17 19:59:14.711 UTC 0012 INFO [sccapi] DeploySysCC -> deploying system chaincode 'cscc'
+peer0.org2.example.com    | 2022-09-17 19:59:14.711 UTC 0013 INFO [sccapi] DeploySysCC -> deploying system chaincode 'qscc'
+peer0.org2.example.com    | 2022-09-17 19:59:14.712 UTC 0014 INFO [sccapi] DeploySysCC -> deploying system chaincode '_lifecycle'
+peer0.org2.example.com    | 2022-09-17 19:59:14.712 UTC 0015 INFO [nodeCmd] serve -> Deployed system chaincodes
+peer0.org2.example.com    | 2022-09-17 19:59:14.713 UTC 0016 INFO [discovery] NewService -> Created with config TLS: true, authCacheMaxSize: 1000, authCachePurgeRatio: 0.750000
+peer0.org2.example.com    | 2022-09-17 19:59:14.714 UTC 0017 INFO [nodeCmd] serve -> Discovery service activated
+peer0.org2.example.com    | 2022-09-17 19:59:14.714 UTC 0018 INFO [nodeCmd] serve -> Starting peer with Gateway enabled
+peer0.org2.example.com    | 2022-09-17 19:59:14.714 UTC 0019 INFO [nodeCmd] serve -> Starting peer with ID=[peer0.org2.example.com], network ID=[dev], address=[peer0.org2.example.com:9051]
+peer0.org2.example.com    | 2022-09-17 19:59:14.715 UTC 001a INFO [nodeCmd] serve -> Started peer with ID=[peer0.org2.example.com], network ID=[dev], address=[peer0.org2.example.com:9051]
+peer0.org2.example.com    | 2022-09-17 19:59:14.715 UTC 001b INFO [kvledger] LoadPreResetHeight -> Loading prereset height from path [/var/hyperledger/production/ledgersData/chains]
+peer0.org2.example.com    | 2022-09-17 19:59:14.715 UTC 001c INFO [blkstorage] preResetHtFiles -> No active channels passed
+peer0.org1.example.com    | 2022-09-17 19:59:14.734 UTC 000a INFO [ledgermgmt] NewLedgerMgr -> Initialized LedgerMgr
+peer0.org1.example.com    | 2022-09-17 19:59:14.736 UTC 000b INFO [gossip.service] New -> Initialize gossip with endpoint peer0.org1.example.com:7051
+peer0.org1.example.com    | 2022-09-17 19:59:14.738 UTC 000c INFO [gossip.gossip] New -> Creating gossip service with self membership of Endpoint: peer0.org1.example.com:7051, InternalEndpoint: peer0.org1.example.com:7051, PKI-ID: 7ff74306434339fbae00971a94f3242a8c2cc15aa3d9751cd459944f0c4e5d42, Metadata: 
+peer0.org1.example.com    | 2022-09-17 19:59:14.738 UTC 000d INFO [gossip.gossip] start -> Gossip instance peer0.org1.example.com:7051 started
+peer0.org1.example.com    | 2022-09-17 19:59:14.738 UTC 000e INFO [lifecycle] InitializeLocalChaincodes -> Initialized lifecycle cache with 0 already installed chaincodes
+peer0.org1.example.com    | 2022-09-17 19:59:14.740 UTC 000f INFO [nodeCmd] computeChaincodeEndpoint -> Entering computeChaincodeEndpoint with peerHostname: peer0.org1.example.com
+peer0.org1.example.com    | 2022-09-17 19:59:14.740 UTC 0010 INFO [nodeCmd] computeChaincodeEndpoint -> Exit with ccEndpoint: peer0.org1.example.com:7052
+peer0.org1.example.com    | 2022-09-17 19:59:14.743 UTC 0011 INFO [sccapi] DeploySysCC -> deploying system chaincode 'lscc'
+peer0.org1.example.com    | 2022-09-17 19:59:14.744 UTC 0012 INFO [sccapi] DeploySysCC -> deploying system chaincode 'cscc'
+peer0.org1.example.com    | 2022-09-17 19:59:14.744 UTC 0013 INFO [sccapi] DeploySysCC -> deploying system chaincode 'qscc'
+peer0.org1.example.com    | 2022-09-17 19:59:14.744 UTC 0014 INFO [sccapi] DeploySysCC -> deploying system chaincode '_lifecycle'
+peer0.org1.example.com    | 2022-09-17 19:59:14.744 UTC 0015 INFO [nodeCmd] serve -> Deployed system chaincodes
+peer0.org1.example.com    | 2022-09-17 19:59:14.744 UTC 0016 INFO [discovery] NewService -> Created with config TLS: true, authCacheMaxSize: 1000, authCachePurgeRatio: 0.750000
+peer0.org1.example.com    | 2022-09-17 19:59:14.745 UTC 0017 INFO [nodeCmd] serve -> Discovery service activated
+peer0.org1.example.com    | 2022-09-17 19:59:14.745 UTC 0018 INFO [nodeCmd] serve -> Starting peer with Gateway enabled
+peer0.org1.example.com    | 2022-09-17 19:59:14.745 UTC 0019 INFO [nodeCmd] serve -> Starting peer with ID=[peer0.org1.example.com], network ID=[dev], address=[peer0.org1.example.com:7051]
+peer0.org1.example.com    | 2022-09-17 19:59:14.745 UTC 001a INFO [nodeCmd] serve -> Started peer with ID=[peer0.org1.example.com], network ID=[dev], address=[peer0.org1.example.com:7051]
+peer0.org1.example.com    | 2022-09-17 19:59:14.745 UTC 001b INFO [kvledger] LoadPreResetHeight -> Loading prereset height from path [/var/hyperledger/production/ledgersData/chains]
+peer0.org1.example.com    | 2022-09-17 19:59:14.745 UTC 001c INFO [blkstorage] preResetHtFiles -> No active channels passed</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the running <span class="bold">Docker</span> containers, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker ps -a</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>CONTAINER ID   IMAGE                           COMMAND             CREATED          STATUS          PORTS                                                                                   NAMES
+  8e7294be5f51   bswamina/fabric-peer:2.4.6      "peer node start"   44 seconds ago   Up 42 seconds   192.168.1.45:7051->7051/tcp, 192.168.1.45:9444->9444/tcp                                peer0.org1.example.com
+  a65cc4458fa7   bswamina/fabric-peer:2.4.6      "peer node start"   44 seconds ago   Up 42 seconds   192.168.1.45:9051->9051/tcp, 7051/tcp, 192.168.1.45:9445->9445/tcp                      peer0.org2.example.com
+  7c331cdd627f   bswamina/fabric-orderer:2.4.6   "orderer"           44 seconds ago   Up 43 seconds   192.168.1.45:7050->7050/tcp, 192.168.1.45:7053->7053/tcp, 192.168.1.45:9443->9443/tcp   orderer.example.com</pre>
+    </div>
+    <div id="para-div">
+      <p>The next step in the setup process is to create a <span class="hi-yellow">Channel</span>, which is a private layer for
+        communication between participants in a network and is visible to only those members that have joined the channel.</p>
+      <p>In the directory <span class="hi-yellow">$HOME/hlf_v2/config</span>, we will find the yaml configuration file for a channel
+        <span class="hi-blue">configtx.yaml</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>We will need to modify the channel yaml configurations file to fit our purpose.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the modified channel yaml file for our network:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">configtx.yaml</div>
+      <div class="src-body-1">
+<pre>################################################################################
+#
+#   Section: Organizations
+#
+#   - This section defines the different organizational identities which will
+#   be referenced later in the configuration.
+#
+################################################################################
+Organizations:
+    - &OrdererOrg
+        Name: OrdererOrg
+
+        ID: OrdererMSP
+
+        MSPDir: /hlf_v2/organizations/ordererOrganizations/example.com/msp
+
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Writers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Admins:
+                Type: Signature
+                Rule: "OR('OrdererMSP.admin')"
+
+        OrdererEndpoints:
+            - orderer.example.com:7050
+
+    - &Org1
+        Name: Org1MSP
+
+        ID: Org1MSP
+
+        MSPDir: /hlf_v2/organizations/peerOrganizations/org1.example.com/msp
+
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('Org1MSP.admin', 'Org1MSP.peer', 'Org1MSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('Org1MSP.admin', 'Org1MSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('Org1MSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('Org1MSP.peer')"
+
+    - &Org2
+        Name: Org2MSP
+
+        ID: Org2MSP
+
+        MSPDir: /hlf_v2/organizations/peerOrganizations/org2.example.com/msp
+
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('Org2MSP.admin', 'Org2MSP.peer', 'Org2MSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('Org2MSP.admin', 'Org2MSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('Org2MSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('Org2MSP.peer')"
+
+Capabilities:
+    Channel: &ChannelCapabilities
+        V2_0: true
+
+    Orderer: &OrdererCapabilities
+        V2_0: true
+
+    Application: &ApplicationCapabilities
+        V2_0: true
+
+Application: &ApplicationDefaults
+
+    # Organizations is the list of orgs which are defined as participants on
+    # the application side of the network
+    Organizations:
+
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        LifecycleEndorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+        Endorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+
+    Capabilities:
+        &lt;&lt;: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+    OrdererType: etcdraft
+
+    Addresses:
+        - orderer.example.com:7050
+
+    EtcdRaft:
+        Consenters:
+        - Host: orderer.example.com
+          Port: 7050
+          ClientTLSCert: /hlf_v2/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+          ServerTLSCert: /hlf_v2/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt
+
+    BatchTimeout: 2s
+
+    BatchSize:
+        MaxMessageCount: 10
+
+        AbsoluteMaxBytes: 99 MB
+
+        PreferredMaxBytes: 512 KB
+
+    # Organizations is the list of orgs which are defined as participants on
+    # the orderer side of the network
+    Organizations:
+
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+
+Channel: &ChannelDefaults
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+
+    Capabilities:
+        &lt;&lt;: *ChannelCapabilities
+
+Profiles:
+    TwoOrgsApplicationGenesis:
+        &lt;&lt;: *ChannelDefaults
+        Orderer:
+            &lt;&lt;: *OrdererDefaults
+            Organizations:
+                - *OrdererOrg
+            Capabilities: *OrdererCapabilities
+        Application:
+            &lt;&lt;: *ApplicationDefaults
+            Organizations:
+                - *Org1
+                - *Org2
+            Capabilities: *ApplicationCapabilities</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Before we can create the channel, we need to create a channel genesis block using the channel configuration.</p>
+      <p>To generate the channel genesis block, we will need to use the <span class="hi-green">configtxgen</span> command from the
+        <span class="bold">bswamina/fabric-tools:2.4.6</span> docker image.</p>
+    </div>
+    <div id="para-div">
+      <p>To generate the channel genesis block for a channel called <span class="hi-yellow">channel1</span>, execute the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm -e FABRIC_CFG_PATH="/hlf_v2/config" -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-tools:2.4.6 /usr/local/bin/configtxgen -profile TwoOrgsApplicationGenesis -outputBlock /hlf_v2/channel-artifacts/channel1.block -channelID channel1</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>2022-09-17 20:00:32.414 UTC 0001 INFO [common.tools.configtxgen] main -> Loading configuration
+2022-09-17 20:00:32.444 UTC 0002 INFO [common.tools.configtxgen.localconfig] completeInitialization -> orderer type: etcdraft
+2022-09-17 20:00:32.444 UTC 0003 INFO [common.tools.configtxgen.localconfig] completeInitialization -> Orderer.EtcdRaft.Options unset, setting to tick_interval:"500ms" election_tick:10 heartbeat_tick:1 max_inflight_blocks:5 snapshot_interval_size:16777216 
+2022-09-17 20:00:32.444 UTC 0004 INFO [common.tools.configtxgen.localconfig] Load -> Loaded configuration: /hlf_v2/config/configtx.yaml
+2022-09-17 20:00:32.452 UTC 0005 INFO [common.tools.configtxgen] doOutputBlock -> Generating genesis block
+2022-09-17 20:00:32.452 UTC 0006 INFO [common.tools.configtxgen] doOutputBlock -> Creating application channel genesis block
+2022-09-17 20:00:32.453 UTC 0007 INFO [common.tools.configtxgen] doOutputBlock -> Writing genesis block</pre>
+    </div>
+    <div id="para-div">
+      <p>The next step in the setup of our network is to join the orderer to the channel <span class="bold">channel1</span>.</p>
+      <p>To join a participant to a channel, we will need to use the <span class="hi-green">osnadmin</span> command from the
+        <span class="bold">bswamina/fabric-tools:2.4.6</span> docker image.</p>
+    </div>
+    <div id="para-div">
+      <p>To join the orderer to the  channel <span class="bold">channel1</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-tools:2.4.6 /usr/local/bin/osnadmin channel join --channelID channel1 --config-block /hlf_v2/channel-artifacts/channel1.block -o 192.168.1.45:7053 --ca-file "/hlf_v2/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" --client-cert "/hlf_v2/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt" --client-key "/hlf_v2/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.key"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>Status: 201
+{
+  "name": "channel1",
+  "url": "/participation/v1/channels/channel1",
+  "consensusRelation": "consenter",
+  "status": "active",
+  "height": 1
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>To list and verify the channels on the orderer, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-tools:2.4.6 /usr/local/bin/osnadmin channel list -o 192.168.1.45:7053 --ca-file "/hlf_v2/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem" --client-cert "/hlf_v2/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.crt" --client-key "/hlf_v2/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/server.key"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>Status: 200
+{
+  "systemChannel": null,
+  "channels": [
+    {
+      "name": "channel1",
+      "url": "/participation/v1/channels/channel1"
+    }
+  ]
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>To join a peer to a channel, we will need to use the <span class="hi-green">peer</span> command from the
+        <span class="bold">bswamina/fabric-tools:2.4.6</span> docker image.</p>
+    </div>
+    <div id="para-div">
+      <p>To join the peer org1 to the channel <span class="bold">channel1</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm -e FABRIC_CFG_PATH="/hlf_v2/config/peercfg" -e CORE_PEER_TLS_ENABLED=true -e CORE_PEER_LOCALMSPID="Org1MSP" -e CORE_PEER_TLS_ROOTCERT_FILE="/hlf_v2/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" -e CORE_PEER_MSPCONFIGPATH="/hlf_v2/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp" -e CORE_PEER_ADDRESS="192.168.1.45:7051" -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-peer:2.4.6 /usr/local/bin/peer channel join -b /hlf_v2/channel-artifacts/channel1.block</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>2022-09-17 22:40:56.624 UTC 0001 INFO [channelCmd] InitCmdFactory -> Endorser and orderer connections initialized
+2022-09-17 22:40:56.726 UTC 0002 INFO [channelCmd] executeJoin -> Successfully submitted proposal to join channel</pre>
+    </div>
+    <div id="para-div">
+      <p>To join the peer org2 to the channel <span class="bold">channel1</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm -e FABRIC_CFG_PATH="/hlf_v2/config/peercfg" -e CORE_PEER_TLS_ENABLED=true -e CORE_PEER_LOCALMSPID="Org2MSP" -e CORE_PEER_TLS_ROOTCERT_FILE="/hlf_v2/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" -e CORE_PEER_MSPCONFIGPATH="/hlf_v2/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp" -e CORE_PEER_ADDRESS="192.168.1.45:9051" -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-peer:2.4.6 /usr/local/bin/peer channel join -b /hlf_v2/channel-artifacts/channel1.block</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>2022-09-17 22:45:03.655 UTC 0001 INFO [channelCmd] InitCmdFactory -> Endorser and orderer connections initialized
+2022-09-17 22:45:03.753 UTC 0002 INFO [channelCmd] executeJoin -> Successfully submitted proposal to join channel</pre>
+    </div>
+    <div id="para-div">
+      <p>The next step in the setup of our network is to make both the peers org1 and org2 to become <span class="hi-yellow">Anchor
+        Peers</span>, which ensure the different peers in the network know about each other.</p>
+      <p>We will have to go through a series of commands to achieve this goal.</p>
+    </div>
+    <div id="para-div">
+      <p>To fetch the current channel configuration for peer org1, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm -e FABRIC_CFG_PATH="/hlf_v2/config/peercfg" -e CORE_PEER_TLS_ENABLED=true -e CORE_PEER_LOCALMSPID="Org1MSP" -e CORE_PEER_TLS_ROOTCERT_FILE="/hlf_v2/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" -e CORE_PEER_MSPCONFIGPATH="/hlf_v2/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp" -e CORE_PEER_ADDRESS="192.168.1.45:7051" -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-peer:2.4.6 /usr/local/bin/peer channel fetch config /hlf_v2/channel-artifacts/channel1.block -o 192.168.1.45:7050 --ordererTLSHostnameOverride orderer.example.com -c channel1 --tls --cafile "/hlf_v2/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>2022-09-17 23:18:55.569 UTC 0001 INFO [channelCmd] InitCmdFactory -> Endorser and orderer connections initialized
+2022-09-17 23:18:55.574 UTC 0002 INFO [cli.common] readBlock -> Received block: 0
+2022-09-17 23:18:55.575 UTC 0003 INFO [channelCmd] fetch -> Retrieving last config block: 0
+2022-09-17 23:18:55.578 UTC 0004 INFO [cli.common] readBlock -> Received block: 0</pre>
+    </div>
+    <div id="para-div">
+      <p>To update channel configuration to make peer org1 as an anchor peer, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-tools:2.4.6 /usr/local/bin/configtxlator proto_decode --input /hlf_v2/channel-artifacts/channel1.block --type common.Block --output /hlf_v2/channel-artifacts/config_block.json</p>
+      <p>$ jq .data.data[0].payload.data.config ./channel-artifacts/config_block.json > ./channel-artifacts/config.json</p>
+      <p>$ cp ./channel-artifacts/config.json ./channel-artifacts/config_copy.json</p>
+      <p>$ jq '.channel_group.groups.Application.groups.Org1MSP.values += {"AnchorPeers":{"mod_policy": "Admins","value":{"anchor_peers": [{"host": "peer0.org1.example.com","port": 7051}]},"version": "0"}}' ./channel-artifacts/config_copy.json > ./channel-artifacts/modified_config.json</p>
+      <p>$ docker run --rm -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-tools:2.4.6 /usr/local/bin/configtxlator proto_encode --input /hlf_v2/channel-artifacts/config.json --type common.Config --output /hlf_v2/channel-artifacts/config.pb</p>
+      <p>$ docker run --rm -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-tools:2.4.6 /usr/local/bin/configtxlator proto_encode --input /hlf_v2/channel-artifacts/modified_config.json --type common.Config --output /hlf_v2/channel-artifacts/modified_config.pb</p>
+      <p>$ docker run --rm -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-tools:2.4.6 /usr/local/bin/configtxlator compute_update --channel_id channel1 --original /hlf_v2/channel-artifacts/config.pb --updated /hlf_v2/channel-artifacts/modified_config.pb --output /hlf_v2/channel-artifacts/config_update.pb</p>
+      <p>$ docker run --rm -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-tools:2.4.6 /usr/local/bin/configtxlator proto_decode --input /hlf_v2/channel-artifacts/config_update.pb --type common.ConfigUpdate --output /hlf_v2/channel-artifacts/config_update.json</p>
+      <p>$ echo '{"payload":{"header":{"channel_header":{"channel_id":"channel1", "type":2}},"data":{"config_update":'$(cat ./channel-artifacts/config_update.json)'}}}' | jq . > ./channel-artifacts/config_update_in_envelope.json</p>
+      <p>$ docker run --rm -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-tools:2.4.6 /usr/local/bin/configtxlator proto_encode --input /hlf_v2/channel-artifacts/config_update_in_envelope.json --type common.Envelope --output /hlf_v2/channel-artifacts/config_update_in_envelope.pb</p>
+      <p>$ docker run --rm -e FABRIC_CFG_PATH="/hlf_v2/config/peercfg" -e CORE_PEER_TLS_ENABLED=true -e CORE_PEER_LOCALMSPID="Org1MSP" -e CORE_PEER_TLS_ROOTCERT_FILE="/hlf_v2/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" -e CORE_PEER_MSPCONFIGPATH="/hlf_v2/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp" -e CORE_PEER_ADDRESS="192.168.1.45:7051" -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-peer:2.4.6 /usr/local/bin/peer channel update -f /hlf_v2/channel-artifacts/config_update_in_envelope.pb -c channel1 -o 192.168.1.45:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "/hlf_v2/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"</p>
+    </div>
+    <div id="para-div">
+      <p>A the end, the following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>2022-09-17 23:49:33.124 UTC 0001 INFO [channelCmd] InitCmdFactory -> Endorser and orderer connections initialized
+2022-09-17 23:49:33.146 UTC 0002 INFO [channelCmd] update -> Successfully submitted channel update</pre>
+    </div>
+    <div id="para-div">
+      <p>Now To fetch the current channel configuration for peer org2, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm -e FABRIC_CFG_PATH="/hlf_v2/config/peercfg" -e CORE_PEER_TLS_ENABLED=true -e CORE_PEER_LOCALMSPID="Org2MSP" -e CORE_PEER_TLS_ROOTCERT_FILE="/hlf_v2/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" -e CORE_PEER_MSPCONFIGPATH="/hlf_v2/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp" -e CORE_PEER_ADDRESS="192.168.1.45:9051" -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-peer:2.4.6 /usr/local/bin/peer channel fetch config /hlf_v2/channel-artifacts/channel1.block -o 192.168.1.45:7050 --ordererTLSHostnameOverride orderer.example.com -c channel1 --tls --cafile "/hlf_v2/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>2022-09-17 23:52:21.665 UTC 0001 INFO [channelCmd] InitCmdFactory -> Endorser and orderer connections initialized
+2022-09-17 23:52:21.672 UTC 0002 INFO [cli.common] readBlock -> Received block: 1
+2022-09-17 23:52:21.672 UTC 0003 INFO [channelCmd] fetch -> Retrieving last config block: 1
+2022-09-17 23:52:21.675 UTC 0004 INFO [cli.common] readBlock -> Received block: 1</pre>
+    </div>
+    <div id="para-div">
+      <p>To update channel configuration to make peer org2 as an anchor peer, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-tools:2.4.6 /usr/local/bin/configtxlator proto_decode --input /hlf_v2/channel-artifacts/channel1.block --type common.Block --output /hlf_v2/channel-artifacts/config_block.json</p>
+      <p>$ jq .data.data[0].payload.data.config ./channel-artifacts/config_block.json > ./channel-artifacts/config.json</p>
+      <p>$ cp ./channel-artifacts/config.json ./channel-artifacts/config_copy.json</p>
+      <p>$ jq '.channel_group.groups.Application.groups.Org2MSP.values += {"AnchorPeers":{"mod_policy": "Admins","value":{"anchor_peers": [{"host": "peer0.org2.example.com","port": 9051}]},"version": "0"}}' ./channel-artifacts/config_copy.json > ./channel-artifacts/modified_config.json</p>
+      <p>$ docker run --rm -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-tools:2.4.6 /usr/local/bin/configtxlator proto_encode --input /hlf_v2/channel-artifacts/config.json --type common.Config --output /hlf_v2/channel-artifacts/config.pb</p>
+      <p>$ docker run --rm -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-tools:2.4.6 /usr/local/bin/configtxlator proto_encode --input /hlf_v2/channel-artifacts/modified_config.json --type common.Config --output /hlf_v2/channel-artifacts/modified_config.pb</p>
+      <p>$ docker run --rm -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-tools:2.4.6 /usr/local/bin/configtxlator compute_update --channel_id channel1 --original /hlf_v2/channel-artifacts/config.pb --updated /hlf_v2/channel-artifacts/modified_config.pb --output /hlf_v2/channel-artifacts/config_update.pb</p>
+      <p>$ docker run --rm -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-tools:2.4.6 /usr/local/bin/configtxlator proto_decode --input /hlf_v2/channel-artifacts/config_update.pb --type common.ConfigUpdate --output /hlf_v2/channel-artifacts/config_update.json</p>
+      <p>$ echo '{"payload":{"header":{"channel_header":{"channel_id":"channel1", "type":2}},"data":{"config_update":'$(cat ./channel-artifacts/config_update.json)'}}}' | jq . > ./channel-artifacts/config_update_in_envelope.json</p>
+      <p>$ docker run --rm -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-tools:2.4.6 /usr/local/bin/configtxlator proto_encode --input /hlf_v2/channel-artifacts/config_update_in_envelope.json --type common.Envelope --output /hlf_v2/channel-artifacts/config_update_in_envelope.pb</p>
+      <p>$ docker run --rm -e FABRIC_CFG_PATH="/hlf_v2/config/peercfg" -e CORE_PEER_TLS_ENABLED=true -e CORE_PEER_LOCALMSPID="Org2MSP" -e CORE_PEER_TLS_ROOTCERT_FILE="/hlf_v2/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" -e CORE_PEER_MSPCONFIGPATH="/hlf_v2/organizations/peerOrganizations/org2.example.com/users/Admin@org2.example.com/msp" -e CORE_PEER_ADDRESS="192.168.1.45:9051" -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-peer:2.4.6 /usr/local/bin/peer channel update -f /hlf_v2/channel-artifacts/config_update_in_envelope.pb -c channel1 -o 192.168.1.45:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "/hlf_v2/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"</p>
+    </div>
+    <div id="para-div">
+      <p>A the end, the following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>2022-09-17 23:58:51.727 UTC 0001 INFO [channelCmd] InitCmdFactory -> Endorser and orderer connections initialized
+2022-09-17 23:58:51.750 UTC 0002 INFO [channelCmd] update -> Successfully submitted channel update</pre>
+    </div>
+    <div id="para-div">
+      <p>Finally to verify the channel configuration has been updated, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm -e FABRIC_CFG_PATH="/hlf_v2/config/peercfg" -e CORE_PEER_TLS_ENABLED=true -e CORE_PEER_LOCALMSPID="Org1MSP" -e CORE_PEER_TLS_ROOTCERT_FILE="/hlf_v2/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" -e CORE_PEER_MSPCONFIGPATH="/hlf_v2/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp" -e CORE_PEER_ADDRESS="192.168.1.45:7051" -u $(id -u ${USER}):$(id -g ${USER}) -v /home/bswamina/hlf_v2:/hlf_v2 bswamina/fabric-peer:2.4.6 /usr/local/bin/peer channel getinfo -c channel1</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>2022-09-18 00:01:36.759 UTC 0001 INFO [channelCmd] InitCmdFactory -> Endorser and orderer connections initialized
+Blockchain info: {"height":3,"currentBlockHash":"YoOB6VhXpLEGggejUYcEgMP9tdIxeVx3AFT1YFZ+wbM=","previousBlockHash":"CQgisfZHcDoH7GcSCKGlbEBBOfMVGp3fDFtgTtYbcQ8="}</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">BINGO</span> !!! We have successfully demonstrated the setup of the test network using our custom build
+        Hyperledger Fabric docker images for the arm64 platform.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/HyperledgerFabric/Hyperledger-ARM-Build.html" target="_blank"><span class="bold">Building
+        Docker Images for Hyperledger Fabric 2.x (ARM64 Edition)</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

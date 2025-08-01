@@ -1,0 +1,835 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Building Docker Images for Hyperledger Fabric 2.x (ARM64 Edition)">
+    <meta name="subject" content="Building Docker Images for Hyperledger Fabric 2.x (ARM64 Edition)">
+    <meta name="keywords" content="arm64, blockchain, docker, hyperledger_fabric">
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <title>Building Docker Images for Hyperledger Fabric 2.x (ARM64 Edition)</title>
+    <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Building Docker Images for Hyperledger Fabric 2.x (ARM64 Edition)</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td"><span class="hi-yellow">*UPDATED*</span>09/18/2022</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="step-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+	  <p><a href="https://hyperledger-fabric.readthedocs.io/en/latest/index.html" target="_blank"><span class="bold">Hyperledger
+      Fabric 2.x</span></a> is an open source <span class="hi-yellow">Permissioned</span> Blockchain technology that is designed
+      for use in enterprise scenarios.</p>
+    <p><span class="bold">Hyperledger Fabric 2.x</span> is distributed as a set of binaries and <span class="bold">Docker</span>
+      images. Strangely enough, there are no official binaries or the <span class="bold">Docker</span> images for the
+      <span class="hi-green">ARM64</span> platform.</p>
+	  <p>In this article, we layout the steps to download and build the binaries as well as the <span class="bold">Docker</span>
+      images using the <span class="bold">Hyperledger Fabric 2.x</span> source code.</p>
+    </div>
+    </div>
+    <div id="step-div">
+      <p>Steps</p>
+    </div>
+    <div id="para-div">
+      <p>The build will be on the 64-bit hex-core single board computer <a href="https://www.hardkernel.com/shop/odroid-n2-with-4gbyte-ram-2/"
+        target="_blank"><span class="bold">ODroid-N2</span></a> running <a href="https://www.armbian.com/odroid-n2/" target="_blank">
+        <span class="bold">Armbian 22.08 Jammy</span></a> Linux OS.</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/odroid-n2.png" class="img-cls" alt="ODroid-N2" />
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <div id="para-div">
+      <p>Assuming that we are logged in as <span class="hi-yellow">bswamina</span> and the current working directory is the home
+        directory <span class="hi-yellow">/home/bswamina</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>We need to install <span class="bold">golang</span> by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt install golang -y</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to install <a href="https://docs.docker.com/install/linux/docker-ce/ubuntu/" target="_blank">
+        <span class="bold">Docker</span></a>.</p>
+    </div>
+    <div id="para-div">
+      <p>To add the official GPG key for <span class="bold">Docker</span>, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo mkdir -p /etc/apt/keyrings</p>
+      <p>$ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg</p>
+    </div>
+    <div id="para-div">
+      <p>To add the official <span class="bold">Docker</span> repository, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null</p>
+    </div>
+    <div id="para-div">
+      <p>To add install <span class="bold">Docker</span> and <span class="bold">Docker Compose</span>, execute the following
+        commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt-get update</p>
+      <p>$ sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin -y</p>
+      <p>$ sudo apt install docker-compose -y</p>
+    </div>
+    <div id="para-div">
+      <p>To add the user <span class="bold">bswamina</span> to the group <span class="bold">docker</span>, execute the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo usermod -aG docker $USER</p>
+    </div>
+    <div id="para-div">
+      <p>Reboot the system for changes to take effect by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo reboot now</p>
+    </div>
+    <div id="para-div">
+      <p>To check <span class="bold">Docker</span> is running fine, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker info</p>
+    </div>
+    <div id="para-div">
+      <p>Create a <span class="bold">workspace</span> directory called <span class="hi-yellow">go</span> under the home
+        directory and set the <span class="hi-green">GOPATH</span> environment variable to that <span class="bold">workspace
+        </span> directory by executing the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/go</p>
+      <p>$ export GOPATH=$HOME/go</p>
+    </div>
+    <div id="para-div">
+      <p>Create a directory called <span class="hi-yellow">src/github.com/hyperledger</span> in the <span class="bold">
+        workspace</span> directory and change to that directory. This directory will be used to clone the <span class="bold">
+        Hyperledger Fabric</span> source code. Execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/go/src/github.com/hyperledger</p>
+      <p>$ cd $HOME/go/src/github.com/hyperledger</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Hyperledger Fabric</span> source code is distributed over two <span class="bold">GIT</span>
+        repositories - <span class="hi-yellow">fabric</span> and <span class="hi-yellow">fabric-ca</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To clone the <span class="bold">fabric</span> repository, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ git clone https://github.com/hyperledger/fabric.git</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Cloning into 'fabric'...
+remote: Enumerating objects: 156947, done.
+remote: Total 156947 (delta 0), reused 0 (delta 0), pack-reused 156947
+Receiving objects: 100% (156947/156947), 128.19 MiB | 20.34 MiB/s, done.
+Resolving deltas: 100% (108228/108228), done.
+Updating files: 100% (5783/5783), done.</pre>
+    </div>
+    <div id="para-div">
+      <p>Next, to clone the <span class="bold">fabric-ca</span> repository, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ git clone https://github.com/hyperledger/fabric-ca.git</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>remote: Enumerating objects: 20395, done.
+remote: Counting objects: 100% (274/274), done.
+remote: Compressing objects: 100% (217/217), done.
+remote: Total 20395 (delta 106), reused 125 (delta 53), pack-reused 20121
+Receiving objects: 100% (20395/20395), 31.37 MiB | 18.22 MiB/s, done.
+Resolving deltas: 100% (11033/11033), done.</pre>
+    </div>
+    <div id="para-div">
+      <p>Change to the <span class="bold">fabric-ca</span> directory by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/go/src/github.com/hyperledger/fabric-ca</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the tagged branches of the <span class="bold">fabric-ca</span> codebase, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ git tag</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>v1.0.0
+v1.0.0-alpha
+v1.0.0-alpha2
+v1.0.0-beta
+v1.0.0-rc1
+v1.0.1
+v1.0.2
+v1.0.3
+v1.0.4
+v1.0.5
+v1.0.6
+v1.1.0
+v1.1.0-alpha
+v1.1.0-preview
+v1.1.0-rc1
+v1.2.0
+v1.2.0-rc1
+v1.2.1
+v1.3.0
+v1.3.0-rc1
+v1.4.0
+v1.4.0-rc1
+v1.4.0-rc2
+v1.4.1
+v1.4.2
+v1.4.3
+v1.4.4
+v1.4.5
+v1.4.6
+v1.4.7
+v1.4.8
+v1.4.9
+v1.5.0
+v1.5.1
+v1.5.2
+v1.5.3
+v1.5.4
+v1.5.5
+v2.0.0-alpha</pre>
+    </div>
+    <div id="para-div">
+      <p>We will switch to the branch tagged <span class="hi-yellow">v1.5.5</span> by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>git checkout v1.5.5</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>Note: switching to 'v1.5.5'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c &lt;new-branch-name&gt;
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 9d2a3123 Release commit for v1.5.5</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the <span class="bold">Docker</span> images, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>docker images</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE</pre>
+    </div>
+    <div id="para-div">
+      <p>To build the <span class="bold">Docker</span> images, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>make docker GO_TAGS=noplugin</p>
+    </div>
+    <div id="para-div">
+      <p>This will take a few minutes to finish. As the build progresses and completes, we will see the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>Docker:  building fabric-ca image
+docker build  -f images/fabric-ca/Dockerfile \
+  --build-arg GO_VER=1.18.2 \
+  --build-arg GO_TAGS=pkcs11 \
+  --build-arg GO_LDFLAGS="-X github.com/hyperledger/fabric-ca/lib/metadata.Version=1.5.5 -linkmode external -extldflags '-lpthread'" \
+  --build-arg ALPINE_VER=3.16 \
+  -t hyperledger/fabric-ca .
+Sending build context to Docker daemon  76.24MB
+Step 1/15 : ARG GO_VER
+Step 2/15 : ARG ALPINE_VER
+Step 3/15 : FROM golang:${GO_VER}-alpine as builder
+1.18.2-alpine: Pulling from library/golang
+b3c136eddcbf: Pull complete 
+c0a3192eca97: Pull complete 
+a050256f5b6f: Pull complete 
+8bd7d2ada188: Pull complete 
+0513a3962eea: Pull complete 
+Digest: sha256:4795c5d21f01e0777707ada02408debe77fe31848be97cf9fa8a1462da78d949
+Status: Downloaded newer image for golang:1.18.2-alpine
+  ---&gt; 170b68abe14f
+Step 4/15 : ARG GO_LDFLAGS
+  ---&gt; Running in 656119486f7d
+Removing intermediate container 656119486f7d
+  ---&gt; 633a9bbb0018
+Step 5/15 : ARG GO_TAGS
+  ---&gt; Running in 55aed3b7af89
+Removing intermediate container 55aed3b7af89
+  ---&gt; cabece0d7224
+Step 6/15 : RUN apk add --no-cache 	gcc 	binutils-gold 	git 	musl-dev;
+  ---&gt; Running in 5139ec73d07c
+                ............
+                ... SNIP ...
+                ............
+Step 10/15 : FROM alpine:${ALPINE_VER}
+3.16: Pulling from library/alpine
+9b18e9b68314: Pull complete 
+Digest: sha256:bc41182d7ef5ffc53a40b044e725193bc10142a1243f395ee852a8d9730fc2ad
+Status: Downloaded newer image for alpine:3.16
+  ---&gt; a6215f271958
+Step 11/15 : RUN apk add --no-cache 	tzdata;
+  ---&gt; Running in 9dedf9689b57
+fetch https://dl-cdn.alpinelinux.org/alpine/v3.16/main/aarch64/APKINDEX.tar.gz
+fetch https://dl-cdn.alpinelinux.org/alpine/v3.16/community/aarch64/APKINDEX.tar.gz
+(1/1) Installing tzdata (2022c-r0)
+Executing busybox-1.35.0-r17.trigger
+OK: 8 MiB in 15 packages
+Removing intermediate container 9dedf9689b57
+  ---&gt; 344c248bceb3
+Step 12/15 : ENV FABRIC_CA_HOME /etc/hyperledger/fabric-ca-server
+  ---&gt; Running in b57780ac30e7
+Removing intermediate container b57780ac30e7
+  ---&gt; 008bf3391594
+Step 13/15 : COPY --from=builder /go/bin /usr/local/bin
+  ---&gt; 2f2158f4e988
+Step 14/15 : EXPOSE 7054
+  ---&gt; Running in 5bb2dafa84c1
+Removing intermediate container 5bb2dafa84c1
+  ---&gt; 3f567ade113f
+Step 15/15 : CMD fabric-ca-server start -b admin:adminpw
+  ---&gt; Running in d90059a28c51
+Removing intermediate container d90059a28c51
+  ---&gt; dc9e62641828
+Successfully built dc9e62641828
+Successfully tagged hyperledger/fabric-ca:latest
+docker tag hyperledger/fabric-ca hyperledger/fabric-ca:1.5.5
+docker tag hyperledger/fabric-ca hyperledger/fabric-ca:arm64-1.5.5</pre>
+    </div>
+    <div id="para-div">
+      <p>To clean all the dangling docker images, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker image prune</p>
+    </div>
+    <div id="para-div">
+      <p>On confirming to continue, the following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>Deleted Images:
+deleted: sha256:2873db8498341bb7a737f2b05850745776bf96ec786080c862f46605efa7855d
+deleted: sha256:e25805e3e200310a76a79bf4c40d831235dabd0a458055bb8d281e5258a919e0
+deleted: sha256:108a24dfe045cb0cba11edbb7bb70cb83f5e535f079e8d269412ee5e34c806e0
+deleted: sha256:e6a4578ec1b2597a10c66fc5b057857efac14bcbfb6f17976f57d6dc7d05048d
+deleted: sha256:78e3555728d8fc5fca064944476f07546e522b2cb7341720d0b89e880854f116
+deleted: sha256:db26f02c7e871c8fa45b6f79178fa432a93fe9c3edcc9614b12e25aaf524c7e2
+deleted: sha256:a2bcbd6e5f362bb8ba3ef23895b10eb3ab15216c335b6e29f32bddd159c60873
+deleted: sha256:c9e4dbba7d6f7a9cba949668a2947f88fa55ac5de784b557ef35cfa498132896
+deleted: sha256:0839d1912fdf248b4ad6610133c8dd203767a0a8b6b9d9336939c23e101fbae0
+
+Total reclaimed space: 396MB</pre>
+    </div>
+    <div id="para-div">
+      <p>To tag the <span class="bold">Docker</span> image for <span class="bold">fabric-ca</span> so it can be pushed to
+        <span class="bold">Docker Hub</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker tag hyperledger/fabric-ca:1.5.5 bswamina/fabric-ca:1.5.5</p>
+    </div>
+    <div id="para-div">
+      <p>To remove all the other <span class="bold">Docker</span> tags from the image <span class="bold">fabric-ca</span>, execute
+        the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker image rm hyperledger/fabric-ca:latest hyperledger/fabric-ca:arm64-1.5.5 hyperledger/fabric-ca:1.5.5</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>Untagged: hyperledger/fabric-ca:latest
+Untagged: hyperledger/fabric-ca:arm64-1.5.5
+Untagged: hyperledger/fabric-ca:1.5.5</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the <span class="bold">Docker</span> images, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker images</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>REPOSITORY           TAG             IMAGE ID       CREATED         SIZE
+bswamina/fabric-ca   1.5.5           dc9e62641828   4 minutes ago   78.2MB
+alpine               3.16            a6215f271958   5 weeks ago     5.29MB
+golang               1.18.2-alpine   170b68abe14f   3 months ago    325MB</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, change to the <span class="bold">fabric</span> directory by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/go/src/github.com/hyperledger/fabric</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the tagged branches of the <span class="bold">fabric</span> codebase, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ git tag</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>baseimage-v0.0.11
+v0.6.0-preview
+v0.6.1-preview
+v1.0.0
+v1.0.0-alpha
+v1.0.0-alpha2
+v1.0.0-beta
+v1.0.0-rc1
+v1.0.1
+v1.0.2
+v1.0.3
+v1.0.4
+v1.0.5
+v1.0.6
+v1.1.0
+v1.1.0-alpha
+v1.1.0-preview
+v1.1.0-rc1
+v1.1.1
+v1.2.0
+v1.2.0-rc1
+v1.2.1
+v1.3.0
+v1.3.0-rc1
+v1.4.0
+v1.4.0-rc1
+v1.4.0-rc2
+v1.4.1
+v1.4.1-rc1
+v1.4.10
+v1.4.11
+v1.4.12
+v1.4.2
+v1.4.3
+v1.4.4
+v1.4.5
+v1.4.6
+v1.4.7
+v1.4.8
+v1.4.9
+v2.0.0
+v2.0.0-alpha
+v2.0.0-beta
+v2.0.1
+v2.1.0
+v2.1.1
+v2.2.0
+v2.2.1
+v2.2.2
+v2.2.3
+v2.2.4
+v2.2.5
+v2.2.6
+v2.2.7
+v2.2.8
+v2.3.0
+v2.3.1
+v2.3.2
+v2.3.3
+v2.4.0
+v2.4.0-alpha
+v2.4.0-beta
+v2.4.1
+v2.4.2
+v2.4.3
+v2.4.4
+v2.4.5
+v2.4.6</pre>
+    </div>
+    <div id="para-div">
+      <p>We will switch to the branch tagged <span class="hi-yellow">v2.4.6</span> by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>git checkout v2.4.6</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>Note: switching to 'v2.4.6'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c &lt;new-branch-name&gt;
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at 83596078d Fix binary package creation</pre>
+    </div>
+    <div id="para-div">
+      <p>Before we proceed further, we need to make a minor modification to the <span class="bold">Docker</span> file
+        <span class="hi-yellow">images/peer/Dockerfile</span> as follows:</p>
+      <p>Change the line:</p>
+      <p><span class="hi-yellow">COPY --from=peer /go/src/github.com/hyperledger/fabric/release/linux-amd64/builders/ccaas/bin/
+        /opt/hyperledger/ccaas_builder/bin/</span></p>
+      <p>To the line:</p>
+      <p><span class="hi-green">COPY --from=peer /go/src/github.com/hyperledger/fabric/release/linux-arm64/builders/ccaas/bin/
+        /opt/hyperledger/ccaas_builder/bin/</span></p>
+    </div>
+    <div id="para-div">
+      <p>To build all the <span class="bold">Docker</span> images, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ make docker GO_TAGS=noplugin</p>
+    </div>
+    <br/>
+    <div id="error-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>The flag <span class="underbold">GO_TAGS=noplugin</span> is very IMPORTANT !!!</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This will take a few minutes to finish. As the build progresses and completes, we will see the following output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>Building Docker image hyperledger/fabric-baseos
+docker build --force-rm  -f images/baseos/Dockerfile \
+  --build-arg GO_VER=1.18.2 \
+  --build-arg ALPINE_VER=3.16 \
+    \
+  -t hyperledger/fabric-baseos ./images/baseos
+Sending build context to Docker daemon  2.048kB
+Step 1/6 : ARG GO_VER
+Step 2/6 : ARG ALPINE_VER
+Step 3/6 : FROM alpine:${ALPINE_VER} as base
+          ............
+          ... SNIP ...
+          ............
+Successfully built d420699eef0d
+Successfully tagged hyperledger/fabric-baseos:latest
+docker tag hyperledger/fabric-baseos hyperledger/fabric-baseos:2.4.6
+docker tag hyperledger/fabric-baseos hyperledger/fabric-baseos:2.4
+docker tag hyperledger/fabric-baseos hyperledger/fabric-baseos:arm64-2.4.6-snapshot-83596078d
+Building Docker image hyperledger/fabric-ccenv
+docker build --force-rm  -f images/ccenv/Dockerfile \
+  --build-arg GO_VER=1.18.2 \
+  --build-arg ALPINE_VER=3.16 \
+    \
+  -t hyperledger/fabric-ccenv ./images/ccenv
+Sending build context to Docker daemon  2.048kB
+Step 1/8 : ARG GO_VER
+Step 2/8 : ARG ALPINE_VER
+Step 3/8 : FROM golang:${GO_VER}-alpine${ALPINE_VER}
+          ............
+          ... SNIP ...
+          ............
+Successfully built 7ade519a0116
+Successfully tagged hyperledger/fabric-ccenv:latest
+docker tag hyperledger/fabric-ccenv hyperledger/fabric-ccenv:2.4.6
+docker tag hyperledger/fabric-ccenv hyperledger/fabric-ccenv:2.4
+docker tag hyperledger/fabric-ccenv hyperledger/fabric-ccenv:arm64-2.4.6-snapshot-83596078d
+Building Docker image hyperledger/fabric-orderer
+docker build --force-rm  -f images/orderer/Dockerfile \
+  --build-arg GO_VER=1.18.2 \
+  --build-arg ALPINE_VER=3.16 \
+  --build-arg GO_TAGS=noplugin \
+  -t hyperledger/fabric-orderer ./
+Sending build context to Docker daemon  47.16MB
+Step 1/22 : ARG GO_VER
+Step 2/22 : ARG ALPINE_VER
+Step 3/22 : FROM alpine:${ALPINE_VER} as base
+          ............
+          ... SNIP ...
+          ............
+Successfully built 25668ac89999
+Successfully tagged hyperledger/fabric-orderer:latest
+docker tag hyperledger/fabric-orderer hyperledger/fabric-orderer:2.4.6
+docker tag hyperledger/fabric-orderer hyperledger/fabric-orderer:2.4
+docker tag hyperledger/fabric-orderer hyperledger/fabric-orderer:arm64-2.4.6-snapshot-83596078d
+Building Docker image hyperledger/fabric-peer
+docker build --force-rm  -f images/peer/Dockerfile \
+  --build-arg GO_VER=1.18.2 \
+  --build-arg ALPINE_VER=3.16 \
+  --build-arg GO_TAGS=noplugin \
+  -t hyperledger/fabric-peer ./
+Sending build context to Docker daemon  47.16MB
+Step 1/23 : ARG GO_VER
+Step 2/23 : ARG ALPINE_VER
+Step 3/23 : FROM alpine:${ALPINE_VER} as peer-base
+          ............
+          ... SNIP ...
+          ............
+Successfully built b9e6c7a86e29
+Successfully tagged hyperledger/fabric-peer:latest
+docker tag hyperledger/fabric-peer hyperledger/fabric-peer:2.4.6
+docker tag hyperledger/fabric-peer hyperledger/fabric-peer:2.4
+docker tag hyperledger/fabric-peer hyperledger/fabric-peer:arm64-2.4.6-snapshot-83596078d
+Building Docker image hyperledger/fabric-tools
+docker build --force-rm  -f images/tools/Dockerfile \
+  --build-arg GO_VER=1.18.2 \
+  --build-arg ALPINE_VER=3.16 \
+  --build-arg GO_TAGS=noplugin \
+  -t hyperledger/fabric-tools ./
+Sending build context to Docker daemon  47.16MB
+Step 1/15 : ARG GO_VER
+Step 2/15 : ARG ALPINE_VER
+Step 3/15 : FROM golang:${GO_VER}-alpine${ALPINE_VER} as golang
+          ............
+          ... SNIP ...
+          ............
+Successfully built 773fcf5b8132
+Successfully tagged hyperledger/fabric-tools:latest
+docker tag hyperledger/fabric-tools hyperledger/fabric-tools:2.4.6
+docker tag hyperledger/fabric-tools hyperledger/fabric-tools:2.4
+docker tag hyperledger/fabric-tools hyperledger/fabric-tools:arm64-2.4.6-snapshot-83596078d
+          ............
+          ... SNIP ...
+          ............
+
+PASS
+ok  	github.com/hyperledger/fabric/ccaas_builder/cmd/release	1.499s</pre>
+    </div>
+    <div id="para-div">
+      <p>To clean all the dangling docker images, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker image prune</p>
+    </div>
+    <div id="para-div">
+      <p>On confirming to continue, the following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>Deleted Images:
+deleted: sha256:00783f4d19dc72b626f393a14779cabc5e186edc0bc6195b5660debd0cd1030b
+deleted: sha256:1b0ab963c3ba34c54389e1d7441130dbab67380f50428c8f4ce240f65e099e50
+deleted: sha256:2e3f27688055d318170f89c5c55aa90c91ee6bd5d131bebfd460e2dd500b31b8
+deleted: sha256:0a464bb167d53c741e7ce59d2ae1499bff92fd0179380e1483fa6cec13d1f88c
+deleted: sha256:649a1e364e6bbc2f7509b91c3c6d22fe0b92c800645a6db1fe02cb248c6b9896
+deleted: sha256:b204b3cac0d2f9a1033c5507ee0e1b56023f2cb0b33cd2d7c3c05d4e5f1b49e8
+deleted: sha256:1f35e77b7d620d8bf4b12e700c81e8916c4a857cf39df635aa6058453400f1f8
+deleted: sha256:702184f2eae17b6202d01316c9323b01e4ebfa63f7d8e90b788c20ead1af3e9d
+deleted: sha256:543707fee6a001973a72cae8245eb44f6d8fae8b26d4201ed6d5b92c015ddfdc
+deleted: sha256:369f3841b7939004f7c4f236b72d20a145672a2ae8c8da05d78c989cee0ddc0e
+deleted: sha256:2e2ab81837e7702bc08b75c1473fa2b358089ba6ba713e05b764865edcc2d330
+deleted: sha256:9154d431719df1cb2db9617235dece5ce345e474db312ec140f4d964783f585a
+deleted: sha256:29a72b84bbd1f16325b37795b645125c11750e17efbff6ec06d89fc827257084
+deleted: sha256:5e317ee469741e47ce3f8bb939870f001d256c830579f6877de6aa3385505712
+deleted: sha256:d6f724bb080d0a17b5e00b19b06d57fa7fe1acd5bc886d6defe25ced3f05431a
+deleted: sha256:0fec73f17c0fc06da32966e4296e2991730c576e465be42c3079a5d46af3a24b
+deleted: sha256:27c2c93e4b2d4f2fb1f4ee85b2e756629231f8a963d733a0020040cefd55c681
+deleted: sha256:4d26aee4d8f9a159c91bbf4bdb610eb620c0f77b295a982d42b025385312533d
+deleted: sha256:18956863262d958e0f5fe4225f01e8560ead20f7b8f4a1fb4f874a6683afc00e
+deleted: sha256:c8db28347cb52be92ecb214602ca453ce9839a46bec5a136df8bd8660cdf40a8
+deleted: sha256:7d5c5070b2729729bd2ab7076fc257a3c2787b3b139396c4055d0d638003df78
+deleted: sha256:24d2c5f3ed897ec6b2071a54c4aa4c450d0f76b465a60b71953e313ca67f9b2d
+deleted: sha256:47c32140747d3e74fd2ea35d0d6f3e9ceb6eee7093ac94a714009cf81afe9c27
+deleted: sha256:b4de5d1e02d1f1d40b65fe16f80ad582d0ae3432b4a485d12c27190bd0e1f79a
+
+Total reclaimed space: 1.177GB</pre>
+    </div>
+    <div id="para-div">
+      <p>To tag the <span class="bold">Docker</span> images for <span class="bold">fabric-baseos</span>, <span class="bold">
+        fabric-ccenv</span>, <span class="bold">fabric-orderer</span>, <span class="bold">fabric-peer</span>, and <span class="bold">
+        fabric-tools</span>, so that they can be pushed to <span class="bold">Docker Hub</span>, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker tag hyperledger/fabric-baseos:2.4.6 bswamina/fabric-baseos:2.4.6</p>
+      <p>$ docker tag hyperledger/fabric-ccenv:2.4.6 bswamina/fabric-ccenv:2.4.6</p>
+      <p>$ docker tag hyperledger/fabric-orderer:2.4.6 bswamina/fabric-orderer:2.4.6</p>
+      <p>$ docker tag hyperledger/fabric-peer:2.4.6 bswamina/fabric-peer:2.4.6</p>
+      <p>$ docker tag hyperledger/fabric-tools:2.4.6 bswamina/fabric-tools:2.4.6</p>
+    </div>
+    <div id="para-div">
+      <p>To remove all the other <span class="bold">Docker</span> tags from the images for <span class="bold">fabric-baseos</span>,
+        <span class="bold">fabric-ccenv</span>, <span class="bold">fabric-orderer</span>, <span class="bold">fabric-peer</span>, and
+        <span class="bold">fabric-tools</span>, execute the following set of commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker image rm hyperledger/fabric-baseos:latest hyperledger/fabric-baseos:arm64-2.4.6-snapshot-83596078d hyperledger/fabric-baseos:2.4 hyperledger/fabric-baseos:2.4.6</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>Untagged: hyperledger/fabric-baseos:latest
+Untagged: hyperledger/fabric-baseos:arm64-2.4.6-snapshot-83596078d
+Untagged: hyperledger/fabric-baseos:2.4
+Untagged: hyperledger/fabric-baseos:2.4.6</pre>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker image rm hyperledger/fabric-ccenv:latest hyperledger/fabric-ccenv:arm64-2.4.6-snapshot-83596078d hyperledger/fabric-ccenv:2.4 hyperledger/fabric-ccenv:2.4.6</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>Untagged: hyperledger/fabric-ccenv:latest
+Untagged: hyperledger/fabric-ccenv:arm64-2.4.6-snapshot-83596078d
+Untagged: hyperledger/fabric-ccenv:2.4
+Untagged: hyperledger/fabric-ccenv:2.4.6</pre>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker image rm hyperledger/fabric-orderer:latest hyperledger/fabric-orderer:arm64-2.4.6-snapshot-83596078d hyperledger/fabric-orderer:2.4 hyperledger/fabric-orderer:2.4.6</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>Untagged: hyperledger/fabric-orderer:latest
+Untagged: hyperledger/fabric-orderer:arm64-2.4.6-snapshot-83596078d
+Untagged: hyperledger/fabric-orderer:2.4
+Untagged: hyperledger/fabric-orderer:2.4.6</pre>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker image rm hyperledger/fabric-peer:latest hyperledger/fabric-peer:arm64-2.4.6-snapshot-83596078d hyperledger/fabric-peer:2.4 hyperledger/fabric-peer:2.4.6</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.17</h4>
+      <pre>Untagged: hyperledger/fabric-peer:latest
+Untagged: hyperledger/fabric-peer:arm64-2.4.6-snapshot-83596078d
+Untagged: hyperledger/fabric-peer:2.4
+Untagged: hyperledger/fabric-peer:2.4.6</pre>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker image rm hyperledger/fabric-tools:latest hyperledger/fabric-tools:arm64-2.4.6-snapshot-83596078d hyperledger/fabric-tools:2.4 hyperledger/fabric-tools:2.4.6</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.18</h4>
+      <pre>Untagged: hyperledger/fabric-tools:latest
+Untagged: hyperledger/fabric-tools:arm64-2.4.6-snapshot-83596078d
+Untagged: hyperledger/fabric-tools:2.4
+Untagged: hyperledger/fabric-tools:2.4.6</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the <span class="bold">Docker</span> images, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker images</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.19</h4>
+      <pre>REPOSITORY                TAG                 IMAGE ID       CREATED          SIZE
+bswamina/fabric-tools     2.4.6               773fcf5b8132   6 minutes ago    469MB
+bswamina/fabric-peer      2.4.6               b9e6c7a86e29   11 minutes ago   50.2MB
+bswamina/fabric-orderer   2.4.6               25668ac89999   15 minutes ago   35.2MB
+bswamina/fabric-ccenv     2.4.6               7ade519a0116   19 minutes ago   530MB
+bswamina/fabric-baseos    2.4.6               d420699eef0d   20 minutes ago   6.56MB
+bswamina/fabric-ca        1.5.5               dc9e62641828   29 minutes ago   78.2MB
+alpine                    3.16                a6215f271958   5 weeks ago      5.29MB
+golang                    1.18.2-alpine       170b68abe14f   3 months ago     325MB
+golang                    1.18.2-alpine3.16   170b68abe14f   3 months ago     325MB</pre>
+    </div>
+    <div id="para-div">
+      <p>At this point, we have all the <span class="bold">Docker</span> images for <span class="bold">Hyperledger Fabric 2.x</span>
+        built and ready to be pushed to <span class="bold">Docker Hub</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>One can pull all the <span class="bold">Docker</span> images from the <span class="bold">Docker Hub</span> repository using
+        the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>docker pull bswamina/fabric-baseos:2.4.6</p>
+      <p>docker pull bswamina/fabric-ccenv:2.4.6</p>
+      <p>docker pull bswamina/fabric-orderer:2.4.6</p>
+      <p>docker pull bswamina/fabric-peer:2.4.6</p>
+      <p>docker pull bswamina/fabric-tools:2.4.6</p>
+      <p>docker pull bswamina/fabric-ca:1.5.5</p>
+    </div>
+    <div id="para-div">
+      <p>How do we know these <span class="bold">Docker</span> images will work ??? We will prove by setting the test network from
+        the Hyperledger Fabric samples in anotther article.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://hyperledger-fabric.readthedocs.io/en/latest/index.html" target="_blank"><span class="bold">Hyperledger
+        Fabric 2.x Documentation</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

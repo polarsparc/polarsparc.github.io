@@ -1,0 +1,492 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="Introduction to Ansible - Part 3" content="author: Bhaskar.S, category: ansible, devops">
+    <title>Introduction to Ansible - Part 3</title>
+    <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Introduction to Ansible - Part 3</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">07/08/2018</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="http://polarsparc.github.io/Ansible/Ansible-2.html" target="_blank"><span class="bold">Part 2</span></a> of the
+        series, we introduced <span class="bold">Ansible Playbook</span>s and got our feet wet with some basic capabilities.</p>
+      <p>In this part, we will continue to explore some more features of <span class="hi-yellow">Ansible Playbook</span>s.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Ansible Playbooks</p>
+    </div>
+    <div id="para-div">
+      <p>Create and save a playbook file called <span class="hi-yellow">playbook-4.yaml</span>, with the following contents,
+        in the directory <span class="bold">/home/alice/Ansible</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>playbook-4.yaml</legend>
+      <pre>---
+- name: Playbook with 2 tasks
+  hosts: "{{ target_host }}"
+  gather_facts: no
+
+  vars:
+    home_var: "HOME"
+    shell_var: "SHELL"
+
+  tasks:
+  - name: Find user id
+    command: id -un
+    register: user
+    
+  - name: Display user id and shell
+    debug:
+      msg:
+      - 'User -> {{ user.stdout }}'
+      - 'Home -> {{ lookup("env", "{{ home_var }}") }}'
+      - 'Shell -> {{ lookup("env", "{{ shell_var }}") }}'
+      - 'Extra argument -> {{ name_var }}'</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The above playbook defines four user-defined variables, namely, <span class="bold">target_host</span>,
+       <span class="bold">home_var</span>, <span class="bold">shell_var</span>, and <span class="bold">name_var</span>
+       respectively. User-defined variables can be defined in the <span class="hi-yellow">vars</span> section of the
+       playbook as shown above. In addition, they can be passed in using the <span class="hi-yellow">--extra-vars</span>
+       command-line argument. For our example, we will be passing in the values for <span class="bold">target_host</span>
+       and <span class="bold">name_var</span> using the command-line argument.</p>
+    </div>
+    <div id="para-div">
+      <p>To test the above playbook <span class="bold">playbook-4.yaml</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ansible-playbook playbook-4.yaml --extra-vars "target_host=host1 name_var=Alice"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>PLAY [Playbook with 2 tasks] *******************************************************************************************************
+
+TASK [Find user id] ****************************************************************************************************************
+changed: [192.168.100.11]
+
+TASK [Display user id and shell] ***************************************************************************************************
+ok: [192.168.100.11] => {
+    "msg": [
+        "User -> vagrant", 
+        "Home -> /home/bswamina", 
+        "Shell -> /bin/bash", 
+        "Extra argument -> Alice"
+    ]
+}
+
+PLAY RECAP *************************************************************************************************************************
+192.168.100.11             : ok=2    changed=1    unreachable=0    failed=0</pre>
+    </div>
+    <div id="para-div">
+      <p>One could also use the short form for the command-line argument <span class="hi-green">-e</span> instead of the longer
+        <span class="bold">--extra-vars</span> argument.</p>
+      <p>When passing user-defined variables from the command-line, they must be specified as key-value pairs that are space
+        separated and enclosed in double quotes as was done above.</p>
+    </div>
+    <div id="para-div">
+      <p>In the above playbook, we use the <span class="hi-yellow">lookup</span> plugin to query values from external sources
+        such as the shell.</p>
+      <p>In our example, we query the environment variables <span class="bold">HOME</span> and <span class="bold">SHELL</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Create and save a simple html file called <span class="hi-yellow">custom_index.html</span>, with the following contents,
+        in the directory <span class="bold">/home/alice/Ansible</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>custom_index.html</legend>
+      <pre>&lt;html&gt;
+    &lt;head&gt;&lt;title&gt;Welcome to NGINX&lt;/title&gt;&lt;/head&gt;
+    &lt;body&gt;
+        &lt;h3 align='center'&gt;
+            &lt;font color='red'&gt;Welcome to NGINX&lt;/font&gt;
+        &lt;/h3&gt;
+    &lt;/body&gt;
+&lt;/html&gt;</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Next, create and save a playbook file called <span class="hi-yellow">playbook-5.yaml</span>, with the following contents,
+        in the directory <span class="bold">/home/alice/Ansible</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>playbook-5.yaml</legend>
+      <pre>---
+- name: Setup and start nginx
+  hosts: "{{ target_host }}"
+  become: yes
+  
+  vars:
+    custom_html: "custom_index.html"
+
+  tasks:
+  - name: Install nginx
+    apt: name=nginx state=present
+    when: ansible_os_family == "Debian"
+    
+  - name: Start nginx
+    service: name=nginx enabled=yes state=started
+    notify: restart nginx
+
+  - name: Customize nginx index.html
+    copy:
+      src={{ custom_html }}
+      dest=/var/www/html/index.html
+      mode=0644
+    notify: restart nginx
+    
+  handlers:
+  - name: restart nginx
+    service: name=nginx state=restarted</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The above playbook will install the popular open source webserver <span class="bold">nginx</span>, configure a
+        custom <span class="file">index.html</span> file, and restart <span class="bold">nginx</span> to reflect the changes.</p>
+      <p>If one is observant, they will notice the use of <span class="hi-yellow">become</span> clause at the very beginning of
+        the playbook. Setting it to a value of <span class="bold">yes</span> means <span class="bold">Ansible</span> will execute
+        every task in the context of the user <span class="bold">root</span>.</p>
+      <p>The first task uses the module <span class="hi-yellow">apt</span> to manage packages on <span class="bold">Debian</span>
+        based target remote host(s). The <span class="bold">apt</span> module takes a package name and a package state. In our
+        example, the package name is <span class="bold">nginx</span> with the state <span class="bold">present</span>. The first
+        time this task executes, it installs the desired package. Any future runs will not reinstall the package since the package
+        is already present.</p>
+      <p>The second task uses the module <span class="hi-yellow">service</span> to manage system services on target remote host(s).
+        The <span class="bold">service</span> module takes a service name, a flag to indicate if the service will start on boot,
+        and a service state. In our example, the package name is <span class="bold">nginx</span>, with enabled set to
+        <span class="bold">yes</span> indicating it will start on boot and the service state of <span class="bold">started</span>.</p>
+      <p>The third task uses the module <span class="hi-yellow">copy</span> to copy a file to the target remote host(s) on a
+        specified destination. The <span class="bold">copy</span> module takes a source file name, a destination location, and a
+        file mode. In our example, the source file is <span class="bold">custom_index.html</span> that will be copied to the
+        location <span class="bold">/var/www/html/index.html</span> on the target remote host.</p>
+      <p>We have a section called <span class="hi-yellow">handlers</span> that looks very similar to tasks in the playbook,
+        except that they run only when notified. A handler runs only once (even when notified multiple times) at the end of a play
+        after all the tasks in the play have completed execution.</p>
+      <p>A task notifies a handler using the <span class="hi-yellow">notify</span> clause and specifying the handlers name.</p>
+    </div>
+    <div id="para-div">
+      <p>To test the above playbook <span class="bold">playbook-5.yaml</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ansible-playbook playbook-5.yaml -e "target_host=host2"</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>PLAY [Setup and start nginx] *******************************************************************************************************
+
+TASK [Gathering Facts] *************************************************************************************************************
+ok: [192.168.100.12]
+
+TASK [Install nginx] ***************************************************************************************************************
+changed: [192.168.100.12]
+
+TASK [Start nginx] *****************************************************************************************************************
+ok: [192.168.100.12]
+
+TASK [Customize nginx index.html] **************************************************************************************************
+changed: [192.168.100.12]
+
+RUNNING HANDLER [restart nginx] ****************************************************************************************************
+changed: [192.168.100.12]
+
+PLAY RECAP *************************************************************************************************************************
+192.168.100.12             : ok=5    changed=3    unreachable=0    failed=0</pre>
+    </div>
+    <div id="para-div">
+      <p>Open a browser and access the URL <span class="bold">http://192.168.100.12</span>. The following is an illustration:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/Ansible-03.png" alt="Ansible Browser" />
+      <div class="img-cap">Browser</div>
+    </div>
+    <div id="para-div">
+      <p>Create and save a playbook file called <span class="hi-yellow">playbook-6.yaml</span>, with the following contents,
+        in the directory <span class="bold">/home/alice/Ansible</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>playbook-6.yaml</legend>
+      <pre>---
+- name: Setup sqlite and python-sqlite module
+  hosts: "{{ target_host }}"
+  become: yes
+  
+  vars:
+    target_host: host1
+
+  tasks:
+  - name: Display OS family
+    debug: msg="OS Family - {{ ansible_os_family }}"
+    when: ansible_os_family is defined
+
+  - name: Install debian packages
+    ignore_errors: yes
+    apt: name={{ item }} state=present
+    when: ansible_os_family == "Debian"
+    with_items:
+    - sqlite5
+    - python-sqlite5</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The above playbook demonstrates a looping construct using the <span class="hi-yellow">with_items</span> clause, to install
+        multiple packages. Each list element specified under <span class="bold">with_items</span> will be made available in
+        <span class="bold">Ansible</span> via a pre-defined variable called <span class="hi-yellow">item</span>.</p>
+      <p>By default, <span class="bold">Ansible</span> will fail on a target host when it encounters a task failure. To be precise,
+        if there are two target hosts - <span class="bold">host1</span> and <span class="bold">host2</span> and a task encounters
+        an error only on <span class="bold">host1</span>, it will continue with the tasks on <span class="bold">host2</span>. To change
+        the behavior to continue on errors, one can specify the <span class="hi-yellow">ignore_errors</span> clause with a value
+        of <span class="hi-yellow">yes</span>. This is what we have done in the second task (since we have intentionally specified
+        invalid package names to force failure).</p>
+    </div>
+    <div id="para-div">
+      <p>To test the above playbook <span class="bold">playbook-6.yaml</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ansible-playbook playbook-6.yaml</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>PLAY [Setup sqlite and python-sqlite module] ***************************************************************************************
+
+TASK [Gathering Facts] *************************************************************************************************************
+ok: [192.168.100.11]
+
+TASK [Display debian packages to install] ******************************************************************************************
+ok: [192.168.100.11] => (item=None) => {
+    "msg": "Debian package - sqlite"
+}
+ok: [192.168.100.11] => (item=None) => {
+    "msg": "Debian package - python-sqlite"
+}
+
+TASK [Install debian packages] *****************************************************************************************************
+failed: [192.168.100.11] (item=[u'sqlite5', u'python-sqlite5']) => {"changed": false, "item": ["sqlite5", "python-sqlite5"], "msg": "No package matching 'sqlite5' is available"}
+...ignoring
+
+PLAY RECAP *************************************************************************************************************************
+192.168.100.11             : ok=3    changed=0    unreachable=0    failed=0</pre>
+    </div>
+    <div id="para-div">
+      <p>There will be situations when we want to forcibly stop execution of the <span class="bold">Ansible</span> playbook when
+        an error is encounter on any of the target host(s). This is when we use the <span class="hi-yellow">any_errors_fatal</span>
+        clause with a value of <span class="hi-yellow">yes</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Create and save a playbook file called <span class="hi-yellow">playbook-7.yaml</span>, with the following contents,
+        in the directory <span class="bold">/home/alice/Ansible</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>playbook-7.yaml</legend>
+      <pre>---
+- name: Setup sqlite and python-sqlite module
+  hosts: "{{ target_hosts }}"
+  become: yes
+  any_errors_fatal: yes
+  
+  vars:
+    target_hosts: host1, host2
+
+  tasks:
+  - name: Install debian packages
+    apt: name={{ item }} state=present
+    when: ansible_os_family == "Debian"
+    with_items:
+    - sqlite5
+    - python-sqlite5
+
+  - name: Display debian packages to install
+    debug: msg="Debian package - {{ item }}"
+    with_items:
+    - sqlite
+    - python-sqlite</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>To test the above playbook <span class="bold">playbook-7.yaml</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ansible-playbook playbook-7.yaml</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>PLAY [Setup sqlite and python-sqlite module] ***************************************************************************************
+
+TASK [Gathering Facts] *************************************************************************************************************
+ok: [192.168.100.12]
+ok: [192.168.100.11]
+
+TASK [Install debian packages] *****************************************************************************************************
+failed: [192.168.100.12] (item=[u'sqlite5', u'python-sqlite5']) => {"changed": false, "item": ["sqlite5", "python-sqlite5"], "msg": "No package matching 'sqlite5' is available"}
+failed: [192.168.100.11] (item=[u'sqlite5', u'python-sqlite5']) => {"changed": false, "item": ["sqlite5", "python-sqlite5"], "msg": "No package matching 'sqlite5' is available"}
+
+NO MORE HOSTS LEFT *****************************************************************************************************************
+
+PLAY RECAP *************************************************************************************************************************
+192.168.100.11             : ok=1    changed=0    unreachable=0    failed=1   
+192.168.100.12             : ok=1    changed=0    unreachable=0    failed=1</pre>
+    </div>
+    <div id="para-div">
+      <p>To display the list of all the supported <span class="bold">Ansible</span> modules along with a short description, execute
+        the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ansible-doc -l</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output (truncated for brevity):</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>a10_server                                           Manage A10 Networks AX/SoftAX/Thunder/vThunder devices' server object.    
+a10_server_axapi3                                    Manage A10 Networks AX/SoftAX/Thunder/vThunder devices                    
+a10_service_group                                    Manage A10 Networks AX/SoftAX/Thunder/vThunder devices' service groups.   
+a10_virtual_server                                   Manage A10 Networks AX/SoftAX/Thunder/vThunder devices' virtual servers.  
+accelerate                                           Enable accelerated mode on remote node                                    
+aci_aaa_user                                         Manage AAA users (aaa:User)                                               
+aci_aaa_user_certificate                             Manage AAA user certificates (aaa:UserCert)                               
+aci_access_port_to_interface_policy_leaf_profile     Manage Fabric interface policy leaf profile interface selectors (infra:HPo...
+aci_aep                                              Manage attachable Access Entity Profile (AEP) objects (infra:AttEntityP, i...
+aci_aep_to_domain                                    Bind AEPs to Physical or Virtual Domains (infra:RsDomP)                   
+aci_ap                                               Manage top level Application Profile (AP) objects (fv:Ap)                 
+aci_bd                                               Manage Bridge Domains (BD) objects (fv:BD)                                
+aci_bd_subnet                                        Manage Subnets (fv:Subnet)                                                
+aci_bd_to_l3out                                      Bind Bridge Domain to L3 Out (fv:RsBDToOut)                               
+aci_config_rollback                                  Provides rollback and rollback preview functionality (config:ImportP)     
+aci_config_snapshot                                  Manage Config Snapshots (config:Snapshot, config:ExportP)                 
+aci_contract                                         Manage contract resources (vz:BrCP)                                       
+aci_contract_subject                                 Manage initial Contract Subjects (vz:Subj)                                
+aci_contract_subject_to_filter                       Bind Contract Subjects to Filters (vz:RsSubjFiltAtt)                      
+aci_domain                                           Manage physical, virtual, bridged, routed or FC domain profiles (phys:DomP...
+aci_domain_to_vlan_pool                              Bind Domain to VLAN Pools (infra:RsVlanNs)                                
+aci_encap_pool                                       Manage encap pools (fvns:VlanInstP, fvns:VxlanInstP, fvns:VsanInstP)      
+aci_encap_pool_range                                 Manage encap ranges assigned to pools (fvns:EncapBlk, fvns:VsanEncapBlk)  
+aci_epg                                              Manage End Point Groups (EPG) objects (fv:AEPg)                           
+aci_epg_monitoring_policy                            Manage monitoring policies (mon:EPGPol)                                   
+aci_epg_to_contract                                  Bind EPGs to Contracts (fv:RsCons, fv:RsProv)                             
+aci_epg_to_domain                                    Bind EPGs to Domains (fv:RsDomAtt)                                        
+aci_fabric_node                                      Manage Fabric Node Members (fabric:NodeIdentP)                            
+aci_filter                                           Manages top level filter objects (vz:Filter)                              
+aci_filter_entry                                     Manage filter entries (vz:Entry)                                          
+aci_firmware_source                                  Manage firmware image sources (firmware:OSource)                          
+aci_interface_policy_fc                              Manage Fibre Channel interface policies (fc:IfPol)                        
+aci_interface_policy_l2                              Manage Layer 2 interface policies (l2:IfPol)                              
+aci_interface_policy_leaf_policy_group               Manage fabric interface policy leaf policy groups (infra:AccBndlGrp, infra...
+aci_interface_policy_leaf_profile                    Manage fabric interface policy leaf profiles (infra:AccPortP)             
+aci_interface_policy_lldp                            Manage LLDP interface policies (lldp:IfPol)                               
+aci_interface_policy_mcp                             Manage MCP interface policies (mcp:IfPol)                                 
+aci_interface_policy_port_channel                    Manage port channel interface policies (lacp:LagPol)                      
+aci_interface_policy_port_security                   Manage port security (l2:PortSecurityPol)                                 
+aci_interface_selector_to_switch_policy_leaf_profile Bind interface selector profiles to switch policy leaf profiles (infra:RsA...
+aci_l3out_route_tag_policy                           Manage route tag policies (l3ext:RouteTagPol)
+...
+...
+...</pre>
+    </div>
+    <div id="para-div">
+      <p>To display the detailed documentation on a specific <span class="bold">Ansible</span> module, say for example the module
+        <span class="bold">debug</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ansible-doc debug</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output (truncated for brevity):</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>> DEBUG    (/usr/lib/python2.7/dist-packages/ansible/modules/utilities/logic/debug.py)
+
+        This module prints statements during execution and can be useful for debugging variables or
+        expressions without necessarily halting the playbook. Useful for debugging together with the
+        'when:' directive. This module is also supported for Windows targets.
+
+  * note: This module has a corresponding action plugin.
+
+OPTIONS (= is mandatory):
+
+- msg
+        The customized message that is printed. If omitted, prints a generic message.
+        [Default: Hello world!]
+
+- var
+        A variable name to debug.  Mutually exclusive with the 'msg' option.
+        [Default: (null)]
+
+- verbosity
+        A number that controls when the debug is run, if you set to 3 it will only run debug when -vvv or
+        above
+        [Default: 0]
+        version_added: 2.1
+
+
+NOTES:
+      * This module is also supported for Windows targets.
+
+AUTHOR: Dag Wieers (@dagwieers), Michael DeHaan
+        METADATA:
+          status:
+          - stableinterface
+          supported_by: core
+        
+
+EXAMPLES:
+# Example that prints the loopback address and gateway for each host
+- debug:
+    msg: "System {{ inventory_hostname }} has uuid {{ ansible_product_uuid }}"
+
+- debug:
+    msg: "System {{ inventory_hostname }} has gateway {{ ansible_default_ipv4.gateway }}"
+  when: ansible_default_ipv4.gateway is defined
+
+- shell: /usr/bin/uptime
+  register: result
+
+- debug:
+    var: result
+    verbosity: 2
+
+- name: Display all variables/facts known for a host
+  debug:
+    var: hostvars[inventory_hostname]
+    verbosity: 4</pre>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="http://polarsparc.github.io/Ansible/Ansible-1.html" target="_blank"><span class="bold">Introduction to Ansible - Part 1</span></a></p>
+      <p><a href="http://polarsparc.github.io/Ansible/Ansible-2.html" target="_blank"><span class="bold">Introduction to Ansible - Part 2</span></a></p>
+      <p><a href="https://docs.ansible.com/" target="_blank"><span class="bold">Official Ansible Documentation</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
