@@ -1,0 +1,721 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <title>Introduction to Docker Compose</title>
+    <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body> <br />
+    <div id="title-div">
+      <p>Introduction to Docker Compose</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">04/08/2017</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In the article <a href="http://polarsparc.github.io/Docker/MultiDocker.html" target="_blank">
+        <span class="bold">Introduction to Multi Docker Containers</span></a>, we demonstrated how
+        one could link 2 containers (business tier and data tier) to emulate a simple web application
+        using the <span class="bold">docker run</span> command.</p>
+      <p>Is there a way to automate this process (in a repeatable way) of linking multiple
+        <span class="bold">Docker</span> containers ???</p>
+      <p>Enter <span class="hi-yellow">Docker Compose</span> !!!</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Docker Compose</span> is a simple orchestration tool that helps in defining,
+        building, starting, and linking multiple container(s) together to form the desired application
+        stack.</p>
+      <p>The set of <span class="bold">Docker</span> container(s) (referred to as <span class="bold">services</span>
+        in the <span class="bold">Docker Compose</span> parlance) that need to be started and linked together
+        is defined in a <span class="hi-yellow">docker-compose.yml</span> file. <span class="bold">Docker Compose</span>
+        uses this configuration file to compose the desired application stack.</p>
+    </div>
+    <div id="section-div">
+      <p>Installation</p>
+    </div>
+    <div id="para-div">
+      <p>The installation is on a <span class="bold">Ubuntu 16.04 LTS</span> based Linux desktop.</p>
+    </div>
+    <div id="para-div">
+      <p>To install <span class="bold">Docker Compose</span>, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt-get update</p>
+      <p>$ sudo apt-get install docker-compose</p>
+    </div>
+    <div id="para-div">
+      <p>Execute the following command to check everything was ok:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker-compose version</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>docker-compose version 1.5.2, build unknown
+docker-py version: 1.8.0
+CPython version: 2.7.12
+OpenSSL version: OpenSSL 1.0.2g  1 Mar 2016</pre>
+    </div>
+    <div id="para-div">
+      <p>The above installation procedure installs <span class="bold">Docker Compose</span> from the official Ubuntu
+        repository which is not be the latest.</p>
+      <p>To install the most current version of <span class="bold">Docker Compose</span> (1.11.2 at time of this writing),
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo curl -o /usr/bin/docker-compose -L "https://github.com/docker/compose/releases/download/1.11.2/docker-compose-$(uname -s)-$(uname -m)"</p>
+    </div>
+    <div id="para-div">
+      <p>Now, re-execute the following command to make sure everything is ok:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker-compose version</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>docker-compose version 1.11.2, build dfed245
+docker-py version: 2.1.0
+CPython version: 2.7.13
+OpenSSL version: OpenSSL 1.0.1t  3 May 2016</pre>
+    </div>
+    <div id="section-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>For this multi-container demonstration using <span class="bold">Docker Compose</span>, we will leverage
+        this <a href="http://polarsparc.github.io/Docker/MultiDocker.html#Setup" target="_blank"><span class="bold">Setup</span></a>.
+        Please follow the steps before proceeding futher in this aritcle.</p>
+    </div>
+    <div id="section-div">
+      <p>Basics</p>
+    </div>
+    <div id="para-div">
+      <p>For a multi-container application stack, <span class="bold">Docker Compose</span> uses a
+        <a href="http://yaml.org" target="_blank"><span class="bold">YAML</span></a> file called
+        <span class="hi-yellow">docker-compose.yml</span> to define a set of services (<span class="bold">Docker</span>
+        containers) that make up the application stack along with their runtime configuration options.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the general format of the <span class="bold">docker-compose.yml</span> file:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>docker-compose.yml</legend>
+      <pre>version: '2'
+
+services:
+    name-1:
+        [configuration options]
+
+    name-2:
+        [configuration options]
+
+    name-3:
+        [configuration options]
+
+    .
+    .
+    .
+
+    name-n:
+        [configuration options]</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The following are some of the commonly used configuration options in a <span class="bold">docker-compose.yml</span>:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">image</span> :: specifies the <span class="bold">Docker</span> image to use for
+            launching the service container.</p>
+          <p>It uses the syntax:</p>
+          <p>&nbsp;&nbsp;<span class="bold">image</span>: &lt;image&gt;[:&lt;tag&gt;]</p>
+          <p>where, &lt;image&gt; is the name of the <span class="bold">Docker</span> image to use. The optional
+            [:&lt;tag&gt;] indicates a specific version of the image</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">build</span> :: specifies the path to a <span class="bold">Dockerfile</span> from
+            which to build a <span class="bold">Docker</span> image and use it for launching the service container.</p>
+          <p>It uses the syntax:</p>
+          <p>&nbsp;&nbsp;<span class="bold">build</span>: &lt;path&gt;</p>
+          <p>where, &lt;path&gt; is the directory path to a <span class="bold">Dockerfile</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">depends_on</span> :: specifies one or more service containers this service
+            relies on.</p>
+          <p>It uses the syntax:</p>
+          <p>&nbsp;&nbsp;<span class="bold">depends_on</span>:</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;name-1&gt;</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;name-2&gt;</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;...&gt;</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;name-n&gt;</p>
+          <p>where, &lt;name-1&gt;, &lt;name-2&gt;, ..., &lt;name-n&gt; are the names of other service containers
+            defined in the <span class="bold">docker-compose.yml</span> file</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">ports</span> :: specifies the network port to expose.</p>
+          <p>It uses the syntax:</p>
+          <p>&nbsp;&nbsp;<span class="bold">ports</span>:</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;container-port-1&gt;</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;container-port-2&gt;</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;...&gt;</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;container-port-n&gt;</p>
+          <p>where, &lt;container-port-1&gt;, &lt;container-port-2&gt;, ..., &lt;container-port-n&gt; are the network
+            ports from the container to bind to random port(s) on the local host</p>
+          <p>Another syntax:</p>
+          <p>&nbsp;&nbsp;<span class="bold">ports</span>:</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;host-port-1&gt;:&lt;container-port-1&gt;</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;host-port-2&gt;:&lt;container-port-2&gt;</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;...&gt;</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;host-port-n&gt;:&lt;container-port-n&gt;</p>
+          <p>where, &lt;container-port-1&gt;, &lt;container-port-2&gt;, ..., &lt;container-port-n&gt; are the network
+            ports from the container to bind to the corresponding ports &lt;host-port-1&gt;, &lt;host-port-2&gt;, ...,
+            &lt;host-port-n&gt; on the local host</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">restart</span> :: specifies a policy on how to restart the service container that
+            is stopped or killed.</p>
+          <p>It uses the syntax:</p>
+          <p>&nbsp;&nbsp;<span class="bold">restart</span>: <span class="bold">always</span></p>
+          <p>where, the policy <span class="bold">always</span> indicates the service container needs to be restarted
+            anytime it is stopped or killed</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">volumes</span> :: specifies one or more paths on the local host that need to
+            be mounted on the corresponding paths of the service container.</p>
+          <p>It uses the syntax:</p>
+          <p>&nbsp;&nbsp;<span class="bold">volumes</span>:</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;host-path-1&gt;:&lt;container-path-1&gt;</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;host-path-2&gt;:&lt;container-path-2&gt;</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;...&gt;</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;host-path-n&gt;:&lt;container-path-n&gt;</p>
+          <p>where, &lt;host-path-1&gt;, &lt;host-path-2&gt;, ..., &lt;host-path-n&gt; are the directories on the
+            host that need to be mounted on the corresponding paths &lt;container-path-1&gt;, &lt;container-path-2&gt;,
+            ..., &lt;container-path-n&gt; in the service container</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">links</span> :: specifies one or more service containers this service
+            connects or links to.</p>
+          <p>It uses the syntax:</p>
+          <p>&nbsp;&nbsp;<span class="bold">links</span>:</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;name-1&gt;[:&lt;alias-1&gt;]</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;name-2&gt;[:&lt;alias-2&gt;]</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;...&gt;</p>
+          <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- &lt;name-n&gt;[:&lt;alias-n&gt;]</p>
+          <p>where, &lt;name-1&gt;, &lt;name-2&gt;, ..., &lt;name-n&gt; are the names of other service containers
+            defined in the <span class="bold">docker-compose.yml</span> file. The optional &lt;alias-1&gt;,
+            &lt;alias-2&gt;, ..., &lt;alias-n&gt; are the aliases for the corresponding names</p>
+        </li>
+      </ul>
+      <p>As indicated, the above <span class="bold">docker-compose.yml</span> configuration options are the most
+        commonly used ones, so that one can get started - it not the complete exhaustive list of all the options.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Docker Compose</p>
+    </div>
+    <div id="para-div">
+      <p>In this section, we will create the <span class="bold">docker-compose.yml</span> to link the multiple
+        containers (data and business tier containers in our example) and demonstrate how to launch the
+        corresponding application stack using <span class="bold">Docker Compose</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>For this multi-container demonstration, we will use the <span class="bold">Docker</span> image
+        <span class="bold">mysql_hellodb</span> for the data tier and the <span class="bold">Docker</span>
+        image <span class="bold">tomcat_hellodb</span> for the business tier.</p>
+    </div>
+    <div id="para-div">
+      <p>Let us assume the current directory is <span class="bold">/home/alice/hello</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Create the following <span class="bold">docker-compose.yml</span> file in the current directory:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>docker-compose.yml</legend>
+      <pre>version: '2'
+
+services:
+    mysql:
+        image: mysql_hellodb
+        volumes:
+            - "/home/alice/data:/var/lib/mysql"
+        restart: always
+
+    tomcat:
+        depends_on:
+            - mysql
+        image: tomcat_hellodb
+        links:
+            - mysql:db
+        ports:
+            - "8080:8080"
+        restart: always</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>To start our application stack (with the business tier and data tier) using the above
+        <span class="bold">docker-compose.yml</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker-compose up</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>Creating hello_mysql_1
+Creating hello_tomcat_1
+Attaching to hello_mysql_1, hello_tomcat_1
+mysql_1   | Initializing database
+mysql_1   | 2017-04-08T19:12:36.990983Z 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+mysql_1   | 2017-04-08T19:12:38.499112Z 0 [Warning] InnoDB: New log files created, LSN=45790
+tomcat_1  | 08-Apr-2017 19:12:38.509 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server version:        Apache Tomcat/8.5.13
+tomcat_1  | 08-Apr-2017 19:12:38.511 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server built:          Mar 27 2017 14:25:04 UTC
+tomcat_1  | 08-Apr-2017 19:12:38.511 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server number:         8.5.13.0
+tomcat_1  | 08-Apr-2017 19:12:38.511 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log OS Name:               Linux
+tomcat_1  | 08-Apr-2017 19:12:38.511 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log OS Version:            4.4.0-53-generic
+tomcat_1  | 08-Apr-2017 19:12:38.511 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Architecture:          amd64
+tomcat_1  | 08-Apr-2017 19:12:38.511 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Java Home:             /usr/lib/jvm/java-8-openjdk-amd64/jre
+tomcat_1  | 08-Apr-2017 19:12:38.512 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log JVM Version:           1.8.0_121-8u121-b13-1~bpo8+1-b13
+tomcat_1  | 08-Apr-2017 19:12:38.512 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log JVM Vendor:            Oracle Corporation
+tomcat_1  | 08-Apr-2017 19:12:38.512 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log CATALINA_BASE:         /usr/local/tomcat
+tomcat_1  | 08-Apr-2017 19:12:38.512 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log CATALINA_HOME:         /usr/local/tomcat
+tomcat_1  | 08-Apr-2017 19:12:38.512 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.util.logging.config.file=/usr/local/tomcat/conf/logging.properties
+tomcat_1  | 08-Apr-2017 19:12:38.512 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager
+tomcat_1  | 08-Apr-2017 19:12:38.512 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djdk.tls.ephemeralDHKeySize=2048
+tomcat_1  | 08-Apr-2017 19:12:38.513 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.protocol.handler.pkgs=org.apache.catalina.webresources
+tomcat_1  | 08-Apr-2017 19:12:38.513 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dcatalina.base=/usr/local/tomcat
+tomcat_1  | 08-Apr-2017 19:12:38.513 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dcatalina.home=/usr/local/tomcat
+tomcat_1  | 08-Apr-2017 19:12:38.513 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.io.tmpdir=/usr/local/tomcat/temp
+tomcat_1  | 08-Apr-2017 19:12:38.513 INFO [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent Loaded APR based Apache Tomcat Native library 1.2.12 using APR version 1.5.1.
+tomcat_1  | 08-Apr-2017 19:12:38.513 INFO [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent APR capabilities: IPv6 [true], sendfile [true], accept filters [false], random [true].
+tomcat_1  | 08-Apr-2017 19:12:38.513 INFO [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent APR/OpenSSL configuration: useAprConnector [false], useOpenSSL [true]
+tomcat_1  | 08-Apr-2017 19:12:38.516 INFO [main] org.apache.catalina.core.AprLifecycleListener.initializeSSL OpenSSL successfully initialized (OpenSSL 1.1.0e  16 Feb 2017)
+tomcat_1  | 08-Apr-2017 19:12:38.581 INFO [main] org.apache.coyote.AbstractProtocol.init Initializing ProtocolHandler ["http-nio-8080"]
+tomcat_1  | 08-Apr-2017 19:12:38.593 INFO [main] org.apache.tomcat.util.net.NioSelectorPool.getSharedSelector Using a shared selector for servlet write/read
+tomcat_1  | 08-Apr-2017 19:12:38.595 INFO [main] org.apache.coyote.AbstractProtocol.init Initializing ProtocolHandler ["ajp-nio-8009"]
+tomcat_1  | 08-Apr-2017 19:12:38.596 INFO [main] org.apache.tomcat.util.net.NioSelectorPool.getSharedSelector Using a shared selector for servlet write/read
+tomcat_1  | 08-Apr-2017 19:12:38.597 INFO [main] org.apache.catalina.startup.Catalina.load Initialization processed in 415 ms
+tomcat_1  | 08-Apr-2017 19:12:38.613 INFO [main] org.apache.catalina.core.StandardService.startInternal Starting service Catalina
+tomcat_1  | 08-Apr-2017 19:12:38.613 INFO [main] org.apache.catalina.core.StandardEngine.startInternal Starting Servlet Engine: Apache Tomcat/8.5.13
+tomcat_1  | 08-Apr-2017 19:12:38.667 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployWAR Deploying web application archive /usr/local/tomcat/webapps/helloworld3.war
+mysql_1   | 2017-04-08T19:12:38.848315Z 0 [Warning] InnoDB: Creating foreign key constraint system tables.
+tomcat_1  | 08-Apr-2017 19:12:39.004 WARNING [localhost-startStop-1] org.apache.tomcat.dbcp.dbcp2.BasicDataSourceFactory.getObjectInstance Name = hellodb Property removeAbandoned is not used in DBCP2, use one or both of removeAbandonedOnBorrow or removeAbandonedOnMaintenance instead. Both have default value set to false. You have set value of "true" for "removeAbandoned" property, which is being ignored.
+tomcat_1  | 08-Apr-2017 19:12:39.041 INFO [localhost-startStop-1] org.apache.jasper.servlet.TldScanner.scanJars At least one JAR was scanned for TLDs yet contained no TLDs. Enable debug logging for this logger for a complete list of JARs that were scanned but no TLDs were found in them. Skipping unneeded JARs during scanning can improve startup time and JSP compilation time.
+mysql_1   | 2017-04-08T19:12:39.079151Z 0 [Warning] No existing UUID has been found, so we assume that this is the first time that this server has been started. Generating a new UUID: 550b40bb-1c8f-11e7-902d-0242ac120002.
+tomcat_1  | INFO  2017-04-08 19:12:39,107 [localhost-startStop-1] com.polarsparc.HelloServlet3  - Servlet <helloworld3> has been initialized
+tomcat_1  |
+tomcat_1  | 08-Apr-2017 19:12:39.114 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployWAR Deployment of web application archive /usr/local/tomcat/webapps/helloworld3.war has finished in 446 ms
+tomcat_1  | 08-Apr-2017 19:12:39.115 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory /usr/local/tomcat/webapps/manager
+mysql_1   | 2017-04-08T19:12:39.116833Z 0 [Warning] Gtid table is not ready to be used. Table 'mysql.gtid_executed' cannot be opened.
+mysql_1   | 2017-04-08T19:12:39.117243Z 1 [Warning] root@localhost is created with an empty password ! Please consider switching off the --initialize-insecure option.
+tomcat_1  | 08-Apr-2017 19:12:39.139 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory /usr/local/tomcat/webapps/manager has finished in 24 ms
+tomcat_1  | 08-Apr-2017 19:12:39.139 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory /usr/local/tomcat/webapps/examples
+tomcat_1  | 08-Apr-2017 19:12:39.314 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory /usr/local/tomcat/webapps/examples has finished in 175 ms
+tomcat_1  | 08-Apr-2017 19:12:39.314 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory /usr/local/tomcat/webapps/ROOT
+tomcat_1  | 08-Apr-2017 19:12:39.327 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory /usr/local/tomcat/webapps/ROOT has finished in 13 ms
+tomcat_1  | 08-Apr-2017 19:12:39.327 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory /usr/local/tomcat/webapps/docs
+tomcat_1  | 08-Apr-2017 19:12:39.339 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory /usr/local/tomcat/webapps/docs has finished in 12 ms
+tomcat_1  | 08-Apr-2017 19:12:39.339 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory /usr/local/tomcat/webapps/host-manager
+tomcat_1  | 08-Apr-2017 19:12:39.353 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory /usr/local/tomcat/webapps/host-manager has finished in 14 ms
+tomcat_1  | 08-Apr-2017 19:12:39.356 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["http-nio-8080"]
+tomcat_1  | 08-Apr-2017 19:12:39.362 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["ajp-nio-8009"]
+tomcat_1  | 08-Apr-2017 19:12:39.364 INFO [main] org.apache.catalina.startup.Catalina.start Server startup in 767 ms
+mysql_1   | 2017-04-08T19:12:50.131350Z 1 [Warning] 'user' entry 'root@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:12:50.131446Z 1 [Warning] 'user' entry 'mysql.sys@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:12:50.131480Z 1 [Warning] 'db' entry 'sys mysql.sys@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:12:50.131508Z 1 [Warning] 'proxies_priv' entry '@ root@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:12:50.131572Z 1 [Warning] 'tables_priv' entry 'sys_config mysql.sys@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | Database initialized
+mysql_1   | Initializing certificates
+mysql_1   | Generating a 2048 bit RSA private key
+mysql_1   | ...............................................................................+++
+mysql_1   | .....................+++
+mysql_1   | unable to write 'random state'
+mysql_1   | writing new private key to 'ca-key.pem'
+mysql_1   | -----
+mysql_1   | Generating a 2048 bit RSA private key
+mysql_1   | ................................+++
+mysql_1   | .......................................................+++
+mysql_1   | unable to write 'random state'
+mysql_1   | writing new private key to 'server-key.pem'
+mysql_1   | -----
+mysql_1   | Generating a 2048 bit RSA private key
+mysql_1   | ..+++
+mysql_1   | ........+++
+mysql_1   | unable to write 'random state'
+mysql_1   | writing new private key to 'client-key.pem'
+mysql_1   | -----
+mysql_1   | Certificates initialized
+mysql_1   | MySQL init process in progress...
+mysql_1   | 2017-04-08T19:12:56.845491Z 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+mysql_1   | 2017-04-08T19:12:56.846476Z 0 [Note] mysqld (mysqld 5.7.17) starting as process 93 ...
+mysql_1   | 2017-04-08T19:12:56.849613Z 0 [Note] InnoDB: PUNCH HOLE support available
+mysql_1   | 2017-04-08T19:12:56.849636Z 0 [Note] InnoDB: Mutexes and rw_locks use GCC atomic builtins
+mysql_1   | 2017-04-08T19:12:56.849642Z 0 [Note] InnoDB: Uses event mutexes
+mysql_1   | 2017-04-08T19:12:56.849646Z 0 [Note] InnoDB: GCC builtin __atomic_thread_fence() is used for memory barrier
+mysql_1   | 2017-04-08T19:12:56.849654Z 0 [Note] InnoDB: Compressed tables use zlib 1.2.3
+mysql_1   | 2017-04-08T19:12:56.849660Z 0 [Note] InnoDB: Using Linux native AIO
+mysql_1   | 2017-04-08T19:12:56.849911Z 0 [Note] InnoDB: Number of pools: 1
+mysql_1   | 2017-04-08T19:12:56.850016Z 0 [Note] InnoDB: Using CPU crc32 instructions
+mysql_1   | 2017-04-08T19:12:56.851415Z 0 [Note] InnoDB: Initializing buffer pool, total size = 128M, instances = 1, chunk size = 128M
+mysql_1   | 2017-04-08T19:12:56.859718Z 0 [Note] InnoDB: Completed initialization of buffer pool
+mysql_1   | 2017-04-08T19:12:56.861605Z 0 [Note] InnoDB: If the mysqld execution user is authorized, page cleaner thread priority can be changed. See the man page of setpriority().
+mysql_1   | 2017-04-08T19:12:56.873522Z 0 [Note] InnoDB: Highest supported file format is Barracuda.
+mysql_1   | 2017-04-08T19:12:56.953959Z 0 [Note] InnoDB: Creating shared tablespace for temporary tables
+mysql_1   | 2017-04-08T19:12:56.954106Z 0 [Note] InnoDB: Setting file './ibtmp1' size to 12 MB. Physically writing the file full; Please wait ...
+mysql_1   | 2017-04-08T19:12:57.454621Z 0 [Note] InnoDB: File './ibtmp1' size is now 12 MB.
+mysql_1   | 2017-04-08T19:12:57.455347Z 0 [Note] InnoDB: 96 redo rollback segment(s) found. 96 redo rollback segment(s) are active.
+mysql_1   | 2017-04-08T19:12:57.455400Z 0 [Note] InnoDB: 32 non-redo rollback segment(s) are active.
+mysql_1   | 2017-04-08T19:12:57.456556Z 0 [Note] InnoDB: Waiting for purge to start
+mysql_1   | 2017-04-08T19:12:57.506760Z 0 [Note] InnoDB: 5.7.17 started; log sequence number 2535854
+mysql_1   | 2017-04-08T19:12:57.507200Z 0 [Note] InnoDB: Loading buffer pool(s) from /var/lib/mysql/ib_buffer_pool
+mysql_1   | 2017-04-08T19:12:57.507282Z 0 [Note] Plugin 'FEDERATED' is disabled.
+mysql_1   | 2017-04-08T19:12:57.512645Z 0 [Note] InnoDB: Buffer pool(s) load completed at 170408 19:12:57
+mysql_1   | 2017-04-08T19:12:57.513865Z 0 [Note] Found ca.pem, server-cert.pem and server-key.pem in data directory. Trying to enable SSL support using them.
+mysql_1   | 2017-04-08T19:12:57.514017Z 0 [Warning] CA certificate ca.pem is self signed.
+mysql_1   | 2017-04-08T19:12:57.556639Z 0 [Warning] 'user' entry 'root@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:12:57.556709Z 0 [Warning] 'user' entry 'mysql.sys@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:12:57.556745Z 0 [Warning] 'db' entry 'sys mysql.sys@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:12:57.556776Z 0 [Warning] 'proxies_priv' entry '@ root@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:12:57.559568Z 0 [Warning] 'tables_priv' entry 'sys_config mysql.sys@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:12:57.566006Z 0 [Note] Event Scheduler: Loaded 0 events
+mysql_1   | 2017-04-08T19:12:57.566173Z 0 [Note] Executing 'SELECT * FROM INFORMATION_SCHEMA.TABLES;' to get a list of tables using the deprecated partition engine. You may use the startup option '--disable-partition-engine-check' to skip this check.
+mysql_1   | 2017-04-08T19:12:57.566181Z 0 [Note] Beginning of list of non-natively partitioned tables
+mysql_1   | 2017-04-08T19:12:57.589011Z 0 [Note] End of list of non-natively partitioned tables
+mysql_1   | 2017-04-08T19:12:57.589226Z 0 [Note] mysqld: ready for connections.
+mysql_1   | Version: '5.7.17'  socket: '/var/run/mysqld/mysqld.sock'  port: 0  MySQL Community Server (GPL)
+mysql_1   | Warning: Unable to load '/usr/share/zoneinfo/iso3166.tab' as time zone. Skipping it.
+mysql_1   | Warning: Unable to load '/usr/share/zoneinfo/leap-seconds.list' as time zone. Skipping it.
+mysql_1   | Warning: Unable to load '/usr/share/zoneinfo/zone.tab' as time zone. Skipping it.
+mysql_1   | 2017-04-08T19:13:03.271270Z 5 [Warning] 'user' entry 'root@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:13:03.271312Z 5 [Warning] 'user' entry 'mysql.sys@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:13:03.271427Z 5 [Warning] 'db' entry 'sys mysql.sys@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:13:03.271458Z 5 [Warning] 'proxies_priv' entry '@ root@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:13:03.271525Z 5 [Warning] 'tables_priv' entry 'sys_config mysql.sys@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql_1   | mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql_1   | mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql_1   | mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql_1   | 2017-04-08T19:13:03.305382Z 9 [Warning] 'user' entry 'root@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:13:03.305413Z 9 [Warning] 'user' entry 'mysql.sys@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:13:03.305454Z 9 [Warning] 'db' entry 'sys mysql.sys@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:13:03.305476Z 9 [Warning] 'proxies_priv' entry '@ root@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:13:03.305678Z 9 [Warning] 'tables_priv' entry 'sys_config mysql.sys@localhost' ignored in --skip-name-resolve mode.
+mysql_1   |
+mysql_1   | /usr/local/bin/docker-entrypoint.sh: running /docker-entrypoint-initdb.d/mysql-setup.sql
+mysql_1   | mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql_1   |
+mysql_1   |
+mysql_1   | 2017-04-08T19:13:03.690096Z 0 [Note] Giving 0 client threads a chance to die gracefully
+mysql_1   | 2017-04-08T19:13:03.690121Z 0 [Note] Shutting down slave threads
+mysql_1   | 2017-04-08T19:13:03.690134Z 0 [Note] Forcefully disconnecting 0 remaining clients
+mysql_1   | 2017-04-08T19:13:03.690141Z 0 [Note] Event Scheduler: Purging the queue. 0 events
+mysql_1   | 2017-04-08T19:13:03.690554Z 0 [Note] Binlog end
+mysql_1   | 2017-04-08T19:13:03.693384Z 0 [Note] Shutting down plugin 'ngram'
+mysql_1   | 2017-04-08T19:13:03.693407Z 0 [Note] Shutting down plugin 'BLACKHOLE'
+mysql_1   | 2017-04-08T19:13:03.693416Z 0 [Note] Shutting down plugin 'partition'
+mysql_1   | 2017-04-08T19:13:03.693423Z 0 [Note] Shutting down plugin 'ARCHIVE'
+mysql_1   | 2017-04-08T19:13:03.693430Z 0 [Note] Shutting down plugin 'INNODB_SYS_VIRTUAL'
+mysql_1   | 2017-04-08T19:13:03.693436Z 0 [Note] Shutting down plugin 'INNODB_SYS_DATAFILES'
+mysql_1   | 2017-04-08T19:13:03.693448Z 0 [Note] Shutting down plugin 'INNODB_SYS_TABLESPACES'
+mysql_1   | 2017-04-08T19:13:03.693453Z 0 [Note] Shutting down plugin 'INNODB_SYS_FOREIGN_COLS'
+mysql_1   | 2017-04-08T19:13:03.693458Z 0 [Note] Shutting down plugin 'INNODB_SYS_FOREIGN'
+mysql_1   | 2017-04-08T19:13:03.693464Z 0 [Note] Shutting down plugin 'INNODB_SYS_FIELDS'
+mysql_1   | 2017-04-08T19:13:03.693469Z 0 [Note] Shutting down plugin 'INNODB_SYS_COLUMNS'
+mysql_1   | 2017-04-08T19:13:03.693475Z 0 [Note] Shutting down plugin 'INNODB_SYS_INDEXES'
+mysql_1   | 2017-04-08T19:13:03.693485Z 0 [Note] Shutting down plugin 'INNODB_SYS_TABLESTATS'
+mysql_1   | 2017-04-08T19:13:03.693494Z 0 [Note] Shutting down plugin 'INNODB_SYS_TABLES'
+mysql_1   | 2017-04-08T19:13:03.693500Z 0 [Note] Shutting down plugin 'INNODB_FT_INDEX_TABLE'
+mysql_1   | 2017-04-08T19:13:03.693504Z 0 [Note] Shutting down plugin 'INNODB_FT_INDEX_CACHE'
+mysql_1   | 2017-04-08T19:13:03.693516Z 0 [Note] Shutting down plugin 'INNODB_FT_CONFIG'
+mysql_1   | 2017-04-08T19:13:03.693521Z 0 [Note] Shutting down plugin 'INNODB_FT_BEING_DELETED'
+mysql_1   | 2017-04-08T19:13:03.693526Z 0 [Note] Shutting down plugin 'INNODB_FT_DELETED'
+mysql_1   | 2017-04-08T19:13:03.693539Z 0 [Note] Shutting down plugin 'INNODB_FT_DEFAULT_STOPWORD'
+mysql_1   | 2017-04-08T19:13:03.693544Z 0 [Note] Shutting down plugin 'INNODB_METRICS'
+mysql_1   | 2017-04-08T19:13:03.693549Z 0 [Note] Shutting down plugin 'INNODB_TEMP_TABLE_INFO'
+mysql_1   | 2017-04-08T19:13:03.693561Z 0 [Note] Shutting down plugin 'INNODB_BUFFER_POOL_STATS'
+mysql_1   | 2017-04-08T19:13:03.693566Z 0 [Note] Shutting down plugin 'INNODB_BUFFER_PAGE_LRU'
+mysql_1   | 2017-04-08T19:13:03.693571Z 0 [Note] Shutting down plugin 'INNODB_BUFFER_PAGE'
+mysql_1   | 2017-04-08T19:13:03.693582Z 0 [Note] Shutting down plugin 'INNODB_CMP_PER_INDEX_RESET'
+mysql_1   | 2017-04-08T19:13:03.693591Z 0 [Note] Shutting down plugin 'INNODB_CMP_PER_INDEX'
+mysql_1   | 2017-04-08T19:13:03.693596Z 0 [Note] Shutting down plugin 'INNODB_CMPMEM_RESET'
+mysql_1   | 2017-04-08T19:13:03.693601Z 0 [Note] Shutting down plugin 'INNODB_CMPMEM'
+mysql_1   | 2017-04-08T19:13:03.693612Z 0 [Note] Shutting down plugin 'INNODB_CMP_RESET'
+mysql_1   | 2017-04-08T19:13:03.693617Z 0 [Note] Shutting down plugin 'INNODB_CMP'
+mysql_1   | 2017-04-08T19:13:03.693622Z 0 [Note] Shutting down plugin 'INNODB_LOCK_WAITS'
+mysql_1   | 2017-04-08T19:13:03.693627Z 0 [Note] Shutting down plugin 'INNODB_LOCKS'
+mysql_1   | 2017-04-08T19:13:03.693632Z 0 [Note] Shutting down plugin 'INNODB_TRX'
+mysql_1   | 2017-04-08T19:13:03.693637Z 0 [Note] Shutting down plugin 'InnoDB'
+mysql_1   | 2017-04-08T19:13:03.693723Z 0 [Note] InnoDB: FTS optimize thread exiting.
+mysql_1   | 2017-04-08T19:13:03.693861Z 0 [Note] InnoDB: Starting shutdown...
+mysql_1   | 2017-04-08T19:13:03.794185Z 0 [Note] InnoDB: Dumping buffer pool(s) to /var/lib/mysql/ib_buffer_pool
+mysql_1   | 2017-04-08T19:13:03.794662Z 0 [Note] InnoDB: Buffer pool(s) dump completed at 170408 19:13:03
+mysql_1   | 2017-04-08T19:13:05.876853Z 0 [Note] InnoDB: Shutdown completed; log sequence number 12137130
+mysql_1   | 2017-04-08T19:13:05.878741Z 0 [Note] InnoDB: Removed temporary tablespace data file: "ibtmp1"
+mysql_1   | 2017-04-08T19:13:05.878755Z 0 [Note] Shutting down plugin 'MRG_MYISAM'
+mysql_1   | 2017-04-08T19:13:05.878759Z 0 [Note] Shutting down plugin 'MyISAM'
+mysql_1   | 2017-04-08T19:13:05.878766Z 0 [Note] Shutting down plugin 'CSV'
+mysql_1   | 2017-04-08T19:13:05.878769Z 0 [Note] Shutting down plugin 'MEMORY'
+mysql_1   | 2017-04-08T19:13:05.878772Z 0 [Note] Shutting down plugin 'PERFORMANCE_SCHEMA'
+mysql_1   | 2017-04-08T19:13:05.878806Z 0 [Note] Shutting down plugin 'sha256_password'
+mysql_1   | 2017-04-08T19:13:05.878812Z 0 [Note] Shutting down plugin 'mysql_native_password'
+mysql_1   | 2017-04-08T19:13:05.878945Z 0 [Note] Shutting down plugin 'binlog'
+mysql_1   | 2017-04-08T19:13:05.879324Z 0 [Note] mysqld: Shutdown complete
+mysql_1   |
+mysql_1   |
+mysql_1   | MySQL init process done. Ready for start up.
+mysql_1   |
+mysql_1   | 2017-04-08T19:13:06.092003Z 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+mysql_1   | 2017-04-08T19:13:06.093344Z 0 [Note] mysqld (mysqld 5.7.17) starting as process 1 ...
+mysql_1   | 2017-04-08T19:13:06.096367Z 0 [Note] InnoDB: PUNCH HOLE support available
+mysql_1   | 2017-04-08T19:13:06.096384Z 0 [Note] InnoDB: Mutexes and rw_locks use GCC atomic builtins
+mysql_1   | 2017-04-08T19:13:06.096388Z 0 [Note] InnoDB: Uses event mutexes
+mysql_1   | 2017-04-08T19:13:06.096392Z 0 [Note] InnoDB: GCC builtin __atomic_thread_fence() is used for memory barrier
+mysql_1   | 2017-04-08T19:13:06.096395Z 0 [Note] InnoDB: Compressed tables use zlib 1.2.3
+mysql_1   | 2017-04-08T19:13:06.096401Z 0 [Note] InnoDB: Using Linux native AIO
+mysql_1   | 2017-04-08T19:13:06.096647Z 0 [Note] InnoDB: Number of pools: 1
+mysql_1   | 2017-04-08T19:13:06.096754Z 0 [Note] InnoDB: Using CPU crc32 instructions
+mysql_1   | 2017-04-08T19:13:06.098130Z 0 [Note] InnoDB: Initializing buffer pool, total size = 128M, instances = 1, chunk size = 128M
+mysql_1   | 2017-04-08T19:13:06.106920Z 0 [Note] InnoDB: Completed initialization of buffer pool
+mysql_1   | 2017-04-08T19:13:06.108924Z 0 [Note] InnoDB: If the mysqld execution user is authorized, page cleaner thread priority can be changed. See the man page of setpriority().
+mysql_1   | 2017-04-08T19:13:06.121230Z 0 [Note] InnoDB: Highest supported file format is Barracuda.
+mysql_1   | 2017-04-08T19:13:06.177630Z 0 [Note] InnoDB: Creating shared tablespace for temporary tables
+mysql_1   | 2017-04-08T19:13:06.177681Z 0 [Note] InnoDB: Setting file './ibtmp1' size to 12 MB. Physically writing the file full; Please wait ...
+mysql_1   | 2017-04-08T19:13:06.318428Z 0 [Note] InnoDB: File './ibtmp1' size is now 12 MB.
+mysql_1   | 2017-04-08T19:13:06.319325Z 0 [Note] InnoDB: 96 redo rollback segment(s) found. 96 redo rollback segment(s) are active.
+mysql_1   | 2017-04-08T19:13:06.319333Z 0 [Note] InnoDB: 32 non-redo rollback segment(s) are active.
+mysql_1   | 2017-04-08T19:13:06.319983Z 0 [Note] InnoDB: Waiting for purge to start
+mysql_1   | 2017-04-08T19:13:06.370150Z 0 [Note] InnoDB: 5.7.17 started; log sequence number 12137130
+mysql_1   | 2017-04-08T19:13:06.370709Z 0 [Note] InnoDB: Loading buffer pool(s) from /var/lib/mysql/ib_buffer_pool
+mysql_1   | 2017-04-08T19:13:06.370902Z 0 [Note] Plugin 'FEDERATED' is disabled.
+mysql_1   | 2017-04-08T19:13:06.379417Z 0 [Note] InnoDB: Buffer pool(s) load completed at 170408 19:13:06
+mysql_1   | 2017-04-08T19:13:06.379831Z 0 [Note] Found ca.pem, server-cert.pem and server-key.pem in data directory. Trying to enable SSL support using them.
+mysql_1   | 2017-04-08T19:13:06.379987Z 0 [Warning] CA certificate ca.pem is self signed.
+mysql_1   | 2017-04-08T19:13:06.381505Z 0 [Note] Server hostname (bind-address): '*'; port: 3306
+mysql_1   | 2017-04-08T19:13:06.381538Z 0 [Note] IPv6 is available.
+mysql_1   | 2017-04-08T19:13:06.381546Z 0 [Note]   - '::' resolves to '::';
+mysql_1   | 2017-04-08T19:13:06.381592Z 0 [Note] Server socket created on IP: '::'.
+mysql_1   | 2017-04-08T19:13:06.423723Z 0 [Warning] 'user' entry 'root@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:13:06.423773Z 0 [Warning] 'user' entry 'mysql.sys@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:13:06.423830Z 0 [Warning] 'db' entry 'sys mysql.sys@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:13:06.423858Z 0 [Warning] 'proxies_priv' entry '@ root@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:13:06.427878Z 0 [Warning] 'tables_priv' entry 'sys_config mysql.sys@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:13:06.432194Z 0 [Note] Event Scheduler: Loaded 0 events
+mysql_1   | 2017-04-08T19:13:06.432359Z 0 [Note] Executing 'SELECT * FROM INFORMATION_SCHEMA.TABLES;' to get a list of tables using the deprecated partition engine. You may use the startup option '--disable-partition-engine-check' to skip this check.
+mysql_1   | 2017-04-08T19:13:06.432365Z 0 [Note] Beginning of list of non-natively partitioned tables
+mysql_1   | 2017-04-08T19:13:06.448394Z 0 [Note] End of list of non-natively partitioned tables
+mysql_1   | 2017-04-08T19:13:06.448499Z 0 [Note] mysqld: ready for connections.
+mysql_1   | Version: '5.7.17'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306  MySQL Community Server (GPL)</pre>
+    </div>
+    <div id="para-div">
+      <p>Notice <span class="bold">Docker Compose</span> merge the output logs from all the service containers.</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the running service containers, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker-compose ps</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>        Name               Command             State           Ports
+-----------------------------------------------------------------------------------
+hello_mysql_1    docker-entrypoint.sh mysqld   Up      3306/tcp
+hello_tomcat_1   catalina.sh run               Up      0.0.0.0:8080->8080/tcp</pre>
+    </div>
+    <div id="para-div">
+      <p>Open a browser on the local host and access the URL <span class="bold">http://localhost:8080/helloworld3/message</span>.
+        The following would be a typical view:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/DockerTomcat-2.png" class="img-cls" alt="Docker Tomcat 2" />
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">YIPPEE !!!</span> we have successfully demonstrated launching an application
+        stack with multiple <span class="bold">Docker</span> containers using the simple orchestration tool
+        <span class="bold">Docker Compose</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To stop the business tier and data tier service containers, execute the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker-compose stop</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>Stopping hello_tomcat_1 ... done
+Stopping hello_mysql_1 ... done</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the running service containers (none should be running at this point), execute the
+        following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker-compose ps</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>Name   Command   State   Ports
+------------------------------</pre>
+    </div>
+    <div id="para-div">
+      <p>To re-start the business tier and data tier service containers in the background, execute the
+        following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker-compose up -d</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>Creating hello_mysql_1
+Creating hello_tomcat_1</pre>
+    </div>
+    <div id="para-div">
+      <p>To view the combined logs of the service containers running in the background, execute the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker-compose logs</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>Attaching to hello_tomcat_1, hello_mysql_1
+mysql_1   | 2017-04-08T19:44:18.586103Z 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+mysql_1   | 2017-04-08T19:44:18.587492Z 0 [Note] mysqld (mysqld 5.7.17) starting as process 1 ...
+mysql_1   | 2017-04-08T19:44:18.590585Z 0 [Note] InnoDB: PUNCH HOLE support available
+mysql_1   | 2017-04-08T19:44:18.590612Z 0 [Note] InnoDB: Mutexes and rw_locks use GCC atomic builtins
+mysql_1   | 2017-04-08T19:44:18.590615Z 0 [Note] InnoDB: Uses event mutexes
+mysql_1   | 2017-04-08T19:44:18.590619Z 0 [Note] InnoDB: GCC builtin __atomic_thread_fence() is used for memory barrier
+mysql_1   | 2017-04-08T19:44:18.590622Z 0 [Note] InnoDB: Compressed tables use zlib 1.2.3
+mysql_1   | 2017-04-08T19:44:18.590625Z 0 [Note] InnoDB: Using Linux native AIO
+mysql_1   | 2017-04-08T19:44:18.590876Z 0 [Note] InnoDB: Number of pools: 1
+mysql_1   | 2017-04-08T19:44:18.590970Z 0 [Note] InnoDB: Using CPU crc32 instructions
+mysql_1   | 2017-04-08T19:44:18.592462Z 0 [Note] InnoDB: Initializing buffer pool, total size = 128M, instances = 1, chunk size = 128M
+mysql_1   | 2017-04-08T19:44:18.602399Z 0 [Note] InnoDB: Completed initialization of buffer pool
+mysql_1   | 2017-04-08T19:44:18.604684Z 0 [Note] InnoDB: If the mysqld execution user is authorized, page cleaner thread priority can be changed. See the man page of setpriority().
+mysql_1   | 2017-04-08T19:44:18.616845Z 0 [Note] InnoDB: Highest supported file format is Barracuda.
+tomcat_1  | 08-Apr-2017 19:44:19.831 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server version:        Apache Tomcat/8.5.13
+mysql_1   | 2017-04-08T19:44:18.671676Z 0 [Note] InnoDB: Creating shared tablespace for temporary tables
+tomcat_1  | 08-Apr-2017 19:44:19.833 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server built:          Mar 27 2017 14:25:04 UTC
+mysql_1   | 2017-04-08T19:44:18.671741Z 0 [Note] InnoDB: Setting file './ibtmp1' size to 12 MB. Physically writing the file full; Please wait ...
+tomcat_1  | 08-Apr-2017 19:44:19.833 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server number:         8.5.13.0
+mysql_1   | 2017-04-08T19:44:18.804051Z 0 [Note] InnoDB: File './ibtmp1' size is now 12 MB.
+tomcat_1  | 08-Apr-2017 19:44:19.833 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log OS Name:               Linux
+mysql_1   | 2017-04-08T19:44:18.805811Z 0 [Note] InnoDB: 96 redo rollback segment(s) found. 96 redo rollback segment(s) are active.
+tomcat_1  | 08-Apr-2017 19:44:19.833 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log OS Version:            4.4.0-53-generic
+mysql_1   | 2017-04-08T19:44:18.805829Z 0 [Note] InnoDB: 32 non-redo rollback segment(s) are active.
+tomcat_1  | 08-Apr-2017 19:44:19.833 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Architecture:          amd64
+mysql_1   | 2017-04-08T19:44:18.806826Z 0 [Note] InnoDB: 5.7.17 started; log sequence number 12139149
+tomcat_1  | 08-Apr-2017 19:44:19.833 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Java Home:             /usr/lib/jvm/java-8-openjdk-amd64/jre
+mysql_1   | 2017-04-08T19:44:18.807437Z 0 [Note] InnoDB: Loading buffer pool(s) from /var/lib/mysql/ib_buffer_pool
+tomcat_1  | 08-Apr-2017 19:44:19.834 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log JVM Version:           1.8.0_121-8u121-b13-1~bpo8+1-b13
+mysql_1   | 2017-04-08T19:44:18.807630Z 0 [Note] Plugin 'FEDERATED' is disabled.
+tomcat_1  | 08-Apr-2017 19:44:19.834 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log JVM Vendor:            Oracle Corporation
+mysql_1   | 2017-04-08T19:44:18.811271Z 0 [Note] InnoDB: Buffer pool(s) load completed at 170408 19:44:18
+tomcat_1  | 08-Apr-2017 19:44:19.834 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log CATALINA_BASE:         /usr/local/tomcat
+mysql_1   | 2017-04-08T19:44:18.816827Z 0 [Note] Found ca.pem, server-cert.pem and server-key.pem in data directory. Trying to enable SSL support using them.
+tomcat_1  | 08-Apr-2017 19:44:19.834 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log CATALINA_HOME:         /usr/local/tomcat
+tomcat_1  | 08-Apr-2017 19:44:19.834 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.util.logging.config.file=/usr/local/tomcat/conf/logging.properties
+mysql_1   | 2017-04-08T19:44:18.817029Z 0 [Warning] CA certificate ca.pem is self signed.
+tomcat_1  | 08-Apr-2017 19:44:19.834 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.util.logging.manager=org.apache.juli.ClassLoaderLogManager
+mysql_1   | 2017-04-08T19:44:18.818676Z 0 [Note] Server hostname (bind-address): '*'; port: 3306
+tomcat_1  | 08-Apr-2017 19:44:19.834 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djdk.tls.ephemeralDHKeySize=2048
+mysql_1   | 2017-04-08T19:44:18.818702Z 0 [Note] IPv6 is available.
+tomcat_1  | 08-Apr-2017 19:44:19.835 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.protocol.handler.pkgs=org.apache.catalina.webresources
+mysql_1   | 2017-04-08T19:44:18.818711Z 0 [Note]   - '::' resolves to '::';
+tomcat_1  | 08-Apr-2017 19:44:19.835 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dcatalina.base=/usr/local/tomcat
+mysql_1   | 2017-04-08T19:44:18.818731Z 0 [Note] Server socket created on IP: '::'.
+tomcat_1  | 08-Apr-2017 19:44:19.835 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Dcatalina.home=/usr/local/tomcat
+mysql_1   | 2017-04-08T19:44:18.872396Z 0 [Warning] 'user' entry 'root@localhost' ignored in --skip-name-resolve mode.
+tomcat_1  | 08-Apr-2017 19:44:19.835 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.io.tmpdir=/usr/local/tomcat/temp
+mysql_1   | 2017-04-08T19:44:18.872438Z 0 [Warning] 'user' entry 'mysql.sys@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:44:18.872477Z 0 [Warning] 'db' entry 'sys mysql.sys@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:44:18.872498Z 0 [Warning] 'proxies_priv' entry '@ root@localhost' ignored in --skip-name-resolve mode.
+mysql_1   | 2017-04-08T19:44:18.875986Z 0 [Warning] 'tables_priv' entry 'sys_config mysql.sys@localhost' ignored in --skip-name-resolve mode.
+tomcat_1  | 08-Apr-2017 19:44:19.835 INFO [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent Loaded APR based Apache Tomcat Native library 1.2.12 using APR version 1.5.1.
+mysql_1   | 2017-04-08T19:44:18.884004Z 0 [Note] Event Scheduler: Loaded 0 events
+tomcat_1  | 08-Apr-2017 19:44:19.835 INFO [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent APR capabilities: IPv6 [true], sendfile [true], accept filters [false], random [true].
+mysql_1   | 2017-04-08T19:44:18.884113Z 0 [Note] Executing 'SELECT * FROM INFORMATION_SCHEMA.TABLES;' to get a list of tables using the deprecated partition engine. You may use the startup option '--disable-partition-engine-check' to skip this check.
+tomcat_1  | 08-Apr-2017 19:44:19.835 INFO [main] org.apache.catalina.core.AprLifecycleListener.lifecycleEvent APR/OpenSSL configuration: useAprConnector [false], useOpenSSL [true]
+mysql_1   | 2017-04-08T19:44:18.884119Z 0 [Note] Beginning of list of non-natively partitioned tables
+tomcat_1  | 08-Apr-2017 19:44:19.838 INFO [main] org.apache.catalina.core.AprLifecycleListener.initializeSSL OpenSSL successfully initialized (OpenSSL 1.1.0e  16 Feb 2017)
+mysql_1   | 2017-04-08T19:44:18.898765Z 0 [Note] End of list of non-natively partitioned tables
+tomcat_1  | 08-Apr-2017 19:44:19.900 INFO [main] org.apache.coyote.AbstractProtocol.init Initializing ProtocolHandler ["http-nio-8080"]
+mysql_1   | 2017-04-08T19:44:18.898956Z 0 [Note] mysqld: ready for connections.
+tomcat_1  | 08-Apr-2017 19:44:19.913 INFO [main] org.apache.tomcat.util.net.NioSelectorPool.getSharedSelector Using a shared selector for servlet write/read
+mysql_1   | Version: '5.7.17'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306  MySQL Community Server (GPL)
+tomcat_1  | 08-Apr-2017 19:44:19.915 INFO [main] org.apache.coyote.AbstractProtocol.init Initializing ProtocolHandler ["ajp-nio-8009"]
+tomcat_1  | 08-Apr-2017 19:44:19.916 INFO [main] org.apache.tomcat.util.net.NioSelectorPool.getSharedSelector Using a shared selector for servlet write/read
+tomcat_1  | 08-Apr-2017 19:44:19.917 INFO [main] org.apache.catalina.startup.Catalina.load Initialization processed in 387 ms
+tomcat_1  | 08-Apr-2017 19:44:19.933 INFO [main] org.apache.catalina.core.StandardService.startInternal Starting service Catalina
+tomcat_1  | 08-Apr-2017 19:44:19.933 INFO [main] org.apache.catalina.core.StandardEngine.startInternal Starting Servlet Engine: Apache Tomcat/8.5.13
+tomcat_1  | 08-Apr-2017 19:44:19.979 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployWAR Deploying web application archive /usr/local/tomcat/webapps/helloworld3.war
+tomcat_1  | 08-Apr-2017 19:44:20.299 WARNING [localhost-startStop-1] org.apache.tomcat.dbcp.dbcp2.BasicDataSourceFactory.getObjectInstance Name = hellodb Property removeAbandoned is not used in DBCP2, use one or both of removeAbandonedOnBorrow or removeAbandonedOnMaintenance instead. Both have default value set to false. You have set value of "true" for "removeAbandoned" property, which is being ignored.
+tomcat_1  | 08-Apr-2017 19:44:20.336 INFO [localhost-startStop-1] org.apache.jasper.servlet.TldScanner.scanJars At least one JAR was scanned for TLDs yet contained no TLDs. Enable debug logging for this logger for a complete list of JARs that were scanned but no TLDs were found in them. Skipping unneeded JARs during scanning can improve startup time and JSP compilation time.
+tomcat_1  | INFO  2017-04-08 19:44:20,402 [localhost-startStop-1] com.polarsparc.HelloServlet3  - Servlet <helloworld3> has been initialized
+tomcat_1  |
+tomcat_1  | 08-Apr-2017 19:44:20.409 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployWAR Deployment of web application archive /usr/local/tomcat/webapps/helloworld3.war has finished in 429 ms
+tomcat_1  | 08-Apr-2017 19:44:20.409 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory /usr/local/tomcat/webapps/manager
+tomcat_1  | 08-Apr-2017 19:44:20.433 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory /usr/local/tomcat/webapps/manager has finished in 24 ms
+tomcat_1  | 08-Apr-2017 19:44:20.433 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory /usr/local/tomcat/webapps/examples
+tomcat_1  | 08-Apr-2017 19:44:20.606 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory /usr/local/tomcat/webapps/examples has finished in 173 ms
+tomcat_1  | 08-Apr-2017 19:44:20.607 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory /usr/local/tomcat/webapps/ROOT
+tomcat_1  | 08-Apr-2017 19:44:20.625 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory /usr/local/tomcat/webapps/ROOT has finished in 18 ms
+tomcat_1  | 08-Apr-2017 19:44:20.625 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory /usr/local/tomcat/webapps/docs
+tomcat_1  | 08-Apr-2017 19:44:20.637 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory /usr/local/tomcat/webapps/docs has finished in 12 ms
+tomcat_1  | 08-Apr-2017 19:44:20.637 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory /usr/local/tomcat/webapps/host-manager
+tomcat_1  | 08-Apr-2017 19:44:20.652 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory /usr/local/tomcat/webapps/host-manager has finished in 15 ms
+tomcat_1  | 08-Apr-2017 19:44:20.654 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["http-nio-8080"]
+tomcat_1  | 08-Apr-2017 19:44:20.660 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["ajp-nio-8009"]
+tomcat_1  | 08-Apr-2017 19:44:20.663 INFO [main] org.apache.catalina.startup.Catalina.start Server startup in 746 ms</pre>
+    </div>
+    <div id="para-div">
+      <p>Once again, open a browser on the local host and access the URL
+        <span class="bold">http://localhost:8080/helloworld3/message</span>. The following would be a typical view:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/DockerTomcat-3.png" class="img-cls" alt="Docker Tomcat 3" />
+      <div class="img-cap">Figure-2</div>
+    </div>
+    <div id="para-div">
+      <p>As is evident from the logs in Output.8 above as well as the browser view in Figure.2 above, the database is
+        preserved (due to the <span class="bold">volumes</span> option) and we see the next count compared to the
+        browser view in Figure.1.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="http://polarsparc.github.io/Docker/Docker.html" target="_blank"><span class="bold">Introduction to Docker</span></a></p>
+      <p><a href="http://polarsparc.github.io/Docker/Dockerfile.html" target="_blank"><span class="bold">Introduction to Dockerfile</span></a></p>
+      <p><a href="http://polarsparc.github.io/Docker/MultiDocker.html" target="_blank"><span class="bold">Introduction to Multi Docker Containers</span></a></p>
+      <p><a href="https://docs.docker.com/" target="_blank"><span class="bold">Official Docker Documentation</span></a></p>
+    </div>
+  </body>
+</html>

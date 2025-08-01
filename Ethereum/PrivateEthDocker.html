@@ -1,0 +1,1139 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Multi-Node Private Ethereum Network using Docker">
+    <meta name="subject" content="Multi-Node Private Ethereum Network using Docker">
+    <meta name="keywords" content="blockchain, docker, ethereum, geth">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Multi-Node Private Ethereum Network using Docker</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <div id="title-div">
+      <p>Multi-Node Private Ethereum Network using Docker</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td"><span class="hi-yellow">*UPDATED*</span>10/21/2022</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="step-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="http://www.polarsparc.com/Ethereum/Ethereum-1.html" target="_blank"><span class="bold">Introduction to Ethereum -
+        Part 1</span></a>, we demonstrated the simple vehicle buying use-case (involving the buyer, the dealer, and the dmv) using
+        a single node on a private <span class="bold">Ethereum</span> network.</p>
+      <p>In reality, if one were to setup a private <span class="bold">Ethereum</span> network in any Enterprise, it would involve
+        more than one node in the network.</p>
+      <p>In this article, we will lay out the steps to setup a multi-node private <span class="bold">Ethereum</span> network (one
+        for each of the entities - the bank, the buyer, the dealer, and the dmv).</p>
+    </div>
+    <div id="step-div">
+      <p>Installation</p>
+    </div>
+    <div id="para-div">
+      <p>The setup will be on a <span class="bold">Ubuntu 22.04 LTS</span> based Linux desktop.</p>
+      <p>Ensure <span class="bold">Docker</span> is installed and setup. Else, refer to the article
+        <a href="http://www.polarsparc.com/Docker/Docker.html" target="_blank"><span class="bold">Introduction to Docker</span></a>.</p>
+    </div>
+    <div id="para-div">
+      <p>Assuming that we are logged in as <span class="bold">polarsparc</span> and the current working directory is the user home
+        directory <span class="bold">/home/polarsparc</span>, we will setup a directory structure by executing the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p Ethereum/conf</p>
+      <p>$ mkdir -p Ethereum/data/bank</p>
+      <p>$ mkdir -p Ethereum/data/buyer</p>
+      <p>$ mkdir -p Ethereum/data/dealer</p>
+      <p>$ mkdir -p Ethereum/data/dmv</p>
+    </div>
+    <div id="para-div">
+      <p>Now, change the current working directory to the directory <span class="bold">/home/polarsparc/Ethereum</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>For our exploration, we will be downloading and using the official docker image <a href="https://hub.docker.com/r/ethereum/client-go"
+        target="_blank"><span class="hi-yellow">ethereum/client-go:alltools-v1.10.25</span></a> for <span class="bold">Ethereum Go
+        Client</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To pull and download the docker image for <span class="bold">Ethereum Go Client</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>docker pull ethereum/client-go:alltools-v1.10.25</p>
+    </div>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>alltools-v1.10.25: Pulling from ethereum/client-go
+213ec9aee27d: Pull complete 
+2963a9ae9217: Pull complete 
+811f758345ec: Pull complete 
+Digest: sha256:22a9874c0cf02914693023ec5fe5fb50a9861d13fd213ffa6492302454484554
+Status: Downloaded newer image for ethereum/client-go:alltools-v1.10.25
+docker.io/ethereum/client-go:alltools-v1.10.25</pre>
+    </div>
+    <div id="para-div">
+      <p>To check everything was ok with the <span class="bold">Ethereum Go Client</span> docker image, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name geth ethereum/client-go:alltools-v1.10.25 geth version</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Geth
+Version: 1.10.25-stable
+Git Commit: 69568c554880b3567bace64f8848ff1be27d084d
+Architecture: amd64
+Go Version: go1.18.6
+Operating System: linux
+GOPATH=
+GOROOT=go</pre>
+    </div>
+    <br/>
+    <div id="step-div">
+      <p>Multi-Node Setup</p>
+    </div>
+    <div id="para-div">
+      <p>For this multi-node setup, we will create 4 accounts, one for each of the entities - the bank, the buyer, the dealer, and
+        the dmv. Before we proceed further, we will create text files (.txt) for each of the entities (bank, buyer, dealer, and dmv),
+        in their respective directories, containing their account password. To create the password text files, execute the following
+        commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ echo 'bank' data/bank/bank.txt</p>
+      <p>$ echo 'buyer' data/buyer/buyer.txt</p>
+      <p>$ echo 'dealer' data/dealer/dealer.txt</p>
+      <p>$ echo 'dmv' data/dmv/dmv.txt</p>
+    </div>
+    <div id="para-div">
+      <p>The next step in a multi-node private network setup, is to create accounts corresponding to each of the peers, namely, the
+        <span class="bold">bank</span>, the <span class="bold">buyer</span>, the <span class="bold">dealer</span>, and the
+        <span class="bold">dmv</span>.</p>
+      <p>To create an account for the <span class="bold">bank</span> entity, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -it --rm --name bank -u $(id -u $USER):$(id -g $USER) -v $HOME/Ethereum:/root ethereum/client-go:alltools-v1.10.25 geth --password /root/data/bank/bank.txt --datadir /root/data/bank account new</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>INFO [10-20|22:23:14.050] Maximum peer count                       ETH=50 LES=0 total=50
+INFO [10-20|22:23:14.050] Smartcard socket not found, disabling    err="stat /run/pcscd/pcscd.comm: no such file or directory"
+
+Your new key was generated
+
+Public address of the key:   0xc95eD0386316E2A985B8ad11178eb83757999D3b
+Path of the secret key file: /root/data/bank/keystore/UTC--2022-10-20T22-23-14.050914931Z--c95ed0386316e2a985b8ad11178eb83757999d3b
+
+- You can share your public address with anyone. Others need it to interact with you.
+- You must NEVER share the secret key with anyone! The key controls access to your funds!
+- You must BACKUP your key file! Without the key, it's impossible to access account funds!
+- You must REMEMBER your password! Without the password, it's impossible to decrypt the key!</pre>
+    </div>
+    <div id="para-div">
+      <p>The following is the repetition of the above command to create the remaining 3 accounts for our setup.</p>
+    </div>
+    <div id="para-div">
+      <p>Account <span class="bold">buyer</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -it --rm --name buyer -u $(id -u $USER):$(id -g $USER) -v $HOME/Ethereum:/root ethereum/client-go:alltools-v1.10.25 geth --password /root/data/buyer/buyer.txt --datadir /root/data/buyer account new</p>
+    </div>
+    <div id="para-div">
+      <p>Account <span class="bold">buyer</span> output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>INFO [10-20|22:23:39.943] Maximum peer count                       ETH=50 LES=0 total=50
+INFO [10-20|22:23:39.944] Smartcard socket not found, disabling    err="stat /run/pcscd/pcscd.comm: no such file or directory"
+
+Your new key was generated
+
+Public address of the key:   0x694D784017852fd6e84a8EbD27cA2162966C40c4
+Path of the secret key file: /root/data/buyer/keystore/UTC--2022-10-20T22-23-39.944789223Z--694d784017852fd6e84a8ebd27ca2162966c40c4
+
+- You can share your public address with anyone. Others need it to interact with you.
+- You must NEVER share the secret key with anyone! The key controls access to your funds!
+- You must BACKUP your key file! Without the key, it's impossible to access account funds!
+- You must REMEMBER your password! Without the password, it's impossible to decrypt the key!</pre>
+    </div>
+    <div id="para-div">
+      <p>Account <span class="bold">dealer</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -it --rm --name dealer -u $(id -u $USER):$(id -g $USER) -v $HOME/Ethereum:/root ethereum/client-go:alltools-v1.10.25 geth --password /root/data/dealer/dealer.txt --datadir /root/data/dealer account new</p>
+    </div>
+    <div id="para-div">
+      <p>Account <span class="bold">dealer</span> output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>INFO [10-20|22:24:07.580] Maximum peer count                       ETH=50 LES=0 total=50
+INFO [10-20|22:24:07.581] Smartcard socket not found, disabling    err="stat /run/pcscd/pcscd.comm: no such file or directory"
+
+Your new key was generated
+
+Public address of the key:   0xad7430C568AF808D785B7E0B6BAB057cf7EE3e24
+Path of the secret key file: /root/data/dealer/keystore/UTC--2022-10-20T22-24-07.581815941Z--ad7430c568af808d785b7e0b6bab057cf7ee3e24
+
+- You can share your public address with anyone. Others need it to interact with you.
+- You must NEVER share the secret key with anyone! The key controls access to your funds!
+- You must BACKUP your key file! Without the key, it's impossible to access account funds!
+- You must REMEMBER your password! Without the password, it's impossible to decrypt the key!</pre>
+    </div>
+    <div id="para-div">
+      <p>Account <span class="bold">dmv</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -it --rm --name dmv -u $(id -u $USER):$(id -g $USER) -v $HOME/Ethereum:/root ethereum/client-go:alltools-v1.10.25 geth --password /root/data/dmv/dmv.txt --datadir /root/data/dmv account new</p>
+    </div>
+    <div id="para-div">
+      <p>Account <span class="bold">dmv</span> output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>INFO [10-20|22:24:28.986] Maximum peer count                       ETH=50 LES=0 total=50
+INFO [10-20|22:24:28.986] Smartcard socket not found, disabling    err="stat /run/pcscd/pcscd.comm: no such file or directory"
+
+Your new key was generated
+
+Public address of the key:   0x1cF2Da205D16f1d9cf485e46ADEd945E841946fa
+Path of the secret key file: /root/data/dmv/keystore/UTC--2022-10-20T22-24-28.986842822Z--1cf2da205d16f1d9cf485e46aded945e841946fa
+
+- You can share your public address with anyone. Others need it to interact with you.
+- You must NEVER share the secret key with anyone! The key controls access to your funds!
+- You must BACKUP your key file! Without the key, it's impossible to access account funds!
+- You must REMEMBER your password! Without the password, it's impossible to decrypt the key!</pre>
+    </div>
+    <div id="para-div">
+      <p>In order to setup a private <span class="bold">Ethereum</span> blockchain network, we need to initialize and create the
+        <span class="hi-yellow">Genesis</span> block. The <span class="bold">Genesis</span> block is the first block of the blockchain
+        that has no previous block.</p>
+      <p>We will create an initialization file called <span class="bold">multi-genesis.json</span> that will be located in the directory
+        <span class="bold">conf</span>, with the following contents:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">multi-genesis.json</div>
+      <div class="src-body-1">
+<pre>{
+  "config": {
+    "chainId": 21,
+    "homesteadBlock": 0,
+    "eip150Block": 0,
+    "eip155Block": 0,
+    "eip158Block": 0,
+    "byzantiumBlock": 0,
+    "constantinopleBlock": 0,
+    "petersburgBlock": 0,
+    "istanbulBlock": 0,
+    "berlinBlock": 0,
+    "clique": {
+      "period": 10,
+      "epoch": 30000
+    }
+  },
+  "difficulty": "0x1",
+  "gasLimit": "0xa00000",
+  "extradata": "0x0000000000000000000000000000000000000000000000000000000000000000c95ed0386316e2a985b8ad11178eb83757999d3b0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  "alloc": {
+    "c95ed0386316e2a985b8ad11178eb83757999d3b": { "balance": "20000000000000000000" },
+    "694d784017852fd6e84a8ebd27ca2162966c40c4": { "balance": "10000000000000000000" },
+    "ad7430c568af808d785b7e0b6bab057cf7ee3e24": { "balance": "5000000000000000000" },
+    "1cf2da205d16f1d9cf485e46aded945e841946fa": { "balance": "3000000000000000000" }
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To initialize our private <span class="bold">Ethereum</span> network with the <span class="bold">Genesis</span> block,
+        execute the following command for the <span class="bold">bank</span> node:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -it --rm --name bank -u $(id -u $USER):$(id -g $USER) -v $HOME/Ethereum:/root ethereum/client-go:alltools-v1.10.25 geth --datadir /root/data/bank init /root/conf/multi-genesis.json</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>INFO [10-20|22:26:09.709] Maximum peer count                       ETH=50 LES=0 total=50
+INFO [10-20|22:26:09.710] Smartcard socket not found, disabling    err="stat /run/pcscd/pcscd.comm: no such file or directory"
+INFO [10-20|22:26:09.713] Set global gas cap                       cap=50,000,000
+INFO [10-20|22:26:09.715] Allocated cache and file handles         database=/root/data/bank/geth/chaindata cache=16.00MiB handles=16
+INFO [10-20|22:26:09.732] Opened ancient database                  database=/root/data/bank/geth/chaindata/ancient/chain readonly=false
+INFO [10-20|22:26:09.732] Writing custom genesis block 
+INFO [10-20|22:26:09.732] Persisted trie from memory database      nodes=5 size=764.00B time="52.399µs" gcnodes=0 gcsize=0.00B gctime=0s livenodes=1 livesize=0.00B
+INFO [10-20|22:26:09.733] Successfully wrote genesis state         database=chaindata                      hash=0ba7a6..9957ed
+INFO [10-20|22:26:09.733] Allocated cache and file handles         database=/root/data/bank/geth/lightchaindata cache=16.00MiB handles=16
+INFO [10-20|22:26:09.749] Opened ancient database                  database=/root/data/bank/geth/lightchaindata/ancient/chain readonly=false
+INFO [10-20|22:26:09.749] Writing custom genesis block 
+INFO [10-20|22:26:09.749] Persisted trie from memory database      nodes=5 size=764.00B time="46.037µs" gcnodes=0 gcsize=0.00B gctime=0s livenodes=1 livesize=0.00B
+INFO [10-20|22:26:09.750] Successfully wrote genesis state         database=lightchaindata                      hash=0ba7a6..9957ed</pre>
+    </div>
+    <div id="para-div">
+      <p>Repeat the genesis block initialization for each of the remaining nodes <span class="bold">buyer</span>, <span class="bold">
+        dealer</span>, and <span class="bold">dmv</span> as shown below:</p>
+    </div>
+    <div id="para-div">
+      <p>For account <span class="bold">buyer</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -it --rm --name buyer -u $(id -u $USER):$(id -g $USER) -v $HOME/Ethereum:/root ethereum/client-go:alltools-v1.10.25 geth --datadir /root/data/buyer init /root/conf/multi-genesis.json</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>INFO [10-20|22:26:31.418] Maximum peer count                       ETH=50 LES=0 total=50
+INFO [10-20|22:26:31.421] Smartcard socket not found, disabling    err="stat /run/pcscd/pcscd.comm: no such file or directory"
+INFO [10-20|22:26:31.428] Set global gas cap                       cap=50,000,000
+INFO [10-20|22:26:31.431] Allocated cache and file handles         database=/root/data/buyer/geth/chaindata cache=16.00MiB handles=16
+INFO [10-20|22:26:31.448] Opened ancient database                  database=/root/data/buyer/geth/chaindata/ancient/chain readonly=false
+INFO [10-20|22:26:31.449] Writing custom genesis block 
+INFO [10-20|22:26:31.449] Persisted trie from memory database      nodes=5 size=764.00B time="52.008µs" gcnodes=0 gcsize=0.00B gctime=0s livenodes=1 livesize=0.00B
+INFO [10-20|22:26:31.450] Successfully wrote genesis state         database=chaindata                       hash=0ba7a6..9957ed
+INFO [10-20|22:26:31.450] Allocated cache and file handles         database=/root/data/buyer/geth/lightchaindata cache=16.00MiB handles=16
+INFO [10-20|22:26:31.473] Opened ancient database                  database=/root/data/buyer/geth/lightchaindata/ancient/chain readonly=false
+INFO [10-20|22:26:31.473] Writing custom genesis block 
+INFO [10-20|22:26:31.474] Persisted trie from memory database      nodes=5 size=764.00B time="81.414µs" gcnodes=0 gcsize=0.00B gctime=0s livenodes=1 livesize=0.00B
+INFO [10-20|22:26:31.474] Successfully wrote genesis state         database=lightchaindata                       hash=0ba7a6..9957ed</pre>
+    </div>
+    <div id="para-div">
+      <p>For account <span class="bold">dealer</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -it --rm --name dealer -u $(id -u $USER):$(id -g $USER) -v $HOME/Ethereum:/root ethereum/client-go:alltools-v1.10.25 geth --datadir /root/data/dealer init /root/conf/multi-genesis.json</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>INFO [10-20|22:26:51.111] Maximum peer count                       ETH=50 LES=0 total=50
+INFO [10-20|22:26:51.114] Smartcard socket not found, disabling    err="stat /run/pcscd/pcscd.comm: no such file or directory"
+INFO [10-20|22:26:51.121] Set global gas cap                       cap=50,000,000
+INFO [10-20|22:26:51.125] Allocated cache and file handles         database=/root/data/dealer/geth/chaindata cache=16.00MiB handles=16
+INFO [10-20|22:26:51.143] Opened ancient database                  database=/root/data/dealer/geth/chaindata/ancient/chain readonly=false
+INFO [10-20|22:26:51.143] Writing custom genesis block 
+INFO [10-20|22:26:51.144] Persisted trie from memory database      nodes=5 size=764.00B time="46.557µs" gcnodes=0 gcsize=0.00B gctime=0s livenodes=1 livesize=0.00B
+INFO [10-20|22:26:51.144] Successfully wrote genesis state         database=chaindata                        hash=0ba7a6..9957ed
+INFO [10-20|22:26:51.144] Allocated cache and file handles         database=/root/data/dealer/geth/lightchaindata cache=16.00MiB handles=16
+INFO [10-20|22:26:51.159] Opened ancient database                  database=/root/data/dealer/geth/lightchaindata/ancient/chain readonly=false
+INFO [10-20|22:26:51.159] Writing custom genesis block 
+INFO [10-20|22:26:51.160] Persisted trie from memory database      nodes=5 size=764.00B time="425.713µs" gcnodes=0 gcsize=0.00B gctime=0s livenodes=1 livesize=0.00B
+INFO [10-20|22:26:51.161] Successfully wrote genesis state         database=lightchaindata                        hash=0ba7a6..9957ed</pre>
+    </div>
+    <div id="para-div">
+      <p>For account <span class="bold">dmv</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -it --rm --name dmv -u $(id -u $USER):$(id -g $USER) -v $HOME/Ethereum:/root ethereum/client-go:alltools-v1.10.25 geth --datadir /root/data/dmv init /root/conf/multi-genesis.json</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>INFO [10-20|22:27:14.874] Maximum peer count                       ETH=50 LES=0 total=50
+INFO [10-20|22:27:14.876] Smartcard socket not found, disabling    err="stat /run/pcscd/pcscd.comm: no such file or directory"
+INFO [10-20|22:27:14.880] Set global gas cap                       cap=50,000,000
+INFO [10-20|22:27:14.881] Allocated cache and file handles         database=/root/data/dmv/geth/chaindata cache=16.00MiB handles=16
+INFO [10-20|22:27:14.900] Opened ancient database                  database=/root/data/dmv/geth/chaindata/ancient/chain readonly=false
+INFO [10-20|22:27:14.900] Writing custom genesis block 
+INFO [10-20|22:27:14.901] Persisted trie from memory database      nodes=5 size=764.00B time="54.593µs" gcnodes=0 gcsize=0.00B gctime=0s livenodes=1 livesize=0.00B
+INFO [10-20|22:27:14.901] Successfully wrote genesis state         database=chaindata                     hash=0ba7a6..9957ed
+INFO [10-20|22:27:14.901] Allocated cache and file handles         database=/root/data/dmv/geth/lightchaindata cache=16.00MiB handles=16
+INFO [10-20|22:27:14.916] Opened ancient database                  database=/root/data/dmv/geth/lightchaindata/ancient/chain readonly=false
+INFO [10-20|22:27:14.917] Writing custom genesis block 
+INFO [10-20|22:27:14.918] Persisted trie from memory database      nodes=5 size=764.00B time="311.758µs" gcnodes=0 gcsize=0.00B gctime=0s livenodes=1 livesize=0.00B
+INFO [10-20|22:27:14.919] Successfully wrote genesis state         database=lightchaindata                     hash=0ba7a6..9957ed</pre>
+    </div>
+    <div id="para-div">
+      <p>Open 4 terminal windows, each representing the 4 entities, namely, the <span class="bold">bank</span>, the <span class="bold">
+        buyer</span>, the <span class="bold">dealer</span>, and the <span class="bold">dmv</span>. We will refer to these 4 terminal
+        windows corresponding to the entity they refer. For example, the first terminal will be referred to as the <span class="bold">
+        bank</span>, the second terminal as the <span class="bold">buyer</span>, the third terminal as the <span class="bold">dealer
+        </span> and the fourth terminal as the <span class="bold">dmv</span>.</p>
+      <p>In each of the 4 terminal windows, change the working directory to <span class="bold">/home/polarsparc/Ethereum</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">bank</span> terminal, start an <span class="bold">Ethereum</span> node by executing the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -it --rm --name bank -u $(id -u $USER):$(id -g $USER) -p 8081:8081 -p 30001:30001 -v $HOME/Ethereum:/root ethereum/client-go:alltools-v1.10.25 geth --networkid "21" --identity "bank" --datadir /root/data/bank --syncmode "full" --ipcdisable --nodiscover --allow-insecure-unlock --unlock 0x2929cc22c9203107509392ab77da1bc17f652c3c --password /root/data/bank/bank.txt --http --http.addr "0.0.0.0" --http.port 8081 --http.corsdomain "*" --port 30001 --verbosity 2 console</p>
+    </div>
+    <div id="para-div">
+      <p>Notice the use of the the option <span class="hi-yellow">password</span> pointing to the text file containing the account
+        password and the option <span class="hi-yellow">unlock</span> specifying the index of the account.</p>
+      <p>The <span class="hi-green">--http*</span> related options enable API access via the <span class="bold">bank</span> node.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>WARN [10-20|22:30:51.895] Failed to load snapshot, regenerating    err="missing or corrupted snapshot"
+WARN [10-20|22:30:51.896] Error reading unclean shutdown markers   error="leveldb: not found"
+WARN [10-20|22:30:51.896] Engine API enabled                       protocol=eth
+WARN [10-20|22:30:51.896] Engine API started but chain not configured for merge yet 
+Welcome to the Geth JavaScript console!
+
+instance: Geth/bank/v1.10.25-stable-69568c55/linux-amd64/go1.18.6
+coinbase: 0xc95ed0386316e2a985b8ad11178eb83757999d3b
+at block: 0 (Thu Jan 01 1970 00:00:00 GMT+0000 (UTC))
+  datadir: /root/data/bank
+  modules: admin:1.0 clique:1.0 debug:1.0 engine:1.0 eth:1.0 miner:1.0 net:1.0 personal:1.0 rpc:1.0 txpool:1.0 web3:1.0
+
+To exit, press ctrl-d or type exit
+></pre>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">buyer</span> terminal, start an <span class="bold">Ethereum</span> node by executing the
+        following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -it --rm --name buyer -u $(id -u $USER):$(id -g $USER) -p 30002:30002 -v $HOME/Ethereum:/root ethereum/client-go:alltools-v1.10.25 geth --networkid "21" --identity "buyer" --datadir /root/data/buyer --syncmode "full" --ipcdisable --nodiscover --unlock 0x9a4f8e15ec721adbdf8af75be091279dff159523 --password /root/data/buyer/buyer.txt --port 30002 --verbosity 2 console</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>WARN [10-20|22:31:35.288] Failed to load snapshot, regenerating    err="missing or corrupted snapshot"
+WARN [10-20|22:31:35.289] Error reading unclean shutdown markers   error="leveldb: not found"
+WARN [10-20|22:31:35.289] Engine API enabled                       protocol=eth
+WARN [10-20|22:31:35.289] Engine API started but chain not configured for merge yet 
+Welcome to the Geth JavaScript console!
+
+instance: Geth/buyer/v1.10.25-stable-69568c55/linux-amd64/go1.18.6
+coinbase: 0x694d784017852fd6e84a8ebd27ca2162966c40c4
+at block: 0 (Thu Jan 01 1970 00:00:00 GMT+0000 (UTC))
+  datadir: /root/data/buyer
+  modules: admin:1.0 clique:1.0 debug:1.0 engine:1.0 eth:1.0 miner:1.0 net:1.0 personal:1.0 rpc:1.0 txpool:1.0 web3:1.0
+
+To exit, press ctrl-d or type exit
+></pre>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">dealer</span> terminal, start an <span class="bold">Ethereum</span> node by executing the
+        following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -it --rm --name dealer -u $(id -u $USER):$(id -g $USER) -p 30003:30003 -v $HOME/Ethereum:/root ethereum/client-go:alltools-v1.10.25 geth --networkid "21" --identity "dealer" --datadir /root/data/dealer --syncmode "full" --ipcdisable --nodiscover --unlock 0xfd23c931300c331343696fc1df24cd99f4cf3191 --password /root/data/dealer/dealer.txt --port 30003 --verbosity 2 console</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>WARN [10-20|22:33:06.202] Failed to load snapshot, regenerating    err="missing or corrupted snapshot"
+WARN [10-20|22:33:06.203] Error reading unclean shutdown markers   error="leveldb: not found"
+WARN [10-20|22:33:06.203] Engine API enabled                       protocol=eth
+WARN [10-20|22:33:06.203] Engine API started but chain not configured for merge yet 
+Welcome to the Geth JavaScript console!
+
+instance: Geth/dealer/v1.10.25-stable-69568c55/linux-amd64/go1.18.6
+coinbase: 0xad7430c568af808d785b7e0b6bab057cf7ee3e24
+at block: 0 (Thu Jan 01 1970 00:00:00 GMT+0000 (UTC))
+  datadir: /root/data/dealer
+  modules: admin:1.0 clique:1.0 debug:1.0 engine:1.0 eth:1.0 miner:1.0 net:1.0 personal:1.0 rpc:1.0 txpool:1.0 web3:1.0
+
+To exit, press ctrl-d or type exit
+></pre>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">dmv</span> terminal, start an <span class="bold">Ethereum</span> node by executing the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -it --rm --name dmv -u $(id -u $USER):$(id -g $USER) -p 30004:30004 -v $HOME/Ethereum:/root ethereum/client-go:alltools-v1.10.25 geth --networkid "21" --identity "dmv" --datadir /root/data/dmv --syncmode "full" --ipcdisable --nodiscover --unlock 0x8703b39acc4cad0cb9d0f7a5157ed85499a97486 --password /root/data/dmv/dmv.txt --port 30004 --verbosity 2 console</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>WARN [10-20|22:33:32.364] Failed to load snapshot, regenerating    err="missing or corrupted snapshot"
+WARN [10-20|22:33:32.365] Error reading unclean shutdown markers   error="leveldb: not found"
+WARN [10-20|22:33:32.365] Engine API enabled                       protocol=eth
+WARN [10-20|22:33:32.365] Engine API started but chain not configured for merge yet 
+Welcome to the Geth JavaScript console!
+
+instance: Geth/dmv/v1.10.25-stable-69568c55/linux-amd64/go1.18.6
+coinbase: 0x1cf2da205d16f1d9cf485e46aded945e841946fa
+at block: 0 (Thu Jan 01 1970 00:00:00 GMT+0000 (UTC))
+  datadir: /root/data/dmv
+  modules: admin:1.0 clique:1.0 debug:1.0 engine:1.0 eth:1.0 miner:1.0 net:1.0 personal:1.0 rpc:1.0 txpool:1.0 web3:1.0
+
+To exit, press ctrl-d or type exit
+></pre>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>The values for the <span class="bold">port</span> has to be unique for every <span class="bold">Ethereum</span> node in the private network.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Every node in the private <span class="bold">Ethereum</span> network has a unique endpoint address. Note that we have started
+        each of the 4 nodes with the <span class="bold">nodiscover</span> option. This means the 4 nodes in our private network have
+        no knowledge of each other. We need to manually connect the nodes to each other so they are aware of their peers in our private
+        network. In order to achieve this, we need the endpoint address for the nodes <span class="bold">bank</span>, <span class="bold">
+        buyer</span>, and <span class="bold">dealer</span>.</p>
+      <p>For our private network, we will add the endpoint address of the <span class="bold">bank</span> as a peer to the 3 nodes
+        <span class="bold">buyer</span>, <span class="bold">dealer</span>, and <span class="bold">dmv</span>.</p>
+      <p>Next, we will add the endpoint address of the <span class="bold">buyer</span> as a peer to the nodes <span class="bold">dealer
+        </span> and <span class="bold">dmv</span>.</p>
+      <p>Finally, we will add the endpoint address of the <span class="bold">dealer</span> as a peer to the node <span class="bold">dmv
+        </span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The end result is a private network with nodes as shown in the illustration below:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/Multi-Nodes.png" alt="Private Network" />
+      <div class="img-cap">Our Private Network</div>
+    </div>
+    <div id="para-div">
+      <p>Note that the node <span class="bold">bank</span> is also the miner (the transaction authorizer).</p>
+    </div>
+    <div id="para-div">
+      <p>To identify the endpoint address of the <span class="bold">bank</span>, execute the following command in the Javascript
+        prompt of the <span class="bold">bank</span> terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>&gt; admin.nodeInfo</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>{
+  enode: "enode://0fad6ce97abfb06faaec281068316c1cfe5301fe617a36e63c217700c8335a88003a8d5e4bc28245b12ab28d0a9898c68b8f66dd7d9644d2b04063021b885428@127.0.0.1:30001?discport=0",
+  enr: "enr:-Jy4QI6Hghb5cPy_-AhIt_8gwYl1sv0VQWkwImp_kOmAYZnNQjTZCksluJR9G84la9cq7PaSS8ZjfWgZNFBOnCRTgqmGAYP3hKtqg2V0aMfGhEvaIuaAgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQIPrWzper-wb6rsKBBoMWwc_lMB_mF6NuY8IXcAyDNaiIRzbmFwwIN0Y3CCdTE",
+  id: "1c3aa3c637a4af6b9cfaf0cf0903f54295e8b4a6ddd0ffdba7f317deb2c09f41",
+  ip: "127.0.0.1",
+  listenAddr: "[::]:30001",
+  name: "Geth/bank/v1.10.25-stable-69568c55/linux-amd64/go1.18.6",
+  ports: {
+    discovery: 0,
+    listener: 30001
+  },
+  protocols: {
+    eth: {
+      config: {
+        berlinBlock: 0,
+        byzantiumBlock: 0,
+        chainId: 21,
+        clique: {...},
+        constantinopleBlock: 0,
+        eip150Block: 0,
+        eip150Hash: "0x0000000000000000000000000000000000000000000000000000000000000000",
+        eip155Block: 0,
+        eip158Block: 0,
+        homesteadBlock: 0,
+        istanbulBlock: 0,
+        petersburgBlock: 0
+      },
+      difficulty: 1,
+      genesis: "0x0ba7a661645bed437de13cc78f2c7e1dddd0af6240a9f1f0e5dcc839469957ed",
+      head: "0x0ba7a661645bed437de13cc78f2c7e1dddd0af6240a9f1f0e5dcc839469957ed",
+      network: 21
+    },
+    snap: {}
+  }
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>The trimmed string value <span class="hi-yellow">enode://0fad6ce...@127.0.0.1:30001?discport=0</span> is the endpoint address
+        for the node <span class="bold">bank</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Next, to identify the endpoint address of the <span class="bold">buyer</span>, execute the following command in the Javascript
+        promt of the <span class="bold">buyer</span> terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>&gt; admin.nodeInfo</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>{
+  enode: "enode://13c5e8704608292825030e7d9fb4f0ef283fd533c7177a8d43d3d2415f93ecb7d350ea59998618adb76d1732682218b4b5226cf1875a95ebfdc287ef1eb83b98@127.0.0.1:30002?discport=0",
+  enr: "enr:-Jy4QNE096uFK8lTZk4If-9a1bX9Hw6Oen4eihAi_127LFxzCoPWgryv-dfyDQxZJXnLl5Pw_HQdmILj-zNoL-krTliGAYP3hfaBg2V0aMfGhEvaIuaAgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQITxehwRggpKCUDDn2ftPDvKD_VM8cXeo1D09JBX5Pst4RzbmFwwIN0Y3CCdTI",
+  id: "8512ec46f1a6d302cc9af09e7117235909d3f8d25d5d830915ade41aa2899a16",
+  ip: "127.0.0.1",
+  listenAddr: "[::]:30002",
+  name: "Geth/buyer/v1.10.25-stable-69568c55/linux-amd64/go1.18.6",
+  ports: {
+    discovery: 0,
+    listener: 30002
+  },
+  protocols: {
+    eth: {
+      config: {
+        berlinBlock: 0,
+        byzantiumBlock: 0,
+        chainId: 21,
+        clique: {...},
+        constantinopleBlock: 0,
+        eip150Block: 0,
+        eip150Hash: "0x0000000000000000000000000000000000000000000000000000000000000000",
+        eip155Block: 0,
+        eip158Block: 0,
+        homesteadBlock: 0,
+        istanbulBlock: 0,
+        petersburgBlock: 0
+      },
+      difficulty: 1,
+      genesis: "0x0ba7a661645bed437de13cc78f2c7e1dddd0af6240a9f1f0e5dcc839469957ed",
+      head: "0x0ba7a661645bed437de13cc78f2c7e1dddd0af6240a9f1f0e5dcc839469957ed",
+      network: 21
+    },
+    snap: {}
+  }
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>The trimmed string value <span class="hi-yellow">enode://13c5e87...@127.0.0.1:30002?discport=0</span> is the endpoint address
+        for the node <span class="bold">buyer</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Finally, to identify the endpoint address of the <span class="bold">dealer</span>, execute the following command in the
+        Javascript promt of the <span class="bold">dealer</span> terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>&gt; admin.nodeInfo</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.17</h4>
+      <pre>{
+  enode: "enode://8cd44ef8f159ce3d267220476b376194fcec9b5adcdcbf4d5001c553ab7ddd4f73218da6494754f054ed6ccf21c20858b6b87bc1fb47726349e24fa7ede1ff52@127.0.0.1:30003?discport=0",
+  enr: "enr:-Jy4QKjw0Fv2jTEfuGgBsSCPkU-oXI1dhEqQoYrN62RT5wj2EDggY0ZSGBFnTTahq_UqbGs3nb15qoH7iCFYzSR_X0aGAYP3h1mjg2V0aMfGhEvaIuaAgmlkgnY0gmlwhH8AAAGJc2VjcDI1NmsxoQKM1E748VnOPSZyIEdrN2GU_OybWtzcv01QAcVTq33dT4RzbmFwwIN0Y3CCdTM",
+  id: "fa0c135282b8b1b30c65863b98db67c98a1473d02ac262712a7627a3db9d07e9",
+  ip: "127.0.0.1",
+  listenAddr: "[::]:30003",
+  name: "Geth/dealer/v1.10.25-stable-69568c55/linux-amd64/go1.18.6",
+  ports: {
+    discovery: 0,
+    listener: 30003
+  },
+  protocols: {
+    eth: {
+      config: {
+        berlinBlock: 0,
+        byzantiumBlock: 0,
+        chainId: 21,
+        clique: {...},
+        constantinopleBlock: 0,
+        eip150Block: 0,
+        eip150Hash: "0x0000000000000000000000000000000000000000000000000000000000000000",
+        eip155Block: 0,
+        eip158Block: 0,
+        homesteadBlock: 0,
+        istanbulBlock: 0,
+        petersburgBlock: 0
+      },
+      difficulty: 1,
+      genesis: "0x0ba7a661645bed437de13cc78f2c7e1dddd0af6240a9f1f0e5dcc839469957ed",
+      head: "0x0ba7a661645bed437de13cc78f2c7e1dddd0af6240a9f1f0e5dcc839469957ed",
+      network: 21
+    },
+    snap: {}
+  }
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>The trimmed string value <span class="hi-yellow">enode://8cd44e...@127.0.0.1:30003?discport=0</span> is the endpoint address
+        for the node <span class="bold">dealer</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>We also need the IP address of the <span class="bold">Docker</span> containers running the <span class="bold">bank</span>,
+        <span class="bold">buyer</span>, and <span class="bold">dealer</span> nodes.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a new terminal window and execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker ps -a</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.18</h4>
+      <pre>CONTAINER ID   IMAGE                                  COMMAND                  CREATED              STATUS              PORTS                                                                                                                           NAMES
+4c9c4a78c564   ethereum/client-go:alltools-v1.10.25   "geth --networkid 21…"   About a minute ago   Up About a minute   8545-8546/tcp, 30303/tcp, 0.0.0.0:30004->30004/tcp, :::30004->30004/tcp, 30303/udp                                              dmv
+54a2aaf5950a   ethereum/client-go:alltools-v1.10.25   "geth --networkid 21…"   About a minute ago   Up About a minute   8545-8546/tcp, 30303/tcp, 0.0.0.0:30003->30003/tcp, :::30003->30003/tcp, 30303/udp                                              dealer
+14b3eb39ccba   ethereum/client-go:alltools-v1.10.25   "geth --networkid 21…"   3 minutes ago        Up 3 minutes        8545-8546/tcp, 30303/tcp, 0.0.0.0:30002->30002/tcp, :::30002->30002/tcp, 30303/udp                                              buyer
+ea96fe103568   ethereum/client-go:alltools-v1.10.25   "geth --networkid 21…"   4 minutes ago        Up 4 minutes        0.0.0.0:8081->8081/tcp, :::8081->8081/tcp, 8545-8546/tcp, 0.0.0.0:30001->30001/tcp, :::30001->30001/tcp, 30303/tcp, 30303/udp   bank</pre>
+    </div>
+    <div id="para-div">
+      <p>From the above Output.18, the <span class="bold">Docker</span> instances for the <span class="bold">bank</span>, the
+        <span class="bold">buyer</span>, and the <span class="bold">dealer</span> nodes are <span class="hi-yellow">ea96fe103568</span>,
+        <span class="hi-yellow">14b3eb39ccba</span>, and <span class="hi-yellow">54a2aaf5950a</span> respectively.</p>
+    </div>
+    <div id="para-div">
+      <p>To extract the IP address of the <span class="bold">bank</span> node, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ea96fe103568</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.19</h4>
+      <pre>172.17.0.2</pre>
+    </div>
+    <div id="para-div">
+      <p>Next, to extract the IP address of the <span class="bold">buyer</span> node, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 14b3eb39ccba</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.20</h4>
+      <pre>172.17.0.3</pre>
+    </div>
+    <div id="para-div">
+      <p>Finally, to extract the IP address of the <span class="bold">dealer</span> node, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 54a2aaf5950a</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.21</h4>
+      <pre>172.17.0.4</pre>
+    </div>
+    <div id="para-div">
+      <p>From the above Output.19, Output.20, and Output.21, the IP address for the <span class="bold">bank</span>, the
+        <span class="bold">buyer</span>, and the <span class="bold">dealer</span> nodes are <span class="hi-yellow">172.17.0.2</span>,
+        <span class="hi-yellow">172.17.0.3</span>, and <span class="hi-yellow">172.17.0.4</span> respectively.</p>
+    </div>
+    <div id="para-div">
+      <p>To add the endpoint address of the <span class="bold">bank</span> as a peer to the nodes <span class="bold">buyer</span>,
+        <span class="bold">dealer</span>, and <span class="bold">dmv</span>, execute the following command in the Javascript prompt
+        of the corresponding terminals <span class="bold">buyer</span>, <span class="bold">dealer</span>, and
+        <span class="bold">dmv</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> admin.addPeer('enode://0fad6ce97abfb06faaec281068316c1cfe5301fe617a36e63c217700c8335a88003a8d5e4bc28245b12ab28d0a9898c68b8f66dd7d9644d2b0
+        4063021b885428@172.17.0.2:30001')</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.22</h4>
+      <pre>true</pre>
+    </div>
+    <div id="para-div">
+      <p>Next, add the endpoint address of the <span class="bold">buyer</span> as a peer to the nodes <span class="bold">dealer</span>
+        and <span class="bold">dmv</span> by executing the following command in the Javascript prompt of the corresponding terminals
+        <span class="bold">dealer</span> and <span class="bold">dmv</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> admin.addPeer('enode://13c5e8704608292825030e7d9fb4f0ef283fd533c7177a8d43d3d2415f93ecb7d350ea59998618adb76d1732682218b4b5226cf1875a95ebfd
+        c287ef1eb83b98@172.17.0.3:30002')</p>
+    </div>
+    <div id="para-div">
+      <p>Finally, add the endpoint address of the <span class="bold">dealer</span> as a peer to the node <span class="bold">dmv</span>
+        by executing the following command in the Javascript prompt of the corresponding terminal <span class="bold">dmv</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> admin.addPeer('enode://8cd44ef8f159ce3d267220476b376194fcec9b5adcdcbf4d5001c553ab7ddd4f73218da6494754f054ed6ccf21c20858b6b87bc1fb47726349
+        e24fa7ede1ff52@172.17.0.4:30003')</p>
+    </div>
+    <div id="para-div">
+      <p>To verify the peers connected to any of the nodes, execute the following command in the Javascript promt of the corresponding
+        terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>&gt; admin.peers</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.23</h4>
+      <pre>[{
+    caps: ["eth/66", "eth/67", "snap/1"],
+    enode: "enode://0fad6ce97abfb06faaec281068316c1cfe5301fe617a36e63c217700c8335a88003a8d5e4bc28245b12ab28d0a9898c68b8f66dd7d9644d2b04063021b885428@172.17.0.2:30001",
+    id: "1c3aa3c637a4af6b9cfaf0cf0903f54295e8b4a6ddd0ffdba7f317deb2c09f41",
+    name: "Geth/bank/v1.10.25-stable-69568c55/linux-amd64/go1.18.6",
+    network: {
+      inbound: false,
+      localAddress: "172.17.0.5:56192",
+      remoteAddress: "172.17.0.2:30001",
+      static: true,
+      trusted: false
+    },
+    protocols: {
+      eth: {
+        difficulty: 1,
+        head: "0x0ba7a661645bed437de13cc78f2c7e1dddd0af6240a9f1f0e5dcc839469957ed",
+        version: 67
+      },
+      snap: {
+        version: 1
+      }
+    }
+}, {
+    caps: ["eth/66", "eth/67", "snap/1"],
+    enode: "enode://13c5e8704608292825030e7d9fb4f0ef283fd533c7177a8d43d3d2415f93ecb7d350ea59998618adb76d1732682218b4b5226cf1875a95ebfdc287ef1eb83b98@172.17.0.3:30002",
+    id: "8512ec46f1a6d302cc9af09e7117235909d3f8d25d5d830915ade41aa2899a16",
+    name: "Geth/buyer/v1.10.25-stable-69568c55/linux-amd64/go1.18.6",
+    network: {
+      inbound: false,
+      localAddress: "172.17.0.5:49414",
+      remoteAddress: "172.17.0.3:30002",
+      static: true,
+      trusted: false
+    },
+    protocols: {
+      eth: {
+        difficulty: 1,
+        head: "0x0ba7a661645bed437de13cc78f2c7e1dddd0af6240a9f1f0e5dcc839469957ed",
+        version: 67
+      },
+      snap: {
+        version: 1
+      }
+    }
+}, {
+    caps: ["eth/66", "eth/67", "snap/1"],
+    enode: "enode://8cd44ef8f159ce3d267220476b376194fcec9b5adcdcbf4d5001c553ab7ddd4f73218da6494754f054ed6ccf21c20858b6b87bc1fb47726349e24fa7ede1ff52@172.17.0.4:30003",
+    id: "fa0c135282b8b1b30c65863b98db67c98a1473d02ac262712a7627a3db9d07e9",
+    name: "Geth/dealer/v1.10.25-stable-69568c55/linux-amd64/go1.18.6",
+    network: {
+      inbound: false,
+      localAddress: "172.17.0.5:43204",
+      remoteAddress: "172.17.0.4:30003",
+      static: true,
+      trusted: false
+    },
+    protocols: {
+      eth: {
+        difficulty: 1,
+        head: "0x0ba7a661645bed437de13cc78f2c7e1dddd0af6240a9f1f0e5dcc839469957ed",
+        version: 67
+      },
+      snap: {
+        version: 1
+      }
+    }
+}]</pre>
+    </div>
+    <div id="para-div">
+      <p>The following is a custom Javascript utility function to display account balances (in ethers):</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">showBalances</div>
+      <div class="src-body-1">
+<pre>function showBalances() {
+  var i = 0;
+  eth.accounts.forEach(function(e) {
+     console.log("---> eth.accounts["+i+"]: " + e + " \tbalance: " + web3.fromWei(eth.getBalance(e), "ether") + " ether");
+     i++;
+  })
+};</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Paste the above code in the Javascript shell prompt of all the 4 terminals.</p>
+    </div>
+    <div id="para-div">
+      <p>To display account balances using the Javascript utility function <span class="bold">showBalances</span>, execute the
+        following command in the Javascript shell prompt of each of the 4 terminals:</p>
+    </div>
+    <div id="cmd-div">
+      <p>&gt; showBalances()</p>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">bank</span> terminal, the following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.24</h4>
+      <pre>---> eth.accounts[0]: 0xc95ed0386316e2a985b8ad11178eb83757999d3b 	balance: 20 ether
+undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">buyer</span> terminal, the following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.25</h4>
+      <pre>---> eth.accounts[0]: 0x694d784017852fd6e84a8ebd27ca2162966c40c4 	balance: 10 ether
+undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">dealer</span> terminal, the following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.26</h4>
+      <pre>---> eth.accounts[0]: 0xad7430c568af808d785b7e0b6bab057cf7ee3e24 	balance: 5 ether
+undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>Finally, in the <span class="bold">dmv</span> terminal, the following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.27</h4>
+      <pre>---> eth.accounts[0]: 0x1cf2da205d16f1d9cf485e46aded945e841946fa 	balance: 3 ether
+undefined</pre>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>It is *<span class="underbold">EXTREMELY IMPORTANT</span>* that the <span class="bold">miner</span> is running before sending any transactions. Else, the transactions will be stuck in the pending state forever.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Given that the <span class="bold">bank</span> is the authorized signer (<span class="bold">miner</span>), start the miner
+        (with one mining thread) by executing the following command in the Javascript shell prompt of the <span class="bold">bank</span>
+        terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> miner.start(1)</p>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">buyer</span> terminal, assign the variables <span class="hi-blue">buyer</span> and
+        <span class="hi-blue">dealer</span> with their corresponding account address using the Javascript shell as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> buyer = "0x694d784017852fd6e84a8ebd27ca2162966c40c4"</p>
+      <p>> dealer = "0xad7430c568af808d785b7e0b6bab057cf7ee3e24"</p>
+    </div>
+    <div id="para-div">
+      <p>To send a transaction to transfer 1 <span class="bold">ether</span> from the <span class="bold">buyer</span> to the
+        <span class="bold">dealer</span>, execute the following command in the Javascript shell prompt of the <span class="bold">
+        buyer</span> terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> eth.sendTransaction({from: buyer, to: dealer, value: web3.toWei(1, "ether")})</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.28</h4>
+      <pre>"0xadb276931f378f2dfd21b5006e45a2e5b5f2ca99c964cc0bb9cd07bc7e261452"</pre>
+    </div>
+    <div id="para-div">
+      <p>To display all the pending transactions on this private network, execute the following command in the Javascript shell
+        prompt of the <span class="bold">buyer</span> terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> eth.pendingTransactions</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.29</h4>
+      <pre>[{
+    blockHash: null,
+    blockNumber: null,
+    chainId: "0x15",
+    from: "0x694d784017852fd6e84a8ebd27ca2162966c40c4",
+    gas: 21000,
+    gasPrice: 1000000000,
+    hash: "0xadb276931f378f2dfd21b5006e45a2e5b5f2ca99c964cc0bb9cd07bc7e261452",
+    input: "0x",
+    nonce: 0,
+    r: "0x24c10bbb6453bd36be2b291d3b54c0128b9c232b8edbdf4bc5d49f8810ca14b3",
+    s: "0x125bb21059c3dd271f7e6580105f8246a2dcb974d79041247c489683736b8570",
+    to: "0xad7430c568af808d785b7e0b6bab057cf7ee3e24",
+    transactionIndex: null,
+    type: "0x0",
+    v: "0x4d",
+    value: 1000000000000000000
+}]</pre>
+    </div>
+    <div id="para-div">
+      <p>Wait a few seconds and check the status of the sent transaction by executing the following command in the Javascript shell
+        prompt of the <span class="bold">buyer</span> terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> eth.pendingTransactions</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.30</h4>
+      <pre>[]</pre>
+    </div>
+    <div id="para-div">
+      <p>To stop the miner, execute the following command in the Javascript shell prompt of the <span class="bold">bank</span>
+        terminal:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> miner.stop()</p>
+    </div>
+    <div id="para-div">
+      <p>Now, we check the account balances using the Javascript utility function <span class="bold">showBalances</span>, execute
+        the following command in the Javascript shell prompt of each of the 4 terminals:</p>
+    </div>
+    <div id="cmd-div">
+      <p>&gt; showBalances()</p>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">bank</span> terminal, the following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.31</h4>
+      <pre>---> eth.accounts[0]: 0xc95ed0386316e2a985b8ad11178eb83757999d3b 	balance: 20.000021 ether
+undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">buyer</span> terminal, the following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.32</h4>
+      <pre>---> eth.accounts[0]: 0x694d784017852fd6e84a8ebd27ca2162966c40c4 	balance: 8.999979 ether
+undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>In the <span class="bold">dealer</span> terminal, the following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.33</h4>
+      <pre>---> eth.accounts[0]: 0xad7430c568af808d785b7e0b6bab057cf7ee3e24 	balance: 6 ether
+undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>Finally, in the <span class="bold">dmv</span> terminal, the following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.34</h4>
+      <pre>---> eth.accounts[0]: 0x1cf2da205d16f1d9cf485e46aded945e841946fa 	balance: 3 ether
+undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>As is evident from the Output.32 and Output.33 above, the account balance for the <span class="bold">buyer</span> has
+        decreased, while the account balance for the <span class="bold">dealer</span> has increased.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, we will make a few API requests via the JSON-RPC HTTP interface using the <span class="hi-yellow">curl</span> command.
+        Note that the <span class="bold">bank</span> exposes the JSON-RPC HTTP interface at the network endpoint <span class="bold">
+        localhost:8081</span>.</p>
+      <p>In order to execute the <span class="bold">curl</span> commands, open a new terminal window.</p>
+    </div>
+    <div id="para-div">
+      <p>To get the endpoint version, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl --location --request POST 'localhost:8081/' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+        "jsonrpc":"2.0",
+        "method":"web3_clientVersion",
+        "params":[],
+        "id":1
+}'</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.35</h4>
+      <pre>{"jsonrpc":"2.0","id":1,"result":"Geth/bank/v1.10.25-stable-69568c55/linux-amd64/go1.18.6"}</pre>
+    </div>
+    <div id="para-div">
+      <p>To get the list of accounts, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl --location --request POST 'localhost:8081/' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "jsonrpc":"2.0",
+  "method":"eth_accounts",
+  "params":[],
+  "id":1
+}'</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.36</h4>
+      <pre>{"jsonrpc":"2.0","id":1,"result":["0xc95ed0386316e2a985b8ad11178eb83757999d3b"]}</pre>
+    </div>
+    <div id="para-div">
+      <p>To get the balance of a specified account, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl --location --request POST 'localhost:8081/' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "jsonrpc":"2.0",
+  "method":"eth_getBalance",
+  "params":[
+          "0xc95ed0386316e2a985b8ad11178eb83757999d3b", 
+          "latest"
+  ],
+  "id":1
+}'</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.37</h4>
+      <pre>{"jsonrpc":"2.0","id":1,"result":"0x1158e5922855a5000"}</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-green">HOORAY</span> !!! At this point we have successfully demonstrated a 4-node private <span class="bold">
+        Ethereum</span> network using <span class="bold">Docker</span>.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="http://www.polarsparc.com/Ethereum/Ethereum-1.html" target="_blank"><span class="bold">Introduction to Ethereum - Part 1</span></a></p>
+      <p><a href="https://ethereum.org/en/developers/docs/" target="_blank"><span class="bold">Official Ethereum Developer Documentation</span></a></p>
+      <p><a href="https://geth.ethereum.org/docs/interface/private-network" target="_blank"><span class="bold">Ethereum Private Network</span></a></p>
+      <p><a href="https://geth.ethereum.org/docs/interface/command-line-options" target="_blank"><span class="bold">Command-line Options for the Ethereum Go (geth) client</span></a></p>
+      <p><a href="https://geth.ethereum.org/docs/rpc/server" target="_blank"><span class="bold">Ethereum JSON-RPC Server</span></a></p>
+      <p><a href="http://http://www.polarsparc.com/Blockchain/Blockchain.html" target="_blank"><span class="bold">Introduction to Blockchain</span></a></p>
+      <p><a href="http://www.polarsparc.com/Docker/Docker.html" target="_blank"><span class="bold">Introduction to Docker</span></a></p>
+    </div>
+  </body>
+</html>

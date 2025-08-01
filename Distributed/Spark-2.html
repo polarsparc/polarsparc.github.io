@@ -1,0 +1,450 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Apache Spark 2.x Quick Notes :: Part - 2">
+    <meta name="subject" content="Apache Spark 2.x Quick Notes :: Part - 2">
+    <meta name="keywords" content="big data, python, spark">
+    <meta name="robots" content="index,follow">
+    <meta name="googlebot" content="index,follow">
+    <title>Apache Spark 2.x Quick Notes :: Part - 2</title>
+    <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Apache Spark 2.x Quick Notes :: Part - 2</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td"><span class="hi-yellow">*UPDATED*</span>10/05/2019</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Basic Components</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/Distributed/Spark-1.html" target="_blank"><span class="bold">Part-1</span></a>
+        of this series, we introduced Apache Spark as a general purpose distributed computing engine for data processing on a cluster
+        of commodity computers.</p>
+      <p>What does that really mean though ? Let us break it down ...</p>
+      <p>A Spark cluster consists of a <span class="hi-yellow">Driver</span> process running within a <span class="bold">Master</span>
+        node and <span class="hi-yellow">Executor</span> process(es) running within each of the <span class="bold">Worker</span>
+        nodes. When a Spark job is submitted, the Driver partitions and distributes the job as tasks to the Executor process (on
+        different Worker nodes) for further processing. As the application job executes, the Executor process(es) report back the
+        state of the task(s) to the Driver process and thus the Driver maintains the overall status of the application job.</p>
+      <p>Ok - this explains the high-level view of the distributed compute cluster. How does the Driver process know which Executors
+        are available for processing and whom to distribute the tasks to ? This is where the <span class="hi-yellow">
+        Cluster Manager</span> comes into play. The Cluster Manager keeps track of the state of the cluster resources (which
+        Executor process(es) on which Worker nodes are available, etc).</p>
+      <p>The Driver process has a connection to the Cluster Manager via a <span class="hi-yellow">SparkSession</span> or a
+        <span class="hi-yellow">SparkContext</span>. SparkSession is a higher level wrapper around the SparkContext.</p>
+      <p>Hope this all makes sense at a high-level now.</p>
+      <p>The following diagram illustrates the core components and their interaction in Apache Spark:</p>
+      <div id="img-outer-div"> <img alt="Spark Architecture" class="img-cls" src="./images/Spark-06.png" />
+        <div class="img-cap">Spark Architecture</div>
+      </div>
+      <p>The following table summarizes the core components of Apache Spark:</p>
+      <table id="col2-table">
+        <thead>
+          <tr>
+            <th>Component</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="col2-c1-odd"><span class="bold">SparkContext</span></td>
+            <td class="col2-c2-odd">Represents a connection to the cluster</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-even"><span class="bold">SparkSession</span></td>
+            <td class="col2-c2-even">Represents a unified higher level abstraction of the cluster</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-odd"><span class="bold">Driver</span></td>
+            <td class="col2-c2-odd">The process that creates and uses an instance of a <span class="bold">SparkSession</span> or a <span class="bold">SparkContext</span></td>
+          </tr>
+          <tr>
+            <td class="col2-c1-even"><span class="bold">Worker Node</span></td>
+            <td class="col2-c2-even">A node in the cluster that executes application code</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-odd"><span class="bold">Executor</span></td>
+            <td class="col2-c2-odd">A process that is launched for an application on a <span class="bold">Worker Node</span> to execute a unit of work (task)
+              and to store data (in-memory and/or on-disk)</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-even"><span class="bold">Task</span></td>
+            <td class="col2-c2-even">A unit of work that is sent to an <span class="bold">Executor</span></td>
+          </tr>
+          <tr>
+            <td class="col2-c1-odd"><span class="bold">Cluster Manager</span></td>
+            <td class="col2-c2-odd">A service that is responsible for managing resources on the cluster. It decides which applications can use which
+              <span class="bold">Worker Node</span> and accordingly lauches the <span class="bold">Executor</span> process</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Now that we have a basic understanding of the core components of Apache Spark, we can explain some of the variables we
+        defined in the file <span class="hi-yellow">/home/polarsparc/Programs/spark-2.4.4/conf/spark-env.sh</span> during the
+        installation and setup in <a href="https://polarsparc.github.io/Distributed/Spark-1.html" target="_blank"><span class="bold">
+        Part-1</span></a> of this series.</p>
+      <p>The following are the variables along with their respective description:</p>
+      <table id="col2-table">
+        <thead>
+          <tr>
+            <th>Variable</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="col2-c1-odd"><span class="bold">SPARK_IDENT_STRING</span></td>
+            <td class="col2-c2-odd">A string representing a name for this instance of Spark</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-even"><span class="bold">SPARK_DRIVER_MEMORY</span></td>
+            <td class="col2-c2-even">Memory allocated for the Driver process</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-odd"><span class="bold">SPARK_EXECUTOR_CORES</span></td>
+            <td class="col2-c2-odd">The number of CPU cores for use by the Executor process(es)</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-even"><span class="bold">SPARK_EXECUTOR_MEMORY</span></td>
+            <td class="col2-c2-even">Memory allocated for each Executor process</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-odd"><span class="bold">SPARK_LOCAL_IP</span></td>
+            <td class="col2-c2-odd">The IP address used by the Driver and Executor to bind to on this node</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-even"><span class="bold">SPARK_LOCAL_DIRS</span></td>
+            <td class="col2-c2-even">The directory to use on this node for storing data</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-odd"><span class="bold">SPARK_MASTER_HOST</span></td>
+            <td class="col2-c2-odd">The IP address used by the Master to bind to on this node</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-even"><span class="bold">SPARK_WORKER_CORES</span></td>
+            <td class="col2-c2-even">The total number of CPU cores to allow the Worker Node to use on this node</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-odd"><span class="bold">SPARK_WORKER_MEMORY</span></td>
+            <td class="col2-c2-odd">The total amount of memory to allow the Worker Node to use on this node</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-even"><span class="bold">SPARK_WORKER_DIR</span></td>
+            <td class="col2-c2-even">The temporary directory to use on this node by the Worker Node</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-even"><span class="bold">SPARK_EXECUTOR_INSTANCES</span></td>
+            <td class="col2-c2-even">The number of Worker Nodes to start on this node</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Now that we have a good handle on the basics of Apache Spark, let us get our hands dirty with using Apache Spark.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Spark Core</p>
+    </div>
+    <div id="para-div">
+      <p>We will use the Python Spark shell via the Jupyter Notebook to get our hands dirty with Spark Core. So, without much
+        further ado, lets get started !!!</p>
+      <p>Open a terminal and change the current working directory to /home/polarsparc/Projects/Python/Notebooks/Spark</p>
+      <p>Create a sub-directory called <span class="hi-blue">data</span> under the current directory.</p>
+      <p>Next, create a simple text file called <span class="bold">Spark.txt</span> under the <span class="bold">data</span>
+        directory with the following contents about Apache Spark (from Wikipedia):</p>
+      <div id="cmd-div">
+        <p>Apache Spark is an open source cluster computing framework originally developed in the AMPLab at University of California,
+          Berkeley but was later donated to the Apache Software Foundation where it remains today. In contrast to Hadoop's two-stage
+          disk-based MapReduce paradigm, Spark's multi-stage in-memory primitives provides performance up to 100 times faster for
+          certain applications. By allowing user programs to load data into a cluster's memory and query it repeatedly, Spark is
+          well-suited to machine learning algorithms.</p>
+        <p>Spark requires a cluster manager and a distributed storage system. For cluster management, Spark supports standalone (native
+          Spark cluster), Hadoop YARN, or Apache Mesos. For distributed storage, Spark can interface with a wide variety, including
+          Hadoop Distributed File System (HDFS), Cassandra, OpenStack Swift, Amazon S3, Kudu, or a custom solution can be implemented.
+          Spark also supports a pseudo-distributed local mode, usually used only for development or testing purposes, where distributed
+          storage is not required and the local file system can be used instead; in such a scenario, Spark is run on a single machine
+          with one executor per CPU core.</p>
+        <p>Spark had in excess of 465 contributors in 2014, making it not only the most active project in the Apache Software Foundation
+          but one of the most active open source big data projects.</p>
+      </div>
+      <p>In the terminal window, execute the following command to launch the Python Spark shell:</p>
+      <div id="cmd-div">
+        <p>pyspark --master local[1]</p>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>This will also launch a new browser window for the Jupyter notebook. The following diagram illustrates the
+        screenshot of the Jupyter notebook:</p>
+      <div id="img-outer-div"> <img alt="New Jupyter Notebook" class="img-cls" src="./images/Spark-07.png" />
+        <div class="img-cap">New Notebook</div>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>Click on the <span class="bold">New</span> drop-down and click on <span class="bold">Python3</span> to create a new
+        Python notebook. Name the notebook <span class="bold">Spark-Notebook-1</span></p>
+      <p>The following diagram illustrates the screenshot of the Jupyter notebook:</p>
+      <div id="img-outer-div"> <img alt="Python3 Jupyter Notebook" class="img-cls" src="./images/Spark-08.png" />
+        <div class="img-cap">Python3 Notebook</div>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>By default, the Python Spark shell in the notebook creates an instance of the <span class="bold">SparkContext</span>
+        called <span class="hi-yellow">sc</span>. The following diagram illustrates the screenshot of the Jupyter notebook
+        with the pre-defined <span class="bold">SparkContext</span> variable <span class="bold">sc</span>:</p>
+      <div id="img-outer-div"> <img alt="SparkContext in Notebook" class="img-cls" src="./images/Spark-10.png" />
+        <div class="img-cap">SparkContext in Notebook</div>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>In the next cell, type the following command and press ALT + ENTER:</p>
+      <div id="cmd-div">
+        <p>numbers = sc.parallelize(['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'])</p>
+      </div>
+      <p>The <span class="hi-yellow">parallelize()</span> function takes a list as an argument and creates an
+        <span class="hi-green">RDD</span>. An <span class="bold">RDD</span> is the short name for <span class="hi-yellow">
+        Resilient Distributed Dataset</span> and is an immutable collection of objects that is partitioned and distributed
+        across the Worker nodes in a cluster. In other words, an RDD can be operated on in a fault tolerant and parallel
+        manner across the nodes of a cluster.</p>
+      <p>In our example above, <span class="bold">numbers</span> is an RDD.</p>
+      <p>The following diagram illustrates the screenshot of the Jupyter notebook with the <span class="bold">numbers</span>
+        RDD:</p>
+      <div id="img-outer-div"> <img alt="Numbers in Notebook" class="img-cls" src="./images/Spark-11.png" />
+        <div class="img-cap">numbers in Notebook</div>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>In the next cell, type the following command and press ALT + ENTER:</p>
+      <div id="cmd-div">
+        <p>lines = sc.textFile('./data/Spark.txt')</p>
+      </div>
+      <p>The <span class="hi-yellow">textFile()</span> function takes as argument a string that represents the path to a text
+        file and creates an RDD by loading the contents of the file.</p>
+      <p>In our example above, <span class="bold">lines</span> is an RDD with the contents of the file data/Spark.txt.</p>
+      <p>The following diagram illustrates the screenshot of the Jupyter notebook with the <span class="bold">lines</span> RDD:</p>
+      <div id="img-outer-div"> <img alt="Lines in Notebook" class="img-cls" src="./images/Spark-12.png" />
+        <div class="img-cap">lines in Notebook</div>
+      </div>
+      <p>In summary, there are two ways to create an RDD from scratch - using the <span class="bold">parallelize()</span> function
+         on a list or using the <span class="bold">textFile()</span> on a text file.</p>
+    </div>
+    <div id="para-div">
+      <p>In the next cell, type the following command and press ALT + ENTER:</p>
+      <div id="cmd-div">
+        <p>numbers.count()</p>
+      </div>
+      <p>The <span class="hi-yellow">count()</span> function on an RDD is an action that returns the number of elements in the
+        specified RDD.</p>
+      <p>As can be seen from <span class="bold">Out[6]</span>, we got a result of 10 by executing the count() function on the
+        <span class="bold">numbers</span> RDD.</p>
+      <p>In the next cell, type the following command and press ALT + ENTER:</p>
+      <div id="cmd-div">
+        <p>lines.count()</p>
+      </div>
+      <p>As can be seen from <span class="bold">Out[7]</span>, we got a result of 13 by executing the count() function on the
+        <span class="bold">lines</span> RDD.</p>
+      <p>The following diagram illustrates the screenshot of the Jupyter notebook with both the counts:</p>
+      <div id="img-outer-div"> <img alt="Counts in Notebook" class="img-cls" src="./images/Spark-13.png" />
+        <div class="img-cap">Counts in Notebook</div>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>In the next cell, type the following command and press ALT + ENTER:</p>
+      <div id="cmd-div">
+        <p>threes = numbers.filter(lambda s: len(s) == 3)</p>
+      </div>
+      <p>The <span class="hi-yellow">filter()</span> function on an RDD is a transformation that returns another RDD that
+        contains elements from the specified RDD that satisfy the lambda function that was passed to the filter() function.</p>
+      <p>Tranformation functions are not executed immediately. Instead, they are lazily evaluated; they are evaluated only
+        when an action function is invoked on them.</p>
+      <p>In our example above, we create a new RDD called <span class="bold">threes</span> by filtering (selecting) all the
+        words with 3 letters from the <span class="bold">numbers</span> RDD.</p>
+      <p>In the next cell, type the following command and press ALT + ENTER:</p>
+      <div id="cmd-div">
+        <p>sparks = lines.filter(lambda s: 'spark' in s.lower())</p>
+      </div>
+      <p>In our example above, we create a new RDD called <span class="bold">sparks</span> by filtering (selecting) all the
+        lines that contain the word <span class="bold">spark</span> from the <span class="bold">lines</span> RDD.</p>
+      <p>The following diagram illustrates the screenshot of the Jupyter notebook with both the filtered RDDs:</p>
+      <div id="img-outer-div"> <img alt="Filters in Notebook" class="img-cls" src="./images/Spark-14.png" />
+        <div class="img-cap">Filters in Notebook</div>
+      </div>
+      <p>In summary, RDDs support two types of operations - actions and transformations.</p>
+      <p>Transformations return a new RDD from a specified previous RDD, while Actions compute results that are returned to
+        the Driver.</p>
+    </div>
+    <div id="para-div">
+      <p>In the next cell, type the following command and press ALT + ENTER:</p>
+      <div id="cmd-div">
+        <p>threes.foreach(lambda s: print(s))</p>
+      </div>
+      <p>The <span class="hi-yellow">foreach()</span> function on an RDD is an action that applies the specified lambda
+        function to each element of the specified RDD.</p>
+      <p>Note that the output is displayed on the terminal window (stdout). As can be seen from the output in the terminal,
+        we got a result of one, two, and six by executing the <span class="bold">foreach()</span> function on the
+        <span class="bold">threes</span> RDD.</p>
+      <p>In the next cell, type the following command and press ALT + ENTER:</p>
+      <div id="cmd-div">
+        <p>sparks.take(3)</p>
+      </div>
+      <p>The <span class="hi-yellow">take()</span> function on an RDD is also an action that returns the specified number
+        of elements from the specified RDD.</p>
+      <p>As can be seen from <span class="bold">Out[11]</span>, we get the 3 lines as a list by executing the
+        <span class="bold">take(3)</span> function on the <span class="bold">sparks</span> RDD.</p>
+      <p>The following diagram illustrates the screenshot of the Jupyter notebook with both the actions:</p>
+      <div id="img-outer-div"> <img alt="Actions in Notebook" class="img-cls" src="./images/Spark-15.png" />
+        <div class="img-cap">Actions in Notebook</div>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>In the next cell, type the following command and press ALT + ENTER:</p>
+      <div id="cmd-div">
+        <p>uppers = threes.map(lambda s : s.upper()</p>
+      </div>
+      <p>The <span class="hi-yellow">map()</span> function on an RDD is a transformation that returns another RDD by applying
+        the specified lambda function to each element of the specified RDD.</p>
+      <p>In our example above, we create a new RDD called <span class="bold">uppers</span> by converting all the words in the
+        <span class="bold">threes</span> RDD to uppercase.</p>
+      <p>In the next cell, type the following command and press ALT + ENTER:</p>
+      <div id="cmd-div">
+        <p>uppers.collect()</p>
+      </div>
+      <p>The <span class="hi-yellow">collect()</span> function on an RDD is an action that returns all the elements from
+         the specified RDD. Be very <span class="hi-pink">CAUTIOUS</span> of using this function - this function expects all
+         the objects of the RDD to fit in memory of a single node.</p>
+      <p>As can be seen from <span class="bold">Out[13]</span>, we get the 3 words as a list by executing the
+        <span class="bold">collect()</span> function on the <span class="bold">uppers</span> RDD.</p>
+      <p>The following diagram illustrates the screenshot of the Jupyter notebook with the <span class="bold">uppers</span>
+        RDD:</p>
+      <div id="img-outer-div"> <img alt="Map in Notebook" class="img-cls" src="./images/Spark-16.png" />
+        <div class="img-cap">Map in Notebook</div>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>In the next cell, type the following command and press ALT + ENTER:</p>
+      <div id="cmd-div">
+        <p>words = sparks.flatMap(lambda s : s.split(' '))</p>
+      </div>
+      <p>The <span class="hi-yellow">flatMap()</span> function on an RDD is a transformation that applies the specified lambda
+         function to each element of the specified RDD and returns a new RDD with the objects from the iterators returned by the
+         lambda function.</p>
+      <p>In our example above, we create a new RDD called <span class="bold">words</span> by converting all the lines from the
+         <span class="bold">sparks</span> RDD into words.</p>
+      <p>In the next cell, type the following command and press ALT + ENTER:</p>
+      <div id="cmd-div">
+        <p>words.countByValue()</p>
+      </div>
+      <p>The <span class="hi-yellow">countByValue()</span> function on an RDD is an action that returns the number of times
+         each element occurs in the specified RDD.</p>
+      <p>As can be seen from <span class="bold">Out[15]</span>, we get a dictionary of all the words along with their
+        respective counts by executing the <span class="bold">countByValue()</span> function on the <span class="bold">words
+        </span> RDD.</p>
+      <p>The following diagram illustrates the screenshot of the Jupyter notebook with the <span class="bold">words</span>
+        RDD:</p>
+      <div id="img-outer-div"> <img alt="Wordcount in Notebook" class="img-cls" src="./images/Spark-17.png" />
+        <div class="img-cap">Wordcount in Notebook</div>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>To wrap up this part, let us summarize all the transformation and action functions we used thus far in this part.</p>
+      <p>The following is the summary of the RDD transformation functions we used in this part:</p>
+      <table id="col2-table">
+        <thead>
+          <tr>
+            <th>Tranformation Function</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+              <td class="col2-c1-odd"><span class="bold">parallelize</span></td>
+              <td class="col2-c2-odd">Takes a list of elements as input anc converts it into an RDD</td>
+            </tr>
+          <tr>
+            <td class="col2-c1-even"><span class="bold">textFile</span></td>
+            <td class="col2-c2-even">Takes a string that represents a path to a text file and loads the contents into an RDD</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-odd"><span class="bold">filter</span></td>
+            <td class="col2-c2-odd">Executed to an existing RDD. Takes a lambda function as input and applies the specified lambda
+              function to each element of the existing RDD. Returns a new RDD with only those elements that evaluated to true when
+              the specified lambda function was applied</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-even"><span class="bold">map</span></td>
+            <td class="col2-c2-even">Executed to an existing RDD. Takes a lambda function as input and returns a new RDD by applying
+              the specified lambda function to each element of the existing RDD</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-odd"><span class="bold">flatMap</span></td>
+            <td class="col2-c2-odd">Executed to an existing RDD. Takes a lambda function as input and applies the specified lambda
+              function to each element of the existing RDD. The lambda function returns an iterator for each element. Returns a new
+              RDD which is a collection of all the elements from all the iterators after flattening them</td>
+          </tr>
+        </tbody>
+      </table>
+      <p>The following is the summary of the RDD action functions we used in this part:</p>
+      <table id="col2-table">
+        <thead>
+          <tr>
+            <th>Action Function</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+            <tr>
+              <td class="col2-c1-odd"><span class="bold">count</span></td>
+              <td class="col2-c2-odd">Executed to an existing RDD. Returns the number of elements in the specified RDD</td>
+            </tr>
+          <tr>
+            <td class="col2-c1-even"><span class="bold">foreach</span></td>
+            <td class="col2-c2-even">Executed to an existing RDD. Takes a lambda function as input and applies the specified lambda
+              function to each element of the specified RDD. There is no return value</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-odd"><span class="bold">take</span></td>
+            <td class="col2-c2-odd">Executed to an existing RDD. Takes a integer as input and returns the specified number of elements
+              from the specified RDD</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-even"><span class="bold">collect</span></td>
+            <td class="col2-c2-even">Executed to an existing RDD. Returns all the elements from the specified RDD. Use this function
+              with CAUTION as all the elements from the specified RDD must to fit in memory of this node</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-odd"><span class="bold">countByValue</span></td>
+            <td class="col2-c2-odd">Executed to an existing RDD. Returns the number of times each element occurs in the specified RDD</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <br />
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/Distributed/Spark-1.html" target="_blank"><span class="bold">Apache Spark 2.x Quick Notes :: Part - 1</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

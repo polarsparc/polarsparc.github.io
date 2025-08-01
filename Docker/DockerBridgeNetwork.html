@@ -1,0 +1,582 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="Docker Bridge Network" content="author: Bhaskar.S, category: containers, docker, linux">
+    <title>Docker Bridge Network</title>
+    <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Docker Bridge Network</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">10/08/2018</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <span class="bold">Docker</span>, the default network driver used is the <span class="hi-yellow">bridge</span>
+        network.</p>
+      <p>A <span class="bold">bridge</span> network operates at <span class="bold">Layer 2</span> (<span class="bold">Data
+        Link</span> layer) of the OSI network model. In <span class="bold">Docker</span>, the <span class="bold">bridge</span>
+        network is implemented as a virtual device (in software) that allows for the various <span class="bold">Docker</span>
+        containers connected to the same <span class="bold">bridge</span> network (on a single host) to communicate with each
+        other, while isolating them from the <span class="bold">Docker</span> containers connected to a different
+        <span class="bold">bridge</span> network.</p>
+    </div>
+    <div id="section-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>All the commands will be executed on a <span class="bold">Ubuntu 18.04 LTS (bionic)</span> based Linux desktop.</p>
+    </div>
+    <div id="para-div">
+      <p>Ensure <span class="bold">Docker</span> is installed by following the installation steps from the article
+        <a href="http://polarsparc.github.io/Docker/Docker.html" target="_blank"><span class="bold">Introduction to Docker</span>
+        </a>.</p>
+      <p>Before we get started, we will need to install the <span class="hi-yellow">bridge-utils</span> package that contains
+        an utility program called <span class="hi-yellow">brctl</span> to create and manage virtual <span class="bold">bridge</span>
+        devices in Linux.</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt-get install bridge-utils</p>
+    </div>
+    <div id="para-div">
+      <p>We should be ready to get started now.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Docker Bridge Networking</p>
+    </div>
+    <div id="para-div">
+      <p>Once <span class="bold">Docker</span> is installed on a host machine, the first time the <span class="bold">
+        Docker</span> daemon starts up, it creates a virtual <span class="bold">bridge</span> device called
+        <span class="hi-green">docker0</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To confirm this, execute the following command in a terminal window:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ brctl show</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>bridge name  bridge id   STP enabled interfaces
+docker0   8000.0242ea41387c no</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the networks created by <span class="bold">Docker</span> on the host, execute the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker network ls</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>NETWORK ID          NAME                  DRIVER              SCOPE
+7b8cd1a892be        bridge                bridge              local
+5c1dd3c2f31e        host                  host                local
+78860686c08d        none                  null                local</pre>
+    </div>
+    <div id="para-div">
+      <p>From Output.2, one of the network drivers is the <span class="bold">bridge</span> network. Also, the
+        <span class="bold">SCOPE</span> of local means single-host network.</p>
+    </div>
+    <div id="para-div">
+      <p>To display detailed information about the <span class="bold">bridge</span> network, execute the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker network inspect bridge</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>[
+    {
+        "Name": "bridge",
+        "Id": "7e86596c2ead077805fab4a32de3136720a72bf9f34ea1be883afd0aa7a6ea21",
+        "Created": "2018-10-07T13:23:36.164779253-04:00",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": null,
+            "Config": [
+                {
+                    "Subnet": "172.17.0.0/16",
+                    "Gateway": "172.17.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Containers": {},
+        "Options": {
+            "com.docker.network.bridge.default_bridge": "true",
+            "com.docker.network.bridge.enable_icc": "true",
+            "com.docker.network.bridge.enable_ip_masquerade": "true",
+            "com.docker.network.bridge.host_binding_ipv4": "0.0.0.0",
+            "com.docker.network.bridge.name": "docker0",
+            "com.docker.network.driver.mtu": "1500"
+        },
+        "Labels": {}
+    }
+]</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the network interfaces on the host, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ip link show</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: enp2s0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc fq_codel state DOWN mode DEFAULT group default qlen 1000
+    link/ether 12:34:56:78:90:ab brd ff:ff:ff:ff:ff:ff
+3: wlp3s0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc mq state UP mode DORMANT group default qlen 1000
+    link/ether cd:ef:01:23:45:67 brd ff:ff:ff:ff:ff:ff
+4: docker0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default 
+    link/ether 02:42:0a:95:43:ea brd ff:ff:ff:ff:ff:ff</pre>
+    </div>
+    <div id="para-div">
+      <p>To fetch a pre-built <span class="bold">Docker Image</span> for the latest version of Alpine from the
+        <a target="_blank" href="https://hub.docker.com/"><span class="bold">Docker Hub</span></a> registry and store it
+        on the host, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker pull alpine</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>Using default tag: latest
+latest: Pulling from library/alpine
+4fe2ade4980c: Pull complete 
+Digest: sha256:621c2f39f8133acb8e64023a94dbdf0d5ca81896102b9e57c0dc184cadaf5528
+Status: Downloaded newer image for alpine:latest</pre>
+    </div>
+    <div id="para-div">
+      <p>We will now create and launch two <span class="bold">Docker</span> containers named <span class="bold">dc-1</span>
+        and <span class="bold">dc-2</span> respectively, using the just downloaded Alpine image.</p>
+      <p>Execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -dt --name dc-1 alpine</p>
+      <p>$ docker run -dt --name dc-2 alpine</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the running <span class="bold">Docker</span> containers, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker ps</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>CONTAINER ID    IMAGE     COMMAND      CREATED           STATUS          PORTS       NAMES
+0cd0fa5356db    alpine    "/bin/sh"    6 seconds ago     Up 5 seconds                dc-2
+fd6f950035a8    alpine    "/bin/sh"    13 seconds ago    Up 11 seconds               dc-1</pre>
+    </div>
+    <div id="para-div">
+      <p>We will re-run the  <span class="bold">inspect</span> command on the <span class="bold">bridge</span> network
+      by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker network inspect bridge</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>[
+    {
+        "Name": "bridge",
+        "Id": "7b8cd1a892be50ab128cc0ffa545db6e53a59efa0223718c3047efa672c9066d",
+        "Created": "2018-10-08T07:36:26.09516181-04:00",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": null,
+            "Config": [
+                {
+                    "Subnet": "172.17.0.0/16",
+                    "Gateway": "172.17.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Containers": {
+            "0cd0fa5356db7ffa93c95dc1609a106349e43b19a21963c4109f09e42231cc45": {
+                "Name": "dc-2",
+                "EndpointID": "c0c1712a6d4a450b357d79ee42056c468ce43476179a46f479bcaf355e0e12c6",
+                "MacAddress": "02:42:ac:11:00:03",
+                "IPv4Address": "172.17.0.3/16",
+                "IPv6Address": ""
+            },
+            "fd6f950035a8d0ea62abee4eabe33f3a28bd5aa73217731d1dc6926099580158": {
+                "Name": "dc-1",
+                "EndpointID": "c20334e562f45bde07b2bc164a2244b0f6a14f0cdae3379667e50ebbe68419ba",
+                "MacAddress": "02:42:ac:11:00:02",
+                "IPv4Address": "172.17.0.2/16",
+                "IPv6Address": ""
+            }
+        },
+        "Options": {
+            "com.docker.network.bridge.default_bridge": "true",
+            "com.docker.network.bridge.enable_icc": "true",
+            "com.docker.network.bridge.enable_ip_masquerade": "true",
+            "com.docker.network.bridge.host_binding_ipv4": "0.0.0.0",
+            "com.docker.network.bridge.name": "docker0",
+            "com.docker.network.driver.mtu": "1500"
+        },
+        "Labels": {}
+    }
+]</pre>
+    </div>
+    <div id="para-div">
+      <p>From Output.7, we see the two <span class="bold">Docker</span> containers along with their MAC and IP addresses.</p>
+    </div>
+    <div id="para-div">
+      <p>When a <span class="bold">Docker</span> container is created, the <span class="bold">Docker</span> daemon automatically
+        creates a pair of virtual network interfaces, assigning one of the pairs as the <span class="bold">eth0</span> interface
+        of the container, while dynamically attaching the other pair to the <span class="bold">docker0</span> bridge in the
+        namespace of the host.</p>
+    </div>
+    <div id="para-div">
+      <p>Let us re-run the command to list all the network interfaces on the host by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ip link show</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: enp10s0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP mode DEFAULT group default qlen 1000
+    link/ether 12:34:56:78:90:ab brd ff:ff:ff:ff:ff:ff
+3: wlp3s0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc mq state DOWN mode DORMANT group default qlen 1000
+    link/ether cd:ef:01:23:45:67 brd ff:ff:ff:ff:ff:ff
+4: docker0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue state UP mode DEFAULT group default 
+    link/ether 02:42:ea:41:38:7c brd ff:ff:ff:ff:ff:ff
+5: vetha6aed86@if10: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue master docker0 state UP mode DEFAULT group default 
+    link/ether 86:1d:96:f2:bc:d4 brd ff:ff:ff:ff:ff:ff link-netnsid 0
+6: vethb212b16@if12: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue master docker0 state UP mode DEFAULT group default 
+    link/ether 96:e0:bd:71:fe:ee brd ff:ff:ff:ff:ff:ff link-netnsid 1</pre>
+    </div>
+    <div id="para-div">
+      <p>From Output.8, we see the two new virtual network interfaces, whose names start with <span class="hi-yellow">veth</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Figure-1 illustrates the pictorial view of the virtual network interfaces with the two <span class="bold">
+        Docker</span> containers running on the host:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/DockerBridge.png" class="img-cls" alt="Docker Bridge" />
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <div id="para-div">
+      <p>Open a new terminal window and attach to the <span class="bold">Docker</span> container <span class="bold">dc-1</span>
+        by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker exec -it dc-1 sh</p>
+    </div>
+    <div id="para-div">
+      <p>At the prompt, one can ping either of the <span class="bold">Docker</span> containers using their respective IP addresses,
+        including the host IP address. However, trying to ping the <span class="bold">Docker</span> containers by their names
+        <span class="bold">dc-1</span> and <span class="bold">dc-2</span> will not work as there is no automatic DNS resolution
+        support in the default <span class="bold">bridge</span> network <span class="bold">docker0</span>.</p>
+      <p>This is where a user-defined custom <span class="bold">bridge</span> network comes in handy as it provides support for
+        automatic DNS name resolution.</p>
+    </div>
+    <div id="para-div">
+      <p>Let us now stop and clean-up the two running <span class="bold">Docker</span> containers <span class="bold">dc-1</span>
+        and <span class="bold">dc-2</span> by executing the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker stop 0cd0fa5356db fd6f950035a8</p>
+      <p>$ docker rm 0cd0fa5356db fd6f950035a8</p>
+    </div>
+    <div id="para-div">
+      <p>The above command(s) will also remove the virtual network interfaces from the host namespace.</p>
+    </div>
+    <div id="para-div">
+      <p>To create a user-defined custom <span class="bold">bridge</span> network on the host, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker network create -d bridge --subnet 10.5.0.1/16 --gateway 10.5.0.1 ps-bridge</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>a0a644ed328955ca8f3318d4cf57160a51d4962176d4366db272713a55c246db</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the networks created by <span class="bold">Docker</span> on the host, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker network ls</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>NETWORK ID          NAME                  DRIVER              SCOPE
+7b8cd1a892be        bridge                bridge              local
+5c1dd3c2f31e        host                  host                local
+78860686c08d        none                  null                local
+a0a644ed3289        ps-bridge             bridge              local</pre>
+    </div>
+    <div id="para-div">
+      <p>To display detailed information about the custom <span class="bold">ps-bridge</span> network, execute the following
+        command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker network inspect ps-bridge</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>[
+    {
+        "Name": "ps-bridge",
+        "Id": "a0a644ed328955ca8f3318d4cf57160a51d4962176d4366db272713a55c246db",
+        "Created": "2018-10-08T20:17:59.437419108-04:00",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": {},
+            "Config": [
+                {
+                    "Subnet": "10.5.0.1/16",
+                    "Gateway": "10.5.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Containers": {},
+        "Options": {},
+        "Labels": {}
+    }
+]</pre>
+    </div>
+    <div id="para-div">
+      <p>To display the list of network <span class="bold">bridge</span>s on the host, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ brctl show</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>bridge name  bridge id   STP enabled interfaces
+br-a0a644ed3289   8000.0242792bb990 no    
+docker0   8000.0242ea41387c no</pre>
+    </div>
+    <div id="para-div">
+      <p>Let us re-run the command to list all the network interfaces on the host by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ip link show</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: enp10s0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP mode DEFAULT group default qlen 1000
+    link/ether 12:34:56:78:90:ab brd ff:ff:ff:ff:ff:ff
+3: wlp3s0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc mq state DOWN mode DORMANT group default qlen 1000
+    link/ether cd:ef:01:23:45:67 brd ff:ff:ff:ff:ff:ff
+4: docker0: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default 
+    link/ether 02:42:ea:41:38:7c brd ff:ff:ff:ff:ff:ff
+5: br-a0a644ed3289: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc noqueue state DOWN mode DEFAULT group default 
+    link/ether 02:42:79:2b:b9:90 brd ff:ff:ff:ff:ff:ff</pre>
+    </div>
+    <div id="para-div">
+      <p>From Output.13, we see the new virtual network interface, whose names start with <span class="hi-yellow">br-</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Let us now re-create and launch two <span class="bold">Docker</span> containers named <span class="bold">dc-1</span>
+        and <span class="bold">dc-2</span> respectively, on the custom network <span class="bold">bridge</span> using the Alpine
+        <span class="bold">Docker</span> image.</p>
+      <p>Execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -dt --name dc-1 --network ps-bridge alpine</p>
+      <p>$ docker run -dt --name dc-2 --network ps-bridge alpine</p>
+    </div>
+    <div id="para-div">
+      <p>We will re-run the  <span class="bold">inspect</span> command on the custom <span class="bold">ps-bridge</span> network
+        by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker network inspect ps-bridge</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>[
+    {
+        "Name": "ps-bridge",
+        "Id": "a0a644ed328955ca8f3318d4cf57160a51d4962176d4366db272713a55c246db",
+        "Created": "2018-10-08T20:17:59.437419108-04:00",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": {},
+            "Config": [
+                {
+                    "Subnet": "10.5.0.1/16",
+                    "Gateway": "10.5.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Containers": {
+            "5ce4cc7d6d2347288bf5a27c97925ed67e218ee3e3db6ff114bfe690477b35ef": {
+                "Name": "dc-2",
+                "EndpointID": "65cc718e901345634b62cf1e7cfc3ba7488afe63e147deb1e65398576e6c727a",
+                "MacAddress": "02:42:0a:05:00:03",
+                "IPv4Address": "10.5.0.3/16",
+                "IPv6Address": ""
+            },
+            "80ab49fe31ab46072bd0d15b93077b4abfe1fb49c6e992898fb991a0d220de5f": {
+                "Name": "dc-1",
+                "EndpointID": "14ab7d5ea9dcd5e1bd2cc4a28871658b088c6f6c850aa24da6cac337132db36c",
+                "MacAddress": "02:42:0a:05:00:02",
+                "IPv4Address": "10.5.0.2/16",
+                "IPv6Address": ""
+            }
+        },
+        "Options": {},
+        "Labels": {}
+    }
+]</pre>
+    </div>
+    <div id="para-div">
+      <p>From Output.14, we see the two <span class="bold">Docker</span> containers along with their MAC and IP addresses.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a new terminal window and attach to the <span class="bold">Docker</span> container <span class="bold">dc-1</span>
+        by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker exec -it dc-1 sh</p>
+    </div>
+    <div id="para-div">
+      <p>At the prompt, one can ping either of the <span class="bold">Docker</span> containers using their respective IP addresses,
+        or container names (<span class="bold">dc-1</span> and <span class="bold">dc-2</span>).</p>
+    </div>
+    <div id="para-div">
+      <p>If we create and launch <span class="bold">Docker</span> container(s) on the default <span class="bold">docker0</span>
+        network, they will be isolated from the <span class="bold">Docker</span> containers in the custom <span class="bold">
+        ps-bridge</span> network.</p>
+    </div>
+    <div id="para-div">
+      <p>Let us now stop and clean-up the two running <span class="bold">Docker</span> containers <span class="bold">dc-1</span>
+        and <span class="bold">dc-2</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To remove the user-defined custom <span class="bold">ps-bridge</span> network, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker network rm ps-bridge</p>
+    </div>
+    <div id="para-div">
+      <p>Thats it on <span class="bold">Docker</span> bridge networking.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="http://polarsparc.github.io/Docker/Docker.html" target="_blank"><span class="bold">Introduction to Docker</span></a></p>
+      <p><a href="https://docs.docker.com/network/bridge/" target="_blank"><span class="bold">Use bridge networks</span></a></p>
+      <p><a href="https://docs.docker.com/network/network-tutorial-standalone/" target="_blank"><span class="bold">Networking with 
+        standalone containers</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

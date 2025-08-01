@@ -1,0 +1,1065 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="Introduction to Docker Swarm (ARM Edition)" content="author: Bhaskar.S, category: arm, docker, swarm">
+    <title>Introduction to Docker Swarm (ARM Edition)</title>
+    <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Introduction to Docker Swarm (ARM Edition)</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">01/06/2019</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">Docker Swarm</span> is a native clustering and orchestration solution from Docker that
+        enables to bring together a bunch of machines (either physical or virtual) running <span class="bold">Docker</span>,
+        to form a cluster such that the group of nodes appear to work together as a single virtual system. Once the cluster
+        is formed, one can issue command to start a container and <span class="bold">Docker Swarm</span> will seemlessly
+        orchestrate the request and schedule the container to run on any of the underlying node(s). As a result, this
+        capability enables one scale, load balance, discovery, and provide high-availability for container services.</p>
+      <p>Note that we will be using the terms <span class="bold">host</span>(s), <span class="bold">machine</span>(s), and
+        <span class="bold">node</span>(s) interchangeably. It is the entity running the <span class="bold">Docker</span>
+        daemon.</p>
+      <p>The foundational element that enables this native cluster management in <span class="bold">Docker Swarm</span> is
+        the <span class="hi-yellow">overlay</span> network. The <span class="bold">overlay</span> network driver is layered
+        on top of the host network (also referred to as the <span class="hi-yellow">underlay</span> network) and creates a
+        distributed network amongst the group of nodes running <span class="bold">Docker</span>.</p>
+      <p>In <a href="http://polarsparc.github.io/Docker/Docker.html" target="_blank"><span class="bold">Introduction to Docker
+        </span></a>, we used the <span class="hi-blue">docker run</span> commands to start a container application on a single
+        node running <span class="bold">Docker</span>. This concept is abstracted to a higher level for <span class="bold">
+        Docker Swarm</span> and is replaced by the <span class="hi-blue">docker service</span> commands since we want multiple
+        instances (replicas) of the container in the cluster. An instance of container running in <span class="bold">Docker
+        Swarm</span> is referred to as a <span class="hi-yellow">Task</span>. It is the atomic scheduling unit for the cluster.
+        A collection of <span class="bold">task</span>(s) forms a <span class="hi-yellow">Service</span>. A <span class="bold">
+        service</span> can either be of type <span class="hi-yellow">Replicated</span> or <span class="hi-yellow">Global</span>.</p>
+      <p>For <span class="bold">Replicated</span> service(s), <span class="bold">Docker Swarm</span> schedules and distributes
+        a specified number of task(s) (replicas) on the nodes of the cluster.</p>
+      <p>For <span class="bold">Global</span> service(s), <span class="bold">Docker Swarm</span> schedules one instance of a
+        task on each node in the cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Figure-1 illustrates the high-level architectural overview of a <span class="bold">Docker Swarm</span>:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/DockerSwarm-1.png" class="img-cls" alt="Docker Swarm" />
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <div id="para-div">
+      <p>The core components that make <span class="bold">Docker Swarm</span> are as follows:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">Swarm Node</span> :: a node (running <span class="bold">Docker</span>) participating in
+            the <span class="bold">Docker Swarm</span> cluster. There are two types of nodes - <span class="hi-blue">
+            Manager</span> node(s) and <span class="hi-blue">Worker</span> node(s)</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Swarm Manager</span> :: node responsible for the management of the cluster as well as
+            the orchestration and scheduling of <span class="bold">service</span>(s) on the nodes in the cluster. When a
+            <span class="bold">service</span> is deployed to the cluster, the request is dispatched through this node</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Raft Consensus</span> :: there can be more than one instance of the <span class="bold">
+            Manager</span> running in the cluster for fault-tolerance and high-availability. When there are multiple instances
+            of <span class="bold">Manager</span> nodes, they use the <a href="https://raft.github.io/" target="_blank">
+            <span class="bold">Raft Consensus Algorithm</span></a> to elect a leader (Primary <span class="bold">Manager</span>
+            node) and the rest become the followers (Secondary <span class="bold">Manager</span> node(s))</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Distributed Key-Value Store</span> :: For consistency, the leader <span class="bold">
+            Manager</span> node is responsible for maintaining the state of the cluster as well as the state of the
+            <span class="bold">service</span>(s) and their running <span class="bold">task</span>(s). This state information
+            is persisted in the internal distributed key-value store and shared with the follower <span class="bold">
+            Manager</span> node(s). This distributed key-value store is also used for <span class="bold">service</span>
+            discovery</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Swarm Worker</span> :: node that receives requests from the <span class="bold">Manager
+            </span> node(s) to execute <span class="bold">task</span>(s) (i.e., run container(s)). By default, the
+            <span class="bold">Manager</span> node(s) are also <span class="bold">Worker</span> node(s). The <span class="bold">
+            Worker</span> node(s) periodically report back the status of the currently running <span class="bold">task</span>(s)
+            as well as heartbeats (to indicate the health of the <span class="bold">Worker</span> node) back to the Primary
+            <span class="bold">Manager</span> node</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Gossip</span> :: as <span class="bold">service</span>(s) are deployed across the
+            <span class="bold">Worker</span> node(s) in the cluster, the <span class="bold">Worker</span> node(s) gossip
+            (broadcast information) about the running <span class="bold">service</span>(s) with the other <span class="bold">
+            Worker</span> node(s) in the cluster so each of the <span class="bold">Worker</span> node(s) are aware of where
+            a particular <span class="bold">service</span> is running. This way when a service request comes to a node, the
+            request can be intelligently routed to the appropriate node(s) even if that service is not running on the node
+            receiving the request</p>
+        </li>
+      </ul>
+    </div>
+    <div id="section-div">
+      <p>Installation</p>
+    </div>
+    <div id="para-div">
+      <p>The installation will be on a 5-node cluster running Linux.</p>
+    </div>
+    <div id="para-div">
+      <p>For this tutorial, let us assume the 5-nodes in the cluster to have the following host names and ip addresses:</p>
+    </div>
+    <table id="col2-table">
+    <thead>
+    <tr>
+      <th>Host name</th>
+      <th>IP Address</th>
+    </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="col2-c1-odd">my-node-1</td>
+        <td class="col2-c2-odd">192.168.1.201</td>
+      </tr>
+      <tr>
+        <td class="col2-c1-even">my-node-2</td>
+        <td class="col2-c2-even">192.168.1.202</td>
+      </tr>
+      <tr>
+        <td class="col2-c1-odd">my-node-3</td>
+        <td class="col2-c2-odd">192.168.1.203</td>
+      </tr>
+      <tr>
+        <td class="col2-c1-even">my-node-4</td>
+        <td class="col2-c2-even">192.168.1.204</td>
+      </tr>
+      <tr>
+        <td class="col2-c1-odd">my-node-5</td>
+        <td class="col2-c2-odd">192.168.1.205</td>
+      </tr>
+    </tbody>
+    </table>
+    <div id="para-div">
+      <p>Open a Terminal window and open a tab for each of the 5 nodes my-node-1 thru my-node-5. In each of the Terminal tabs,
+        <span class="bold">ssh</span> into the corresponding node.</p>
+    </div>
+    <div id="para-div">
+      <p>To install the <span class="bold">Docker</span> on each of the nodes my-node-&lt;N&gt;, where &lt;N&gt; ranges from 1
+        thru 5, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl -fsSL https://get.docker.com -o get-docker.sh</p>
+      <p>$ sudo sh get-docker.sh</p>
+      <p>$ sudo usermod -aG docker $USER</p>
+      <p>$ sudo shutdown -r now</p>
+    </div>
+    <div id="para-div">
+      <p>Once <span class="bold">reboot</span> completes, execute the following command to check everything was ok:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker info</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Containers: 0
+ Running: 0
+ Paused: 0
+ Stopped: 0
+Images: 0
+Server Version: 18.09.0
+Storage Driver: overlay2
+ Backing Filesystem: extfs
+ Supports d_type: true
+ Native Overlay Diff: true
+Logging Driver: json-file
+Cgroup Driver: cgroupfs
+Plugins:
+ Volume: local
+ Network: bridge host macvlan null overlay
+ Log: awslogs fluentd gcplogs gelf journald json-file local logentries splunk syslog
+Swarm: inactive
+Runtimes: runc
+Default Runtime: runc
+Init Binary: docker-init
+containerd version: c4446665cb9c30056f4998ed953e6d4ff22c7c39
+runc version: 4fc53a81fb7c994640722ac585fa9ca548971871
+init version: fec3683
+Security Options:
+ seccomp
+  Profile: default
+Kernel Version: 4.14.79-v7+
+Operating System: Raspbian GNU/Linux 9 (stretch)
+OSType: linux
+Architecture: armv7l
+CPUs: 4
+Total Memory: 927.2MiB
+Name: my-node-2
+ID: KJPD:V6VV:7Z7A:3GCU:DJ5Z:2WYO:4HUH:TT56:RO4N:DTXI:JHHY:UJXL
+Docker Root Dir: /var/lib/docker
+Debug Mode (client): false
+Debug Mode (server): false
+Registry: https://index.docker.io/v1/
+Labels:
+Experimental: false
+Insecure Registries:
+ 127.0.0.0/8
+Live Restore Enabled: false
+Product License: Community Engine
+
+WARNING: No memory limit support
+WARNING: No swap limit support
+WARNING: No kernel memory limit support
+WARNING: No oom kill disable support
+WARNING: No cpu cfs quota support
+WARNING: No cpu cfs period support</pre>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on with Docker Swarm</p>
+    </div>
+    <div id="para-div">
+      <p>For starters, we will make the node <span class="bold">my-node-1</span> the <span class="bold">Manager</span>
+        node. Initializing <span class="bold">Docker Swarm</span> on a node will by default make it the <span class="bold">
+        Manager</span> node. To do that, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker swarm init</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Swarm initialized: current node (yhlsk4xkisyt4sudja739tein) is now a manager.
+
+To add a worker to this swarm, run the following command:
+
+    docker swarm join --token SWMTKN-1-05371dg4yidjg9cyjj9bqmksrvbwr2aemjkzktzs9bb32m6696-1xnlvxjiy5uzp9ve23qzg0nl2 192.168.1.201:2377
+
+To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the node(s) in <span class="bold">Docker Swarm</span> cluster, execute the following command on
+        <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker node ls</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>ID                            HOSTNAME    STATUS   AVAILABILITY   MANAGER STATUS   ENGINE VERSION
+yhlsk4xkisyt4sudja739tein *   my-node-1   Ready    Active         Leader           18.09.0</pre>
+    </div>
+    <div id="para-div">
+      <p>Since there is only one <span class="bold">Manager</span> node, that will be the leader by default. This is evident
+        from the Output.3 above.</p>
+    </div>
+    <div id="para-div">
+      <p>To get the command to join the <span class="bold">Docker Swarm</span> as a <span class="bold">Worker</span> node,
+      execute the following command on <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker swarm join-token worker</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>To add a worker to this swarm, run the following command:
+
+    docker swarm join --token SWMTKN-1-05371dg4yidjg9cyjj9bqmksrvbwr2aemjkzktzs9bb32m6696-1xnlvxjiy5uzp9ve23qzg0nl2 192.168.1.201:2377</pre>
+    </div>
+    <div id="para-div">
+      <p>For this tutorial, we desire that nodes <span class="bold">my-node-2</span> thru <span class="bold">my-node-5</span>
+        be the <span class="bold">Worker</span> nodes of the <span class="bold">Docker Swarm</span> cluster. For each of the
+        nodes <span class="bold">my-node-2</span> thru <span class="bold">my-node-5</span> (in their respective Terminal tabs),
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker swarm join --token SWMTKN-1-05371dg4yidjg9cyjj9bqmksrvbwr2aemjkzktzs9bb32m6696-1xnlvxjiy5uzp9ve23qzg0nl2 192.168.1.201:2377</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>This node joined a swarm as a worker.</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the active nodes in the <span class="bold">Docker Swarm</span> cluster, execute the following command
+        on <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker node ls</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>ID                            HOSTNAME     STATUS    AVAILABILITY    MANAGER STATUS    ENGINE VERSION
+yhlsk4xkisyt4sudja739tein *   my-node-1    Ready     Active          Leader            18.09.0
+ysfdsa90av9sozuf1mj423o52     my-node-2    Ready     Active                            18.09.0
+8t9gi8r6gzcb2g1e5lrgo68xp     my-node-3    Ready     Active                            18.09.0
+mgg6zgj4ps6exjazinjqek34b     my-node-4    Ready     Active                            18.09.0
+g64llfie3pocofy7h1ytftb4o     my-node-5    Ready     Active                            18.09.0</pre>
+    </div>
+    <div id="para-div">
+      <p>If we try to list all the active nodes in the <span class="bold">Docker Swarm</span> cluster from <span class="bold">
+        my-node-2</span>, the following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>Error response from daemon: This node is not a swarm manager. Worker nodes can't be used to view or modify cluster state. Please run this command on a manager node or promote the current node to a manager.</pre>
+    </div>
+    <div id="para-div">
+      <p>To list the <span class="bold">Manager</span> node(s), execute the following command on <span class="bold">
+        my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker node ls --filter role=manager</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>ID                            HOSTNAME    STATUS   AVAILABILITY   MANAGER STATUS   ENGINE VERSION
+yhlsk4xkisyt4sudja739tein *   my-node-1   Ready    Active         Leader           18.09.0</pre>
+    </div>
+    <div id="para-div">
+      <p>Similarly, to list the <span class="bold">Worker</span> node(s), execute the following command on <span class="bold">
+      my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker node ls --filter role=worker</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>ID                           HOSTNAME     STATUS    AVAILABILITY    MANAGER STATUS    ENGINE VERSION
+ysfdsa90av9sozuf1mj423o52    my-node-2    Ready     Active                            18.09.0
+8t9gi8r6gzcb2g1e5lrgo68xp    my-node-3    Ready     Active                            18.09.0
+mgg6zgj4ps6exjazinjqek34b    my-node-4    Ready     Active                            18.09.0
+g64llfie3pocofy7h1ytftb4o    my-node-5    Ready     Active                            18.09.0</pre>
+    </div>
+    <div id="para-div">
+      <p>To promote the <span class="bold">Worker</span> node <span class="bold">my-node-2</span> to a <span class="bold">
+        Manager</span> node, execute the following command on <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker node promote my-node-2</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>Node my-node-2 promoted to a manager in the swarm.</pre>
+    </div>
+    <div id="para-div">
+      <p>Once again, we will list all the <span class="bold">Manager</span> node(s) by executing the following command on
+        <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker node ls --filter role=manager</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>ID                            HOSTNAME     STATUS    AVAILABILITY    MANAGER STATUS    ENGINE VERSION
+yhlsk4xkisyt4sudja739tein *   my-node-1    Ready     Active          Leader            18.09.0
+ysfdsa90av9sozuf1mj423o52     my-node-2    Ready     Active          Reachable         18.09.0</pre>
+    </div>
+    <div id="para-div">
+      <p>To demote the <span class="bold">Manager</span> node <span class="bold">my-node-2</span> back to a <span class="bold">
+        Worker</span> node, execute the following command on <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker node demote my-node-2</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>Manager my-node-2 demoted in the swarm.</pre>
+    </div>
+    <div id="para-div">
+      <p>Once again, we will list all the <span class="bold">Manager</span> node(s) by executing the following command on
+        <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker node ls --filter role=manager</p>
+    </div>
+    <div id="para-div">
+      <p>The output would look like the one from Output.8 from above.</p>
+    </div>
+    <div id="para-div">
+      <p>To display detailed information about any node (say <span class="bold">my-node-2</span>) in the <span class="bold">
+        Docker Swarm</span> cluster, execute the following command on <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker node inspect my-node-2</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>[
+    {
+        "ID": "ysfdsa90av9sozuf1mj423o52",
+        "Version": {
+            "Index": 145
+        },
+        "CreatedAt": "2019-01-02T19:11:42.150399955Z",
+        "UpdatedAt": "2019-01-06T01:54:48.989432852Z",
+        "Spec": {
+            "Labels": {},
+            "Role": "worker",
+            "Availability": "active"
+        },
+        "Description": {
+            "Hostname": "my-node-2",
+            "Platform": {
+                "Architecture": "armv7l",
+                "OS": "linux"
+            },
+            "Resources": {
+                "NanoCPUs": 4000000000,
+                "MemoryBytes": 972234752
+            },
+            "Engine": {
+                "EngineVersion": "18.09.0",
+                "Plugins": [
+                    {
+                        "Type": "Log",
+                        "Name": "awslogs"
+                    },
+                    {
+                        "Type": "Log",
+                        "Name": "fluentd"
+                    },
+                    {
+                        "Type": "Log",
+                        "Name": "gcplogs"
+                    },
+                    {
+                        "Type": "Log",
+                        "Name": "gelf"
+                    },
+                    {
+                        "Type": "Log",
+                        "Name": "journald"
+                    },
+                    {
+                        "Type": "Log",
+                        "Name": "json-file"
+                    },
+                    {
+                        "Type": "Log",
+                        "Name": "local"
+                    },
+                    {
+                        "Type": "Log",
+                        "Name": "logentries"
+                    },
+                    {
+                        "Type": "Log",
+                        "Name": "splunk"
+                    },
+                    {
+                        "Type": "Log",
+                        "Name": "syslog"
+                    },
+                    {
+                        "Type": "Network",
+                        "Name": "bridge"
+                    },
+                    {
+                        "Type": "Network",
+                        "Name": "host"
+                    },
+                    {
+                        "Type": "Network",
+                        "Name": "macvlan"
+                    },
+                    {
+                        "Type": "Network",
+                        "Name": "null"
+                    },
+                    {
+                        "Type": "Network",
+                        "Name": "overlay"
+                    },
+                    {
+                        "Type": "Volume",
+                        "Name": "local"
+                    }
+                ]
+            },
+            "TLSInfo": {
+                "TrustRoot": "-----BEGIN CERTIFICATE-----\nMIIBajCCARCgAwIBAgIUb7m/OcUlnVeBiIrroSThv6W8GWowCgYIKoZIzj0EAwIw\nEzERMA8GA1UEAxMIc3dhcm0tY2EwHhcNMTkwMTAyMTkwNDAwWhcNMzgxMjI4MTkw\nNDAwWjATMREwDwYDVQQDEwhzd2FybS1jYTBZMBMGByqGSM49AgEGCCqGSM49AwEH\nA0IABE5vxnpPo4OqupArcKvhn0yN9iqERNczIMFCiujOCSXlAjqM1v4cGA21onyi\nLbdklIAZfKvDKO7HTNigVl3Xi8ujQjBAMA4GA1UdDwEB/wQEAwIBBjAPBgNVHRMB\nAf8EBTADAQH/MB0GA1UdDgQWBBRgMI2Gr5zXFQaO01dpC8VTa3wNfzAKBggqhkjO\nPQQDAgNIADBFAiAApSSrnxxAVjrGW8FTQJ4Svnf5YUmMos6wOKhTCec6uwIhAPLi\nW8KdkPHzdXzLIhmEZbu2op72XsBkvy+LB5OzK6PO\n-----END CERTIFICATE-----\n",
+                "CertIssuerSubject": "MBMxETAPBgNVBAMTCHN3YXJtLWNh",
+                "CertIssuerPublicKey": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAETm/Gek+jg6q6kCtwq+GfTI32KoRE1zMgwUKK6M4JJeUCOozW/hwYDbWifKItt2SUgBl8q8Mo7sdM2KBWXdeLyw=="
+            }
+        },
+        "Status": {
+            "State": "ready",
+            "Addr": "192.168.1.202"
+        }
+    }
+]</pre>
+    </div>
+    <div id="para-div">
+      <p>One can attach custom metadata to any node in the <span class="bold">Docker Swarm</span> cluster in the form of
+        <span class="bold">label</span>(s). A label can be just a <span class="bold">key</span> (basically a string) or a
+        <span class="bold">key</span>-<span class="bold">value</span> pair.</p>
+      <p>For our example, let us add a key label of <span class="hi-blue">dev</span> to nodes <span class="bold">my-node-2
+        </span>, <span class="bold">my-node-3</span> and a key label of <span class="hi-blue">prod</span> to nodes
+        <span class="bold">my-node-4</span>, <span class="bold">my-node-5</span>. Also, we will add a key-value label
+        of <span class="hi-orange">dc=nj</span> to nodes <span class="bold">my-node-2</span>, <span class="bold">my-node-4
+        </span> and a key-value label of <span class="hi-orange">dc=ca</span> to nodes <span class="bold">my-node-3</span>,
+        <span class="bold">my-node-5</span>.</p>
+      <p>To add the custom labels to our nodes in the <span class="bold">Docker Swarm</span> cluster, execute the following
+        commands on <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker node update --label-add dev --label-add dc=nj my-node-2</p>
+      <p>$ docker node update --label-add dev --label-add dc=ca my-node-3</p>
+      <p>$ docker node update --label-add prod --label-add dc=nj my-node-4</p>
+      <p>$ docker node update --label-add prod --label-add dc=ca my-node-5</p>
+    </div>
+    <div id="para-div">
+      <p>Now, moving on to <span class="bold">service</span>(s) in the <span class="bold">Docker Swarm</span> cluster.</p>
+      <p>To list all the service(s) in <span class="bold">Docker Swarm</span> cluster, execute the following command on
+        <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker service ls</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>ID            NAME           MODE           REPLICAS         IMAGE          PORTS</pre>
+    </div>
+    <div id="para-div">
+      <p>To start 3 replicas of the official <span class="hi-yellow">tomcat</span> <span class="bold">Docker</span>
+        image in the <span class="bold">Docker Swarm</span> cluster, execute the following command on
+        <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>docker service create --name tomcat --replicas=3 --publish 8080:8080 tomcat:8.0</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>c5z946stm58h8298zegk2qimw
+overall progress: 0 out of 3 tasks 
+1/3: running   [==================================================>] 
+2/3: running   [==================================================>] 
+3/3: running   [==================================================>] 
+verify: Service converged</pre>
+    </div>
+    <div id="para-div">
+      <p>When a <span class="hi-blue">docker service create</span> command is issued on a <span class="bold">
+        Docker Swarm</span> cluster, the <span class="bold">Manager</span> node accepts the request and schedules
+        the execution of the requested <span class="bold">Docker</span> image (<span class="bold">tomcat:8.0</span>)
+        as a <span class="bold">task</span> on the requested number of <span class="bold">Worker</span> nodes
+        (replicas). In this example, we have requested 3 replicas of the <span class="bold">tomcat:8.0</span> image.
+        Once the requested number of container instances (replicas) are live, the <span class="bold">service</span>
+        is in the desired state and converged.</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the service(s) in <span class="bold">Docker Swarm</span> cluster, execute the following command on
+        <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker service ls</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>ID              NAME      MODE          REPLICAS    IMAGE         PORTS
+c5z946stm58h    tomcat    replicated    3/3         tomcat:8.0    *:8080->8080/tcp</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.12 above, we see that the <span class="bold">service</span> if of type <span class="bold">
+        replicated</span>, all the 3 replicas are alive (3/3), the image is <span class="bold">tomcat:8.0</span>,
+        and the port 8080 in the host is mapped to the port 8080 on the running container.</p>
+    </div>
+    <div id="para-div">
+      <p>To display all the logs for the <span class="bold">service</span> (from all the replicas) in <span class="bold">
+        Docker Swarm</span> cluster, execute the following command on <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker service logs tomcat</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.17</h4>
+      <pre>tomcat.3.qv76q9vo6fk0@my-node-1    | 02-Jan-2019 19:38:32.384 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server version:        Apache Tomcat/8.0.53
+tomcat.3.qv76q9vo6fk0@my-node-1    | 02-Jan-2019 19:38:32.395 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server built:          Jun 29 2018 14:42:45 UTC
+.
+[truncated]
+.
+tomcat.3.qv76q9vo6fk0@my-node-1    | 02-Jan-2019 19:38:32.412 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Command line argument: -Djava.io.tmpdir=/usr/local/tomcat/temp
+tomcat.1.zq83exm1ctfd@my-node-2    | 02-Jan-2019 19:38:37.866 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server version:        Apache Tomcat/8.0.53
+tomcat.1.zq83exm1ctfd@my-node-2    | 02-Jan-2019 19:38:37.877 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server built:          Jun 29 2018 14:42:45 UTC
+.
+[truncated]
+.
+tomcat.3.qv76q9vo6fk0@my-node-1    | 02-Jan-2019 19:38:47.902 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["http-apr-8080"]
+tomcat.3.qv76q9vo6fk0@my-node-1    | 02-Jan-2019 19:38:47.992 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["ajp-apr-8009"]
+tomcat.3.qv76q9vo6fk0@my-node-1    | 02-Jan-2019 19:38:47.999 INFO [main] org.apache.catalina.startup.Catalina.start Server startup in 14567 ms
+.
+[truncated]
+.
+tomcat.2.b7rzzky92d1q@my-node-3    | 02-Jan-2019 19:38:31.123 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server version:        Apache Tomcat/8.0.53
+tomcat.2.b7rzzky92d1q@my-node-3    | 02-Jan-2019 19:38:31.133 INFO [main] org.apache.catalina.startup.VersionLoggerListener.log Server built:          Jun 29 2018 14:42:45 UTC
+.
+[truncated]
+.
+tomcat.2.b7rzzky92d1q@my-node-3    | 02-Jan-2019 19:38:32.134 INFO [main] org.apache.catalina.startup.Catalina.load Initialization processed in 5816 ms
+tomcat.2.b7rzzky92d1q@my-node-3    | 02-Jan-2019 19:38:32.383 INFO [main] org.apache.catalina.core.StandardService.startInternal Starting service Catalina
+tomcat.1.zq83exm1ctfd@my-node-2    | 02-Jan-2019 19:38:53.240 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["http-apr-8080"]
+tomcat.2.b7rzzky92d1q@my-node-3    | 02-Jan-2019 19:38:32.384 INFO [main] org.apache.catalina.core.StandardEngine.startInternal Starting Servlet Engine: Apache Tomcat/8.0.53
+tomcat.1.zq83exm1ctfd@my-node-2    | 02-Jan-2019 19:38:53.331 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["ajp-apr-8009"]
+tomcat.2.b7rzzky92d1q@my-node-3    | 02-Jan-2019 19:38:32.443 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory /usr/local/tomcat/webapps/docs
+tomcat.2.b7rzzky92d1q@my-node-3    | 02-Jan-2019 19:38:38.094 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory /usr/local/tomcat/webapps/docs has finished in 5,648 ms
+tomcat.2.b7rzzky92d1q@my-node-3    | 02-Jan-2019 19:38:38.096 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deploying web application directory /usr/local/tomcat/webapps/host-manager
+tomcat.2.b7rzzky92d1q@my-node-3    | 02-Jan-2019 19:38:46.421 INFO [localhost-startStop-1] org.apache.catalina.startup.HostConfig.deployDirectory Deployment of web application directory /usr/local/tomcat/webapps/manager has finished in 888 ms
+tomcat.2.b7rzzky92d1q@my-node-3    | 02-Jan-2019 19:38:46.447 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["http-apr-8080"]
+tomcat.2.b7rzzky92d1q@my-node-3    | 02-Jan-2019 19:38:46.537 INFO [main] org.apache.coyote.AbstractProtocol.start Starting ProtocolHandler ["ajp-apr-8009"]
+tomcat.2.b7rzzky92d1q@my-node-3    | 02-Jan-2019 19:38:46.544 INFO [main] org.apache.catalina.startup.Catalina.start Server startup in 14409 ms
+tomcat.1.zq83exm1ctfd@my-node-2    | 02-Jan-2019 19:38:53.338 INFO [main] org.apache.catalina.startup.Catalina.start Server startup in 14451 ms</pre>
+    </div>
+    <div id="para-div">
+      <p>Note that we have [truncated] the log lines in between for brevity.</p>
+    </div>
+    <div id="para-div">
+      <p>To list the nodes on which the <span class="bold">service</span> (tomcat) is running on <span class="bold">
+        Docker Swarm</span> cluster, execute the following command on <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker service ps tomcat</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.18</h4>
+      <pre>ID              NAME        IMAGE         NODE         DESIRED STATE    CURRENT STATE            ERROR   PORTS
+0q9d12ib1gaf    tomcat.1    tomcat:8.0    my-node-1    Running          Running 34 seconds ago                       
+48ii5gsqye1t    tomcat.2    tomcat:8.0    my-node-2    Running          Running 34 seconds ago                       
+srg0pnta9s32    tomcat.3    tomcat:8.0    my-node-3    Running          Running 34 seconds ago</pre>
+    </div>
+    <div id="para-div">
+      <p>To see what containers are running on <span class="bold">my-node-1</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker ps</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.19</h4>
+      <pre>CONTAINER ID    IMAGE         COMMAND             CREATED              STATUS              PORTS       NAMES
+11b74807d3d0    tomcat:8.0    "catalina.sh run"   About a minute ago   Up About a minute   8080/tcp    tomcat.3.qv76q9vo6fk02v47nqk3ftflo</pre>
+    </div>
+    <div id="para-div">
+      <p>Similarly, to see what containers are running on <span class="bold">my-node-2</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker ps</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.20</h4>
+      <pre>CONTAINER ID    IMAGE         COMMAND             CREATED           STATUS           PORTS       NAMES
+7d18eb6bee88    tomcat:8.0    "catalina.sh run"   53 seconds ago    Up 50 seconds    8080/tcp    tomcat.1.zq83exm1ctfdvsplpme3uwzpt</pre>
+    </div>
+    <div id="para-div">
+      <p>Similarly, to see what containers are running on <span class="bold">my-node-3</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker ps</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.21</h4>
+      <pre>CONTAINER ID    IMAGE         COMMAND             CREATED              STATUS              PORTS       NAMES
+a0485f284734    tomcat:8.0    "catalina.sh run"   About a minute ago   Up About a minute   8080/tcp    tomcat.2.b7rzzky92d1qw2smhe4qeuovi</pre>
+    </div>
+    <div id="para-div">
+      <p>To inspect the <span class="bold">service</span> (tomcat), execute the following command on <span class="bold">
+        my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker service inspect tomcat</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.22</h4>
+      <pre>[
+    {
+        "ID": "so8f76wrku82gfb7zaehpvg0j",
+        "Version": {
+            "Index": 79
+        },
+        "CreatedAt": "2019-01-06T00:58:27.603487831Z",
+        "UpdatedAt": "2019-01-06T00:58:27.608545638Z",
+        "Spec": {
+            "Name": "tomcat",
+            "Labels": {},
+            "TaskTemplate": {
+                "ContainerSpec": {
+                    "Image": "tomcat:8.0@sha256:8ecb10948deb32c34aeadf7bf95d12a93fbd3527911fa629c1a3e7823b89ce6f",
+                    "Init": false,
+                    "StopGracePeriod": 10000000000,
+                    "DNSConfig": {},
+                    "Isolation": "default"
+                },
+                "Resources": {
+                    "Limits": {},
+                    "Reservations": {}
+                },
+                "RestartPolicy": {
+                    "Condition": "any",
+                    "Delay": 5000000000,
+                    "MaxAttempts": 0
+                },
+                "Placement": {
+                    "Platforms": [
+                        {
+                            "Architecture": "amd64",
+                            "OS": "linux"
+                        },
+                        {
+                            "OS": "linux"
+                        },
+                        {
+                            "OS": "linux"
+                        },
+                        {
+                            "Architecture": "386",
+                            "OS": "linux"
+                        }
+                    ]
+                },
+                "ForceUpdate": 0,
+                "Runtime": "container"
+            },
+            "Mode": {
+                "Replicated": {
+                    "Replicas": 3
+                }
+            },
+            "UpdateConfig": {
+                "Parallelism": 1,
+                "FailureAction": "pause",
+                "Monitor": 5000000000,
+                "MaxFailureRatio": 0,
+                "Order": "stop-first"
+            },
+            "RollbackConfig": {
+                "Parallelism": 1,
+                "FailureAction": "pause",
+                "Monitor": 5000000000,
+                "MaxFailureRatio": 0,
+                "Order": "stop-first"
+            },
+            "EndpointSpec": {
+                "Mode": "vip",
+                "Ports": [
+                    {
+                        "Protocol": "tcp",
+                        "TargetPort": 8080,
+                        "PublishedPort": 8080,
+                        "PublishMode": "ingress"
+                    }
+                ]
+            }
+        },
+        "Endpoint": {
+            "Spec": {
+                "Mode": "vip",
+                "Ports": [
+                    {
+                        "Protocol": "tcp",
+                        "TargetPort": 8080,
+                        "PublishedPort": 8080,
+                        "PublishMode": "ingress"
+                    }
+                ]
+            },
+            "Ports": [
+                {
+                    "Protocol": "tcp",
+                    "TargetPort": 8080,
+                    "PublishedPort": 8080,
+                    "PublishMode": "ingress"
+                }
+            ],
+            "VirtualIPs": [
+                {
+                    "NetworkID": "i2ebnurghtq5qsw0pshuh51c7",
+                    "Addr": "10.255.0.7/16"
+                }
+            ]
+        }
+    }
+]</pre>
+    </div>
+    <div id="para-div">
+      <p>To scale down the number of <span class="bold">service</span> (tomcat) replicas to 2 from the current 3 replicas,
+        execute the following command on <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker service scale tomcat=2</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.23</h4>
+      <pre>tomcat scaled to 2
+overall progress: 2 out of 2 tasks 
+1/2: running   [==================================================>] 
+2/2: running   [==================================================>] 
+verify: Service converged</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the service(s) in <span class="bold">Docker Swarm</span> cluster, execute the following command on
+        <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker service ls</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.24</h4>
+      <pre>ID              NAME        IMAGE         NODE         DESIRED STATE    CURRENT STATE            ERROR    PORTS
+0q9d12ib1gaf    tomcat.1    tomcat:8.0    my-node-1    Running          Running 11 minutes ago                       
+48ii5gsqye1t    tomcat.2    tomcat:8.0    my-node-2    Running          Running 11 minutes ago</pre>
+    </div>
+    <div id="para-div">
+      <p>From the above, it is evident that there are no container <span class="bold">tasks</span>(s) running on the
+        <span class="bold">Worker</span> node <span class="bold">my-node-3</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Open up a browser and hit the url <span class="bold">http://192.168.1.203:8080</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Figure-3 illustrates the browser output:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/DockerSwarm-2.png" class="img-cls" alt="Browser" />
+      <div class="img-cap">Figure-2</div>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">WHAT ???</span> How did that work ??? There was no container <span class="bold">tasks</span>(s)
+        running on the <span class="bold">Worker</span> node <span class="bold">my-node-3</span>.</p>
+      <p>Remember we touched on the <span class="bold">Distributed Key-Value Store</span> as well as the <span class="bold">
+        Gossip</span> amongst the <span class="bold">Worker</span> nodes in the overview ???</p>
+      <p>So, when node <span class="bold">my-node-3</span> got the HTTP request, it intelligently routed the request to the
+        node running the <span class="bold">service</span> (tomcat). The <span class="bold">ingress</span> network makes the
+        published ports available on every node in the <span class="bold">Docker Swarm</span> cluster. When a request is made
+        on a node, <span class="bold">Docker Swarm</span> will route the request to the node running the <span class="bold">
+        service</span> (tomcat) through the <span class="bold">overlay</span> network (<span class="bold">ingress</span>).</p>
+    </div>
+    <div id="para-div">
+      <p>Now, moving on to <span class="bold">network</span>(s) in the <span class="bold">Docker Swarm</span> cluster.</p>
+      <p>To list all the network(s) in <span class="bold">Docker Swarm</span> cluster, execute the following command on
+        <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker network ls</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.25</h4>
+      <pre>NETWORK ID          NAME                DRIVER              SCOPE
+e383b4100666        bridge              bridge              local
+d03b0dbb69c0        docker_gwbridge     bridge              local
+9f2d5ef59b2d        host                host                local
+i2ebnurghtq5        ingress             overlay             swarm
+cc18c34e7a4e        none                null                local</pre>
+    </div>
+    <div id="para-div">
+      <p>Remember we talked about the <span class="bold">overlay</span> network above in the overview ???</p>
+      <p>When the <span class="bold">Docker Swarm</span> cluster is first initialized using <span class="hi-blue">
+        docker swarm init</span>, that is when the default <span class="bold">overlay</span> network called
+        <span class="hi-yellow">ingress</span> is created and the node automatically joins that network. As the
+        other <span class="bold">Worker</span> nodes join the <span class="bold">Docker Swarm</span> cluster,
+        they also join the <span class="bold">ingress</span> network.</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the network(s) in <span class="bold">my-node-2</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker network ls</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.26</h4>
+      <pre>NETWORK ID          NAME                DRIVER              SCOPE
+2151da181d06        bridge              bridge              local
+03c0495397ed        docker_gwbridge     bridge              local
+d3d5f3be063f        host                host                local
+i2ebnurghtq5        ingress             overlay             swarm
+332144c96eda        none                null                local</pre>
+    </div>
+    <div id="para-div">
+      <p>Similarly, to list all the network(s) in <span class="bold">my-node-3</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker network ls</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.27</h4>
+      <pre>NETWORK ID          NAME                DRIVER              SCOPE
+5568c2945bc2        bridge              bridge              local
+8bf7677ad5e0        docker_gwbridge     bridge              local
+2dcc510fc72d        host                host                local
+i2ebnurghtq5        ingress             overlay             swarm
+df884c822e70        none                null                local</pre>
+    </div>
+    <div id="para-div">
+      <p>As is evident from the Output.21, Output.22, and Output.23, the <span class="bold">ingress</span> network
+        is the same across the <span class="bold">Docker Swarm</span> nodes, while the other networks are different
+        as they are local to the nodes.</p>
+    </div>
+    <div id="para-div">
+      <p>To remove all the replicas of the <span class="bold">service</span> (tomcat), execute the following command on
+        <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker service rm tomcat</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.28</h4>
+      <pre>tomcat</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the service(s) in <span class="bold">Docker Swarm</span> cluster, execute the following command on
+        <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker service ls</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.29</h4>
+      <pre>ID            NAME           MODE           REPLICAS         IMAGE          PORTS</pre>
+    </div>
+    <div id="para-div">
+      <p>We can control on which nodes of the <span class="bold">Docker Swarm</span> cluster we want a particular service to
+        run. For example, we can constraint the <span class="bold">tomcat</span> service to start only on the nodes with the
+        label <span class="bold">dc=nj</span> (remember we added this label only to nodes <span class="bold">my-node-2</span>
+        and <span class="bold">my-node-4</span>).</p>
+    </div>
+    <div id="para-div">
+      <p>To start a replica of the <span class="bold">tomcat</span> service on any node of the <span class="bold">Docker Swarm
+        </span> cluster with the label <span class="bold">dc=nj</span>, execute the following command on <span class="bold">
+        my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>docker service create --constraint node.labels.dev --name tomcat --publish 8080:8080 tomcat:8.0</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.30</h4>
+      <pre>yx1v7cvv4t88f2dlnpxeia1ux
+overall progress: 1 out of 1 tasks 
+1/1: running   [==================================================>] 
+verify: Service converged</pre>
+    </div>
+    <div id="para-div">
+      <p>To verify the node on which the <span class="bold">service</span> (tomcat) is running on <span class="bold">
+        Docker Swarm</span> cluster, execute the following command on <span class="bold">my-node-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker service ps tomcat</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.31</h4>
+      <pre>ID              NAME        IMAGE         NODE         DESIRED STATE    CURRENT STATE             ERROR    PORTS
+1k2olon0ihdg    tomcat.1    tomcat:8.0    my-node-2    Running          Running 22 seconds ago</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">BINGO !!!</span> As we can see from Output.31, <span class="bold">tomcat</span> is running on
+        <span class="bold">my-node-2</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>With this, we conclude the basic exercises we performed on the <span class="bold">Docker Swarm</span> cluster.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://docs.docker.com/engine/swarm/" target="_blank"><span class="bold">Official Docker Swarm Documentation</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,718 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <title>Introduction to Multi Docker Containers</title>
+    <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body> <br />
+    <div id="title-div">
+      <p>Introduction to Multi Docker Containers</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">04/07/2017</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In the article <a href="http://polarsparc.github.io/Docker/Dockerfile.html" target="_blank">
+        <span class="bold">Introduction to Dockerfile</span></a>, we demonstrated how one could
+        build custom <span class="bold">Docker</span> images using <span class="bold">Dockerfile</span>.</p>
+      <p>Enterprise applications are typically multi-tier. For example, a web application consists
+        of a business tier (hosted on an application server like <span class="bold">Tomcat</span>)
+        and a backend data tier (hosted on a database server like <span class="bold">MySQL</span>).</p>
+      <p>To emulate the production application stack in development, a developer could run the
+        business tier in one <span class="bold">Docker</span> container and the data tier in
+        another <span class="bold">Docker</span> container. But, how would one "tie" these multiple
+        containers together so as to emulate what is in production ???</p>
+      <p>In this article, we will demonstrate how to link 2 containers to emulate a simple web
+        application using the <span class="bold">docker run</span> command.</p>
+    </div>
+    <div id="section-div">
+      <p>Setup</p>
+    </div>
+    <div id="para-div">
+      <p>For this multi-container demonstration, we will use the base <span class="bold">Docker</span> image
+        <span class="bold">mysql:5.7.17</span> for the data tier and the base <span class="bold">Docker</span>
+        image <span class="bold">tomcat:8.5.13-jre8</span> for the business tier.</p>
+    </div>
+    <div id="step-div">
+    <p>Data Tier (MySQL)</p>
+    </div>
+    <div id="para-div">
+      <p>For the <span class="bold">MySQL</span> based data tier, we expect to have a database called
+        <span class="hi-yellow">hellodb</span> with the user-id <span class="bold">admin</span> and
+        with credential <span class="bold">s3cret</span>.</p>
+      <p>In the database <span class="bold">hellodb</span>, we expect to have a single database table
+        called <span class="hi-yellow">user_count</span> with 2 columns - a <span class="bold">name</span>
+        column and a <span class="bold">count</span> column.</p>
+    </div>
+    <div id="para-div">
+      <p>Let us assume the current directory is <span class="bold">/home/alice</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Create a directory called <span class="bold">mysql</span> under the current directory and change
+        to that directory. The current directory now would be <span class="bold">/home/alice/mysql</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Create the following SQL script called <span class="bold">mysql-setup.sql</span> in the current
+        directory. This SQL script will be used to setup and initialize the desired database table:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>mysql-setup.sql</legend>
+      <pre>USE hellodb;
+
+CREATE TABLE user_count (name VARCHAR(10) NOT NULL, count INT NOT NULL, PRIMARY KEY (name));
+
+INSERT INTO user_count (name, count) VALUES ('admin', 0);</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Next, create the following <span class="bold">Dockerfile</span> in the current directory. It will
+        be used to build our <span class="bold">MySQL</span> based <span class="bold">Docker</span> container
+        for the data tier:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Dockerfile for MySQL</legend>
+      <pre>FROM mysql:5.7.17
+
+ENV MYSQL_ROOT_PASSWORD="r00t"
+ENV MYSQL_USER="admin"
+ENV MYSQL_PASSWORD="s3cret"
+ENV MYSQL_DATABASE="hellodb"
+
+LABEL Version="1.0" \
+      Author="Bhaskar.S" \
+      Email="bswamina@polarsparc.com"
+
+ADD mysql-setup.sql /docker-entrypoint-initdb.d</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Now, let us pull the base <span class="bold">Docker</span> image <span class="bold">mysql:5.7.17</span>
+        by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker pull mysql:5.7.17</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>5.7.17: Pulling from library/mysql
+6d827a3ef358: Pull complete
+ed0929eb7dfe: Pull complete
+03f348dc3b9d: Pull complete
+fd337761ca76: Pull complete
+7e6cc16d464a: Pull complete
+ca3d380bc018: Pull complete
+3fe11378d5c0: Pull complete
+2b5dfd325645: Pull complete
+b54281d17fbe: Pull complete
+7eae4db8eea5: Pull complete
+76cf68e17b09: Pull complete
+Digest: sha256:49b7d6d8d45f8c3300cba056e8cdf36c714d99e0b40f7005b9e6e75e64ecdf7c
+Status: Downloaded newer image for mysql:5.7.17</pre>
+    </div>
+    <div id="para-div">
+      <p>Finally, execute the following command to build the data tier <span class="bold">Docker</span>
+        image using the <span class="bold">Dockerfile</span> we just created:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker build -t mysql_hellodb .</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>Sending build context to Docker daemon 3.072 kB
+Step 1 : FROM mysql:5.7.17
+ ---> 9546ca122d3a
+Step 2 : ENV MYSQL_ROOT_PASSWORD "r00t"
+ ---> Running in f5a6ae953c1c
+ ---> a86039294085
+Removing intermediate container f5a6ae953c1c
+Step 3 : ENV MYSQL_USER "admin"
+ ---> Running in 548a10861cce
+ ---> 8bbf1ea32ae9
+Removing intermediate container 548a10861cce
+Step 4 : ENV MYSQL_PASSWORD "s3cret"
+ ---> Running in 31ffb4126389
+ ---> 4a82db9e201e
+Removing intermediate container 31ffb4126389
+Step 5 : ENV MYSQL_DATABASE "hellodb"
+ ---> Running in 10eec68ec099
+ ---> 10cf7415e7b4
+Removing intermediate container 10eec68ec099
+Step 6 : LABEL Version "1.0" Author "Bhaskar.S" Email "bswamina@polarsparc.com"
+ ---> Running in cbff3bb6a6c2
+ ---> 3db1dbc3f4fe
+Removing intermediate container cbff3bb6a6c2
+Step 7 : ADD mysql-setup.sql /docker-entrypoint-initdb.d
+ ---> fae9253e0f4d
+Removing intermediate container 795ca26199d4
+Successfully built fae9253e0f4d</pre>
+    </div>
+    <div id="step-div">
+    <p>Business Tier (Tomcat)</p>
+    </div>
+    <div id="para-div">
+      <p>For the <span class="bold">Tomcat</span> based business tier, we will deploy a simple
+        servlet that will read and update a value from the <span class="bold">user_count</span> table
+        in the <span class="bold">hellodb</span> database and display a single line result.</p>
+    </div>
+    <div id="para-div">
+      <p>Change the current directory back to <span class="bold">/home/alice</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Create a directory called <span class="bold">tomcat</span> under the current directory and change
+        to that directory. The current directory now would be <span class="bold">/home/alice/tomcat</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>We will be leveraging <span class="bold">Apache Maven</span> for build and package management
+        of our simple servlet project. Make sure <span class="bold">Apache Maven</span> is properly
+        installed and setup on the host.</p>
+      <p>Execute the following command to setup the basic web application <span class="bold">Maven</span>
+        project directory structure:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mvn archetype:generate -DgroupId="com.polarsparc" -DartifactId="hello" -Dversion="1.0"
+        -DarchetypeArtifactId=maven-archetype-webapp -DinteractiveMode=false</p>
+    </div>
+    <div id="para-div">
+      <p>The following is how the <span class="bold">hello</span> project directory structure would
+        look after the above command completes:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/Maven-1.png" class="img-cls" alt="Maven Webapp 1" />
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <div id="para-div">
+      <p>Change to the directory <span class="bold">hello/src/main</span> and create an additional
+        directory strucures as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd hello/src/main</p>
+      <p>$ mkdir -p java/com/polarsparc</p>
+      <p>$ mkdir -p webapp/META-INF</p>
+      <p>$ cd ../../..</p>
+    </div>
+    <div id="para-div">
+      <p>The following is how the <span class="bold">hello</span> project directory structure should
+        look after executing the above commands:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/Maven-2.png" class="img-cls" alt="Maven Webapp 2" />
+      <div class="img-cap">Figure-2</div>
+    </div>
+    <div id="para-div">
+      <p>First, create the following <span class="hi-yellow">pom.xml</span> file inside the
+        <span class="bold">hello</span> project directory:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>pom.xml</legend>
+      <pre>&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+    &lt;artifactId&gt;helloworld&lt;/artifactId&gt;
+    &lt;packaging&gt;war&lt;/packaging&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+
+    &lt;name&gt;helloworld Maven Webapp&lt;/name&gt;
+    &lt;url&gt;http://maven.apache.org&lt;/url&gt;
+
+    &lt;properties&gt;
+        &lt;slf4j.version&gt;1.7.25&lt;/slf4j.version&gt;
+    &lt;/properties&gt;
+
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;slf4j-api&lt;/artifactId&gt;
+            &lt;version&gt;${slf4j.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.slf4j&lt;/groupId&gt;
+            &lt;artifactId&gt;slf4j-log4j12&lt;/artifactId&gt;
+            &lt;version&gt;${slf4j.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+
+        &lt;dependency&gt;
+            &lt;groupId&gt;mysql&lt;/groupId&gt;
+            &lt;artifactId&gt;mysql-connector-java&lt;/artifactId&gt;
+            &lt;version&gt;5.1.41&lt;/version&gt;
+        &lt;/dependency&gt;
+
+        &lt;dependency&gt;
+            &lt;groupId&gt;javax.servlet&lt;/groupId&gt;
+            &lt;artifactId&gt;javax.servlet-api&lt;/artifactId&gt;
+            &lt;version&gt;3.1.0&lt;/version&gt;
+            &lt;scope&gt;provided&lt;/scope&gt;
+        &lt;/dependency&gt;
+
+        &lt;dependency&gt;
+            &lt;groupId&gt;junit&lt;/groupId&gt;
+            &lt;artifactId&gt;junit&lt;/artifactId&gt;
+            &lt;version&gt;3.8.1&lt;/version&gt;
+            &lt;scope&gt;test&lt;/scope&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+
+    &lt;build&gt;
+        &lt;finalName&gt;helloworld3&lt;/finalName&gt;
+    &lt;/build&gt;
+&lt;/project&gt;</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Second, create the following <span class="hi-yellow">context.xml</span> file in the
+        <span class="bold">hello/src/main/webapp/META-INF</span> directory:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>context.xml</legend>
+      <pre>&lt;Context&gt;
+    &lt;Resource
+        name="jdbc/hellodb"
+        auth="Container"
+        type="javax.sql.DataSource"
+        maxTotal="5"
+        maxIdle="30"
+        maxWaitMillis="10000"
+        driverClassName="com.mysql.jdbc.Driver"
+        url="jdbc:mysql://db:3306/hellodb?useSSL=false"
+        username="admin"
+        password="s3cret"
+        defaultAutoCommit="false"
+        removeAbandoned="true"
+    /&gt;
+&lt;/Context&gt;</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Third, update the <span class="hi-yellow">web.xml</span> file located in the
+        <span class="bold">hello/src/main/webapp/WEB-INF</span> directory to look as follows:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>web.xml</legend>
+      <pre>&lt;web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee
+                             http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd"
+         version="3.1"&gt;
+    &lt;resource-ref&gt;
+        &lt;description&gt;Hello DB&lt;/description&gt;
+        &lt;res-ref-name&gt;jdbc/hellodb&lt;/res-ref-name&gt;
+        &lt;res-type&gt;javax.sql.DataSource&lt;/res-type&gt;
+        &lt;res-auth&gt;Container&lt;/res-auth&gt;
+    &lt;/resource-ref&gt;
+&lt;/web-app&gt;</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Fourth, create the following <span class="hi-yellow">log4j.properties</span> file in the
+        <span class="bold">hello/src/main/resources</span> directory:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>log4j.properties</legend>
+      <pre>###
+### log4j Properties
+###
+
+log4j.rootLogger=INFO, STDOUT
+
+log4j.appender.STDOUT=org.apache.log4j.ConsoleAppender
+log4j.appender.STDOUT.layout=org.apache.log4j.PatternLayout
+log4j.appender.STDOUT.layout.ConversionPattern=%-5p %d [%t] %c %x - %m%n</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Finally, create the following <span class="hi-yellow">HelloServlet3.java</span> file in the
+        <span class="bold">hello/src/main/java/com/polarsparc</span> directory:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>HelloServlet3.java</legend>
+      <pre>package com.polarsparc;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.Statement;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+import javax.annotation.Resource;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.sql.DataSource;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@WebServlet(name = "helloworld3",
+            urlPatterns = {"/message"},
+            loadOnStartup = 1)
+public class HelloServlet3 extends HttpServlet {
+    private static final long serialVersionUID = 1L;
+
+    @Resource(name = "jdbc/hellodb")
+    private DataSource ds;
+
+    Logger log = LoggerFactory.getLogger(HelloServlet3.class);
+
+    @Override
+    public void init()
+        throws ServletException {
+        log.info(String.format("Servlet &lt;%s&gt; has been initialized\n", this.getServletName()));
+    }
+
+    @Override
+    public void destroy() {
+        log.info(String.format("Servlet &lt;%s&gt; has been destroyed\n", this.getServletName()));
+    }
+
+    @Override
+    protected void doGet(HttpServletRequest reqest, HttpServletResponse response)
+        throws ServletException, IOException {
+        int count = getUserCount();
+
+        count++;
+
+        updateUserCount(count);
+
+        response.setContentType("text/html");
+        response.getWriter().println(String.format("&lt;h3&gt;&lt;center&gt;[%d] Hello (Servlet 3.x + Slf4j + JNDI) World !!!&lt;/center&gt;&lt;/h3&gt;", count));
+    }
+
+    // ----- Private Method(s) -----
+
+    private int getUserCount() {
+        int count = 0;
+
+        String sql = "SELECT count FROM user_count WHERE name = 'admin'";
+
+        Connection con = null;
+        Statement st = null;
+        ResultSet rs = null;
+
+        try {
+            con = ds.getConnection();
+            st = con.createStatement();
+            rs = st.executeQuery(sql);
+            if (rs.next()) {
+                count = rs.getInt(1);
+            }
+        }
+        catch (SQLException sqlex) {
+            log.error(sqlex.getMessage());
+        }
+        finally {
+            if (rs != null) {
+                try {
+                    rs.close();
+                }
+                catch (SQLException sqlex) {
+                    log.error(sqlex.getMessage());
+                }
+            }
+            if (st != null) {
+                try {
+                    st.close();
+                }
+                catch (SQLException sqlex) {
+                    log.error(sqlex.getMessage());
+                }
+            }
+            if (con != null) {
+                try {
+                    con.close();
+                }
+                catch (SQLException sqlex) {
+                    log.error(sqlex.getMessage());
+                }
+            }
+        }
+
+        return (count);
+    }
+
+    private void updateUserCount(int count) {
+        String sql = "UPDATE user_count SET count = ? WHERE name = 'admin'";
+
+        Connection con = null;
+        PreparedStatement st = null;
+
+        try {
+            con = ds.getConnection();
+            st = con.prepareStatement(sql);
+            st.setInt(1, count);
+            st.executeUpdate();
+            con.commit();
+        }
+        catch (SQLException sqlex) {
+            log.error(sqlex.getMessage());
+        }
+        finally {
+            if (st != null) {
+                try {
+                    st.close();
+                }
+                catch (SQLException sqlex) {
+                    log.error(sqlex.getMessage());
+                }
+            }
+            if (con != null) {
+                try {
+                    con.close();
+                }
+                catch (SQLException sqlex) {
+                    log.error(sqlex.getMessage());
+                }
+            }
+        }
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>In the end, the following is how the <span class="bold">hello</span> project directory structure should
+        look:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/Maven-3.png" class="img-cls" alt="Maven Webapp 3" />
+      <div class="img-cap">Figure-3</div>
+    </div>
+    <div id="para-div">
+      <p>To build and package the <span class="bold">Maven</span> project, execute the following command in
+        the <span class="bold">hello</span> directory:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mvn clean package</p>
+    </div>
+    <div id="para-div">
+      <p>Once the above command finishes, one should find the <span class="hi-yellow">helloworld3.jar</span>
+        file in the <span class="bold">hello/target</span> directory.</p>
+    </div>
+    <div id="para-div">
+      <p>Next, create the following <span class="bold">Dockerfile</span> in the current directory. It will
+        be used to build our <span class="bold">Tomcat</span> based <span class="bold">Docker</span> container
+        for the business tier:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Dockerfile for Tomcat</legend>
+      <pre>FROM tomcat:8.5.13-jre8
+
+LABEL Version="1.0" \
+      Author="Bhaskar.S" \
+      Email="bswamina@polarsparc.com"
+
+ADD target/helloworld3.war /usr/local/tomcat/webapps/</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Now, let us pull the base <span class="bold">Docker</span> image <span class="bold">tomcat:8.5.13-jre8</span>
+        by executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker pull tomcat:8.5.13-jre8</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>8.5.13-jre8: Pulling from library/tomcat
+6d827a3ef358: Already exists
+2726297beaf1: Pull complete
+d6e483851652: Pull complete
+ef624abeb7b8: Pull complete
+0e108ce2208d: Pull complete
+6a77bcb48281: Pull complete
+016fd08a71c8: Pull complete
+97c72b1a17df: Pull complete
+b9f2ccd12a13: Pull complete
+0e54b0c11e81: Pull complete
+37da287a8961: Pull complete
+6cef72a72237: Pull complete
+a675c4562932: Pull complete
+Digest: sha256:d6bc16eec9f85c5efdac8d3918dfd240ddf6151cd288ac45ae97458864c81dd9
+Status: Downloaded newer image for tomcat:8.5.13-jre8</pre>
+    </div>
+    <div id="para-div">
+      <p>Finally, execute the following command to build the business tier <span class="bold">Docker</span>
+        image using the <span class="bold">Dockerfile</span> we just created:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker build -t tomcat_hellodb .</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>Sending build context to Docker daemon 4.467 MB
+Step 1 : FROM tomcat:8.5.13-jre8
+ ---> 40ab38c1ce33
+Step 2 : LABEL Version "1.0" Author "Bhaskar.S" Email "bswamina@polarsparc.com"
+ ---> Using cache
+ ---> dc595ef8eb96
+Step 3 : ADD helloworld3.war /usr/local/tomcat/webapps/
+ ---> 8c46aa7c76bd
+Removing intermediate container 54853c073930
+Successfully built 8c46aa7c76bd</pre>
+    </div>
+    <div id="para-div">
+      <p>Change the current directory back to <span class="bold">/home/alice</span>.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Multi Docker Containers</p>
+    </div>
+    <div id="para-div">
+      <p>In this section, we will demonstrate how one could link the multiple containers (data and business tier
+        containers in our example) using the <span class="hi-yellow">docker run</span> command.</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the <span class="bold">Docker Image</span>s on the local host, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker images</p>
+    </div>
+    <div id="para-div">
+      <p>The following could be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+mysql_hellodb       latest              fae9253e0f4d        5 days ago          407 MB
+tomcat_hellodb      latest              8c46aa7c76bd        5 days ago          368.2 MB
+tomcat              8.5.13-jre8         40ab38c1ce33        7 days ago          366.7 MB
+mysql               5.7.17              9546ca122d3a        8 days ago          407 MB
+ubuntu_flask        latest              54f0fa012cd1        12 days ago         239.8 MB
+mycentos            latest              91b1f32a62f3        13 days ago         273.3 MB
+centos              latest              98d35105a391        3 weeks ago         192.5 MB
+ubuntu              latest              0ef2e08ed3fa        5 weeks ago         130 MB
+ubuntu              14.04               7c09e61e9035        5 weeks ago         188 MB</pre>
+    </div>
+    <div id="para-div">
+      <p>Create a directory called <span class="bold">data</span> under the current directory. The current
+        directory should be <span class="bold">/home/alice</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>First start the data tier, which is the <span class="bold">MySQL</span> based <span class="bold">Docker</span>
+        image with the name <span class="bold">mysql_hellodb</span>, using the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -v /home/alice/data:/var/lib/mysql -d --name mysql mysql_hellodb</p>
+    </div>
+    <div id="para-div">
+      <p>Notice the use of the command line options <span class="hi-green">--name</span> and
+        <span class="hi-green">-v</span> in the command above.</p>
+      <p>The <span class="bold">--name</span> option is used to reference a container for networking (like a
+        host name). The specified name <span class="bold">mysql</span> will be used below when we launch the
+        business tier container.</p>
+      <p>The <span class="bold">-v</span> option mounts the directory <span class="bold">/home/alice/data</span>
+        on the local host into the container at <span class="bold">/var/lib/mysql</span>. This allows the
+        database data to be preserved for future runs.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>7541f659e7a66914bdb04de1bccb9148707d12ded31a454a7adac34cbb3ade71</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the running <span class="bold">Docker</span> containers, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker ps</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>CONTAINER ID    IMAGE           COMMAND                  CREATED           STATUS          PORTS         NAMES
+7541f659e7a6    mysql_hellodb   "docker-entrypoint.sh"   14 seconds ago    Up 12 seconds   3306/tcp      mysql</pre>
+    </div>
+    <div id="para-div">
+      <p>Next start the business tier, which is the <span class="bold">Tomcat</span> based <span class="bold">Docker</span>
+        image with the name <span class="bold">tomcat_hellodb</span>, using the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker run -d -p 8080:8080 --link mysql:db tomcat_hellodb</p>
+    </div>
+    <div id="para-div">
+      <p>Notice the use of the command line option <span class="hi-green">--link</span> in the command above.</p>
+      <p>The <span class="bold">--link</span> option is what "ties" the data tier with the name
+        <span class="bold">mysql</span> to the business tier container via the alias <span class="hi-yellow">db</span>.
+        Refer to the file <span class="bold">context.xml</span> above and see how this alias is used in the database url
+        <span class="bold">jdbc:mysql://</span><span class="hi-yellow">db</span><span class="bold">:3306/hellodb?useSSL=false</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>5c4c70f234cf66470f80720394be2e1c91c84fb9df5f06074ed76ab2156a0403</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the running <span class="bold">Docker</span> containers, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker ps</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>CONTAINER ID    IMAGE           COMMAND                  CREATED         STATUS          PORTS                    NAMES
+5c4c70f234cf    tomcat_hellodb  "catalina.sh run"        5 seconds ago   Up 3 seconds    0.0.0.0:8080->8080/tcp   nauseous_khorana
+7541f659e7a6    mysql_hellodb   "docker-entrypoint.sh"   9 minutes ago   Up 9 minutes    3306/tcp                 mysql</pre>
+    </div>
+    <div id="para-div">
+      <p>Open a browser on the local host and access the URL <span class="bold">http://localhost:8080/helloworld3/message</span>.
+        The following would be a typical view:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/DockerTomcat-1.png" class="img-cls" alt="Docker Tomcat 1" />
+      <div class="img-cap">Figure-4</div>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">HOORAY !!!</span> we have successfully demonstrated the use of multiple <span class="bold">Docker</span>
+        containers.</p>
+    </div>
+    <div id="para-div">
+      <p>To stop the business tier and data tier containers, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker stop 5c4c70f234cf 7541f659e7a6</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>5c4c70f234cf
+7541f659e7a6</pre>
+    </div>
+    <div id="para-div">
+      <p>To list all the running <span class="bold">Docker</span> containers (none should be running at this
+        point), execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker ps</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>CONTAINER ID    IMAGE       COMMAND              CREATED         STATUS          PORTS                NAMES</pre>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="http://polarsparc.github.io/Docker/Docker.html" target="_blank"><span class="bold">Introduction to Docker</span></a></p>
+      <p><a href="http://polarsparc.github.io/Docker/Dockerfile.html" target="_blank"><span class="bold">Introduction to Dockerfile</span></a></p>
+      <p><a href="https://docs.docker.com/" target="_blank"><span class="bold">Official Docker Documentation</span></a></p>
+    </div>
+  </body>
+</html>

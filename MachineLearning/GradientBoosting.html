@@ -1,0 +1,474 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Machine Learning - Gradient Boosting Machine using Scikit-Learn">
+    <meta name="subject" content="Machine Learning - Gradient Boosting Machine using Scikit-Learn">
+    <meta name="keywords" content="python, machine_learning, classification, ensemble, gradient_boosting, scikit-learn">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Machine Learning - Gradient Boosting Machine using Scikit-Learn</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+      MathJax = {
+        tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+      };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Machine Learning - Gradient Boosting Machine using Scikit-Learn</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">07/17/2022</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In the article <a href="https://polarsparc.github.io/MachineLearning/EnsembleLearning.html" target="_blank"><span class=
+        "bold">Understanding Ensemble Learning</span></a>, we covered the concept behind the ensemble method <span class="hi-yellow">Boosting</span>.</p>
+      <p><span class="hi-yellow">Gradient Boosting Machine</span> (or <span class="hi-yellow">GBM</span> for short) is one of the
+        machine learning algorithms that leverages an ensemble of weak base models (Decision Trees) for the Boosting method.</p>
+      <p>In other words, the Gradient Boosting machine learning algorithm iteratively builds a sequence of Decision Trees, such that
+        each of the subsequent Decision Trees work on the residual errors from the preceding trees, to arrive at a robust better
+        predicting model.</p>
+    </div>
+    <div id="section-div">
+      <p>Gradient Boosting Machine</p>
+    </div>
+    <div id="para-div">
+      <p>In the following sections, we will unravel the steps behind the Gradient Boosting Machine algorithm for regression as well
+        as classification problems.</p>
+    </div>
+    <div id="para-div">
+      <p>For a given model $F(x_i)$, the Loss Function $L(y_i, F(x_i))$ would be the <span class="underbold">Log Likelihood</span> (as
+        was described in the article <a href="https://polarsparc.github.io/MachineLearning/Classification-1.html" target="_blank"><span
+          class="bold">Logistic Regression</span></a>) for classification problems and would be the <span class="underbold">Sum of
+          Squared Errors</span> (as was described in the article <a href="https://polarsparc.github.io/MachineLearning/LinearRegression-1.html"
+          target="_blank"><span class="bold">Linear Regression</span></a>) for regression problems.</p>
+      <p>In addition, the optimization of the Loss Function is performed using the technique of <span class="underbold">Gradient
+        Descent</span> (as mentioned in the article <a href="https://polarsparc.github.io/MachineLearning/LinearRegression-6.html"
+        target="_blank"><span class="bold">Regularization</span></a>). Hence the term <span class="underbold">Gradient</span> in Gradient
+        Boosting. This implies the use of a <span class="underbold">Learning Rate</span> coefficient $\gamma$ at each iteration. For
+        our hypothetical use-case, let the Learning Rate $\gamma = 0.1$.</p>
+    </div>
+    <div id="step-div">
+      <p>Gradient Boosting Machine for Regression</p>
+    </div>
+    <div id="para-div">
+      <p>We will start with the case for a regression problem as it is much easier to get an intuition for how the algorithm works.
+        The Loss Function for regression would then be $L(y_i, F(x_i)) = \sum_{i=1}^N (y_i - \hat{y_i})^2$, where $\hat{y_i} = F(x_i)$.
+        The goal is to minimize the Loss Function. Hence, the residual $r_i = - \Large{\frac{\partial L}{\partial F(x_i)}}$ $= 2(y_i
+        - \hat{y_i})$. Given that $2$ is a constant and will not influence the outcome, we can simplify the residual as $r_i = y_i -
+        \hat{y_i}$.</p>
+      <p>The following illustration displays rows for the hypothetical ice-cream data set:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Ice-Cream Data" src="./images/gradient-boost-01.png" class="img-cls" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are the steps in the Gradient Boosting algorithm for regression:</p>
+    </div>
+    <div id="para-div">
+      <ol id="blue-ol">
+        <li>
+          <p>Build a weak base model $F_{m-1}(x_i)$ with just a root node, where $m = 1 ... M$ is the iteration. The predicted value
+            from the weak base model will be the mean $\bar{y}$ of the target (outcome) variable $y_i$ for all the samples from the
+            training data set. For our hypothetical ice-cream data set, we have $6$ samples and hence $\bar{y} = \Large{\frac{1.09+
+            2.49+0.99+3.29+1.29+3.59}{6}}$ $= 2.12$ for each sample in the data set as shown below:</p>
+            <div id="img-outer-div"> <img alt="Mean Prediction" src="./images/gradient-boost-02.png" class="img-cls" />
+              <div class="img-cap">Figure.2</div>
+            </div>
+            <br/>
+        </li>
+        <li>
+          <p>Compute the Residual Errors (referred to as <span class="hi-yellow">Pseudo Residuals</span>) based on the predictions
+            from the weak base model $F_{m-1}(x_i)$. Mathematically the pseudo residuals are computed as $r_{im} = - \Large{[\frac
+            {\partial L(y_i, F_{m-1}(x_i))}{\partial F_{m-1}(x_i)}]}$ for $i = 1, ..., N$, where $N$ is the number of samples and
+            $m$ is the current iteration. For our data set, the residuals as shown below:</p>
+          <div id="img-outer-div"> <img alt="Residuals" src="./images/gradient-boost-03.png" class="img-cls" />
+            <div class="img-cap">Figure.3</div>
+          </div>
+          <br/>
+        </li>
+        <li>
+          <p>Build a Decision Tree model $H_m(x_i)$ to predict the Residual (target variable) using the feature variables Flavor,
+            Temperature, and Humidity. For our data set, the decision tree could be as shown below:</p>
+          <div id="img-outer-div"> <img alt="Residual Tree" src="./images/gradient-boost-04.png" class="img-cls" />
+            <div class="img-cap">Figure.4</div>
+          </div>
+          <br/>
+          <p>Notice that some of the leaf nodes in the decision tree have multiple values. In those cases, we replace them with their
+          <span class="underbold">Mean</span> value as shown below:</p>
+          <div id="img-outer-div"> <img alt="Mean Residual" src="./images/gradient-boost-05.png" class="img-cls" />
+            <div class="img-cap">Figure.5</div>
+          </div>
+          <br/>
+          <p>The following illustration indicates the prediction of the residuals from the decision tree model $H_m(x_i)$ above using
+            the features from the hypothetical ice-cream data set:</p>
+          <div id="img-outer-div"> <img alt="Predict Residuals" src="./images/gradient-boost-06.png" class="img-cls" />
+            <div class="img-cap">Figure.6</div>
+          </div>
+          <br/>
+        </li>
+        <li>
+          <p>Update the model by combining the prior model $F_{m-1}(x_i)$ with the current model predicting residuals $H_m(x_i)$ using
+            the Learning Rate $\gamma = 0.1$ as a coefficient. Mathematically this combination is represented as $F_m(x_i) = F_{m-1}(x_i)
+            + \gamma * H_m(x_i)$.</p>
+          <p>In other words, this means the new target (Price) prediction will be updated using $F_m(x_i) = F_{m-1}(x_i) + \gamma *
+            H_m(x_i)$.</p>
+          <p>The following illustration shows the samples from the hypothetical ice-cream data set with new target (Price) prediction:</p>
+          <div id="img-outer-div"> <img alt="Combined Model" src="./images/gradient-boost-07.png" class="img-cls" />
+            <div class="img-cap">Figure.7</div>
+          </div>
+          <br/>
+          <p>Notice how the newly predicted Prices are tending towards the actual Prices in the hypothetical ice-cream data set.</p>
+        </li>
+        <li>
+          <p>Go to Step 2 for the next iteration. This process continues until a specified number of models are reached. Note that
+            the iteration will stop early if a perfect prediction state is reached.</p>
+        </li>
+      </ol>
+    </div>
+    <br/>
+    <div id="step-div">
+      <p>Gradient Boosting Machine for Classification</p>
+    </div>
+    <div id="para-div">
+      <p>The Loss Function for classification would then be $L(y_i, F(x_i)) = - \sum_{i=1}^N [y_i * log_e(p) + (1 - y_i) * log_e(1
+        - p)]$, where $p$ is the probability of predicting a class $1$ and $F(x_i)$ predicts the log of odds $log_e \Large{(\frac{p}
+        {1 - p})}$. The goal is to minimize the Loss Function for accurate prediction. Hence, the residual (after simplification of
+        the partial derivative) would be $r_i = - \Large{\frac{\partial L}{\partial F(x_i)}}$ $= y_i - p$.</p>
+      <p>The following illustration displays rows for the hypothetical credit defaults data set:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Credit Defaults Data" src="./images/gradient-boost-08.png" class="img-cls" />
+      <div class="img-cap">Figure.8</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are the steps in the Gradient Boosting algorithm for classification:</p>
+    </div>
+    <div id="para-div">
+      <ol id="blue-ol">
+        <li>
+          <p>Build a weak base model $F_{m-1}(x_i)$ with just a root node, where $m = 1 ... M$ is the iteration. The predicted value
+            from the weak base model will be the probability $P_{m-1}$ of the target (outcome) variable $y_i$ for all the samples in
+            the training data set. The way to get to the probability is through log of odds. In other words $P_{m-1} = \Large{\frac{
+            e^{ln(odds)}}{1 + e^{ln(odds)}}}$. For our hypothetical credit defaults data set, we have $4$ samples that will default
+            and $2$ that will not and hence $ln(odds) = \Large{\frac{4}{2}}$ $= 0.69$. Therefore, the predicted probability $P_{m-1}
+            = \Large{\frac{e^{0.69}}{1 + e^{0.69}}}$ $= 0.67$ for each sample in the data set as shown below:</p>
+          <div id="img-outer-div"> <img alt="Prediction Probability" src="./images/gradient-boost-09.png" class="img-cls" />
+            <div class="img-cap">Figure.9</div>
+          </div>
+          <br/>
+          <p>Note we are using the column Predicted_LO for the log of odds and the column Predicted_P for the probabilities.</p>
+        </li>
+        <li>
+          <p>Compute the Residual Errors (referred to as <span class="hi-yellow">Pseudo Residuals</span>) based on the predictions
+            from the weak base model $F_{m-1}(x_i)$. Mathematically the pseudo residuals are computed as $r_{im} = y_i - p$ for $i
+            = 1, ..., N$, where $N$ is the number of samples and $m$ is the current iteration. For our credit defaults data set, the
+            residuals as shown below:</p>
+          <div id="img-outer-div"> <img alt="Residuals" src="./images/gradient-boost-10.png" class="img-cls" />
+            <div class="img-cap">Figure.10</div>
+          </div>
+          <br/>
+        </li>
+        <li>
+          <p>Build a Decision Tree model $H_m(x_i)$ to predict the Residual (target variable) using the feature variables Married,
+            Cards, and Balance. For our credit defaults data set, the decision tree could be as shown below:</p>
+          <div id="img-outer-div"> <img alt="Residual Tree" src="./images/gradient-boost-11.png" class="img-cls" />
+            <div class="img-cap">Figure.11</div>
+          </div>
+          <br/>
+          <p>Some of the leaf nodes in the decision tree have multiple values. Given that the values are probabilities, one cannot
+            use their Mean value as was in the case of regression. We will use the formula $\Large{\frac{\sum r_{im}}{\sum P_{m-1}
+            * (1 - P_{m-1})}}$, where $r_{im}$ is the residuals at the leaf and $P_{m-1}$ is the previous probability, to arrive at
+            the log of odds as shown below:</p>
+          <div id="img-outer-div"> <img alt="Log Odds Residual" src="./images/gradient-boost-12.png" class="img-cls" />
+            <div class="img-cap">Figure.12</div>
+          </div>
+          <br/>
+          <p>The following illustration indicates the prediction of the residuals (in log odds) from the decision tree model $H_m(x_i)$
+            above using the features from the credit defaults data set:</p>
+          <div id="img-outer-div"> <img alt="Predict Residuals" src="./images/gradient-boost-13.png" class="img-cls" />
+            <div class="img-cap">Figure.13</div>
+          </div>
+          <br/>
+          <p>Note we are using the column Predicted_Residual_LO for the predicted residuals in log of odds.</p>
+        </li>
+        <li>
+          <p>Update the model by combining the prior model $F_{m-1}(x_i)$ with the current model predicting residuals $H_m(x_i)$ using
+            the Learning Rate $\gamma = 0.1$ as a coefficient. Mathematically this combination is represented as $F_m(x_i) = F_{m-1}(x_i)
+            + \gamma * H_m(x_i)$.</p>
+          <p>In other words, this means the new target prediction will be updated using $F_m(x_i) = F_{m-1}(x_i) + \gamma * H_m(x_i)$.</p>
+          <p>The following illustration shows the samples from the credit defaults data set with new target prediction:</p>
+          <div id="img-outer-div"> <img alt="Combined Model" src="./images/gradient-boost-14.png" class="img-cls" />
+            <div class="img-cap">Figure.14</div>
+          </div>
+          <br/>
+          <p>Notice how the newly predicted probabilities are tending towards the actual probabilities in the credit defaults data
+            set.</p>
+        </li>
+        <li>
+          <p>Go to Step 2 for the next iteration. This process continues until a specified number of models are reached. Note that
+            the iteration will stop early if a perfect prediction state is reached.</p>
+        </li>
+      </ol>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on Demo</p>
+    </div>
+    <div id="para-div">
+      <p>In this article, we will use the <span class="hi-yellow">Diamond Prices</span> data set to demonstrate the use of Gradient
+        Boosting Machine for regression (using scikit-learn) to predict Diamond prices.</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="bold">Diamond Prices</span> includes samples with the following features:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-yellow">carat</span> - denotes the weight of diamond stones in carat unit</p></li>
+        <li><p><span class="hi-yellow">color</span> - denotes a factor with levels (D,E,F,G,H,I). D is the highest quality</p></li>
+        <li><p><span class="hi-yellow">clarity</span> - denotes a factor with levels (IF,VVS1,VVS2,VS1,VS2). IF is the highest quality</p></li>
+        <li><p><span class="hi-yellow">certification</span> - denotes the certification body, a factor with levels ( GIA, IGI, HRD)</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The first step is to import all the necessary Python modules such as, pandas and scikit-learn as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.metrics import r2_score</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="info-div">
+      <h4>*** Classifier vs Regressor ***</h4>
+      <p style="color: brown; margin-left: 10px; margin-right: 10px;">Use the class GradientBoostingClassifier when dealing with
+        classification problems and the class GradientBoostingRegressor when dealing with regression problems.</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to load and display the Diamond Prices dataset into a pandas dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>url = './data/diamond-prices.csv'
+diamond_prices_df = pd.read_csv(url, usecols=['carat', 'colour', 'clarity', 'certification', 'price'])
+diamond_prices_df</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration shows the few rows of the diamond prices dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Dataframe Rows" src="./images/cross-validation-07.png" class="img-cls" />
+      <div class="img-cap">Figure.15</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to identify all the ordinal features from the diamond prices and creating a Python dictionary whose keys
+        are the names of the ordinal features and their values are a Python dictionary of the mapping between the labels (of the
+        ordinal feature) to the corresponding numerical values as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>ord_features_dict = {
+  'colour': {'D': 6, 'E': 5, 'F': 4, 'G': 3, 'H': 2 , 'I': 1},
+  'clarity': {'IF': 5, 'VVS1': 4, 'VVS2': 3, 'VS1': 2, 'VS2': 1}
+}</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The next step is to map the categorical labels for each of the ordinal features from the diamond prices dataframe into
+        their their numerical representation using the Python dictionary from above as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>for key, val in ord_features_dict.items():
+  diamond_prices_df[key] = diamond_prices_df[key].map(val)
+diamond_prices_df</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following illustration shows the few rows of the transformed diamond prices dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Transformed Ordinals" src="./images/cross-validation-09.png" class="img-cls" />
+      <div class="img-cap">Figure.16</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to create dummy binary variables for the nominal feature 'certification' from the diamond prices data set
+        as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>cert_encoded_df = pd.get_dummies(diamond_prices_df[['certification']], prefix_sep='.', sparse=False)
+cert_encoded_df</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the dataframe of all dummy binary variables for the nominal feature 'certification'
+        from the diamond prices dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Dummy Variables" src="./images/cross-validation-10.png" class="img-cls" />
+      <div class="img-cap">Figure.17</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to drop the nominal feature from the diamond prices dataframe, merge the dataframe of dummy binary variables
+        we created earlier, and display the merged diamond prices dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>diamond_prices_df = diamond_prices_df.drop('certification', axis=1)
+diamond_prices_df = pd.concat([diamond_prices_df, cert_encoded_df], axis=1)
+diamond_prices_df</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays few rows from the merged diamond prices dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Dropped Nominal" src="./images/cross-validation-11.png" class="img-cls" />
+      <div class="img-cap">Figure.19</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display information about the diamond prices dataframe, such as index and column types, memory usage,
+        etc., as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>diamond_prices_df.info()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays information about the diamond prices dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Dataframe Information" src="./images/gradient-boost-15.png" class="img-cls" />
+      <div class="img-cap">Figure.19</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to split the diamond prices dataframe into two parts - a training data set and a test data set. The training
+        data set is used to train the ensemble model and the test data set is used to evaluate the ensemble model. In this use case,
+        we split 75% of the samples into the training dataset and remaining 25% into the test dataset as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>X_train, X_test, y_train, y_test = train_test_split(diamond_prices_df, diamond_prices_df['price'], test_size=0.25, random_state=101)
+X_train = X_train.drop('price', axis=1)
+X_test = X_test.drop('price', axis=1)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to initialize the Gradient Boosting regression model class from scikit-learn and train the model using the
+        training data set as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>model = GradientBoostingRegressor(max_depth=5, n_estimators=200, learning_rate=0.01, random_state=101)
+model.fit(X_train, y_train)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are a brief description of some of the hyperparameters used by the AdaBoost model:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-yellow">max_depth</span> - the maximum depth of each of the decision trees in the ensemble</p></li>
+        <li><p><span class="hi-yellow">n_estimators</span> - the total number of trees in the ensemble. The default value is 100</p></li>
+        <li><p><span class="hi-yellow">learning_rate</span> - controls the significance for each weak model (decision tree) in the
+          ensemble. The default value is 0.1</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The next step is to use the trained model to predict the prices using the test dataset as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>y_predict = model.predict(X_test)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the R2 score for the model performance as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>r2_score(y_test, y_predict)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the accuracy score for the model performance:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Accuracy Score" src="./images/gradient-boost-16.png" class="img-cls" />
+      <div class="img-cap">Figure.20</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>From the above, one can infer that the model seems to predict with great accuracy.</p>
+    </div>
+    <div id="section-div">
+      <p>Demo Notebook</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the link to the <span class="bold">Jupyter Notebook</span> that provides an hands-on demo for this
+        article:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><a href="https://github.com/bhaskars-repo/MachineLearning/blob/main/P18-GradientBoosting-Scikit.ipynb" target="_blank">
+          <span class="bold">Gradient Boosting</span></a></p></li>
+      </ul>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/MachineLearning/EnsembleLearning.html" target="_blank"><span class="bold">Understanding Ensemble Learning</span></a></p>
+      <p><a href="https://polarsparc.github.io/MachineLearning/Classification-5.html" target="_blank"><span class="bold">Decision Trees using Scikit-Learn</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

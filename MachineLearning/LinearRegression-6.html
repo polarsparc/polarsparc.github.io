@@ -1,0 +1,504 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Machine Learning - Regularization using Scikit-Learn - Part 6">
+    <meta name="subject" content="Machine Learning - Regularization using Scikit-Learn - Part 6">
+    <meta name="keywords" content="python, machine_learning, regression, scikit-learn">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Machine Learning - Regularization using Scikit-Learn - Part 6</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+      MathJax = {
+        tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+      };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Machine Learning - Regularization using Scikit-Learn - Part 6</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">04/22/2022</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/MachineLearning/LinearRegression-5.html" target="_blank"><span class="bold">Part 5
+        </span></a> of this series, we unraveled the concept of <span class="bold">Regularization</span> to address model overfitting.</p>
+      <p>In this part, we get our hands dirty with the different regularization techniques, such as, <span class="bold">LASSO</span>,
+        <span class="bold">Ridge</span>, and <span class="bold">Elastic Net</span> using Scikti-Learn.</p>
+    </div>
+    <div id="section-div">
+      <p>Concepts</p>
+    </div>
+    <div id="para-div">
+      <p>In this section, we will cover some of the core foundational concepts needed for the hands-on of the various regularization 
+        techniques.</p>
+    </div>
+    <div id="step-div">
+      <p>Feature Scaling</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">Scaling</span> of feature variables (or features) is an important step during the exploratory data
+        analysis phase. When the features are in different scales, the features with larger values tend to dominate the regression
+        coefficients and the model gets skewed. Also, the optimization algorithms (to minimize the residual errors) will take longer
+        time to <span class="underbold">CONVERGE</span> on optimal coefficient values for features with larger values.</p>
+    </div>
+    <br/>
+    <div id="info-div">
+      <h4>*** CONVERGENCE ***</h4>
+      <p style="color: brown; margin-left: 10px; margin-right: 10px;">Convergence is related to the process of reaching a set goal.
+        The primary goal of Linear Regression (in particular the Ordinary Least Squares method - OLS for short) is to minimize the
+        residual errors to find the line of best fit. But, how does the optimization algorithm work under-the-hood ??? This is where
+        <span class="hi-yellow">Gradient Descent</span> comes into play. The approach used by Gradient Descent is very similar to
+        that of descending from the top of a mountain to reach the valley at the bottom. Assume, we are at the top of a mountain and
+        the visibility is poor (say, due to fog). How do we start the descend ??? We look around us to find the spot to put our foot
+        to climb down (one step at a time). This process continues till we reach the valley at the bottom (where the slope is minimal).
+        This is exactly how the Gradient Descent algorithm works to find the point with minimal slope by iteratively taking small
+        incremental steps.</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In general, there are two commonly used approaches for scaling - first is <span class="hi-yellow">Normalization</span> and
+        the second is <span class="hi-yellow">Standardization</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="hi-yellow">Normalization</span> scaler takes each feature column $x_i$ to scale its values between $0$ and
+        $1$. In other words, it takes each value of the feature column $x_i$, subtracts from it the minimum value of the feature
+        column $x_{i,min}$, and then divides the result by the range of the feature column $x_{i,max} - x_{i,min}$. This scaler does
+        not change the shape of the original distribution and does not reduce the importance of the outliers.</p>
+      <p>In mathematical terms:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$\color{red} \boldsymbol{Normalize(x_i)}$ $= \bbox[pink,2pt]{\Large{\frac{x_i - x_{i,min}}{x_{i,max}
+        - x_{i,min}}}}$</p>
+      <p>The Normalization scalar is sometimes referred to as the <span class="hi-yellow">Min-Max</span> normalization scaler.</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="hi-yellow">Standardization</span> scaler takes each feature column $x_i$ to scale its values so that the
+        mean is centered at $0$ with a standard deviation of $1$. In other words, it takes each value of the feature column $x_i$,
+        subtracts from it the mean of the feature column $\mu_{x,i}$, and then divides the result by the standard deviation of the
+        feature column $\sigma_{x,i}$.</p>
+      <p>In mathematical terms:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$\color{red} \boldsymbol{Standardize(x_i)}$ $= \bbox[pink,2pt]{\Large{\frac{x_i - \mu_{x,i}}
+        {\sigma_{x,i}}}}$</p>
+      <p>The Standardization scalar is sometimes referred to as the <span class="hi-yellow">Z-Score</span> normalization scaler.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration demonstrates the standardization of the feature variable <span class="hi-grey">weight</span>
+        from the auto-mpg data set:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Scaling" src="./images/regression-42.png" class="img-cls" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="step-div">
+      <p>Correlation Matrix</p>
+    </div>
+    <div id="para-div">
+      <p>A <span class="hi-yellow">Correlation Matrix</span> is a square matrix that shows the correlation coefficients between the
+        different feature variables in a data set. The value of $1$ along the main diagonal of the matrix indicates the correlation
+        between a feature variable to itself (hence the perfect score). The correlation matrix is symmetrical with the same set of
+        the correlation coefficients above and below the main diagonal.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration demonstrates the correlation matrix between different feature variables from the auto-mpg data
+        set:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Correlation Matrix" src="./images/regression-43.png" class="img-cls" />
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <br/>
+    <div id="step-div">
+      <p>Variance Inflation Factor</p>
+    </div>
+    <div id="para-div">
+      <p>A <span class="hi-yellow">Variance Inflation Factor</span> (or <span class="hi-blue">VIF</span>) is a measure of the amount
+        of multicollinearity present in a set of feature variables. In other words, it measures how much the variance of a regression
+        coefficient for a single feature variable $x_i$ is inflated because of its linear dependence with other feature (or predictor)
+        variables $(x_1, x_2, ..., x_{i-1}, x_{i+1}, ..., x_n)$.</p>
+      <p>To compute VIF for each feature, pick each feature as the target and perform the multiple regression with all the other
+        features. For each of the multiple regression steps, find the $R^2$ factor and the the VIF is calculated using the formula:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$\color{red} \boldsymbol{VIF_i}$ $= \bbox[pink,2pt]{\Large{\frac{1}{(1 - R_i^2)}}}$</p>
+      <p>A VIF of $1$ (the minimum possible VIF) means the tested feature is not correlated with the other features, while a large
+        VIF value indicates that the tested feature has linear dependence on the other features. An acceptable range for the VIF
+        value is that it is less than $10$.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on Regularization</p>
+    </div>
+    <div id="para-div">
+      <p>To demonstrate the three regularization techniques, namely LASSO, Ridge, and Elastic Net, we will implement the model that
+        estimates mpg using auto-mpg data set.</p>
+    </div>
+    <div id="para-div">
+      <p>The first step is to import all the necessary Python modules such as, matplotlib, pandas, and scikit-learn as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression, Lasso, Ridge, ElasticNet
+from sklearn.metrics import mean_squared_error, r2_score</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to load the auto mpg dataset into a pandas dataframe, assign the column names, and perform the tasks to
+        cleanse and prepare the dataset as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/auto-mpg/auto-mpg.data'
+auto_df = pd.read_csv(url, delim_whitespace=True)
+auto_df.columns = ['mpg', 'cylinders', 'displacement', 'horsepower', 'weight', 'acceleration', 'model_year', 'origin', 'car_name']
+auto_df.horsepower = pd.to_numeric(auto_df.horsepower, errors='coerce')
+auto_df.car_name = auto_df.car_name.astype('string')
+auto_df = auto_df[auto_df.horsepower.notnull()]
+auto_df = auto_df[['mpg', 'cylinders', 'displacement', 'horsepower', 'weight', 'acceleration']]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to create the training dataset and a test dataset with the desired feature (or predictor) variables as
+        shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>X_train, X_test, y_train, y_test = train_test_split(auto_df[['mpg', 'acceleration', 'cylinders', 'displacement', 'horsepower', 'weight']], auto_df['mpg'], test_size=0.25, random_state=101)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The next step is to create an instance of the standardization scaler to scale the desired feature (or predictor) variables
+        as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>scaler = StandardScaler()
+s_X_train = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns, index=X_train.index)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following illustration displays the first 10 rows of the pandas dataframe that contains the scaled values of the
+        selected features:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Scaled Features" src="./images/regression-44.png" class="img-cls" />
+      <div class="img-cap">Figure.3</div>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>*** ATTENTION ***</h4>
+      <pre>Only the feature variables need to be scaled and *<span class="underbold">NOT</span>* the target variable</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the correlation matrix of the feature (or predictor) variables with the target variable as
+        shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>sns.heatmap(s_X_train.corr(), annot=True, cmap='coolwarm', fmt='0.2f', linewidth=0.5)
+plt.show()</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>One can infer from the correlation matrix that the feature <span class="hi-grey">acceleration</span> does not have any
+        strong relation with the target variable (annotated in red), while the other features are strongly correlated (annotated in
+        green) as shown in the following illustration:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Correlation Matrix Annotated" src="./images/regression-45.png" class="img-cls" />
+      <div class="img-cap">Figure.4</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to drop the feature <span class="hi-grey">acceleration</span> from the scaled training dataset, compute
+        and display the VIF values for the remaining features as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>feature_df = s_X_train.drop(['acceleration', 'mpg'], axis=1)
+vif_df = pd.DataFrame()
+vif_df['feature_name'] = feature_df.columns
+vif_df['vif_value'] = [variance_inflation_factor(feature_df.values, i) for i in range(len(feature_df.columns))]
+vif_df</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following illustration displays the VIF values of the scaled selected features:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="VIF Values - Take 1" src="./images/regression-46.png" class="img-cls" />
+      <div class="img-cap">Figure.5</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We see the VIF value for the feature <span class="hi-grey">displacement</span> is large.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to drop the feature <span class="hi-grey">displacement</span> from the scaled training dataset, re-compute
+        and display the VIF values for the remaining features as shown below:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>feature_df = s_X_train.drop('displacement', axis=1)
+vif_df = pd.DataFrame()
+vif_df['feature_name'] = feature_df.columns
+vif_df['vif_value'] = [variance_inflation_factor(feature_df.values, i) for i in range(len(feature_df.columns))]
+vif_df</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following illustration displays the recomputed VIF values of the scaled selected features:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="VIF Values - Take 2" src="./images/regression-47.png" class="img-cls" />
+      <div class="img-cap">Figure.6</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The VIF values for the selected features look much better now.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to initialize a $3^{rd}$ degree polynomial feature transformer and generate the additional features of the
+        $3^{rd}$ degree using the scaled features as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>transformer = PolynomialFeatures(degree=3, include_bias=True)
+s_X_train_f = s_X_train[['cylinders', 'horsepower', 'weight']]
+s_X_test_f = s_X_test[['cylinders', 'horsepower', 'weight']]
+X_p_train_f = transformer.fit_transform(s_X_train_f)
+X_p_test_f = transformer.fit_transform(s_X_test_f)
+X_p_train_f.shape</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to initialize and train the polynomial regression model as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>p3_model = LinearRegression()
+p3_model.fit(X_p_train_f, y_train)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to use the trained polynomial regression model to predict the target (mpg) using the test dataset as shown
+        below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>y_predict = p3_model.predict(X_p_test_f)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the $R^2$ value for the polynomial regression model as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>r2_score(y_test, y_predict)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the $R^2$ value for the model:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Display R-Squared" src="./images/regression-48.png" class="img-cls" />
+      <div class="img-cap">Figure.7</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice our polynomial regression model performed poorly and achieved an $R^2$ score of about $58\%$ (due to overfitting).</p>
+    </div>
+    <div id="para-div">
+      <p>We will now employ the regularization techniques on our $3^{rd}$ degree polynomial features to observe their performance.</p>
+    </div>
+    <div id="para-div">
+      <p>We will perform the regularized regression to predict <span class="hi-grey">mpg</span> using an aribitrarily determined set
+        of eight values (0.01, 0.5, 1.0, 5.0, 10.0, 20.0, 50.0, 100.0) for the tuning hyperparameter (referred to as $\lambda$ in the
+        mathematical equations in <a href="https://polarsparc.github.io/MachineLearning/LinearRegression-5.html" target="_blank">
+        <span class="bold">Part 5</span></a>, specified as <span class="hi-blue">alpha</span> in the scikit-learn API).</p>
+    </div>
+    <div id="para-div">
+      <p>Before we proceed, the following is the definition of a convenience method to return a Python dictionary from the passed in
+        parameters:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>def to_dict(al, sr, r2):
+  dc = {'alpha': al}
+  for i in range(len(sr)):
+      k = "w%02d" % i
+      if abs(sr[i]) == 0.00:
+          dc[k] = 0.0
+      else:
+          dc[k] = sr[i]
+  dc['R2'] = r2
+  return dc</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="step-div">
+      <p>LASSO Regression</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to perform the LASSO regression for the different values of the hyperparamter 'alpha' and display the
+        results as a pandas dataframe as shown below:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>rows = []
+  for val in [0.01, 0.5, 1.0, 5.0, 10.0, 20.0, 50.0, 100.0]:
+      lasso = Lasso(alpha=val)
+      lasso.fit(X_p_train_f, y_train)
+      y_predict = lasso.predict(X_p_test_f)
+      rows.append(to_dict(val, lasso.coef_, r2_score(y_test, y_predict)))
+  lasso_df = pd.DataFrame.from_dict(rows)
+  with pd.option_context('display.float_format', '{:0.3f}'.format):
+      display(lasso_df)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following illustration displays the results for each iteration of the LASSO regression:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="LASSO Regression" src="./images/regression-49.png" class="img-cls" />
+      <div class="img-cap">Figure.8</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice the red rectangles where the regression coefficients for some of the features have become zero. Also, notice the
+        green rectangle that highlights the hyperparameter 'alpha' value for which the $R^2$ score is the highest.</p>
+    </div>
+    <div id="step-div">
+      <p>Ridge Regression</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to perform the Ridge regression for the different values of the hyperparamter 'alpha' and display the
+        results as a pandas dataframe as shown below:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>rows = []
+  for val in [0.01, 0.5, 1.0, 5.0, 10.0, 20.0, 50.0, 100.0]:
+      ridge = Ridge(alpha=val)
+      ridge.fit(X_p_train_f, y_train)
+      y_predict = ridge.predict(X_p_test_f)
+      rows.append(to_dict(val, ridge.coef_, r2_score(y_test, y_predict)))
+  ridge_df = pd.DataFrame.from_dict(rows)
+  with pd.option_context('display.float_format', '{:0.3f}'.format):
+      display(ridge_df)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following illustration displays the results for each iteration of the Ridge regression:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Ridge Regression" src="./images/regression-50.png" class="img-cls" />
+      <div class="img-cap">Figure.9</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice that the regression coefficients of the features never become zero. Also, notice the green rectangle that highlights
+        the hyperparameter 'alpha' value for which the $R^2$ score is the highest.</p>
+    </div>
+    <div id="step-div">
+      <p>Elastic Net Regression</p>
+    </div>
+    <div id="para-div">
+      <p>The final step is to perform the Elastic Net regression for the different values of the hyperparamter 'alpha' and display
+        the results as a pandas dataframe as shown below:</p>
+    </div>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>rows = []
+  for val in [0.01, 0.5, 1.0, 5.0, 10.0, 20.0, 50.0, 100.0]:
+      elastic = ElasticNet(alpha=val, tol=0.01)
+      elastic.fit(X_p_train_f, y_train)
+      y_predict = elastic.predict(X_p_test_f)
+      rows.append(to_dict(val, elastic.coef_, r2_score(y_test, y_predict)))
+  elastic_df = pd.DataFrame.from_dict(rows)
+  with pd.option_context('display.float_format', '{:0.3f}'.format):
+      display(elastic_df)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following illustration displays the results for each iteration of the Elastic Net regression:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Elastic Net Regression" src="./images/regression-51.png" class="img-cls" />
+      <div class="img-cap">Figure.10</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice the red rectangles where the regression coefficients for some of the features have become zero. Also, notice the
+        green rectangle that highlights the hyperparameter 'alpha' value for which the $R^2$ score is the highest. In addition,
+        the regression coefficient values are slightly different from that of LASSO or Ridge.</p>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>*** ATTENTION ***</h4>
+      <pre>Notice the use of the hyperparameter <span class="underbold">tol=0.01</span> in the above case of Elastic Net Regression. This hyperparameter controls at what level of tolerance can the convergence stop during the process of finding the optimal values for the coefficients that minimize the residual errors. Another hyperparameter that can be used is the <span class="underbold">max_iter</span>. If none specified, one will see the following warning:
+
+ConvergenceWarning: Objective did not converge. You might want to increase the number of iterations, check the scale of the features or consider increasing regularisation.</pre>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on Demo</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the link to the <span class="bold">Jupyter Notebook</span> that provides an hands-on demo for this article:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><a href="https://github.com/bhaskars-repo/MachineLearning/blob/main/P6-1-Regularization-Scikit.ipynb" target="_blank">
+          <span class="bold">Regularization using Scikit-Learn</span></a></p></li>
+      </ul>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/MachineLearning/LinearRegression-5.html" target="_blank"><span class="bold">Machine Learning - Understanding Regularization - Part 5</span></a></p>
+      <p><a href="https://polarsparc.github.io/MachineLearning/LinearRegression-4.html" target="_blank"><span class="bold">Machine Learning - Understanding Bias and Variance - Part 4</span></a></p>
+      <p><a href="https://polarsparc.github.io/MachineLearning/LinearRegression-3.html" target="_blank"><span class="bold">Machine Learning - Polynomial Regression using Scikit-Learn - Part 3</span></a></p>
+      <p><a href="https://polarsparc.github.io/MachineLearning/LinearRegression-2.html" target="_blank"><span class="bold">Machine Learning - Linear Regression using Scikit-Learn - Part 2</span></a></p>
+      <p><a href="https://polarsparc.github.io/MachineLearning/LinearRegression-1.html" target="_blank"><span class="bold">Machine Learning - Linear Regression - Part 1</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

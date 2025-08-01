@@ -1,0 +1,376 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Machine Learning - AdaBoost using Scikit-Learn">
+    <meta name="subject" content="Machine Learning - AdaBoost using Scikit-Learn">
+    <meta name="keywords" content="python, machine_learning, classification, ensemble, adaboost, scikit-learn">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Machine Learning - AdaBoost using Scikit-Learn</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+      MathJax = {
+        tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+      };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Machine Learning - AdaBoost using Scikit-Learn</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">07/15/2022</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In the article <a href="https://polarsparc.github.io/MachineLearning/EnsembleLearning.html" target="_blank"><span class="bold">
+        Understanding Ensemble Learning</span></a>, we covered the concept behind the ensemble method <span class="hi-yellow">Boosting</span>.</p>
+      <p><span class="hi-yellow">AdaBoost</span> (short for <span class="hi-yellow">Adaptive Boosting</span>) is one of the machine
+        learning algorithms that leverages the Decision Tree as the base model (also referred to as a weak model) for the Boosting
+        method.</p>
+      <p>In other words, the AdaBoost machine learning algorithm iteratively builds a sequence of Decision Trees, such that each of
+        the subsequent Decision Trees work on the misclassifications from the preceding trees, to arrive at a final prediction.</p>
+    </div>
+    <div id="section-div">
+      <p>AdaBoost Algorithm</p>
+    </div>
+    <div id="para-div">
+      <p>In the following sections, we will unravel the steps behind the AdaBoost algorithm using a very simple hypothetical data
+        set relating to whether someone will default based on their income and current balance.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration displays rows from the hypothetical defaults data set:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Defaults Data" src="./images/adaboost-01.png" class="img-cls" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are the steps in the AdaBoost algorithm:</p>
+    </div>
+    <div id="para-div">
+      <ol id="blue-ol">
+        <li>
+          <p>Assign an initial weight (that represents the level of importance) to each of the samples (rows) in the data set. The
+            initial weight $w_0$ for each sample is $\Large{\frac{1}{N}}$, where $N$ is the number of samples. For our hypothetical
+            defaults data set, we have $10$ samples and hence $w_0 = 0.1$ for each sample in the data set as shown below:</p>
+            <div id="img-outer-div"> <img alt="Initial Weights" src="./images/adaboost-02.png" class="img-cls" />
+              <div class="img-cap">Figure.2</div>
+            </div>
+            <br/>
+        </li>
+        <li>
+          <p>Create a weak base model (a decision stump) from the features (in the data set) with the lowest gini index. Note that
+            a feature selection for the root node depends on the samples in the data set. For our data set, assume the feature
+            Balance is chosen as the root node of the decision stump as shown below:</p>
+          <div id="img-outer-div"> <img alt="Decision Stump" src="./images/adaboost-03.png" class="img-cls" />
+            <div class="img-cap">Figure.3</div>
+          </div>
+          <br/>
+          <p>Using the weak model, the following illustration shows the predicted outcome:</p>
+          <div id="img-outer-div"> <img alt="Prediction" src="./images/adaboost-04.png" class="img-cls" />
+            <div class="img-cap">Figure.4</div>
+          </div>
+          <br/>
+        </li>
+        <li>
+          <p>Determine the performance coefficient of the weak base model based on the errors the model made.</p>
+          <p>The <span class="hi-yellow">Performance Coefficient</span> $\alpha$ of the weak base model is computed as
+            $\gamma * log_e \Large{(\frac{1 - E_t}{E_t})}$, where $\gamma$ is the Learning Rate and $E_t$ is the Total Error.</p>
+          <p>The <span class="hi-yellow">Learning Rate</span> controls the level of significance (or contribution) of the weak base
+            model in the ensemble. For this example, we will set the <span class="hi-yellow">Learning Rate</span> as $\gamma =
+            \Large{\frac{1}{2}}$.</p>
+          <p>The <span class="hi-yellow">Total Error</span> $E_t$ is computed as the sum of weights of all the mis-classified data
+            samples by the weak base model. The Total Error value will always be between $0$ and $1$.</p>
+          <p>For our hypothetical defaults data set, from the Figure.4 above, we see two mis-classifications and hence the Total
+            Error $E_t = 0.1 + 0.1 = 0.2$.</p>
+          <p>Therefore the Performance Coefficient for our example is $\alpha = \Large{\frac{1}{2}}$ $log_e \Large{(\frac
+            {1 - 0.2}{0.2})}$ $= \Large{\frac{1}{2}}$ $log_e \Large{(\frac{0.8}{0.2})}$ $= 0.5 * log_e(4) = 0.5 * 1.38 = 0.69$.</p>
+        </li>
+        <li>
+          <p>Adjust the weight of the samples in the data set using the Performance Coefficient, such that the weights for the
+            correctly classified samples are reduced while the weights for the mis-classified samples are increased.</p>
+          <p>The new weight $w_1$ for correctly classified samples is computed as $w_1 = w_0 * e^{-\alpha}$ and for mis-classified
+            samples is computed as $w_1 = w_0 * e^{\alpha}$.</p>
+          <p>In general terms, the new weight $w_i$ for correctly classified samples is computed as $w_i = w_{i-1} * e^{-\alpha}$
+            and for mis-classified samples is computed as $w_i = w_{i-1} * e^{\alpha}$.</p>
+          <p>For the correctly classified samples $w_1 = 0.1 * e^{-0.69} = 0.1 * 0.5016 = 0.50$.</p>
+          <p>For the mis-classified samples $w_1 = 0.1 * e^{0.69} = 0.1 * 1.9937 = 0.199$.</p>
+          <p>The following illustration shows the samples from the data set with adjusted weights:</p>
+          <div id="img-outer-div"> <img alt="Adjusted Weights" src="./images/adaboost-05.png" class="img-cls" />
+            <div class="img-cap">Figure.5</div>
+          </div>
+          <br/>
+        </li>
+        <li>
+          <p>Normalize the weight of the samples in the data set so they all add upto $1$. For this, we divide each of the weights
+            in the data set by the sum of all the weights. The sum of all the weights from the table in Figure.5 from above equals
+            $0.798$. The normalized weight for $0.05$ is $\Large{\frac{0.05}{0.798}}$ $= 0.63$. Similarly, the normalized weight
+            for $0.199$ is $\Large{\frac{0.199}{0.798}}$ $= 0.248$.</p>
+          <p>The following illustration shows the samples from the data set with normalized weights:</p>
+          <div id="img-outer-div"> <img alt="Normalized Weights" src="./images/adaboost-06.png" class="img-cls" />
+            <div class="img-cap">Figure.6</div>
+          </div>
+          <br/>
+        </li>
+        <li>
+          <p>Create a new data set that includes only the samples with the higher weights (can include duplicates). The main idea
+            behind this is that the next weak model will focus on the mis-classified samples.</p>
+        </li>
+        <li>
+          <p>Go to Step 2 for the next iteration. This process continues until a specified number of weak base models are reached.
+            Note that the iteration will stop early if a perfect prediction state is reached.</p>
+        </li>
+      </ol>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on Demo</p>
+    </div>
+    <div id="para-div">
+      <p>In the following sections, we will demonstrate the use of the AdaBoost model for classification (using scikit-learn) by
+        leveraging the <a href="https://vincentarelbundock.github.io/Rdatasets/csv/palmerpenguins/penguins.csv" target="_blank">
+        <span class="bold">Palmer Penguins</span></a> data set.</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="bold">Palmer Penguins</span> includes samples with the following features for the penguin species near the
+        Palmer Station, Antarctica:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-yellow">species</span> - denotes the penguin species (Adelie, Chinstrap, and Gentoo)</p></li>
+        <li><p><span class="hi-yellow">island</span> - denotes the island in Palmer Archipelago, Antarctica (Biscoe, Dream, or
+          Torgersen)</p></li>
+        <li><p><span class="hi-yellow">bill_length_mm</span> - denotes the penguins beak length (millimeters)</p></li>
+        <li><p><span class="hi-yellow">bill_depth_mm</span> - denotes the penguins beak depth (millimeters)</p></li>
+        <li><p><span class="hi-yellow">flipper_length_mm</span> - denotes the penguins flipper length (millimeters)</p></li>
+        <li><p><span class="hi-yellow">body_mass_g</span> - denotes the penguins body mass (grams)</p></li>
+        <li><p><span class="hi-yellow">sex</span> - denotes the penguins sex (female, male)</p></li>
+        <li><p><span class="hi-yellow">year</span> - denotes the study year (2007, 2008, or 2009)</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The first step is to import all the necessary Python modules such as, pandas and scikit-learn as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import AdaBoostClassifier
+from sklearn.metrics import accuracy_score</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to load the palmer penguins data set into a pandas dataframe, drop the index column, and then display the
+        dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>url = 'https://vincentarelbundock.github.io/Rdatasets/csv/palmerpenguins/penguins.csv'
+penguins_df = pd.read_csv(url)
+penguins_df = penguins_df.drop(penguins_df.columns[0], axis=1)
+penguins_df</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays few rows from the palmer penguins dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Dataframe Display" src="./images/random-forest-01.png" class="img-cls" />
+      <div class="img-cap">Figure.7</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to remediate the missing values from the palmer penguins dataframe. Note that we went through the steps
+        to fix the missing values in the article <a href="https://polarsparc.github.io/MachineLearning/RandomForest.html" target=
+        "_blank"><span class="bold">Random Forest using Scikit-Learn</span></a>, so we will not repeat it here.</p>
+    </div>
+    <div id="para-div">
+      <p>For each of the missing values, we perform data analysis such as comparing the mean or (mean + std) values for the features
+        and apply the following fixes as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>penguins_df = penguins_df.drop([3, 271], axis=0)
+penguins_df.loc[[8, 10, 11], 'sex'] = 'female'
+penguins_df.at[9, 'sex'] = 'male'
+penguins_df.at[47, 'sex'] = 'female'
+penguins_df.loc[[178, 218, 256, 268], 'sex'] = 'female'</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display information about the palmer penguins dataframe, such as index and column types, memory usage,
+        etc., as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>penguins_df.info()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays information about the palmer penguins dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Dataframe Information" src="./images/adaboost-07.png" class="img-cls" />
+      <div class="img-cap">Figure.8</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that there are no missing values at this point in the palmer penguins dataframe.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to create and display dummy binary variables for the two categorical (nominal) feature variables - island
+        and sex from the cleansed palmer penguins dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>nom_features = ['island', 'sex']
+nom_encoded_df = pd.get_dummies(penguins_df[nom_features], prefix_sep='.', drop_first=True, sparse=False)
+nom_encoded_df</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the dataframe of all dummy binary variables for the two categorical (nominal) feature
+        variables from the cleansed palmer penguins dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Dummy Variables" src="./images/random-forest-10.png" class="img-cls" />
+      <div class="img-cap">Figure.9</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to drop the two nominal categorical features and merge the dataframe of dummy binary variables into the
+        cleansed palmer penguins dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>penguins_df2 = penguins_df.drop(penguins_df[nom_features], axis=1)
+penguins_df3 = pd.concat([penguins_df2, nom_encoded_df], axis=1)
+penguins_df3</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays few columns/rows from the merged palmer penguins dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Merged Dataframe" src="./images/random-forest-11.png" class="img-cls" />
+      <div class="img-cap">Figure.10</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to split the palmer penguins dataframe into two parts - a training data set and a test data set. The
+        training data set is used to train the ensemble model and the test data set is used to evaluate the ensemble model. In this
+        use case, we split 75% of the samples into the training dataset and remaining 25% into the test dataset as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>X_train, X_test, y_train, y_test = train_test_split(penguins_df3, penguins_df3['species'], test_size=0.25, random_state=101)
+X_train = X_train.drop('species', axis=1)
+X_test = X_test.drop('species', axis=1)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to initialize the AdaBoost model class from scikit-learn and train the model using the training data set
+        as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>model = AdaBoostClassifier(n_estimators=100, learning_rate=0.01, random_state=101)
+model.fit(X_train, y_train)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are a brief description of some of the hyperparameters used by the AdaBoost model:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-yellow">n_estimators</span> - the total number of trees in the ensemble. The default value is 50</p></li>
+        <li><p><span class="hi-yellow">learning_rate</span> - controls the significance for each weak model (decision tree) in the
+          ensemble. The default value is 1</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The next step is to use the trained model to predict the species using the test dataset as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>y_predict = model.predict(X_test)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the accuracy score for the model performance as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>accuracy_score(y_test, y_predict)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the accuracy score for the model performance:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Accuracy Score" src="./images/adaboost-08.png" class="img-cls" />
+      <div class="img-cap">Figure.11</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>From the above, one can infer that the model seems to predict with accuracy.</p>
+    </div>
+    <div id="section-div">
+      <p>Demo Notebook</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the link to the <span class="bold">Jupyter Notebook</span> that provides an hands-on demo for this
+        article:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><a href="https://github.com/bhaskars-repo/MachineLearning/blob/main/P17-AdaBoost-Scikit.ipynb" target="_blank">
+          <span class="bold">AdaBoost</span></a></p></li>
+      </ul>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/MachineLearning/EnsembleLearning.html" target="_blank"><span class="bold">Understanding Ensemble Learning</span></a></p>
+      <p><a href="https://polarsparc.github.io/MachineLearning/Classification-5.html" target="_blank"><span class="bold">Decision Trees using Scikit-Learn</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

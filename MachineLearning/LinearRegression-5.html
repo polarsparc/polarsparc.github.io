@@ -1,0 +1,399 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Machine Learning - Understanding Regularization - Part 5">
+    <meta name="subject" content="Machine Learning - Understanding Regularization - Part 5">
+    <meta name="keywords" content="python, machine_learning, regression">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Machine Learning - Understanding Regularization - Part 5</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+      MathJax = {
+        tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+      };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Machine Learning - Understanding Regularization - Part 5</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">04/15/2022</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/MachineLearning/LinearRegression-4.html" target="_blank"><span class="bold">Part 4</span></a>
+        of this series, we unraveled the concepts related to <span class="bold">Bias</span> and <span class="bold">Variance</span>
+        and how they relate to underfitting and overfitting.</p>
+      <p>Overfitting occurs due to the following reasons:</p>
+      <ul id="blue-sqr-ul">
+        <li><p>Large number of feature variables (increases model complexity)</p></li>
+        <li><p>Not enough samples for training the model (training data set size is small)</p></li>
+        <li><p>Noise due to collinearity (related features don't expose meaningful relationships)</p></li>
+      </ul>
+      <p>This is where the techniques of <span class="hi-yellow">Regularization</span> come in handy to tune (or constrain) the
+        regression coefficients (or weights or parameters) of the regression model to dampen the model variance, thereby controlling
+        model overfitting.</p>
+    </div>
+    <div id="section-div">
+      <p>Concepts</p>
+    </div>
+    <div id="para-div">
+      <p>In this section, we will cover some of the core concepts, such as covariance, correlation, and norms, as we will referring
+        to them when explaining the regularization techniques.</p>
+    </div>
+    <div id="step-div">
+      <p>Covariance</p>
+    </div>
+    <div id="para-div">
+      <p>The directional measure of linear relationship between two continuous random variables $x$ and $y$ is known as
+        <span class="hi-yellow">Covariance</span>. The value can be positive (meaning they move in the same direction - if one goes
+        up, the other goes up, and if one goes down, the other goes down) or negative (meaning the move in opposite direction - if
+        one goes up, the other goes down and vice versa).</p>
+      <p>In mathematical terms:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$\color{red} \boldsymbol{cov(x,y)}$ $= \bbox[pink,2pt]{\Large{\frac{\sum_{i=1}^n (x_i - \bar{x})
+        (y_i - \bar{y})}{n-1}}}$</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration demonstrates the covariance between two variables:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Covariance" src="./images/regression-32.png" class="img-cls" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Covariance only measures the total variation between the two random variables from their expected values and can only
+        indicate the direction of the relationship.</p>
+    </div>
+    <div id="step-div">
+      <p>Correlation</p>
+    </div>
+    <div id="para-div">
+      <p>The scaled measure of direction as well as the strength of linear relationship between two continuous random variables $x$
+        and $y$ is known as <span class="hi-yellow">Correlation</span> (sometimes referred to as the <span class="hi-yellow">Pearsons
+        Correlation</span>). Correlation which is denoted using $\rho$ builds on covariance by normalizing (rescaling) the variables
+        using their standard deviation.</p>
+      <p>In mathematical terms:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$\color{red} \boldsymbol{\rho_{(x,y)}}$ $= \bbox[pink,2pt]{\Large{\frac{cov(x,y)}{\sigma_x\sigma_y}}}$</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration demonstrates the correlation between two variables:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Correlation" src="./images/regression-33.png" class="img-cls" />
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The correlation value is independent of the scale between the two variables (meaning it is standardized) and its value is
+        always between $-1$ and $+1$.</p>
+    </div>
+    <div id="para-div">
+      <p>Often times we will hear the term <span class="hi-yellow">Collinearity</span>, which implies that two feature (or predictor)
+        variables are correlated.</p>
+    </div>
+    <div id="para-div">
+      <p>Also, the term <span class="hi-yellow">Multicollinearity</span> implies that two or more predictor variables are correlated
+        with each other.</p>
+    </div>
+    <div id="step-div">
+      <p>Vector Norms</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/Mathematics/LinearAlgebra-1.html" target="_blank"><span class="bold">Introduction to Linear
+        Algebra - Part 1</span></a>, we covered the basics of vectors and introduced the concept of the vector norm. It is the most
+        common form and is referred to as the <span class="hi-yellow">L2 Norm</span> (or the <span class="hi-yellow">Euclidean
+        Norm</span>).</p>
+      <p>In other words, the <span class="hi-yellow">L2 Norm</span> (or the <span class="hi-yellow">Euclidean Norm</span>)is defined
+        as $\lVert \vec{a} \rVert_2 = \sqrt{\sum_{i=1}^n a_{i}^2}$</p>
+      <p>There is another form of norm called the <span class="hi-yellow">L1 Norm</span> (or the <span class="hi-yellow">Manhattan
+        Norm</span>) which is defined as $\lVert \vec{a} \rVert_1 = \sum_{i=1}^n \lvert a_i \rvert$</p>
+      <p>For example, given the vector $\vec{a} = \begin{bmatrix} 3 \\ -2 \\ 7 \end{bmatrix}$:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;The <span class="hi-blue">L1 Norm</span> = $3 + (-2) + 7 = 8$.</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;The <span class="hi-blue">L2 Norm</span> = $\sqrt{3^2 + (-2)^2 + 7^2} = \sqrt{9 + 4 + 49} = 7.874$.</p>
+    </div>
+    <div id="section-div">
+      <p>Regularization</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">Regularization</span> is the process of adding a <span class="underbold">PENALTY</span> term (with
+        a boundary constraint $c$) to the regression error function (SSE) and then minimize the residual errors. This allows one to
+        dampen (or shrink) the regression coefficients $\beta$ towards the boundary constraints $c$ (including zero). This has the
+        effect of increasing the bias, and as a result reducing the variance.</p>
+      <p>In linear regression, we know the idea is to minimize $E = \sum_{i=1}^n (y_i - (\beta_0 + \beta_1.x_i))^2$ in order to find
+        the best line of fit.</p>
+      <p>With regularization, the goal is to minimize $E = \sum_{i=1}^n (y_i - (\beta_0 + \beta_1.x_i))^2 + S(\beta)$, where the
+        $S(\beta)$ term is a tunable penalty (or shrinkage) function based on the regression coefficients.</p>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>*** ATTENTION ***</h4>
+      <pre>&nbsp;&nbsp;Use regularization only when there are two or more feature (or predictor) variables</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To get a hang of regularization better, let us consider a very simple case with one feature variable estimating an outcome
+        variable. The following illustration shows a plot of the regression line of best fit for the hypotetical data set:
+      </p>
+    </div>
+    <div id="img-outer-div"> <img alt="Line of Best fit" src="./images/regression-34.png" class="img-cls" />
+      <div class="img-cap">Figure.3</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>From the illustration above, the blue dots are from the training set and the red dots from a test set (or another training
+        set). The regression line does fit well with the training set but does poorly (large variance) on the test set. The idea of
+        regularization is to add a penalty amount to the residual errors so that the slope (coefficient) is accordingly adjusted
+        (reduced) to compensate for the penalty.</p>
+      <p>The following illustration shows the original regression line of best fit (green line) for the hypotetical data set with
+        the the regularized (penalized) regression line of best fit (purple line with decreased slope):</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Regularized Line of Best fit" src="./images/regression-35.png" class="img-cls" />
+      <div class="img-cap">Figure.4</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>From the illustration above, it is bit more intuitive that the slope of the regularized purple line has decreased (implies
+        the coefficient is reduced), while increasing the bias, and maintaining consistency with respect to variance. This is the
+        fundamental idea behind regularization.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the commonly used regularization techniques:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-vanila">LASSO</span></p></li>
+        <li><p><span class="hi-vanila">Ridge</span></p></li>
+        <li><p><span class="hi-vanila">Elastic Net</span></p></li>
+      </ul>
+    </div>
+    <div id="step-div">
+      <p>LASSO</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">LASSO</span> is the abbreviation for <span class="hi-yellow">Least Absolute Shrinkage and Selection
+        Operator</span> and it uses the L1 norm in combination with a tunable parameter as the penalty or shrinkage term. In other
+        words, $S(\beta) = \lambda \sum_{i=1}^n \lvert a_i \rvert$, where $\lambda$ is the tunable parameter the controls the
+        magnitude or strength of the regularization penalty.</p>
+      <p>In mathematical terms, $E = \sum_{i=1}^n (y_i - (\beta_0 + \beta_1.x_i))^2 + \lambda \sum_{i=1}^n \lvert a_i \rvert$</p>
+      <p>Looking at the above error (or cost) function of $E$, as we increase $\lambda$, if we did nothing, then $E$ would increase.
+        However, the goal is to minimize $E$. Intuitively, this means that as $\lambda$ goes up, the regression parameters (or
+        coefficients) have to decrease in order for $E$ to go down.</p>
+      <p>Linear Regression using this technique is often referred to as <span class="hi-yellow">LASSO Regression</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Let us look at it from a geometrical point of view. Let us assume we just have two feature (or predictor) variables and
+        their corresponding coefficients $\beta_1$ and $\beta_2$ (ignore the intercept $\beta_0$ for simplicity).</p>
+      <p>If we constrain the boundary of the L1 norm to one, meaning $\beta_1 + \beta_2 \le 1$, then following illustration shows
+        the plot of the L1 norm for the coefficients $\beta_1$ and $\beta_2$:
+      </p>
+    </div>
+    <div id="img-outer-div"> <img alt="L1 Norm" src="./images/regression-36.png" class="img-cls" />
+      <div class="img-cap">Figure.5</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Let $\hat{\beta}$ represent the estimated coefficient values using the least squares line of best fit.</p>
+      <p>The following illustration shows the plot of the L1 norm for the coefficients $\beta_1$ and $\beta_2$ along with the
+        estimated $\hat{\beta}$:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="L1 Norm with Estimate" src="./images/regression-37.png" class="img-cls" />
+      <div class="img-cap">Figure.6</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>With the LASSO regularization, the idea is to pull the the estimated coefficient values (in cyan color) to be within the
+        constraints of the L1 norm. This means the new estimated coefficient values could either be the green dot or the red dot.
+        As is intuitive, the $\beta$ coefficients will decrease and in fact one of then could also become zero (in the case of the
+        red dot).</p>
+      <p>As the tunable parameter $\lambda$ is increased, the $\beta$ coefficients that have very low values tend to become zeros.
+        The effect of this behavior is as though we are able to perform <span class="underbold">FEATURE SELECTION</span> by dropping
+        features that do not add any meaning to the overall outcome (or target) value estimation.</p>
+      <p>In other words, the LASSO regularization technique only includes feature variables with high coefficient values and tends
+        to drop feature variables with lower coefficient values, which could mean we may be losing some potentially useful feature
+        variables with meaningful relationships.</p>
+      <p>With the LASSO regularization technique, often times one will hear the term <span class="underbold">SPARSITY</span>, and
+        this has to do with some of the $\beta$ coefficients becoming exactly zero (sparse vector of $\beta$).</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the pros and cons of LASSO regularization technique:</p>
+      <p><span class="hi-green">Pros</span>:</p>
+      <ul id="blue-sqr-ul">
+        <li><p>Automatic feature selection</p></li>
+      </ul>
+      <p><span class="hi-red">Cons</span>:</p>
+      <ul id="blue-sqr-ul">
+        <li><p>Ignore some features if the number of features is greater than the data set size</p></li>
+        <li><p>Randomly selects a feature from a group of correlated features</p></li>
+      </ul>
+    </div>
+    <div id="step-div">
+      <p>Ridge</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">Ridge</span> uses the L2 norm in combination with a tunable parameter as the penalty or shrinkage
+        term. In other words, $S(\beta) = \lambda \sum_{i=1}^n a_i^2$, where $\lambda$ is the tunable parameter the controls the
+        magnitude or strength of the regularization penalty.</p>
+      <p>In mathematical terms, $E = \sum_{i=1}^n (y_i - (\beta_0 + \beta_1.x_i))^2 + \lambda \sum_{i=1}^n a_i^2$</p>
+      <p>Just like in the case of LASSO technique, as $\lambda$ increases, the regression parameters (or coefficients) will have to
+        decrease in order to minimize $E$. In this case, the penalty term uses the L2 norm (sum of squares of coefficients).</p>
+      <p>Linear Regression using this technique is often referred to as <span class="hi-yellow">Ridge Regression</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, worth considering a geometrical point of view. Assume we just have two feature (or predictor) variables and
+        their corresponding coefficients $\beta_1$ and $\beta_2$ (ignore the intercept $\beta_0$ for simplicity).</p>
+      <p>If we constrain the boundary of the L2 norm to one, meaning $\beta_1^2 + \beta_2^2 \le 1$, then following illustration
+        shows the plot of the L2 norm for the coefficients $\beta_1$ and $\beta_2$:
+      </p>
+    </div>
+    <div id="img-outer-div"> <img alt="L2 Norm" src="./images/regression-38.png" class="img-cls" />
+      <div class="img-cap">Figure.7</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Let $\hat{\beta}$ represent the estimated coefficient values using the least squares line of best fit.</p>
+      <p>The following illustration shows the plot of the L2 norm for the coefficients $\beta_1$ and $\beta_2$ along with the
+        estimated $\hat{\beta}$:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="L2 Norm with Estimate" src="./images/regression-39.png" class="img-cls" />
+      <div class="img-cap">Figure.8</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>With the Ridge regularization, the idea is to pull the the estimated coefficient values (in cyan color) to be within the
+        constraints of the L2 norm. This means the new estimated coefficient values could be any point within or on the boundary
+        like the example green dot. Like the LASSO technique, as the tunable parameter $\lambda$ is increased, the penalty increases
+        and as a result the $\beta$ coefficients will decrease. However, unlike the LASSO technique, there is a lower probability of
+        making some of the $\beta$ coefficients exactly zero (due to the geometrical boundary of the L2 norm). Instead, they become
+        significantly smaller in value to add any meaningful relationship.</p>
+    </div>
+    <div id="para-div">
+      <p>Let us get a mathematical intuition for Ridge regularization. From <a href="https://polarsparc.github.io/MachineLearning/LinearRegression-1.html"
+        target="_blank"><span class="bold">Part 1</span></a> of this series, for regular linear regression, we know the following:</p>
+      <p>$E = (y^T - \beta^TX^T)(y - X\beta)$</p>
+      <p>Now, adding the Ridge regularization penalty term, we get the following:</p>
+      <p>$E = (y^T - \beta^TX^T)(y - X\beta) + \lambda \sum_{i=1}^m \beta_i^2 = (y^T - \beta^TX^T)(y - X\beta) + \lambda \beta^T\beta$</p>
+      <p>Exapanding the equation, we get: $E = y^Ty - \beta^TX^Ty - y^TX\beta + \beta^TX^TX\beta + \lambda \beta^T\beta$</p>
+    </div>
+    <div id="para-div">
+      <p>We know $(y^TX\beta)^T = \beta^TX^Ty$ and $y^TX\beta$ is a scalar. This implies that the transpose of the scalar is the
+        scalar itself. Hence, $y^TX\beta$ can be substituted with $\beta^TX^Ty$.</p>
+      <p>Therefore, $E = y^Ty - 2\beta^TX^Ty + \beta^TX^TX\beta + \lambda \beta^T\beta = y^Ty - 2\beta^TX^Ty + \beta^TX^TX\beta + \beta^T
+        \lambda \beta = y^Ty - 2\beta^TX^Ty + \beta^TX^TX\beta + \beta^T \lambda I \beta$</p>
+      <p>That is, $E = y^Ty - 2\beta^TX^Ty + \beta^T (X^TX\beta + \lambda I) \beta$</p>
+    </div>
+    <div id="para-div">
+      <p>In order to <span class="underbold">MINIMIZE</span> the error $E$, we need to take the partial derivatives of the error
+        function with respect to $\beta$ and set the result to zero.</p>
+      <p>In other words, we need to solve for $\Large{\frac{\partial{E}}{\partial{\beta}}}$ $= 0$.</p>
+    </div>
+    <div id="para-div">
+      <p>Therefore, $\Large{\frac{\partial{E}}{\partial{\beta}}}$ $= 0 - 2X^Ty + 2(X^TX\beta + \lambda I)\beta$</p>
+      <p>That is, $\Large{\frac{\partial{E}}{\partial{\beta}}}$ $= - 2X^Ty + 2(X^TX\beta + \lambda I)\beta$</p>
+      <p>That is, $- 2X^Ty + 2(X^TX\beta + \lambda I)\beta = 0$</p>
+      <p>Or, $(X^TX\beta + \lambda I)\beta = X^Ty$</p>
+      <p>To solve for $\beta$, $(X^TX\beta + \lambda I)^{-1}X^TX\beta = (X^TX\beta + \lambda I)^{-1}X^Ty$</p>
+      <p>Simplifying, we get the following:</p>
+      <p>$\color{red} \boldsymbol{\beta}$ $= \bbox[pink,2pt]{(X^TX\beta + \lambda I)^{-1}X^Ty}$</p>
+      <p>From the above equation, we can infer the fact that, as increase $\lambda$, we decrease the $\beta$.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the pros and cons of Ridge regularization technique:</p>
+      <p><span class="hi-green">Pros</span>:</p>
+      <ul id="blue-sqr-ul">
+        <li><p>Handles the situation where the number of features is greater than the data set size</p></li>
+      </ul>
+      <p><span class="hi-red">Cons</span>:</p>
+      <ul id="blue-sqr-ul">
+        <li><p>No capability for feature selection</p></li>
+      </ul>
+    </div>
+    <div id="step-div">
+      <p>Elastic Net</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">Elastic Net</span> is a hybrid regularization technique that uses a combination of both the L1 and
+        the L2 norms as the penalty or shrinkage term. In other words, $S(\beta) = \lambda_1 \sum_{i=1}^n a_i^2 + \lambda_2
+        \sum_{i=1}^n \lvert a_i \rvert$, where $\lambda_1$ and $\lambda_2$ are the tunable parameters the control the magnitude or
+        strength of the regularization penalty.</p>
+      <p>In mathematical terms, $E = \sum_{i=1}^n (y_i - (\beta_0 + \beta_1.x_i))^2 + \lambda_1 \sum_{i=1}^n a_i^2 + \lambda_2
+        \sum_{i=1}^n \lvert a_i \rvert$</p>
+      <p>The general practice is to choose $\lambda_2 = \alpha$ and $\lambda_1 = \Large{\frac{1 - \alpha}{2}}$, where $\alpha$ is
+        the tunable hyperparameter.</p>
+      <p>Linear Regression using this technique is often referred to as <span class="hi-yellow">Elastic Net Regression</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, time to look at it from a geometrical point of view. Assume we just have two feature (or predictor) variables
+        and their corresponding coefficients $\beta_1$ and $\beta_2$ (ignore the intercept $\beta_0$ for simplicity).</p>
+      <p>If we constrain the boundary of the L2 + L1 norm to one, meaning $(\beta_1^2 + \beta_2^2) + (\beta_1 + \beta_2) \le 1$,
+        then following illustration shows the plot of the L2 + L1 norm for the coefficients $\beta_1$ and $\beta_2$:
+      </p>
+    </div>
+    <div id="img-outer-div"> <img alt="L2+L1 Norm" src="./images/regression-40.png" class="img-cls" />
+      <div class="img-cap">Figure.9</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Let $\hat{\beta}$ represent the estimated coefficient values using the least squares line of best fit.</p>
+      <p>The following illustration shows the plot of the L2 + L1 norm for the coefficients $\beta_1$ and $\beta_2$ along with the
+        estimated $\hat{\beta}$:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="L2+L1 Norm with Estimate" src="./images/regression-41.png" class="img-cls" />
+      <div class="img-cap">Figure.10</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>With the Elastic Net regularization, the idea is to pull the the estimated coefficient values (in cyan color) to be within
+        the constraints of the L2 + L1 norm. Notice the shape of the L2 + L1 norm - it is a combination of L1 norm with the curved
+        sides (from the L2 norm). This means the new estimated coefficient values could either be the green dot or the red dot.
+        Like the LASSO technique, there is a good chance for some of the $\beta$ coefficients to become exactly zero (due to the
+        geometrical boundary of the L2 + L1 norm).</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the pros and cons of Elastic Net regularization technique:</p>
+      <p><span class="hi-green">Pros</span>:</p>
+      <ul id="blue-sqr-ul">
+        <li><p>Automatic feature selection</p></li>
+        <li><p>Handles the situation where the number of features is greater than the data set size</p></li>
+      </ul>
+      <p><span class="hi-red">Cons</span>:</p>
+      <ul id="blue-sqr-ul">
+        <li><p>Greater computational cost</p></li>
+      </ul>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/MachineLearning/LinearRegression-4.html" target="_blank"><span class="bold">Machine Learning - Understanding Bias and Variance - Part 4</span></a></p>
+      <p><a href="https://polarsparc.github.io/MachineLearning/LinearRegression-3.html" target="_blank"><span class="bold">Machine Learning - Polynomial Regression using Scikit-Learn - Part 3</span></a></p>
+      <p><a href="https://polarsparc.github.io/MachineLearning/LinearRegression-2.html" target="_blank"><span class="bold">Machine Learning - Linear Regression using Scikit-Learn - Part 2</span></a></p>
+      <p><a href="https://polarsparc.github.io/MachineLearning/LinearRegression-1.html" target="_blank"><span class="bold">Machine Learning - Linear Regression - Part 1</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

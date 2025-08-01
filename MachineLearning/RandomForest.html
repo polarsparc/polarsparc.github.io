@@ -1,0 +1,451 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Machine Learning - Random Forest using Scikit-Learn">
+    <meta name="subject" content="Machine Learning - Random Forest using Scikit-Learn">
+    <meta name="keywords" content="python, machine_learning, classification, ensemble, random_forest, scikit-learn">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Machine Learning - Random Forest using Scikit-Learn</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+      MathJax = {
+        tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+      };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Machine Learning - Random Forest using Scikit-Learn</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">07/09/2022</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In the article <a href="https://polarsparc.github.io/MachineLearning/EnsembleLearning.html" target="_blank"><span class=
+        "bold">Understanding Ensemble Learning</span></a>, we covered the concept behind the ensemble method
+        <span class="hi-yellow">Bagging</span>.</p>
+      <p><span class="hi-yellow">Random Forest</span> is a popular machine learning algorithm that leverages the Decision Tree as
+        the base model for the Bagging method.</p>
+      <p>In other words, the Random Forest machine learning algorithm builds an ensemble of multiple Decision Trees (hence the word
+        Forest) and aggregates the predictions from the multiple trees to make the final prediction.</p>
+    </div>
+    <div id="section-div">
+      <p>Random Forest</p>
+    </div>
+    <div id="para-div">
+      <p>The Random Forest algorithm uses both bootstrapping of samples as well as selecting $\sqrt{N}$ random feature variables
+        while creating an ensemble of Decision Trees. Without the random feature variable selection, all the trees in the ensemble
+        will have the same root node and similar tree structure. It is possible that some feature variables are not considered.
+        Hence the reason for the random selection of $\sqrt{N}$ feature variables in each of the decision tree so that in the end
+        we will have included all the feature variables.</p>
+    </div>
+    <div id="para-div">
+      <p>In this following sections, we will demonstrate the use of the Random Forest model for classification (using scikit-learn)
+        by leveraging the <a href="https://vincentarelbundock.github.io/Rdatasets/csv/palmerpenguins/penguins.csv" target="_blank">
+        <span class="bold">Palmer Penguins</span></a> data set.</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="bold">Palmer Penguins</span> includes samples with the following features for the penguin species near the
+        Palmer Station, Antarctica:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-yellow">species</span> - denotes the penguin species (Adelie, Chinstrap, and Gentoo)</p></li>
+        <li><p><span class="hi-yellow">island</span> - denotes the island in Palmer Archipelago, Antarctica (Biscoe, Dream, or
+          Torgersen)</p></li>
+        <li><p><span class="hi-yellow">bill_length_mm</span> - denotes the penguins beak length (millimeters)</p></li>
+        <li><p><span class="hi-yellow">bill_depth_mm</span> - denotes the penguins beak depth (millimeters)</p></li>
+        <li><p><span class="hi-yellow">flipper_length_mm</span> - denotes the penguins flipper length (millimeters)</p></li>
+        <li><p><span class="hi-yellow">body_mass_g</span> - denotes the penguins body mass (grams)</p></li>
+        <li><p><span class="hi-yellow">sex</span> - denotes the penguins sex (female, male)</p></li>
+        <li><p><span class="hi-yellow">year</span> - denotes the study year (2007, 2008, or 2009)</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The first step is to import all the necessary Python modules such as, pandas, matplotlib, seaborn, and scikit-learn as shown
+        below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to load the palmer penguins data set into a pandas dataframe, drop the index column, and then display the
+        dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>url = 'https://vincentarelbundock.github.io/Rdatasets/csv/palmerpenguins/penguins.csv'
+penguins_df = pd.read_csv(url)
+penguins_df = penguins_df.drop(penguins_df.columns[0], axis=1)
+penguins_df</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays few rows from the palmer penguins dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Dataframe Display" src="./images/random-forest-01.png" class="img-cls" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display information about the palmer penguins dataframe, such as index and column types, missing (null)
+        values, memory usage, etc., as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>penguins_df.info()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays information about the palmer penguins dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Dataframe Information" src="./images/random-forest-02.png" class="img-cls" />
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There are a few missing values, so we will identify and remediate them in the following steps.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to display the rows from the palmer penguins dataframe with missing values as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>penguins_df[penguins_df['sex'].isnull()]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the rows with missing values from the palmer penguins dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Missing Values" src="./images/random-forest-03.png" class="img-cls" />
+      <div class="img-cap">Figure.3</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display a bar plot between the target feature species and the feature bill_length_mm using the palmer
+        penguins dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>sns.barplot(data=penguins_df, x='species', y='bill_length_mm', hue='sex', alpha=0.7)
+plt.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration shows the bar plot between the target feature species and the feature bill_length_mm using the
+        palmer penguins dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Bar Plot" src="./images/random-forest-04.png" class="img-cls" />
+      <div class="img-cap">Figure.4</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display a bar plot between the target feature species and the feature bill_depth_mm using the palmer
+        penguins dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>sns.barplot(data=penguins_df, x='species', y='bill_depth_mm', hue='sex', palette='tab10', alpha=0.7)
+plt.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration shows the bar plot between the target feature species and the feature bill_depth_mm using the
+        palmer penguins dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Bar Plot" src="./images/random-forest-05.png" class="img-cls" />
+      <div class="img-cap">Figure.5</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display a bar plot between the target feature species and the feature body_mass_g using the palmer
+        penguins dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>sns.barplot(data=penguins_df, x='species', y='body_mass_g', hue='sex', palette='mako', alpha=0.7)
+plt.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration shows the bar plot between the target feature species and the feature body_mass_g using the
+        palmer penguins dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Bar Plot" src="./images/random-forest-06.png" class="img-cls" />
+      <div class="img-cap">Figure.6</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the summary statistics for the rows where the species is 'Adelie' and the island is 'Torgesen'
+        from the palmer penguins dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>df = pdf[(pdf['species'] == 'Adelie') & (pdf['island'] == 'Torgersen')].groupby('sex').describe()
+df.T</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the summary statistics for the selected rows from the palmer penguins dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Summary Statistics" src="./images/random-forest-07.png" class="img-cls" />
+      <div class="img-cap">Figure.7</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Looking at the plots from Figure.4, Figure.5, Figure.6 and comparing the mean or (mean + std) values from Figure.7 above
+        to the rows where the species is 'Adelie' and the island is 'Torgesen', we can infer that rows at index 8, 10, and 11 are
+        'female', while the row at index 9 is a 'male'. We apply the fixes as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>penguins_df.loc[[8, 10, 11], 'sex'] = 'female'
+penguins_df.at[9, 'sex'] = 'male'</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the summary statistics for the rows where the species is 'Adelie' and the island is 'Dream'
+        from the palmer penguins dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>df = pdf[(pdf['species'] == 'Adelie') & (pdf['island'] == 'Dream')].groupby('sex').describe()
+df.T</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the summary statistics for the selected rows from the palmer penguins dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Summary Statistics" src="./images/random-forest-08.png" class="img-cls" />
+      <div class="img-cap">Figure.8</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Looking at the plots from Figure.4, Figure.5, Figure.6 and comparing the mean or (mean + std) values from Figure.8 above
+        to the row where the species is 'Adelie' and the island is 'Dream', we can infer that row at index 47 is 'female'. We apply
+        the fix as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>penguins_df.at[47, 'sex'] = 'female'</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the summary statistics for the rows where the species is 'Gentoo' and the island is 'Biscoe'
+        from the palmer penguins dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>df = pdf[(pdf['species'] == 'Gentoo') & (pdf['island'] == 'Biscoe')].groupby('sex').describe()
+df.T</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the summary statistics for the selected rows from the palmer penguins dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Summary Statistics" src="./images/random-forest-09.png" class="img-cls" />
+      <div class="img-cap">Figure.9</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Looking at the plots from Figure.4, Figure.5, Figure.6 and comparing the mean or (mean + std) values from Figure.9 above
+        to the rows where the species is 'Gentoo' and the island is 'Biscoe', we can infer that the rows at index 178, 218, 256, and
+        268 are 'female'. We apply the fix as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>penguins_df.loc[[178, 218, 256, 268], 'sex'] = 'female'</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>At this point, all the missing values have been addressed and we are ready to move to the next steps.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to create and display dummy binary variables for the two categorical (nominal) feature variables - island
+        and sex from the cleansed palmer penguins dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>nom_features = ['island', 'sex']
+nom_encoded_df = pd.get_dummies(penguins_df[nom_features], prefix_sep='.', drop_first=True, sparse=False)
+nom_encoded_df</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the dataframe of all dummy binary variables for the two categorical (nominal) feature
+        variables from the cleansed palmer penguins dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Dummy Variables" src="./images/random-forest-10.png" class="img-cls" />
+      <div class="img-cap">Figure.10</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to drop the two nominal categorical features and merge the dataframe of dummy binary variables into the
+        cleansed palmer penguins dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>penguins_df2 = penguins_df.drop(penguins_df[nom_features], axis=1)
+penguins_df3 = pd.concat([penguins_df2, nom_encoded_df], axis=1)
+penguins_df3</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays few columns/rows from the merged palmer penguins dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Merged Dataframe" src="./images/random-forest-11.png" class="img-cls" />
+      <div class="img-cap">Figure.11</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to split the palmer penguins dataframe into two parts - a training data set and a test data set. The
+        training data set is used to train the ensemble model and the test data set is used to evaluate the ensemble model. In this
+        use case, we split 75% of the samples into the training dataset and remaining 25% into the test dataset as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>X_train, X_test, y_train, y_test = train_test_split(penguins_df3, penguins_df3['species'], test_size=0.25, random_state=101)
+X_train = X_train.drop('species', axis=1)
+X_test = X_test.drop('species', axis=1)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to initialize the Random Forest model class from scikit-learn and train the model using the training data
+        set as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>model = RandomForestClassifier(max_depth=4, n_estimators=64, random_state=101)
+model.fit(X_train, y_train)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are a brief description of some of the hyperparameters used by the Random Forest model:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-yellow">max_depth</span> - the maximum depth of each of the decision trees in the ensemble</p></li>
+        <li><p><span class="hi-yellow">n_estimators</span> - the total number of trees in the ensemble. The typical suggested value
+          is between <span class="hi-blue">64</span> and <span class="hi-blue">128</span>. The default value is 100</p></li>
+        <li><p><span class="hi-yellow">max_features</span> - the number of features to randomly select for each tree in the ensemble.
+          The default is $\sqrt{N}$, where $N$ is the number of features in the data set</p></li>
+        <li><p><span class="hi-yellow">oob_score</span> - flag that indicates if the out-of-bag samples must be used for validation.
+          Given that we are using a train and test split, this is not necessary. The default is false</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The next step is to use the trained model to predict the species using the test dataset as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>y_predict = model.predict(X_test)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the accuracy score for the model performance as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>accuracy_score(y_test, y_predict)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the accuracy score for the model performance:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Accuracy Score" src="./images/random-forest-12.png" class="img-cls" />
+      <div class="img-cap">Figure.12</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>From the above, one can infer that the model seems to predict with accuracy.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on Demo</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the link to the <span class="bold">Jupyter Notebook</span> that provides an hands-on demo for this
+        article:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><a href="https://github.com/bhaskars-repo/MachineLearning/blob/main/P16-RandomForest-Scikit.ipynb" target="_blank">
+          <span class="bold">Random Forest</span></a></p></li>
+      </ul>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/MachineLearning/EnsembleLearning.html" target="_blank"><span class="bold">Understanding Ensemble Learning</span></a></p>
+      <p><a href="https://polarsparc.github.io/MachineLearning/Classification-5.html" target="_blank"><span class="bold">Decision Trees using Scikit-Learn</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

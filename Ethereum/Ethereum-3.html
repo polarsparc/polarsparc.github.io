@@ -1,0 +1,1015 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="Introduction to Ethereum - Part 3" content="author: Bhaskar.S, category: blockchain, ethereum, solidity">
+    <title>Introduction to Ethereum - Part 3</title>
+    <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body> <br />
+    <div id="title-div">
+      <p>Introduction to Ethereum - Part 3</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">12/27/2017</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="step-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+	    <p>In the previous article <a href="http://www.polarsparc.com/Ethereum/Ethereum-2.html" target="_blank"><span class="bold">
+	      Part 2</span></a> of this series, we introduced basic concepts in and got our hands dirty with <span class="bold">
+        Solidity</span>, the high-level <span class="bold">Smart Contract</span> programming language used by
+        <span class="bold">Ethereum</span>.</p>
+    </div>
+    <div id="para-div">
+	    <p>In this article, we will build upon the concepts, from where we left off, by enhancing the <span class="bold">Smart
+        Contract</span> used in the transfer of a vehicle from the dealer to the buyer.</p>
+    </div>
+    <div id="step-div">
+      <p>Hands-on with Smart Contracts using Solidity</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the enhanced <span class="bold">Solidity</span> contract code named <span class="hi-yellow">
+        Vehicle2.sol</span> located in the directory <span class="bold">/home/polarsparc/Ethereum/src</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Vehicle2.sol</legend>
+      <pre>pragma solidity ^0.4.15;
+
+/*
+ * This AmountOwed contract implements a common function modifier to check the value of tranfer
+ * satisfies the amount owed to dealer
+ */
+
+contract AmountOwed {
+    // Modifiers can be used to change the behaviour of any function in a contract, such as checking
+    // a condition prior to executing the function. Modifiers are inheritable properties of contracts
+    // and may be overridden by derived contracts
+    modifier validate(uint amt) {
+        require(msg.value >= amt);
+        _; // Function body
+    }
+}
+
+/*
+ * A Vehicle instance is first created in the Ethereum blockchain by the dealer.
+ * Once the payment is received, the dealer transfers ownership to the buyer.
+ */
+
+contract Vehicle2 is AmountOwed {
+    enum Deal { Open, Closed }
+    
+    uint _flag;
+    uint _vin;
+    uint _cost;
+    address _owner;
+    Deal _status;
+    
+    event Bought(uint vin, uint cost);
+    
+    function getFlag() public view returns (uint) {
+        return _flag;
+    }
+    
+    function getVin() public view returns (uint) {
+        return _vin;
+    }
+    
+    function getCost() public view returns (uint) {
+        return _cost;
+    }
+    
+    function getOwner() public view returns (address) {
+        return _owner;
+    }
+    
+    // The keyword 'payable' is important for accepting ethers from the buyer
+    function buyVehicle() public payable validate(_cost) {
+        _flag = 1;
+        // Only the assigned owner can close the deal
+        if (msg.sender == _owner) {
+            _flag = 2;
+            _status = Deal.Closed;
+            Bought(_vin, _cost);
+        }
+    }
+    
+    function Vehicle2(uint vin, uint cost, address buyer) public {
+        _flag = 0;
+        _vin = vin;
+        _cost = cost;
+        _owner = buyer;
+        _status = Deal.Open;
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Let us explain some of the important keywords used in the <span class="bold">Vehicle2.sol</span> file shown above.</p>
+      <p>A single contract file (with <span class="bold">.sol</span> extension) can have multiple contract definitions (<span
+        class="bold">AmountOwed</span> and <span class="bold">Vehicle2</span>) as shown above.</p>
+      <p>In addition, one contract definition can inherit from another contract definition. The contract <span class="bold">
+        Vehicle2</span> inherits from <span class="bold">AmountOwed</span> in our example above.</p>
+      <p>The keyword <span class="hi-yellow">modifier</span> is used to alter the behavior of other <span class="bold">
+        function</span>s using it. Think of the <span class="bold">modifier</span> as a decorator. It is often used for
+        checking some condition(s) before executing a <span class="bold">function</span>. In our use-case, we are checking
+        if the value transferred through a <span class="bold">sendTransaction</span> message has the desired amount.</p>
+      <p>The global built-in variable <span class="hi-yellow">msg.value</span> represents the value sent through the
+        <span class="bold">sendTransaction</span> message.</p>
+      <p>The method <span class="hi-yellow">require(expr)</span> is a built-in function that checks for the specified condition
+        <span class="bold">expr</span> to be true. If the specified <span class="bold">expr</span> evaluates to false, then
+        an exception is thrown and undoes any state changes.</p>
+      <p>The expression <span class="hi-yellow">_</span> (underscore) represents the body of the decorated <span class="bold">
+        function</span>.</p>
+      <p>The keyword <span class="hi-yellow">enum</span> defines an enum just like in any other high-level programming
+        language with 2 values <span class="bold">Open</span> and <span class="bold">Closed</span>. When the contract is
+        created by the dealer, it is in the <span class="bold">Open</span> state. Once the buyer makes the specified
+        payment, the contract status changes to <span class="bold">Closed</span>.</p>
+      <p>The keyword <span class="hi-yellow">event</span> defines a signal with some desired arguments, that can be emitted
+        from a <span class="bold">function</span> and is stored in <span class="bold">Ethereum</span> transaction logs (a
+        special structure in the <span class="bold">Blockchain</span>). Events are typically used for notifying applications
+        on conditions. One can also use an <span class="bold">event</span> for debugging purposes.</p>
+      <p>The keyword <span class="hi-yellow">payable</span> indicates that the <span class="bold">function</span> it is
+        defined on can receive <span class="bold">ether</span>s while being invoked. Without this keyword, sending some
+        cryptocurrency during a <span class="bold">function</span> invocation will throw an exception.</p>
+    </div>
+    <div id="para-div">
+      <p>An instance of the contract <span class="bold">Vehicle2</span> will be deployed by the dealer such that the buyer
+        can transfer <span class="bold">ether</span>s to fulfill the cost of the vehicle while invoking the method <span
+        class="hi-blue">buyVehicle()</span>, thus closing the deal.</p>
+    </div>
+    <div id="para-div">
+      <p>For convenience, we have created a custom Javascript utility script with some helper variables and a function to
+      extract and display information on account balances. The following is the custom Javascript script called
+      <span class="hi-yellow">UtilScripts.js</span> located in the directory <span class="bold">/home/polarsparc/Ethereum/bin</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>UtilScripts.js</legend>
+      <pre>var bank = "0xef17ec5df3116dea3b7abaf1ff3045639453cc76";
+var buyer = "0x35ddac855e0029676f489dafca9ab405a348317c";
+var dealer = "0x46bf8994c8702919434271d89bcad8abec915612";
+var dmv = "0x518a6377a3863201aef3310da41f3448d959a310";
+
+var vin = 1234567890
+var cost = 1000000000000000000
+var gas_price = 1000000;
+
+function showBalances() {
+  var i = 0;
+  eth.accounts.forEach(function(e) {
+     console.log("---> eth.accounts["+i+"]: " + e + " \tbalance: " + web3.fromWei(eth.getBalance(e), "ether") + " ether");
+     i++;
+  })
+};</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>To load the custom Javascript file <span class="bold">UtilScripts.js</span> from above, execute the following command
+        in the <span class="bold">geth</span> Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> loadScript("./bin/UtilScripts.js")</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>true</pre>
+    </div>
+    <div id="para-div">
+      <p>To compile <span class="bold">Vehicle2.sol</span> using the <span class="bold">Solidity</span> compiler to generate
+        a Javascript file (with <span class="bold">.js</span> file extension) that will contain both the ABI as well as the
+        bytecode, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ echo "var vehicle2=`solc --optimize --combined-json abi,bin,interface src/Vehicle2.sol`" > bin/Vehicle2.js</p>
+    </div>
+    <div id="para-div">
+      <p>The above command will generate a Javascript file called <span class="hi-yellow">Vehicle2.js</span> located in
+        directory <span class="bold">/home/polarsparc/Ethereum/bin</span> with both the ABI and bytecode for the
+        specified contract <span class="bold">Vehicle2.sol</span> encoded as JSON.</p>
+    </div>
+    <div id="para-div">
+      <p>To load the above generated Javascript file <span class="bold">Vehicle2.js</span>, execute the following command
+        in the <span class="bold">geth</span> Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> loadScript("./bin/Vehicle.js")</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>true</pre>
+    </div>
+    <div id="para-div">
+      <p>To check the value stored in the variable <span class="bold">vehicle2</span>, execute the following command in the
+        Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> vehicle2</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>{
+  contracts: {
+    src/Vehicle2.sol:AmountOwed: {
+      abi: "[]",
+      bin: "60606040523415600e57600080fd5b603580601b6000396000f3006060604052600080fd00a165627a7a723058204730712ec07ff26de3760fde858ce558dc3435a508c0091cac2c22412f47661d0029"
+    },
+    src/Vehicle2.sol:Vehicle2: {
+      abi: "[{\"constant\":true,\"inputs\":[],\"name\":\"getOwner\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"buyVehicle\",\"outputs\":[],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getCost\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getVin\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getFlag\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"vin\",\"type\":\"uint256\"},{\"name\":\"cost\",\"type\":\"uint256\"},{\"name\":\"buyer\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"vin\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"cost\",\"type\":\"uint256\"}],\"name\":\"Bought\",\"type\":\"event\"}]",
+      bin: "6060604052341561000f57600080fd5b6040516060806102958339810160405280805191906020018051919060200180516000808055600195909555600293909355505060038054600160a060020a031916600160a060020a039092169190911760a060020a60ff021916905561021990819061007c90396000f30060606040526004361061006c5763ffffffff7c0100000000000000000000000000000000000000000000000000000000600035041663893d20e88114610071578063a4e72902146100ad578063bd3e19d4146100b7578063bf20f940146100dc578063f9633930146100ef575b600080fd5b341561007c57600080fd5b610084610102565b60405173ffffffffffffffffffffffffffffffffffffffff909116815260200160405180910390f35b6100b561011e565b005b34156100c257600080fd5b6100ca6101db565b60405190815260200160405180910390f35b34156100e757600080fd5b6100ca6101e1565b34156100fa57600080fd5b6100ca6101e7565b60035473ffffffffffffffffffffffffffffffffffffffff1690565b600254348190101561012f57600080fd5b60016000556003543373ffffffffffffffffffffffffffffffffffffffff908116911614156101d8576002600055600380546001919074ff00000000000000000000000000000000000000001916740100000000000000000000000000000000000000008302179055507f3ccb2ab6980b218b1dd4974b07365cd90a191e170c611da46262fecc208bd66160015460025460405191825260208201526040908101905180910390a15b50565b60025490565b60015490565b600054905600a165627a7a723058206bddd2f4e42cc80921d64b69c8c1953bef9faef537685d6ecbf6b67746db57100029"
+    }
+  },
+  version: "0.4.19+commit.c4cbbb05.Linux.g++"
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>Now we are at a point ready to deploy our second <span class="bold">Smart Contract</span> called <span class="bold">Vehicle2</span>
+        into our private <span class="bold">Ethereum</span> network.</p>
+    </div>
+    <div id="para-div">
+      <p>The first step is to create a contract object. To create a contract object called <span class="hi-blue">vehicle2_contract</span>,
+        execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var vehicle2_contract = eth.contract(JSON.parse(vehicle2.contracts['src/Vehicle2.sol:Vehicle2'].abi))</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>To check the value of the contract object variable <span class="bold">vehicle2_contract</span>, execute the following command
+      in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> vehicle2_contract</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>{
+  abi: [{
+      constant: true,
+      inputs: [],
+      name: "getOwner",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: false,
+      inputs: [],
+      name: "buyVehicle",
+      outputs: [],
+      payable: true,
+      stateMutability: "payable",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getCost",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getVin",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getFlag",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      inputs: [{...}, {...}, {...}],
+      payable: false,
+      stateMutability: "nonpayable",
+      type: "constructor"
+  }, {
+      anonymous: false,
+      inputs: [{...}, {...}],
+      name: "Bought",
+      type: "event"
+  }],
+  eth: {
+    accounts: ["0xef17ec5df3116dea3b7abaf1ff3045639453cc76", "0x35ddac855e0029676f489dafca9ab405a348317c", "0x46bf8994c8702919434271d89bcad8abec915612", "0x518a6377a3863201aef3310da41f3448d959a310"],
+    blockNumber: 0,
+    coinbase: "0xef17ec5df3116dea3b7abaf1ff3045639453cc76",
+    compile: {
+      lll: function(),
+      serpent: function(),
+      solidity: function()
+    },
+    defaultAccount: undefined,
+    defaultBlock: "latest",
+    gasPrice: 18000000000,
+    hashrate: 0,
+    mining: false,
+    pendingTransactions: [],
+    protocolVersion: "0x3f",
+    syncing: false,
+    call: function(),
+    contract: function(abi),
+    estimateGas: function(),
+    filter: function(options, callback, filterCreationErrorCallback),
+    getAccounts: function(callback),
+    getBalance: function(),
+    getBlock: function(),
+    getBlockNumber: function(callback),
+    getBlockTransactionCount: function(),
+    getBlockUncleCount: function(),
+    getCode: function(),
+    getCoinbase: function(callback),
+    getCompilers: function(),
+    getGasPrice: function(callback),
+    getHashrate: function(callback),
+    getMining: function(callback),
+    getPendingTransactions: function(callback),
+    getProtocolVersion: function(callback),
+    getRawTransaction: function(),
+    getRawTransactionFromBlock: function(),
+    getStorageAt: function(),
+    getSyncing: function(callback),
+    getTransaction: function(),
+    getTransactionCount: function(),
+    getTransactionFromBlock: function(),
+    getTransactionReceipt: function(),
+    getUncle: function(),
+    getWork: function(),
+    iban: function(iban),
+    icapNamereg: function(),
+    isSyncing: function(callback),
+    namereg: function(),
+    resend: function(),
+    sendIBANTransaction: function(),
+    sendRawTransaction: function(),
+    sendTransaction: function(),
+    sign: function(),
+    signTransaction: function(),
+    submitTransaction: function(),
+    submitWork: function()
+  },
+  at: function(address, callback),
+  getData: function(),
+  new: function()
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>Next, we will define a variable called <span class="hi-yellow">vehicle2_contract_txn</span> with a value representing
+        the contract transaction object that encapsulates the address of the account creating the contract, the bytecode of the
+      contract, and the gas price. Execute the following statement in the Javascript shell as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var vehicle2_contract_txn = { from: dealer, data: '0x'+vehicle2.contracts['src/Vehicle2.sol:Vehicle2'].bin, gas: gas_price }</p>
+    </div>
+    <div id="para-div">
+      <p>To check the value of the contract transaction object variable <span class="bold">vehicle2_contract_txn</span>, execute
+        the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> vehicle2_contract_txn</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>{
+  data: "0x6060604052341561000f57600080fd5b6040516060806102958339810160405280805191906020018051919060200180516000808055600195909555600293909355505060038054600160a060020a031916600160a060020a039092169190911760a060020a60ff021916905561021990819061007c90396000f30060606040526004361061006c5763ffffffff7c0100000000000000000000000000000000000000000000000000000000600035041663893d20e88114610071578063a4e72902146100ad578063bd3e19d4146100b7578063bf20f940146100dc578063f9633930146100ef575b600080fd5b341561007c57600080fd5b610084610102565b60405173ffffffffffffffffffffffffffffffffffffffff909116815260200160405180910390f35b6100b561011e565b005b34156100c257600080fd5b6100ca6101db565b60405190815260200160405180910390f35b34156100e757600080fd5b6100ca6101e1565b34156100fa57600080fd5b6100ca6101e7565b60035473ffffffffffffffffffffffffffffffffffffffff1690565b600254348190101561012f57600080fd5b60016000556003543373ffffffffffffffffffffffffffffffffffffffff908116911614156101d8576002600055600380546001919074ff00000000000000000000000000000000000000001916740100000000000000000000000000000000000000008302179055507f3ccb2ab6980b218b1dd4974b07365cd90a191e170c611da46262fecc208bd66160015460025460405191825260208201526040908101905180910390a15b50565b60025490565b60015490565b600054905600a165627a7a723058206bddd2f4e42cc80921d64b69c8c1953bef9faef537685d6ecbf6b67746db57100029",
+  from: "0x46bf8994c8702919434271d89bcad8abec915612",
+  gas: 1000000
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>Since the contract is deployed by the dealer, we need to unlock the dealer account before proceeding further.</p>
+      <p>To unlock the dealer account, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> personal.unlockAccount(dealer)</p>
+    </div>
+    <div id="para-div">
+      <p>This will prompt us for the password for the dealer account. The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>Unlock account 0x46bf8994c8702919434271d89bcad8abec915612
+Passphrase: dealer
+true</pre>
+    </div>
+    <div id="para-div">
+      <p>The second step is to create an instance of the contract object by calling the <span class="hi-yellow">new</span>
+        method on the contract object <span class="bold">vehicle2_contract</span>, passing in the required arguments. Execute
+        the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var vehicle2_contract_inst = vehicle2_contract.new(vin, cost, buyer, vehicle2_contract_txn)</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>To check the value of the contract instance variable <span class="bold">vehicle2_contract_inst</span>, execute the
+        following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> vehicle2_contract_inst</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>{
+  abi: [{
+      constant: true,
+      inputs: [],
+      name: "getOwner",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: false,
+      inputs: [],
+      name: "buyVehicle",
+      outputs: [],
+      payable: true,
+      stateMutability: "payable",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getCost",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getVin",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getFlag",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      inputs: [{...}, {...}, {...}],
+      payable: false,
+      stateMutability: "nonpayable",
+      type: "constructor"
+  }, {
+      anonymous: false,
+      inputs: [{...}, {...}],
+      name: "Bought",
+      type: "event"
+  }],
+  address: undefined,
+  transactionHash: "0x95e7e420b4a4dcd522a36379b4227a6c2b0604f97cb5b7db973c436109a2230f"
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>The above contract instance creation command will create an <span class="bold">Ethereum</span> transaction that needs
+        to be mined for the contract to be deployed on the private <span class="bold">Blockchain</span> network.</p>
+      <p>From the Output.9, we see the <span class="hi-yellow">transactionHash</span> for the contract deployment transaction.</p>
+    </div>
+    <div id="para-div">
+      <p>To check all the pending transactions, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> eth.pendingTransactions</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>[{
+    blockHash: null,
+    blockNumber: null,
+    from: "0x46bf8994c8702919434271d89bcad8abec915612",
+    gas: 1000000,
+    gasPrice: 18000000000,
+    hash: "0x95e7e420b4a4dcd522a36379b4227a6c2b0604f97cb5b7db973c436109a2230f",
+    input: "0x6060604052341561000f57600080fd5b6040516060806102958339810160405280805191906020018051919060200180516000808055600195909555600293909355505060038054600160a060020a031916600160a060020a039092169190911760a060020a60ff021916905561021990819061007c90396000f30060606040526004361061006c5763ffffffff7c0100000000000000000000000000000000000000000000000000000000600035041663893d20e88114610071578063a4e72902146100ad578063bd3e19d4146100b7578063bf20f940146100dc578063f9633930146100ef575b600080fd5b341561007c57600080fd5b610084610102565b60405173ffffffffffffffffffffffffffffffffffffffff909116815260200160405180910390f35b6100b561011e565b005b34156100c257600080fd5b6100ca6101db565b60405190815260200160405180910390f35b34156100e757600080fd5b6100ca6101e1565b34156100fa57600080fd5b6100ca6101e7565b60035473ffffffffffffffffffffffffffffffffffffffff1690565b600254348190101561012f57600080fd5b60016000556003543373ffffffffffffffffffffffffffffffffffffffff908116911614156101d8576002600055600380546001919074ff00000000000000000000000000000000000000001916740100000000000000000000000000000000000000008302179055507f3ccb2ab6980b218b1dd4974b07365cd90a191e170c611da46262fecc208bd66160015460025460405191825260208201526040908101905180910390a15b50565b60025490565b60015490565b600054905600a165627a7a723058206bddd2f4e42cc80921d64b69c8c1953bef9faef537685d6ecbf6b67746db5710002900000000000000000000000000000000000000000000000000000000499602d20000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000035ddac855e0029676f489dafca9ab405a348317c",
+    nonce: 0,
+    r: "0xd8c6112d4c2f14e68e4f19c5b8bef6e9155b1a5781d2432c6e44d1851c7ef3fc",
+    s: "0x6aa590f957a4b9c2b3072ea4a68bac903c063378eacfb904418f99897e111331",
+    to: null,
+    transactionIndex: 0,
+    v: "0x4d",
+    value: 0
+}]</pre>
+    </div>
+    <div id="para-div">
+      <p>Before we start the miner, let us check the account balances. To display account balances using the Javascript utility
+        function <span class="bold">showBalances</span>, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> showBalances()</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>---> eth.accounts[0]: 0xef17ec5df3116dea3b7abaf1ff3045639453cc76  balance: 20 ether
+---> eth.accounts[1]: 0x35ddac855e0029676f489dafca9ab405a348317c  balance: 10 ether
+---> eth.accounts[2]: 0x46bf8994c8702919434271d89bcad8abec915612  balance: 5 ether
+---> eth.accounts[3]: 0x518a6377a3863201aef3310da41f3448d959a310  balance: 3 ether
+undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>To start the miner with one mining thread, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> miner.start(1)</p>
+    </div>
+    <div id="para-div">
+      <p>In a few seconds (about 5 to 10), the contract deployment transaction will be mined and the contract will be deployed
+        to our private <span class="bold">Blockchain</span> network.</p>
+    </div>
+    <div id="para-div">
+      <p>Let us stop the miner. Execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> miner.stop()</p>
+    </div>
+    <div id="para-div">
+      <p>To retrieve the transaction details for 0x95e7e420b4a4dcd522a36379b4227a6c2b0604f97cb5b7db973c436109a2230f, execute
+        the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> eth.getTransactionReceipt(vehicle2_contract_inst.transactionHash)</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>{
+  blockHash: "0x71ac9ad00dda0064b70a8300ef6669502d85ae6bc32712035b78ad1fa5ded675",
+  blockNumber: 1,
+  contractAddress: "0xfa332003301955dd8526f0ef3aa7c670bda5f4fa",
+  cumulativeGasUsed: 266798,
+  from: "0x46bf8994c8702919434271d89bcad8abec915612",
+  gasUsed: 266798,
+  logs: [],
+  logsBloom: "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  root: "0x5ca6bef8e4b49e1702ad084365c74aa1e36d801526b8a40873dcca03df4d8506",
+  to: null,
+  transactionHash: "0x95e7e420b4a4dcd522a36379b4227a6c2b0604f97cb5b7db973c436109a2230f",
+  transactionIndex: 0
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>The presence of a value for the <span class="hi-yellow">contractAddress</span> indicates that the contract has been
+        successfully deployed to our private <span class="bold">Blockchain</span> network.</p>
+    </div>
+    <div id="para-div">
+      <p>Next, we will define a variable called <span class="hi-yellow">vehicle2_contract_addr</span> with a value containing
+        the deployed contract address. Execute the following statement in the Javascript shell as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var vehicle2_contract_addr = eth.getTransactionReceipt(vehicle2_contract_inst.transactionHash).contractAddress</p>
+    </div>
+    <div id="para-div">
+      <p>To check the value of the contract transaction object variable <span class="bold">vehicle2_contract_addr</span>, execute
+        the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> vehicle2_contract_addr</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>"0xfa332003301955dd8526f0ef3aa7c670bda5f4fa"</pre>
+    </div>
+    <div id="para-div">
+      <p>The last step is to create an instance of the <span class="bold">Vehicle2</span> contract that was just deployed to
+        our private <span class="bold">Blockchain</span>, so we can invoke the contract function(s). To create a instance of
+        the <span class="bold">Vehicle2</span> contract, we need to invoke the <span class="hi-yellow">at</span> method on the
+        contract object <span class="bold">vehicle2_contract</span>, passing in the value of the variable <span class="bold">
+        vehicle2_contract_addr</span> as the argument. Execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var vehicle2_obj = vehicle2_contract.at(vehicle2_contract_addr)</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>To check the value of the contract instance variable <span class="bold">vehicle2_obj</span>, execute the following command
+        in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> vehicle2_obj</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>{
+  abi: [{
+      constant: true,
+      inputs: [],
+      name: "getOwner",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: false,
+      inputs: [],
+      name: "buyVehicle",
+      outputs: [],
+      payable: true,
+      stateMutability: "payable",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getCost",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getVin",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getFlag",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      inputs: [{...}, {...}, {...}],
+      payable: false,
+      stateMutability: "nonpayable",
+      type: "constructor"
+  }, {
+      anonymous: false,
+      inputs: [{...}, {...}],
+      name: "Bought",
+      type: "event"
+  }],
+  address: "0xfa332003301955dd8526f0ef3aa7c670bda5f4fa",
+  transactionHash: null,
+  Bought: function(),
+  allEvents: function(),
+  buyVehicle: function(),
+  getCost: function(),
+  getFlag: function(),
+  getOwner: function(),
+  getVin: function()
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>Once again, let us display account balances using the Javascript utility function <span class="bold">showBalances</span>.
+        Execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> showBalances()</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>---> eth.accounts[0]: 0xef17ec5df3116dea3b7abaf1ff3045639453cc76   balance: 40.004802364 ether
+---> eth.accounts[1]: 0x35ddac855e0029676f489dafca9ab405a348317c  balance: 10 ether
+---> eth.accounts[2]: 0x46bf8994c8702919434271d89bcad8abec915612  balance: 4.995197636 ether
+---> eth.accounts[3]: 0x518a6377a3863201aef3310da41f3448d959a310  balance: 3 ether
+undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>Since the dealer deployed the contract <span class="bold">Vehicle2</span> to our private <span class="bold">Blockchain</span>,
+        as expected, the dealer account incurred a small processing fees in the form of <span class="bold">gas</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The buyer will invoke the <span class="hi-blue">buyVehicle</span> method on the object <span class="bold">vehicle2_obj</span>
+        by sending a transaction message, along with the payment covering the cost of the vehicle.</p>
+    </div>
+    <div id="para-div">
+      <p>We will define a variable called <span class="hi-yellow">buyer_txn</span> with a value representing the payment and method
+        invocation transaction object that encapsulates the address of the buyer (from), the cost (value), and the gas price. Execute
+        the following statement in the Javascript shell as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var buyer_txn = { from: buyer, value: cost, gas: gas_price }</p>
+    </div>
+    <div id="para-div">
+      <p>To check the value of the transaction object variable <span class="bold">buyer_txn</span>, execute the following command in
+        the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> buyer_txn</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.17</h4>
+      <pre>{
+  from: "0x35ddac855e0029676f489dafca9ab405a348317c",
+  gas: 1000000,
+  value: 1000000000000000000
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>Since the buyer is initiating the transaction, we need to unlock the buyer account before proceeding further.</p>
+      <p>To unlock the buyer account, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> personal.unlockAccount(buyer)</p>
+    </div>
+    <div id="para-div">
+      <p>This will prompt us for the password for the buyer account. The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.18</h4>
+      <pre>Unlock account 0x35ddac855e0029676f489dafca9ab405a348317c
+Passphrase: buyer
+true</pre>
+    </div>
+    <div id="para-div">
+      <p>The buyer will invoke the contract by calling the <span class="hi-yellow">sendTransaction</span> method on the
+        object <span class="bold">vehicle2_obj.buyVehicle</span>. Execute the following command in the Javascript shell
+        prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var buyer_txn_hash = vehicle2_obj.buyVehicle.sendTransaction(buyer_txn)</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.19</h4>
+      <pre>undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>To check the value of the transaction hash variable <span class="bold">buyer_txn_hash</span>, execute the
+        following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> buyer_txn_hash</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.20</h4>
+      <pre>"0x2a9acb27c5406dfd3b4be6d456cedf772d0cd6656b0d05d62ce51dfeb87f3567"</pre>
+    </div>
+    <div id="para-div">
+      <p>The transaction created by the buyer above needs to be mined for the method invocation on the deployed contract on our private
+        <span class="bold">Blockchain</span> network.</p>
+    </div>
+    <div id="para-div">
+      <p>To check all the pending transactions, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> eth.pendingTransactions</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.21</h4>
+      <pre>[{
+    blockHash: null,
+    blockNumber: null,
+    from: "0x35ddac855e0029676f489dafca9ab405a348317c",
+    gas: 1000000,
+    gasPrice: 18000000000,
+    hash: "0x2a9acb27c5406dfd3b4be6d456cedf772d0cd6656b0d05d62ce51dfeb87f3567",
+    input: "0xa4e72902",
+    nonce: 0,
+    r: "0x1871d12481d3689cc036eec06c39592eb563215a97bee537089cb5c73728ebe8",
+    s: "0x4bce1bb99250da899eb1b88043990326d818439d6712a96ef7e31b20ac9ee87b",
+    to: "0xfa332003301955dd8526f0ef3aa7c670bda5f4fa",
+    transactionIndex: 0,
+    v: "0x4d",
+    value: 1000000000000000000
+}]</pre>
+    </div>
+    <div id="para-div">
+      <p>To start the miner with one mining thread, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> miner.start(1)</p>
+    </div>
+    <div id="para-div">
+      <p>In a few seconds (about 5 to 10), the contract invocation transaction will be mined and the contract method
+        <span class="bold">vehicle2_obj.buyVehicle</span> will be invoked on deployed contract.</p>
+    </div>
+    <div id="para-div">
+      <p>Let us stop the miner. Execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> miner.stop()</p>
+    </div>
+    <div id="para-div">
+      <p>To retrieve the transaction details for 0x2a9acb27c5406dfd3b4be6d456cedf772d0cd6656b0d05d62ce51dfeb87f3567, execute
+        the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> eth.getTransactionReceipt(buyer_txn_hash)</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.22</h4>
+      <pre>{
+  blockHash: "0xc88bc4af7fcf9ac9366866f987be3694fab14ed259f68c776830644c5d2c961b",
+  blockNumber: 7,
+  contractAddress: null,
+  cumulativeGasUsed: 53865,
+  from: "0x35ddac855e0029676f489dafca9ab405a348317c",
+  gasUsed: 53865,
+  logs: [{
+      address: "0xfa332003301955dd8526f0ef3aa7c670bda5f4fa",
+      blockHash: "0xc88bc4af7fcf9ac9366866f987be3694fab14ed259f68c776830644c5d2c961b",
+      blockNumber: 7,
+      data: "0x00000000000000000000000000000000000000000000000000000000499602d20000000000000000000000000000000000000000000000000de0b6b3a7640000",
+      logIndex: 0,
+      removed: false,
+      topics: ["0x3ccb2ab6980b218b1dd4974b07365cd90a191e170c611da46262fecc208bd661"],
+      transactionHash: "0x2a9acb27c5406dfd3b4be6d456cedf772d0cd6656b0d05d62ce51dfeb87f3567",
+      transactionIndex: 0
+  }],
+  logsBloom: "0x00000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000008080000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  root: "0xf007b6666df14298ecebf584fb2069dac2c1353fafe82c3c09adadbcffcc2c8b",
+  to: "0xfa332003301955dd8526f0ef3aa7c670bda5f4fa",
+  transactionHash: "0x2a9acb27c5406dfd3b4be6d456cedf772d0cd6656b0d05d62ce51dfeb87f3567",
+  transactionIndex: 0
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>How do we know the method invocation of <span class="bold">buyVehicle()</span> by the buyer succeeded ???</p>
+    </div>
+    <div id="para-div">
+      <p>One can use the <span class="hi-yellow">eth.getStorageAt(contactAddress, position)</span> command in the Javascript
+        shell to check for the current contract state values. The contract state is persisted in the <span class="bold">Blockchain</span>
+        storage, which is essentially a key-value store. For example, value for the state variable <span class="bold">_flag</span>
+        is at position 0, value for the state variable <span class="bold">_vin</span> is at position 1, and so on.</p>
+    </div>
+    <div id="para-div">
+      <p>To check the state value for <span class="bold">_flag</span> in the storage (which is a decimal), execute the following command
+        in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> web3.toDecimal(eth.getStorageAt(vehicle2_contract_addr, 0))</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.23</h4>
+      <pre>2</pre>
+    </div>
+    <div id="para-div">
+      <p>The above value of <span class="hi-yellow">2</span> for the state variable <span class="bold">_flag</span> is possible only
+        on the correct execution of the method <span class="bold">buyVehicle</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To check the state value for <span class="bold">_vin</span> in the storage (which is a decimal), execute the following command
+        in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> web3.toDecimal(eth.getStorageAt(vehicle2_contract_addr, 1))</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.24</h4>
+      <pre>1234567890</pre>
+    </div>
+    <div id="para-div">
+      <p>To check the state value for <span class="bold">_cost</span> in the storage (which is a decimal), execute the following command
+        in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> web3.toDecimal(eth.getStorageAt(vehicle2_contract_addr, 2))</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.25</h4>
+      <pre>1000000000000000000</pre>
+    </div>
+    <div id="para-div">
+      <p>To check the state value for <span class="bold">_owner</span> in the storage (which is a hex), execute the following command
+        in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> web3.toHex(eth.getStorageAt(vehicle2_contract_addr, 3))</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.26</h4>
+      <pre>"0x00000000000000000000000135ddac855e0029676f489dafca9ab405a348317c"</pre>
+    </div>
+    <div id="para-div">
+      <p>One can also look for the emitted event(s) <span class="hi-yellow">Bought</span> from the transaction log. To display
+        the event details, we first need to create an events filter. Then, we invoke the <span class="hi-yellow">watch(func)</span>
+        command in the Javascript shell, specifying a callback function <span class="hi-yellow">func</span> to display the results.</p>
+    </div>
+    <div id="para-div">
+      <p>To create a filter for event <span class="bold">Bought</span>, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var vehicle2_events = vehicle2_obj.Bought({}, {fromBlock: 0, toBlock: 'latest'});</p>
+    </div>
+    <div id="para-div">
+      <p>We want to scan all the transaction log(s) for all the mined blocks, and hence the <span class="bold">fromBlock</span> of
+        <span class="bold">0</span> to the <span class="bold">toBlock</span> of <span class="bold">latest</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To start the display of event(s) from the transaction log(s), execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var dummy = vehicle2_events.watch(function (error, result) { console.log("=> : " + JSON.stringify(result)); });</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.27</h4>
+      <pre>=> : {"address":"0xfa332003301955dd8526f0ef3aa7c670bda5f4fa","args":{"cost":"1000000000000000000","vin":"1234567890"},"blockHash":"0xb8e701ba79b273b1102a03fcbcdf606b517750283da37119adc0ebf00669c2de","blockNumber":5,"event":"Bought","logIndex":0,"removed":false,"transactionHash":"0x2a9acb27c5406dfd3b4be6d456cedf772d0cd6656b0d05d62ce51dfeb87f3567","transactionIndex":0}
+undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>From the above Output.27, we see the event values <span class="bold">"args":{"cost":"1000000000000000000","vin":"1234567890"}</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To stop the event watcher, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> vehicle2_events.stopWatching()</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="http://www.polarsparc.com/Ethereum/Ethereum-2.html" target="_blank"><span class="bold">Introduction to Ethereum - Part 2
+        </span></a></p>
+    </div>
+  </body>
+</html>

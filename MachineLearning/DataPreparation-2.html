@@ -1,0 +1,552 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Machine Learning - Data Preparation - Part 2">
+    <meta name="subject" content="Machine Learning - Data Preparation - Part 2">
+    <meta name="keywords" content="python, machine_learning, data_preparation, scikit-learn">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Machine Learning - Data Preparation - Part 2</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+      MathJax = {
+        tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+      };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Machine Learning - Data Preparation - Part 2</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">05/22/2022</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/MachineLearning/DataPreparation-1.html" target="_blank"><span class="bold">Part
+        1</span></a> of this series, we used the the <span class="hi-yellow">City of Ames, Iowa Housing Prices</span> data set to
+        perform the various tasks related to the Exploratory Data Analysis (EDA) to gather some insights about the loaded data set.
+        In this part, we will first explain the approach to handling missing values that is related to Feature Engineering, followed
+        by hands-on demo in Python.</p>
+    </div>
+    <div id="step-div">
+      <p>Feature Engineering - Missing Values</p>
+    </div>
+    <div id="para-div">
+      <p>For crafting a good machine learning model, the model algorithm requires that all feature values (from the training data
+        set as well as the test data set) be numerical values and that there are no missing data values.</p>
+      <p>If the number of samples (rows) with missing data values (from the data set) is very small, say less than 1%, then one can
+        drop the rows (with the missing data) from the data set without impacting the model creation and evaluation. However, if the
+        number of samples (rows) with missing data values is large (say &gt; 5%), then one cannot drop the rows and instead perform
+        data <span class="hi-yellow">Imputation</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Imputation is the process of identifying and replacing missing values for each of the features from a data set before it
+        is used for training and testing a machine learning model.</p>
+      <p>The following are some of the commonly used strategies for imputing missing values:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-blue">Mean Imputation</span> - If a numerical feature variable (a column in the dataframe) with
+          missing values is normally distributed, then the missing values can be replaced with the mean of that feature variable</p></li>
+        <li><p><span class="hi-blue">Median Imputation</span> - If a numerical feature variable (a column in the dataframe) with
+          missing values is either left or right skewed distribution, then the missing values can be replaced with the median of
+          that feature variable</p></li>
+        <li><p><span class="hi-blue">Most Frequent Imputation</span> - Also known as <span class="hi-grey">Mode Imputation</span>,
+          it is typically applied to categorical feature variables (with string or numbers) and replaces the missing values with
+          the most frequent value from that feature variable</p></li>
+        <li><p><span class="hi-blue">Constant Value Imputation</span> - For a numerical feature variable (a column in the dataframe)
+          with missing values, it replaces the missing values with an arbitrary constant number such as a -1, or a 0, etc. For a
+          categorical feature variable with missing values, it replaces the missing values with an arbitrary constant string such
+          as 'None', or 'Missing', etc</p></li>
+        <li><p><span class="hi-blue">Random Value Imputation</span> - It is applicable to both the categorical and numerical feature
+          variables (a column in the dataframe) and it replaces each missing value with a random sample from the set of unique values
+          of that feature variable</p></li>
+      </ul>
+    </div>
+    <div id="step-div">
+      <p>Hands-On Data Imputation</p>
+    </div>
+    <div id="para-div">
+      <p>The first step is to import all the necessary Python modules such as, matplotlib, pandas, and seaborn as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to load the housing price dataset into a pandas dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>url = './data/ames.csv'
+ames_df = pd.read_csv(url)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to drop some of the features that add no value, or have large number (above 80%) of missing values, or have
+        low correlation to the target feature (SalePrice) from the housing price dataset as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>home_price_df = ames_df.drop(['Order', 'PID', 'Pool.QC', 'Misc.Feature', 'Alley', 'Fence', 'MS.SubClass', 'Lot.Frontage', 'Lot.Area', 'Overall.Cond', 'BsmtFin.SF.1', 'BsmtFin.SF.2', 'Bsmt.Unf.SF', 'X2nd.Flr.SF', 'Low.Qual.Fin.SF', 'Bsmt.Full.Bath', 'Bsmt.Half.Bath', 'Half.Bath', 'Bedroom.AbvGr', 'Kitchen.AbvGr', 'Fireplaces', 'Wood.Deck.SF', 'Open.Porch.SF', 'Enclosed.Porch', 'X3Ssn.Porch', 'Screen.Porch', 'Pool.Area', 'Misc.Val', 'Mo.Sold', 'Yr.Sold'], axis=1)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The next step is to display the shape (rows and columns) of the housing price dataset as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>home_price_df.shape</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following illustration shows the shape of the housing price dataset:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Shape" src="./images/dataprep-14.png" class="img-cls" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display information about the housing price dataframe, such as index and column types, missing (null)
+        values, memory usage, etc., as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>home_price_df.info()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the information about the housing price dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Dataframe Information" src="./images/dataprep-15.png" class="img-cls" />
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the feature names from the housing price dataframe that have missing (nan) values as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>features_na = [feature for feature in ames_df.columns if ames_df[feature].isnull().sum() > 0]
+features_na</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the list of all the feature names from the housing price dataframe with missing values:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Features NaN" src="./images/dataprep-16.png" class="img-cls" />
+      <div class="img-cap">Figure.3</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the features and the count of their missing values from the housing price dataframe as shown
+        below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>home_price_df[features_na].isnull().sum().sort_values()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the list of the feature names along with the count of their missing value from the
+        housing price dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Missing Count" src="./images/dataprep-17.png" class="img-cls" />
+      <div class="img-cap">Figure.4</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the rows corresponding to the features Electrical, Garage.Area, Garage.Cars, and Total.Bsmt.SF
+        with one missing value from the housing price dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>home_price_df[home_price_df['Garage.Cars'].isnull() | home_price_df['Garage.Area'].isnull() | home_price_df['Total.Bsmt.SF'].isnull() | home_price_df['Electrical'].isnull()]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the rows with one missing value from the housing price dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Rows Missing Value" src="./images/dataprep-18.png" class="img-cls" />
+      <div class="img-cap">Figure.5</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Given that it is only 3 of the 2930 rows from the housing price data set with one missing value, it is okay to drop these
+        rows.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is drop the 3 rows with a missing value from the housing price dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>one_na_index = home_price_df[home_price_df['Garage.Cars'].isnull() | home_price_df['Garage.Area'].isnull() | home_price_df['Total.Bsmt.SF'].isnull() | home_price_df['Electrical'].isnull()].index
+home_price_df = home_price_df.drop(one_na_index, axis=0)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The next step is to re-evaluate the features with missing values and display the count of their missing values from the
+        housing price dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>features_na = [feature for feature in home_price_df.columns if home_price_df[feature].isnull().sum() > 0]
+home_price_df[features_na].isnull().sum().sort_values()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the list of the feature names along with the count of their missing value from the
+        housing price dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Missing Count" src="./images/dataprep-19.png" class="img-cls" />
+      <div class="img-cap">Figure.6</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the rows corresponding to the features Mas.Vnr.Type and Mas.Vnr.Area with 23 missing values from
+        the housing price dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>home_price_df[home_price_df['Mas.Vnr.Type'].isnull() | home_price_df['Mas.Vnr.Area'].isnull()]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the rows with 23 missing values from the housing price dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Rows Missing Values" src="./images/dataprep-20.png" class="img-cls" />
+      <div class="img-cap">Figure.7</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Looking at the data dictionary of the Ames Housing Price data set, the acceptable value for Mas.Vnr.Type is 'None' and the
+        for Mas.Vnr.Area would be 0.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to replace the missing values for Mas.Vnr.Type and Mas.Vnr.Area from the housing price dataframe as shown
+        below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>home_price_df['Mas.Vnr.Type'].fillna('None', inplace=True)
+home_price_df['Mas.Vnr.Area'].fillna(0, inplace=True)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The next step is to once again to re-evaluate the features with missing values and display the count of their missing values
+        from the housing price dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>features_na = [feature for feature in home_price_df.columns if home_price_df[feature].isnull().sum() > 0]
+home_price_df[features_na].isnull().sum().sort_values()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the list of the feature names along with the count of their missing value from the
+        housing price dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Missing Count" src="./images/dataprep-21.png" class="img-cls" />
+      <div class="img-cap">Figure.8</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the rows corresponding to the features Bsmt.Qual, Bsmt.Cond, BsmtFin.Type.1, BsmtFin.Type.2, and
+        Bsmt.Exposure with about 80+ missing values from the housing price dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>home_price_df[home_price_df['Bsmt.Qual'].isnull() | home_price_df['Bsmt.Cond'].isnull() | home_price_df['BsmtFin.Type.1'].isnull() | home_price_df['BsmtFin.Type.2'].isnull() | home_price_df['Bsmt.Exposure'].isnull()]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the rows with about 80+ missing values from the housing price dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Rows Missing Values" src="./images/dataprep-22.png" class="img-cls" />
+      <div class="img-cap">Figure.9</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The row at index <span class="bold">444</span> has a value for BsmtFin.Type.1 but not for BsmtFin.Type.2. Looking at the
+        data dictionary for the Ames Housing Price data set, we can infer we can use of 'GLQ' (for good living quarters).</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to replace the missing value for BsmtFin.Type.2 at index 444 from the housing price dataframe as shown
+        below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>home_price_df.loc[444, 'BsmtFin.Type.2'] = 'GLQ'</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The next step is to replace the missing values for Bsmt.Qual, Bsmt.Cond, BsmtFin.Type.1, BsmtFin.Type.2, and Bsmt.Exposure
+        from the housing price dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>home_price_df['Bsmt.Qual'].fillna('NA', inplace=True)
+home_price_df['Bsmt.Cond'].fillna('NA', inplace=True)
+home_price_df['BsmtFin.Type.1'].fillna('NA', inplace=True)
+home_price_df['BsmtFin.Type.2'].fillna('NA', inplace=True)
+home_price_df['Bsmt.Exposure'].fillna('NA', inplace=True)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The next step is to once again to re-evaluate the features with missing values and display the count of their missing values
+        from the housing price dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>features_na = [feature for feature in home_price_df.columns if home_price_df[feature].isnull().sum() > 0]
+home_price_df[features_na].isnull().sum().sort_values()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the list of the feature names along with the count of their missing value from the
+        housing price dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Missing Count" src="./images/dataprep-23.png" class="img-cls" />
+      <div class="img-cap">Figure.10</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the rows corresponding to the features Garage.Type, Garage.Yr.Blt, Garage.Finish, Garage.Qual,
+        and Garage.Cond with about 158 missing values from the housing price dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>home_price_df[home_price_df['Garage.Type'].isnull() | home_price_df['Garage.Yr.Blt'].isnull() | home_price_df['Garage.Finish'].isnull() | home_price_df['Garage.Qual'].isnull() | home_price_df['Garage.Cond'].isnull()]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the rows with about 158 missing values from the housing price dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Rows Missing Values" src="./images/dataprep-24.png" class="img-cls" />
+      <div class="img-cap">Figure.11</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The row at index <span class="bold">1356</span> has a value for Garage.Type but not for Garage.Yr.Blt, Garage.Finish,
+        Garage.Qual, and Garage.Cond.</p>
+      <p>The missing value for Garage.Yr.Blt can be determined by looking at the values for other features such as Year.Built and
+        Year.Remod.Add.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to display the values corresponding to the features Year.Built, Year.Remod.Add, and Garage.Yr.Blt for the
+        row at index 1356 from the housing price dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>home_price_df.loc[[1356], ['Year.Built', 'Year.Remod.Add', 'Garage.Yr.Blt']]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the values corresponding to the features Year.Built, Year.Remod.Add, and Garage.Yr.Blt
+        at index 1356 from the housing price dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Feature Values 1356" src="./images/dataprep-25.png" class="img-cls" />
+      <div class="img-cap">Figure.12</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display a count plot for Garage.Finish to determine the most frequent value using the housing price
+        data set as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>sns.countplot(x='Garage.Finish', data=home_price_df)
+plt.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration shows the count plot for Garage.Finish using the housing price data set:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Count Plot 1" src="./images/dataprep-26.png" class="img-cls" />
+      <div class="img-cap">Figure.13</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice that the value of 'Unf' is the most frequent value for Garage.Finish.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to display a count plot for Garage.Qual to determine the most frequent value using the housing price data
+        set as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>sns.countplot(x='Garage.Qual', data=home_price_df)
+plt.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration shows the count plot for Garage.Qual using the housing price data set:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Count Plot 2" src="./images/dataprep-27.png" class="img-cls" />
+      <div class="img-cap">Figure.14</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice that the value of 'TA' is the most frequent value for Garage.Qual.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to display a count plot for Garage.Cond to determine the most frequent value using the housing price data
+        set as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>sns.countplot(x='Garage.Cond', data=home_price_df)
+plt.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration shows the count plot for Garage.Cond using the housing price data set:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Count Plot 3" src="./images/dataprep-28.png" class="img-cls" />
+      <div class="img-cap">Figure.15</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice that the value of 'TA' is the most frequent value for Garage.Cond.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to replace the missing values for Garage.Yr.Blt, Garage.Type, Garage.Finish, Garage.Qual, and Garage.Cond
+        at index 1356 (from the information gathered above) in the housing price dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>home_price_df.loc[1356, 'Garage.Yr.Blt'] = home_price_df.loc[1356, 'Year.Built']
+home_price_df.loc[1356, 'Garage.Finish'] = 'Unf'
+home_price_df.loc[1356, 'Garage.Qual'] = 'TA'
+home_price_df.loc[1356, 'Garage.Cond'] = 'TA'</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The next step is to replace the missing values for Garage.Yr.Blt, Garage.Type, Garage.Finish, Garage.Qual, and Garage.Cond
+        from the housing price dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>home_price_df['Garage.Yr.Blt'].fillna(0, inplace=True)
+home_price_df['Garage.Type'].fillna('NA', inplace=True)
+home_price_df['Garage.Finish'].fillna('NA', inplace=True)
+home_price_df['Garage.Qual'].fillna('NA', inplace=True)
+home_price_df['Garage.Cond'].fillna('NA', inplace=True)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The next step is to replace the missing values for Fireplace.Qu from the housing price dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>home_price_df['Fireplace.Qu'].fillna('NA', inplace=True)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The next step is to display the count for all the missing values from the housing price dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>home_price_df.isnull().sum()</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following illustration shows the count for all the missing values from the housing price data set:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Count Missing" src="./images/dataprep-29.png" class="img-cls" />
+      <div class="img-cap">Figure.16</div>
+    </div>
+    <div id="para-div">
+      <p>At this point we have no missing values in the housing price data set.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on Demo</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the link to the <span class="bold">Jupyter Notebooks</span> that provides an hands-on demo for this
+        article:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><a href="https://github.com/bhaskars-repo/MachineLearning/blob/main/P10-DataPreparation.ipynb" target="_blank">
+          <span class="bold">Data Preparation - Part 2</span></a></p></li>
+      </ul>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/MachineLearning/DataPreparation-1.html" target="_blank"><span class="bold">Machine Learning - Data Preparation - Part 1</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

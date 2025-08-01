@@ -1,0 +1,455 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Machine Learning - Logistic Regression using Scikit-Learn - Part 2">
+    <meta name="subject" content="Machine Learning - Logistic Regression using Scikit-Learn - Part 2">
+    <meta name="keywords" content="python, machine_learning, classification, scikit-learn">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Machine Learning - Logistic Regression using Scikit-Learn - Part 2</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+      MathJax = {
+        tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+      };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Machine Learning - Logistic Regression using Scikit-Learn - Part 2</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">05/06/2022</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/MachineLearning/Classification-1.html" target="_blank"><span class="bold">Part 1</span></a>
+        of this series, we derived the mathematical intuition behind a Logistic Regression model that is used for classification
+        tasks.</p>
+      <p>In this article, we will demonstrate the use of the Logistic Regression model in scikit-learn by leveraging the
+        <a href="https://archive.ics.uci.edu/ml/datasets/Heart+failure+clinical+records" target="_blank"><span class="bold">Heart
+        Failure</span></a> clinical records dataset.</p>
+    </div>
+    <div id="section-div">
+      <p>Logistic Regression</p>
+    </div>
+    <div id="para-div">
+      <p>For the hands-on demonstration of the logistic regression model, we will predict the event of death due to heart failure,
+        using the dataset that contains the medical records of some heart patients.</p>
+    </div>
+    <div id="para-div">
+      <p>The first step is to import all the necessary Python modules such as, matplotlib, pandas, and scikit-learn as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix, RocCurveDisplay</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to load the heart failure dataset into a pandas dataframe and adjust some column names as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/00519/heart_failure_clinical_records_dataset.csv'
+heart_failure_df = pd.read_csv(url)
+heart_failure_df.rename(columns={'DEATH_EVENT': 'death_event', 'creatinine_phosphokinase': 'cpk_enzyme', 'high_blood_pressure': 'high_bp'}, inplace=True)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display information about the heart failure dataframe, such as index and column types, missing (null)
+        values, memory usage, etc., as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>heart_failure_df.info()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays information about the heart failure dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Dataframe Information" src="./images/classification-04.png" class="img-cls" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Fortunately, the data seems clean with no missing values.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to display the information about the number of non-death events vs death events as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>heart_failure_df['death_event'].value_counts()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the counts of the non-death events vs the death events:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Count Target Values" src="./images/classification-05.png" class="img-cls" />
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the summary statistics on the various columns of the heart failure dataframe as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>auto_df.describe()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the summary statistics on the various columns of the heart failure dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Summary Statistics" src="./images/classification-06.png" class="img-cls" />
+      <div class="img-cap">Figure.3</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to split the heart failure dataset into two parts - a training dataset and a test dataset. The training
+        dataset is used to train the classification model and the test dataset is used to evaluate the classification model. In this
+        use case, we split 75% of the samples into the training dataset and remaining 25% into the test dataset as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>X_train, X_test, y_train, y_test = train_test_split(heart_failure_df, heart_failure_df['death_event'], test_size=0.25, random_state=101)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The next step is to display the correlation matrix of the feature (or predictor) variables with the target variable as
+        shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>sns.heatmap(X_train.corr(), annot=True, cmap='coolwarm', fmt='0.2f', linewidth=0.5)
+plt.show()</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following illustration displays the correlation matrix of the feature from the heart failure dataframe:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Correlation Matrix Annotated" src="./images/classification-07.png" class="img-cls" />
+      <div class="img-cap">Figure.4</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>One can infer from the correlation matrix above that some of the features (annotated in red) do not have a strong relation
+        with the target variable.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to drop the features with no or low correlation with the target variable from the training and test dataset
+        as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>X_train_f = X_train.drop(['death_event', 'anaemia', 'cpk_enzyme', 'diabetes', 'high_bp', 'platelets', 'sex', 'smoking'], axis=1)
+X_test_f = X_test.drop(['death_event', 'anaemia', 'cpk_enzyme', 'diabetes', 'high_bp', 'platelets', 'sex', 'smoking'], axis=1)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The next step is to display the first few samples from the heart failure training dataset as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>X_train_f.head(10)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The following illustration shows the first 10 rows of the heart failure dataset:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="First 10 Rows" src="./images/classification-08.png" class="img-cls" />
+      <div class="img-cap">Figure.5</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next few steps is to visualize relationships between a feature and the target (death_event), so that we can gain some
+        useful insights.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to display a box plot that shows the relationship between the death_event and age using the heart failure
+        training dataset as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>sns.boxplot(x='death_event', y='age', data=X_train)
+plt.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration shows the box plot between death_event and age from the heart failure training dataset:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Death Event vs Age" src="./images/classification-09.png" class="img-cls" />
+      <div class="img-cap">Figure.6</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>From the box plot above, we can infer that death from heart failure seems to occur more in older patients.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to display a box plot that shows the relationship between the death_event and ejection_fraction (which
+        is the amount of blood pumped from the heart) using the heart failure training dataset as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>sns.boxplot(x='death_event', y='ejection_fraction', data=X_train)
+plt.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration shows the box plot between death_event and ejection_fraction from the heart failure training
+        dataset:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Death Event vs Ejection Fraction" src="./images/classification-10.png" class="img-cls" />
+      <div class="img-cap">Figure.7</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>From the box plot above, we can infer that death from heart failure seems to occur more in patients with lower ejection
+        fraction.</p>
+    </div>
+    <div id="para-div">
+      <p>We will explore one final box plot. So, the next step is display a box plot that shows the relationship between the
+        death_event and serum_creatinine (which is the amount of waste in blood from the kidney) using the heart failure training
+        dataset as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>sns.boxplot(x='death_event', y='serum_creatinine', data=X_train)
+plt.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration shows the box plot between death_event and serum_creatinine from the heart failure training
+        dataset:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Death Event vs Ejection Fraction" src="./images/classification-11.png" class="img-cls" />
+      <div class="img-cap">Figure.8</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>From the box plot above, we can infer that death from heart failure seems to occur more in patients with higher levels of
+        serum creatinine.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to create an instance of the standardization scaler to scale the desired feature (or predictor) variables
+        in both the training and test dataset as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>scaler = StandardScaler()
+s_X_train_f = pd.DataFrame(scaler.fit_transform(X_train_f), columns=X_train_f.columns, index=X_train_f.index)
+s_X_test_f = pd.DataFrame(scaler.fit_transform(X_test_f), columns=X_test_f.columns, index=X_test_f.index)</pre>
+      </div>
+    </div>
+    <div id="para-div">
+      <p>The next step is to initialize the classification model class from scikit-learn. For our demonstration, we will initialize
+        a logistic regression model as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>model = LogisticRegression(max_iter=5000)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice the use of the hyperparameter <span class="hi-yellow">max_iter</span> to control the maximum number of iterations
+        to arrive at the optimal values of the $\beta$ coefficients for the corresponding feature variables.</p>
+    </div>
+    <div id="para-div">
+      <p>The next step is to train the model using the training dataset as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>model.fit(s_X_train_f, y_train)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the values for the intercept and the coefficient (the slope) as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>model.coef_</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the values for the $\beta$ coefficients from the model:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Beta Coefficients" src="./images/classification-12.png" class="img-cls" />
+      <div class="img-cap">Figure.9</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to use the trained model to predict the death_event using the test dataset as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>y_predict = model.predict(s_X_test_f)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the accuracy score for the model performance as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>accuracy_score(y_test, y_predict)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the accuracy score for the model performance:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Display Accuracy Score" src="./images/classification-13.png" class="img-cls" />
+      <div class="img-cap">Figure.10</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the precision score for the model performance as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>precision_score(y_test, y_predict)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the precision score for the model performance:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Display Precision Score" src="./images/classification-14.png" class="img-cls" />
+      <div class="img-cap">Figure.11</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the recall score for the model performance as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>recall_score(y_test, y_predict)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the recall score for the model performance:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Display Recall Score" src="./images/classification-14.png" class="img-cls" />
+      <div class="img-cap">Figure.12</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to display the confusion matrix for the model performance as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>confusion_matrix(y_test, y_predict)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the confusion matrix for the model performance:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Display Confusion Matrix" src="./images/classification-15.png" class="img-cls" />
+      <div class="img-cap">Figure.13</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The final step is to display the ROC curve for the model performance as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-body-1">
+<pre>RocCurveDisplay.from_estimator(model, s_X_test_f, y_test)
+plt.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following illustration displays the ROC curve for the model performance:</p>
+    </div>
+    <div id="img-outer-div"> <img alt="Display ROC Curve" src="./images/classification-16.png" class="img-cls" />
+      <div class="img-cap">Figure.14</div>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on Demo</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the link to the <span class="bold">Jupyter Notebook</span> that provides an hands-on demo for this
+        article:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><a href="https://github.com/bhaskars-repo/MachineLearning/blob/main/P8-Logistic-Scikit.ipynb" target="_blank">
+          <span class="bold">Logistic Regression</span></a></p></li>
+      </ul>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/MachineLearning/Classification-1.html" target="_blank"><span class="bold">Machine Learning - Logistic Regression - Part 1</span></a></p>
+      <p><a href="https://polarsparc.github.io/Mathematics/Probability.html" target="_blank"><span class="bold">Introduction to Probability</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

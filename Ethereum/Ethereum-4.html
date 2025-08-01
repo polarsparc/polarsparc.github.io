@@ -1,0 +1,1954 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="Introduction to Ethereum - Part 4" content="author: Bhaskar.S, category: blockchain, ethereum, solidity">
+    <title>Introduction to Ethereum - Part 4</title>
+    <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body> <br />
+    <div id="title-div">
+      <p>Introduction to Ethereum - Part 4</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">01/05/2018</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+	    <p>In this article, we finally put together a decent <span class="bold">Smart Contract</span> to demonstrate the simple
+        vehicle buying use-case (involving the buyer, the dealer, and the dmv) that we laid out in our first introductory article
+        <a href="http://www.polarsparc.com/Blockchain/Blockchain.html" target="_blank">
+        <span class="bold">Introduction to Blockchain</span></a>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the aspects involved in demonstrating our use-case:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p>For this demonstration, the cost of the vehicle is assumed to be <span class="bold">4000000000000000000</span>
+            wei's (or <span class="bold">4</span> ethers). This is the amount owed to the dealer by the buyer</p>
+        </li>
+        <li>
+          <p>Also, the processing fees to register the vehicle for getting a license number is assumed to be
+            <span class="bold">1000000000000000000</span> wei's (or <span class="bold">1</span> ether). This is the amount
+            owed to the motor vehicle agency (dmv) by the buyer</p>
+        </li>
+        <li>
+          <p>The dmv will deploy a <span class="bold">Smart Contract</span> that registers a new vehicle and assign a license
+            number once the processing fees is paid</p>
+        </li>
+        <li>
+          <p>When a buyer expresses an intent to buy a vehicle, the dealer will create a <span class="bold">Smart Contract</span>
+            representing a deal with the buyer for the desired vehicle (vin) at a particular cost plus some processing fees</p>
+        </li>
+        <li>
+          <p>When the buyer initiates a transaction by making a payment on the contract deployed by the dealer, the logic in the
+            invoked method pays the dealer the cost of the vehicle, and then automatically initiates a transaction on the contract
+            deployed by the dmv to register the vehicle (after paying the processing fees)</p>
+        </li>
+      </ul>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with Smart Contracts using Solidity</p>
+    </div>
+    <div id="para-div">
+      <p>In the previous article <a href="http://www.polarsparc.com/Ethereum/Ethereum-3.html" target="_blank"><span class="bold">
+        Part 3</span></a> of this series, we introduced the concept of defining multiple contract(s) in a single
+        <span class="bold">.sol</span> file, as well as the use of a <span class="bold">modifier</span> contract to enforce
+        constraint check(s) prior to executing a function.</p>
+      <p>Since we need to ensure the buyer has included enough ethers to cover for the cost of the vehicle as well as the
+        processing fees, we will extract the <span class="bold">modifier</span> contract into a separate
+        <span class="bold">.sol</span> file, so that it can be commonly applied to any <span class="bold">Smart Contract</span>
+        (either from the dmv or the dealer).</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the extracted and enhanced <span class="bold">Solidity</span> contract code called <span class="hi-yellow">
+        AmountOwed2.sol</span> located in the directory <span class="bold">/home/polarsparc/Ethereum/src</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>AmountOwed2.sol</legend>
+      <pre>pragma solidity ^0.4.15;
+
+/*
+ * This AmountOwed contract implements a common function modifier to check the value of tranfer
+ * satisfies the amount owed to the service provider (dealer or dmv)
+ */
+
+contract AmountOwed2 {
+    event AmountEvt(uint flag, uint value, uint amount, address context);
+
+    // Modifiers can be used to change the behaviour of any function in a contract, such as checking
+    // a condition prior to executing the function. Modifiers are inheritable properties of contracts
+    // and may be overridden by derived contracts
+    modifier validateAmount(uint amt, address context) {
+        AmountEvt(1, msg.value, amt, context);
+        require(msg.value >= amt);
+        AmountEvt(2, msg.value, amt, context);
+        _; // Function body
+        AmountEvt(3, msg.value, amt, context);
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Since the <span class="bold">Smart Contract</span> deployed by the dealer (vehicle purchase) needs to interact with the
+        <span class="bold">Smart Contract</span> deployed by the dmv (for vehicle registration), we will create an abstract
+        contract defining the interface of the dmv contract. An abstract contract is a <span class="bold">Solidty</span>
+        contract that defines the functions without any implementation details. This is similar to interfaces in commonly used
+        object-oriented programming languages like Java, C++, etc.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the abstract <span class="bold">Solidity</span> contract code for the dmv called <span class="hi-yellow">
+        IDmvRegister.sol</span> located in the directory <span class="bold">/home/polarsparc/Ethereum/src</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>IDmvRegister.sol</legend>
+      <pre>pragma solidity ^0.4.15;
+
+/*
+ * DmvRegister contract interface
+ */
+
+contract IDmvRegister {
+    function getFees() public view returns (uint);
+    function getLicense(uint vin) public view returns (uint);
+    function registerVehicle(uint vin, address buyer) public payable;
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The following is the concrete <span class="bold">Solidity</span> contract code for the dmv called <span class="hi-yellow">
+        DmvRegister.sol</span> located in the directory <span class="bold">/home/polarsparc/Ethereum/src</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>DmvRegister.sol</legend>
+      <pre>pragma solidity ^0.4.15;
+
+import "./IDmvRegister.sol";
+import "./AmountOwed2.sol";
+
+/*
+ * A DmvRegister contract is first created in the Ethereum  blockchain by the dmv. Once deployed
+ * the contract address is used by the dealer in the creation of the Vehicle3 contract. When the
+ * dealer receives  the  payment for the  vehicle from  the  buyer, the  vehicle registration is
+ * triggered from the buyVehicle function in the Vehicle3 contract.
+ */
+
+contract DmvRegister is IDmvRegister, AmountOwed2 {
+    struct OwnerLicense {
+        bool registered;
+        uint license;
+        address owner;
+    }
+
+    uint _counter;
+    uint _fees;
+    address _dmv;
+    mapping (uint => OwnerLicense) _licenseTbl;
+
+    event RegisteredEvt(uint flag, uint vin, uint license, uint fees, address buyer);
+    
+    function getFees() public view returns (uint) {
+        return _fees;
+    }
+    
+    function getLicense(uint vin) public view returns (uint) {
+        return _licenseTbl[vin].license;
+    }
+    
+    // The keyword 'payable' is important for accepting ethers from the sender
+    function registerVehicle(uint vin, address buyer) public payable validateAmount(_fees, _dmv) {
+        var lic = _licenseTbl[vin];
+        if (!lic.registered) {
+            RegisteredEvt(1, vin, lic.license, msg.value, buyer);
+            lic.owner = buyer;
+            lic.license = _counter;
+            lic.registered = true;
+            _counter++;
+            _dmv.transfer(_fees);
+            RegisteredEvt(2, vin, lic.license, msg.value-_fees, buyer);
+        } else {
+            RegisteredEvt(3, vin, lic.license, msg.value, buyer);
+        }
+    }
+    
+    function DmvRegister(uint fees) public {
+        _counter = 101;
+        _fees = fees;
+        _dmv = msg.sender;
+        RegisteredEvt(0, 0, 0, fees, address(0));
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Let us explain some of the important keywords used in the <span class="bold">DmvRegister.sol</span> file shown above.</p>
+      <p>The keyword <span class="hi-yellow">import</span> followed by a path to a <span class="bold">.sol</span> file includes
+        the contents of the specified file into the current scope. This is similar to the import statement in Javascript.</p>
+      <p>The keyword <span class="hi-yellow">struct</span> is used to define a complex data type, similar to the one from the
+        C programming language. In our use-case, we define a custom data type called <span class="hi-blue">OwnerLicense</span>
+        to encapsulate a boolean flag indicating if the vehicle is registered, the license number and the owner of the vehicle.</p>
+      <p>The contract <span class="bold">DmvRegister</span> supports multiple inheritence by implementing one interface
+        <span class="bold">IDmvRegister</span> and extending a contract <span class="bold">AmountOwed2</span>.</p>
+      <p>The keyword <span class="hi-yellow">mapping</span> is used to define a data structure that is similar to a hash-table
+        from the Java programming language. The left-hand side of symbol <span class="bold">=&gt;</span> defines the type of the 
+        key, while the right-hand side defines the type of the value. In our use-case, the key is of type <span class="bold">uint</span>
+        representing the vin number and the value is of type <span class="bold">OwnerLicense</span>. One important difference
+        compared to a hash-table in Java is that every key value exists and is initialized to the default value of the value type.
+        For example, for a new key with value <span class="bold">1111</span>, the corresponding mapped value would be a default value
+        of <span class="bold">OwnerLicense</span> with a false for <span class="bold">registered</span>, zero for
+        <span class="bold">license</span>, and 0x0 for <span class="bold">owner</span>. In other words, the mapped value will
+        never be null like in Java.</p>
+      <p>The method <span class="hi-green">transfer</span> on an address transfers the specified value to the balance on the
+        invoked address. In our use-case, we are transferring the processing fees to the dmv.</p>
+    </div>
+    <div id="para-div">
+      <p>An instance of the contract <span class="bold">DmvRegister</span> will be deployed by the dmv, such that the dealer
+        contract can transfer <span class="bold">ether</span>s on behalf of the buyer to fulfill the processing fees of
+        registering the vehicle by invoking the method <span class="hi-green">registerVehicle()</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the concrete <span class="bold">Solidity</span> contract code for the dealer called <span class="hi-yellow">
+        Vehicle3.sol</span> located in the directory <span class="bold">/home/polarsparc/Ethereum/src</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Vehicle3.sol</legend>
+      <pre>pragma solidity ^0.4.15;
+
+import "./IDmvRegister.sol";
+import "./AmountOwed2.sol";
+
+/*
+ * A Vehicle instance is first created in the Ethereum blockchain by the dealer.
+ * Once the payment is received, the dealer transfers ownership to the buyer.
+ */
+
+contract Vehicle3 is AmountOwed2 {
+    enum DealStatus { Open, Closed }
+    
+    uint _vin;
+    uint _cost;
+    uint _fees;
+    address _buyer;
+    address _dealer;
+    DealStatus _status;
+    IDmvRegister _dmvif;
+    
+    event BoughtEvt(uint flag, uint vin, uint value, address buyer);
+    
+    function getVin() public view returns (uint) {
+        return _vin;
+    }
+    
+    function getCost() public view returns (uint) {
+        return _cost;
+    }
+    
+    function getOwner() public view returns (address) {
+        return _buyer;
+    }
+    
+    function getDealer() public view returns (address) {
+        return _dealer;
+    }
+    
+    function getStatus() public view returns (DealStatus) {
+        return _status;
+    }
+    
+    // The keyword 'payable' is important for accepting ethers from the buyer
+    function buyVehicle() public payable validateAmount(_cost+_fees, _dealer) {
+        uint _gas = 1000000;
+        uint _amt = msg.value;
+        // Only the assigned owner can close the deal
+        if (msg.sender == _buyer) {
+            BoughtEvt(1, _vin, _amt, _buyer);
+            _status = DealStatus.Closed;
+            _dealer.transfer(_cost);
+            _amt = _amt - _cost;
+            BoughtEvt(2, _vin, _amt, _buyer);
+            _dmvif.registerVehicle.value(_amt).gas(_gas)(_vin, _buyer);
+            _amt = _amt - _fees;
+            BoughtEvt(3, _vin, _amt, _buyer);
+        } else {
+            BoughtEvt(4, _vin, msg.value, _buyer);
+        }
+    }
+    
+    // fees will include the gas price
+    function Vehicle3(uint vin, uint cost, uint fees, address buyer, address dmvcon) public {
+        _vin = vin;
+        _cost = cost;
+        _fees = fees;
+        _buyer = buyer;
+        _dealer = msg.sender;
+        _status = DealStatus.Open;
+        _dmvif = IDmvRegister(dmvcon);
+        BoughtEvt(0, _vin, 0, _buyer);
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The method <span class="hi-green">value</span> on a <span class="bold">payable</span> function of a contract allows
+        one to transfer some ethers to the balance of the contract address.</p>
+      <p>Similarly, the method <span class="hi-green">gas</span> on a <span class="bold">payable</span> function of a contract
+        allows one to pay for the gas used in processing of that function.</p>
+      <p>As is evident from the contract code above, one can chain the methods <span class="bold">value</span> and
+        <span class="bold">gas</span> when invoking the <span class="bold">payable</span> function
+        <span class="bold">registerVehicle</span> on the dmv contract. Also, notice the arguments for the invoked function
+        come at the last in the chain.</p>
+      <p>In the constructor of the dealer contract <span class="bold">Vehicle3</span>, an instance of the dmv contract object
+        is created by passing the contract address of the dmv contract to the abstract contract interface
+        <span class="bold">IDmvRegister</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>An instance of the contract <span class="bold">Vehicle3</span> will be deployed by the dealer when the buyer intends
+        to buy a vehicle at a certain price (includes the cost of the vehicle plus the cost of processing the registration of
+        the vehicle with the dmv). When the buyer sends a transaction message (with the payment in ethers) to the payable method
+        <span class="hi-blue">buyVehicle()</span>, the contract is executed and the deal is closed. This encompasses registering
+        the vehicle with the dmv.</p>
+    </div>
+    <div id="para-div">
+      <p>For convenience, we have enhanced the custom Javascript utility script with some helper variable(s) and a function to
+      extract and display information on account balances. The following is the custom Javascript script called
+      <span class="hi-yellow">UtilScripts.js</span> located in the directory <span class="bold">/home/polarsparc/Ethereum/bin</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>UtilScripts.js</legend>
+      <pre>var bank = "0xef17ec5df3116dea3b7abaf1ff3045639453cc76";
+var buyer = "0x35ddac855e0029676f489dafca9ab405a348317c";
+var dealer = "0x46bf8994c8702919434271d89bcad8abec915612";
+var dmv = "0x518a6377a3863201aef3310da41f3448d959a310";
+
+var vin = 1234567890
+var cost = 4000000000000000000
+var fees = 1000000000000000000
+var gas = 1000000;
+var total = 5000000000000000000
+
+function showBalances() {
+  var i = 0;
+  eth.accounts.forEach(function(e) {
+     console.log("---> eth.accounts["+i+"]: " + e + " \tbalance: " + web3.fromWei(eth.getBalance(e), "ether") + " ether");
+     i++;
+  })
+};</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The following are the steps to demonstrate the simple vehicle buying use-case (involving a buyer, a dealer, and the
+        dmv):</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 01</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>Compile <span class="bold">DmvRegister.sol</span> using the <span class="bold">Solidity</span> compiler to generate
+        a Javascript file (with <span class="bold">.js</span> file extension) with both the abi as well as the bytecode by
+        executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ echo "var dmvregister=`solc --optimize --combined-json abi,bin,interface src/DmvRegister.sol`" > bin/DmvRegister.js</p>
+    </div>
+    <div id="para-div">
+      <p>The above command will generate the desired Javascript file called <span class="hi-yellow">DmvRegister.js</span> located
+        in directory <span class="bold">/home/polarsparc/Ethereum/bin</span> encoded as JSON.</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 02</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>Compile <span class="bold">Vehicle3.sol</span> using the <span class="bold">Solidity</span> compiler to generate
+        a Javascript file (with <span class="bold">.js</span> file extension) with both the abi as well as the bytecode by
+        executing the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ echo "var vehicle3=`solc --optimize --combined-json abi,bin,interface src/Vehicle3.sol`" > bin/Vehicle3.js</p>
+    </div>
+    <div id="para-div">
+      <p>The above command will generate the desired Javascript file called <span class="hi-yellow">Vehicle3.js</span> located
+        in directory <span class="bold">/home/polarsparc/Ethereum/bin</span> encoded as JSON.</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 03</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>Load the three Javascript files <span class="bold">UtilScripts.js</span>,  <span class="bold">DmvRegister.js</span>
+        and <span class="bold">Vehicle3.js</span> by executing the following commands one at a time in the Javascript shell
+        prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> loadScript("./bin/UtilScripts.js")</p>
+      <p>> loadScript("./bin/DmvRegister.js")</p>
+      <p>> loadScript("./bin/Vehicle3.js")</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 04</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>Check to ensure the variable <span class="bold">dmvregister</span> is initialized by executing the following command in
+        the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> dmvregister</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>{
+  contracts: {
+    src/AmountOwed2.sol:AmountOwed2: {
+      abi: "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"flag\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"value\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"context\",\"type\":\"address\"}],\"name\":\"AmountEvt\",\"type\":\"event\"}]",
+      bin: "60606040523415600e57600080fd5b603580601b6000396000f3006060604052600080fd00a165627a7a723058201ad282abd92f245df43f5c30716a945b232176ef484eb7ae18c8a01395dd33160029"
+    },
+    src/DmvRegister.sol:DmvRegister: {
+      abi: "[{\"constant\":true,\"inputs\":[{\"name\":\"vin\",\"type\":\"uint256\"}],\"name\":\"getLicense\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"vin\",\"type\":\"uint256\"},{\"name\":\"buyer\",\"type\":\"address\"}],\"name\":\"registerVehicle\",\"outputs\":[],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getFees\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"fees\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"flag\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"vin\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"license\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"fees\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"buyer\",\"type\":\"address\"}],\"name\":\"RegisteredEvt\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"flag\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"value\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"context\",\"type\":\"address\"}],\"name\":\"AmountEvt\",\"type\":\"event\"}]",
+      bin: "6060604052341561000f57600080fd5b6040516020806104b18339810160405280805160656000908155600182905560028054600160a060020a03191633600160a060020a03161790559092507fd48742c718bff6639d660fdc7ee2490144cec186cbc6e2672aad33b0d7c7f1e691508080848160405194855260208501939093526040808501929092526060840152600160a060020a03909116608083015260a0909101905180910390a1506103f6806100bb6000396000f3006060604052600436106100565763ffffffff7c0100000000000000000000000000000000000000000000000000000000600035041663b2dd1212811461005b578063cca10a2114610083578063db8d55f11461009c575b600080fd5b341561006657600080fd5b6100716004356100af565b60405190815260200160405180910390f35b61009a600435600160a060020a03602435166100c4565b005b34156100a757600080fd5b6100716103c4565b60009081526003602052604090206001015490565b60018054600254600092600160a060020a03909116907fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c903484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a1348290101561014057600080fd5b7fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c60023484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a16000858152600360205260409020805490935060ff161515610300577fd48742c718bff6639d660fdc7ee2490144cec186cbc6e2672aad33b0d7c7f1e66001868560010154348860405194855260208501939093526040808501929092526060840152600160a060020a03909116608083015260a0909101905180910390a16002838101805473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a038781169190911790915560008054600180880191909155865460ff19168117875581548101909155915491549116906108fc81150290604051600060405180830381858888f19350505050151561029457600080fd5b7fd48742c718bff6639d660fdc7ee2490144cec186cbc6e2672aad33b0d7c7f1e6600286856001015460015434038860405194855260208501939093526040808501929092526060840152600160a060020a03909116608083015260a0909101905180910390a1610364565b7fd48742c718bff6639d660fdc7ee2490144cec186cbc6e2672aad33b0d7c7f1e66003868560010154348860405194855260208501939093526040808501929092526060840152600160a060020a03909116608083015260a0909101905180910390a15b7fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c60033484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a15050505050565b600154905600a165627a7a72305820fbca4691cd855134e337de1865b5bb119ca255ace4c88782cc2c65f85552c9820029"
+    },
+    src/IDmvRegister.sol:IDmvRegister: {
+      abi: "[{\"constant\":true,\"inputs\":[{\"name\":\"vin\",\"type\":\"uint256\"}],\"name\":\"getLicense\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"vin\",\"type\":\"uint256\"},{\"name\":\"buyer\",\"type\":\"address\"}],\"name\":\"registerVehicle\",\"outputs\":[],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getFees\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}]",
+      bin: ""
+    }
+  },
+  version: "0.4.19+commit.c4cbbb05.Linux.g++"
+}</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 05</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>Create a contract object called <span class="hi-blue">dmvregister_contract</span> by executing the following command in
+        the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var dmvregister_contract = eth.contract(JSON.parse(dmvregister.contracts['src/DmvRegister.sol:DmvRegister'].abi))</p>
+    </div>
+    <div id="para-div">
+      <p>Check to ensure the variable <span class="bold">dmvregister_contract</span> is initialized by executing the following
+        command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> dmvregister_contract</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>{
+  abi: [{
+      constant: true,
+      inputs: [{...}],
+      name: "getLicense",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: false,
+      inputs: [{...}, {...}],
+      name: "registerVehicle",
+      outputs: [],
+      payable: true,
+      stateMutability: "payable",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getFees",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      inputs: [{...}],
+      payable: false,
+      stateMutability: "nonpayable",
+      type: "constructor"
+  }, {
+      anonymous: false,
+      inputs: [{...}, {...}, {...}, {...}, {...}],
+      name: "RegisteredEvt",
+      type: "event"
+  }, {
+      anonymous: false,
+      inputs: [{...}, {...}, {...}, {...}],
+      name: "AmountEvt",
+      type: "event"
+  }],
+  eth: {
+    accounts: ["0xef17ec5df3116dea3b7abaf1ff3045639453cc76", "0x35ddac855e0029676f489dafca9ab405a348317c", "0x46bf8994c8702919434271d89bcad8abec915612", "0x518a6377a3863201aef3310da41f3448d959a310"],
+    blockNumber: 0,
+    coinbase: "0xef17ec5df3116dea3b7abaf1ff3045639453cc76",
+    compile: {
+      lll: function(),
+      serpent: function(),
+      solidity: function()
+    },
+    defaultAccount: undefined,
+    defaultBlock: "latest",
+    gasPrice: 18000000000,
+    hashrate: 0,
+    mining: false,
+    pendingTransactions: [],
+    protocolVersion: "0x3f",
+    syncing: false,
+    call: function(),
+    contract: function(abi),
+    estimateGas: function(),
+    filter: function(options, callback, filterCreationErrorCallback),
+    getAccounts: function(callback),
+    getBalance: function(),
+    getBlock: function(),
+    getBlockNumber: function(callback),
+    getBlockTransactionCount: function(),
+    getBlockUncleCount: function(),
+    getCode: function(),
+    getCoinbase: function(callback),
+    getCompilers: function(),
+    getGasPrice: function(callback),
+    getHashrate: function(callback),
+    getMining: function(callback),
+    getPendingTransactions: function(callback),
+    getProtocolVersion: function(callback),
+    getRawTransaction: function(),
+    getRawTransactionFromBlock: function(),
+    getStorageAt: function(),
+    getSyncing: function(callback),
+    getTransaction: function(),
+    getTransactionCount: function(),
+    getTransactionFromBlock: function(),
+    getTransactionReceipt: function(),
+    getUncle: function(),
+    getWork: function(),
+    iban: function(iban),
+    icapNamereg: function(),
+    isSyncing: function(callback),
+    namereg: function(),
+    resend: function(),
+    sendIBANTransaction: function(),
+    sendRawTransaction: function(),
+    sendTransaction: function(),
+    sign: function(),
+    signTransaction: function(),
+    submitTransaction: function(),
+    submitWork: function()
+  },
+  at: function(address, callback),
+  getData: function(),
+  new: function()
+}</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 06</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>Create a variable called <span class="hi-yellow">dmvregister_contract_txn</span> to represent the contract transaction
+        object, encapsulating the address of the dmv, the bytecode of the dmv contract, and a gas price. Execute the following
+        expression in the Javascript shell as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var dmvregister_contract_txn = { from: dmv, data: '0x'+dmvregister.contracts['src/DmvRegister.sol:DmvRegister'].bin, gas: gas }</p>
+    </div>
+    <div id="para-div">
+      <p>Check to ensure the variable <span class="bold">dmvregister_contract_txn</span> is initialized by executing the following
+        command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> dmvregister_contract_txn</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>{
+  data: "0x6060604052341561000f57600080fd5b6040516020806104b18339810160405280805160656000908155600182905560028054600160a060020a03191633600160a060020a03161790559092507fd48742c718bff6639d660fdc7ee2490144cec186cbc6e2672aad33b0d7c7f1e691508080848160405194855260208501939093526040808501929092526060840152600160a060020a03909116608083015260a0909101905180910390a1506103f6806100bb6000396000f3006060604052600436106100565763ffffffff7c0100000000000000000000000000000000000000000000000000000000600035041663b2dd1212811461005b578063cca10a2114610083578063db8d55f11461009c575b600080fd5b341561006657600080fd5b6100716004356100af565b60405190815260200160405180910390f35b61009a600435600160a060020a03602435166100c4565b005b34156100a757600080fd5b6100716103c4565b60009081526003602052604090206001015490565b60018054600254600092600160a060020a03909116907fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c903484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a1348290101561014057600080fd5b7fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c60023484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a16000858152600360205260409020805490935060ff161515610300577fd48742c718bff6639d660fdc7ee2490144cec186cbc6e2672aad33b0d7c7f1e66001868560010154348860405194855260208501939093526040808501929092526060840152600160a060020a03909116608083015260a0909101905180910390a16002838101805473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a038781169190911790915560008054600180880191909155865460ff19168117875581548101909155915491549116906108fc81150290604051600060405180830381858888f19350505050151561029457600080fd5b7fd48742c718bff6639d660fdc7ee2490144cec186cbc6e2672aad33b0d7c7f1e6600286856001015460015434038860405194855260208501939093526040808501929092526060840152600160a060020a03909116608083015260a0909101905180910390a1610364565b7fd48742c718bff6639d660fdc7ee2490144cec186cbc6e2672aad33b0d7c7f1e66003868560010154348860405194855260208501939093526040808501929092526060840152600160a060020a03909116608083015260a0909101905180910390a15b7fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c60033484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a15050505050565b600154905600a165627a7a72305820fbca4691cd855134e337de1865b5bb119ca255ace4c88782cc2c65f85552c9820029",
+  from: "0x518a6377a3863201aef3310da41f3448d959a310",
+  gas: 1000000
+}</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 07</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>Now we are ready to deploy our <span class="bold">Smart Contract</span> for the dmv called <span class="bold">DmvRegister</span>
+        into our private <span class="bold">Ethereum</span> network.</p>
+    </div>
+    <div id="para-div">
+      <p>Since the contract will be deployed by the dmv account, we need to unlock the dmv account before proceeding further.</p>
+      <p>To unlock the dmv account, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> personal.unlockAccount(dmv)</p>
+    </div>
+    <div id="para-div">
+      <p>This will prompt us for the password for the dmv account. The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>Unlock account 0x518a6377a3863201aef3310da41f3448d959a310
+Passphrase: dmv
+true</pre>
+    </div>
+    <div id="para-div">
+      <p>Create a contract instance object called <span class="bold">dmvregister_contract_inst</span>, by calling the
+        <span class="hi-yellow">new</span> method on the contract object <span class="bold">dmvregister_contract</span>,
+        passing a constructor argument for the processing fees (fees) and the contract transaction object <span class="bold">
+        dmvregister_contract_txn</span>. Execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var dmvregister_contract_inst = dmvregister_contract.new(fees, dmvregister_contract_txn)</p>
+    </div>
+    <div id="para-div">
+      <p>Check to ensure the variable <span class="bold">dmvregister_contract_inst</span> is initialized by executing the
+        following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> dmvregister_contract_inst</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>{
+  abi: [{
+      constant: true,
+      inputs: [{...}],
+      name: "getLicense",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: false,
+      inputs: [{...}, {...}],
+      name: "registerVehicle",
+      outputs: [],
+      payable: true,
+      stateMutability: "payable",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getFees",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      inputs: [{...}],
+      payable: false,
+      stateMutability: "nonpayable",
+      type: "constructor"
+  }, {
+      anonymous: false,
+      inputs: [{...}, {...}, {...}, {...}, {...}],
+      name: "RegisteredEvt",
+      type: "event"
+  }, {
+      anonymous: false,
+      inputs: [{...}, {...}, {...}, {...}],
+      name: "AmountEvt",
+      type: "event"
+  }],
+  address: undefined,
+  transactionHash: "0x67bb538323962381c32195c94d67f3d8a6c39caa074d12319e5dfb6ba4b79d42"
+}</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 08</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The above contract instance creation command will generate an <span class="bold">Ethereum</span> transaction that needs
+        to be mined for the contract to be deployed into the private <span class="bold">Blockchain</span> network.</p>
+    </div>
+    <div id="para-div">
+      <p>To check all the pending transactions, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> eth.pendingTransactions</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>[{
+    blockHash: null,
+    blockNumber: null,
+    from: "0x518a6377a3863201aef3310da41f3448d959a310",
+    gas: 1000000,
+    gasPrice: 18000000000,
+    hash: "0x67bb538323962381c32195c94d67f3d8a6c39caa074d12319e5dfb6ba4b79d42",
+    input: "0x6060604052341561000f57600080fd5b6040516020806104b18339810160405280805160656000908155600182905560028054600160a060020a03191633600160a060020a03161790559092507fd48742c718bff6639d660fdc7ee2490144cec186cbc6e2672aad33b0d7c7f1e691508080848160405194855260208501939093526040808501929092526060840152600160a060020a03909116608083015260a0909101905180910390a1506103f6806100bb6000396000f3006060604052600436106100565763ffffffff7c0100000000000000000000000000000000000000000000000000000000600035041663b2dd1212811461005b578063cca10a2114610083578063db8d55f11461009c575b600080fd5b341561006657600080fd5b6100716004356100af565b60405190815260200160405180910390f35b61009a600435600160a060020a03602435166100c4565b005b34156100a757600080fd5b6100716103c4565b60009081526003602052604090206001015490565b60018054600254600092600160a060020a03909116907fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c903484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a1348290101561014057600080fd5b7fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c60023484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a16000858152600360205260409020805490935060ff161515610300577fd48742c718bff6639d660fdc7ee2490144cec186cbc6e2672aad33b0d7c7f1e66001868560010154348860405194855260208501939093526040808501929092526060840152600160a060020a03909116608083015260a0909101905180910390a16002838101805473ffffffffffffffffffffffffffffffffffffffff1916600160a060020a038781169190911790915560008054600180880191909155865460ff19168117875581548101909155915491549116906108fc81150290604051600060405180830381858888f19350505050151561029457600080fd5b7fd48742c718bff6639d660fdc7ee2490144cec186cbc6e2672aad33b0d7c7f1e6600286856001015460015434038860405194855260208501939093526040808501929092526060840152600160a060020a03909116608083015260a0909101905180910390a1610364565b7fd48742c718bff6639d660fdc7ee2490144cec186cbc6e2672aad33b0d7c7f1e66003868560010154348860405194855260208501939093526040808501929092526060840152600160a060020a03909116608083015260a0909101905180910390a15b7fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c60033484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a15050505050565b600154905600a165627a7a72305820fbca4691cd855134e337de1865b5bb119ca255ace4c88782cc2c65f85552c98200290000000000000000000000000000000000000000000000000de0b6b3a7640000",
+    nonce: 0,
+    r: "0xbe24f8bd858f488a010aec0ca8e2790fa6baa7e9bd62fa8387f5a4e3827c23d3",
+    s: "0x72038ff9a3ab3608f897d3c5e6fbd0603fb8205cee3962dc10eebda862712d05",
+    to: null,
+    transactionIndex: 0,
+    v: "0x4d",
+    value: 0
+}]</pre>
+    </div>
+    <div id="para-div">
+      <p>Before we start the miner, we will display the account balances. To display account balances using the Javascript utility
+        function <span class="bold">showBalances</span>, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> showBalances()</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>---> eth.accounts[0]: 0xef17ec5df3116dea3b7abaf1ff3045639453cc76  balance: 20 ether
+---> eth.accounts[1]: 0x35ddac855e0029676f489dafca9ab405a348317c  balance: 10 ether
+---> eth.accounts[2]: 0x46bf8994c8702919434271d89bcad8abec915612  balance: 5 ether
+---> eth.accounts[3]: 0x518a6377a3863201aef3310da41f3448d959a310  balance: 3 ether
+undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>To start the miner with one thread, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> miner.start(1)</p>
+    </div>
+    <div id="para-div">
+      <p>Wait a few seconds (about 10 to 15 seconds) for the contract deployment transaction to be mined. The end result
+        is that the contract will be deployed into our private <span class="bold">Blockchain</span> network.</p>
+    </div>
+    <div id="para-div">
+      <p>Once the transaction is mined, we can stop the miner. Execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> miner.stop()</p>
+    </div>
+    <div id="para-div">
+      <p>To retrieve the transaction details for the dmv contract deployment, execute the following command in the Javascript shell
+        prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> eth.getTransactionReceipt(dmvregister_contract_inst.transactionHash)</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>{
+  blockHash: "0xe3cd14751c51ef81cc3ae18d8ef8d4c0e00f892aef6d59c5f97640f85dc99e9d",
+  blockNumber: 1,
+  contractAddress: "0x1727b37a8a3334d62b5f669423a74517d18b9aeb",
+  cumulativeGasUsed: 397004,
+  from: "0x518a6377a3863201aef3310da41f3448d959a310",
+  gasUsed: 397004,
+  logs: [{
+      address: "0x1727b37a8a3334d62b5f669423a74517d18b9aeb",
+      blockHash: "0xe3cd14751c51ef81cc3ae18d8ef8d4c0e00f892aef6d59c5f97640f85dc99e9d",
+      blockNumber: 1,
+      data: "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000000000000000000000",
+      logIndex: 0,
+      removed: false,
+      topics: ["0xd48742c718bff6639d660fdc7ee2490144cec186cbc6e2672aad33b0d7c7f1e6"],
+      transactionHash: "0x67bb538323962381c32195c94d67f3d8a6c39caa074d12319e5dfb6ba4b79d42",
+      transactionIndex: 0
+  }],
+  logsBloom: "0x00000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000040000002000010000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  root: "0x2dc7ff0518bed8b62f821263e35e7b79ce21458c4ea3710108a95021d21f50d0",
+  to: null,
+  transactionHash: "0x67bb538323962381c32195c94d67f3d8a6c39caa074d12319e5dfb6ba4b79d42",
+  transactionIndex: 0
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>The presence of a value for the <span class="hi-yellow">contractAddress</span> (0x1727b37a8a3334d62b5f669423a74517d18b9aeb)
+        from the Output.8 indicates that the contract has been successfully deployed to our private <span class="bold">Blockchain</span>
+        network.</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, let us display account balances using the Javascript utility function <span class="bold">showBalances</span>.
+        Execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="para-div">
+      <p>Before proceeding further, we will once again display the account balances. To display account balances using the Javascript
+        utility function <span class="bold">showBalances</span>, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> showBalances()</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>---> eth.accounts[0]: 0xef17ec5df3116dea3b7abaf1ff3045639453cc76   balance: 45.007146072 ether
+---> eth.accounts[1]: 0x35ddac855e0029676f489dafca9ab405a348317c  balance: 10 ether
+---> eth.accounts[2]: 0x46bf8994c8702919434271d89bcad8abec915612  balance: 5 ether
+---> eth.accounts[3]: 0x518a6377a3863201aef3310da41f3448d959a310  balance: 2.992853928 ether
+undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>Since the dmv deployed the contract <span class="bold">DmvRegister</span> into our private <span class="bold">Blockchain</span>,
+        as expected, the dmv account incurred a small processing fees in the form of <span class="bold">gas</span>.</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 09</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>Define a variable called <span class="hi-yellow">dmvregister_contract_addr</span> that is initialized with the value of
+        the deployed dmv contract address. Execute the following statement in the Javascript shell as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var dmvregister_contract_addr = eth.getTransactionReceipt(dmvregister_contract_inst.transactionHash).contractAddress</p>
+    </div>
+    <div id="para-div">
+      <p>To check the value of the contract transaction object variable <span class="bold">dmvregister_contract_addr</span>, execute
+        the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="para-div">
+      <p>Check to ensure the variable <span class="bold">dmvregister_contract_addr</span> is initialized by executing the
+        following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> dmvregister_contract_addr</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>"0x1727b37a8a3334d62b5f669423a74517d18b9aeb"</pre>
+    </div>
+    <div id="para-div">
+      <p>To interact (invoke functions) with the deployed <span class="bold">DmvRegister</span> contract, we need an instance of
+        the contract. To create an instance of the <span class="bold">DmvRegister</span> contract, invoke the
+        <span class="hi-yellow">at</span> method on the contract object <span class="bold">dmvregister_contract</span>, passing
+        in the value of the variable <span class="bold">dmvregister_contract_addr</span> as an argument. Execute the following
+        command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var dmvregister_obj = dmvregister_contract.at(dmvregister_contract_addr)</p>
+    </div>
+    <div id="para-div">
+      <p>To check the value of the contract instance variable <span class="bold">dmvregister_obj</span>, execute the following
+        command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> dmvregister_obj</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>{
+  abi: [{
+      constant: true,
+      inputs: [{...}],
+      name: "getLicense",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: false,
+      inputs: [{...}, {...}],
+      name: "registerVehicle",
+      outputs: [],
+      payable: true,
+      stateMutability: "payable",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getFees",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      inputs: [{...}],
+      payable: false,
+      stateMutability: "nonpayable",
+      type: "constructor"
+  }, {
+      anonymous: false,
+      inputs: [{...}, {...}, {...}, {...}, {...}],
+      name: "RegisteredEvt",
+      type: "event"
+  }, {
+      anonymous: false,
+      inputs: [{...}, {...}, {...}, {...}],
+      name: "AmountEvt",
+      type: "event"
+  }],
+  address: "0x1727b37a8a3334d62b5f669423a74517d18b9aeb",
+  transactionHash: null,
+  AmountEvt: function(),
+  RegisteredEvt: function(),
+  allEvents: function(),
+  getFees: function(),
+  getLicense: function(),
+  registerVehicle: function()
+}</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 10</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The buyer walks into the auto dealership and expresses an intent to buy a vehicle. The dealer will create and deploy
+        a <span class="bold">Smart Contract</span> representing the sale with the buyer for the desired vehicle (vin) at an
+        agreed upon total cost (cost of the vehicle + the processing fees for vehicle registration at the dmv).</p>
+    </div>
+    <div id="para-div">
+      <p>Check to ensure the variable <span class="bold">vehicle3</span> is initialized by executing the following command in
+        the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> vehicle3</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>{
+  contracts: {
+    src/AmountOwed2.sol:AmountOwed2: {
+      abi: "[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"flag\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"value\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"context\",\"type\":\"address\"}],\"name\":\"AmountEvt\",\"type\":\"event\"}]",
+      bin: "60606040523415600e57600080fd5b603580601b6000396000f3006060604052600080fd00a165627a7a723058201ad282abd92f245df43f5c30716a945b232176ef484eb7ae18c8a01395dd33160029"
+    },
+    src/IDmvRegister.sol:IDmvRegister: {
+      abi: "[{\"constant\":true,\"inputs\":[{\"name\":\"vin\",\"type\":\"uint256\"}],\"name\":\"getLicense\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"vin\",\"type\":\"uint256\"},{\"name\":\"buyer\",\"type\":\"address\"}],\"name\":\"registerVehicle\",\"outputs\":[],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getFees\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"}]",
+      bin: ""
+    },
+    src/Vehicle3.sol:Vehicle3: {
+      abi: "[{\"constant\":true,\"inputs\":[],\"name\":\"getStatus\",\"outputs\":[{\"name\":\"\",\"type\":\"uint8\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getOwner\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getDealer\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"buyVehicle\",\"outputs\":[],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getCost\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getVin\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"name\":\"vin\",\"type\":\"uint256\"},{\"name\":\"cost\",\"type\":\"uint256\"},{\"name\":\"fees\",\"type\":\"uint256\"},{\"name\":\"buyer\",\"type\":\"address\"},{\"name\":\"dmvcon\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"flag\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"vin\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"value\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"buyer\",\"type\":\"address\"}],\"name\":\"BoughtEvt\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"name\":\"flag\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"value\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"name\":\"context\",\"type\":\"address\"}],\"name\":\"AmountEvt\",\"type\":\"event\"}]",
+      bin: "6060604052341561000f57600080fd5b60405160a0806106a1833981016040528080519190602001805191906020018051919060200180519190602001805160008781556001879055600286905560038054600160a060020a03878116600160a060020a03199283161792839055600480543383169084161760a060020a60ff021916905560058054909216858216179091559294507f95220c63110cc8cabcb0e392391cb923d89015bec2afbb6e668d8f463dd8c9bf9350909188918391166040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a1505050505061059b806101066000396000f3006060604052600436106100775763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416634e69d560811461007c578063893d20e8146100b35780639cf6d1af146100e2578063a4e72902146100f5578063bd3e19d4146100ff578063bf20f94014610124575b600080fd5b341561008757600080fd5b61008f610137565b6040518082600181111561009f57fe5b60ff16815260200191505060405180910390f35b34156100be57600080fd5b6100c6610158565b604051600160a060020a03909116815260200160405180910390f35b34156100ed57600080fd5b6100c6610167565b6100fd610176565b005b341561010a57600080fd5b610112610543565b60405190815260200160405180910390f35b341561012f57600080fd5b610112610549565b60045474010000000000000000000000000000000000000000900460ff1690565b600354600160a060020a031690565b600454600160a060020a031690565b60008060025460015401600460009054906101000a9004600160a060020a03167fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c60013484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a134829010156101fd57600080fd5b7fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c60023484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a1600354620f4240945034935033600160a060020a039081169116141561048c57600054600354600080516020610550833981519152916001918690600160a060020a03166040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a16004805474ff00000000000000000000000000000000000000001916740100000000000000000000000000000000000000001790819055600154600160a060020a039091169080156108fc0290604051600060405180830381858888f19350505050151561033a57600080fd5b600154600054600354919094039360008051602061055083398151915291600291908690600160a060020a03166040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a1600554600054600354600160a060020a039283169263cca10a219288928892166040517c010000000000000000000000000000000000000000000000000000000063ffffffff87160281526004810192909252600160a060020a031660248201526044016000604051808303818589803b151561041657600080fd5b88f1151561042357600080fd5b50506002546000546003805492909803976000805160206105508339815191529550935091508690600160a060020a03166040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a16104e4565b600054600354600080516020610550833981519152916004913490600160a060020a03166040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a15b7fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c60033484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a150505050565b60015490565b60005490560095220c63110cc8cabcb0e392391cb923d89015bec2afbb6e668d8f463dd8c9bfa165627a7a7230582031c62c3945703dc4333755b805a2120992c21af05e4cd84644a9e2b77c733b860029"
+    }
+  },
+  version: "0.4.19+commit.c4cbbb05.Linux.g++"
+}</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 11</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>Create a contract object called <span class="hi-blue">vehicle3_contract</span> by executing the following command in
+        the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var vehicle3_contract = eth.contract(JSON.parse(vehicle3.contracts['src/Vehicle3.sol:Vehicle3'].abi))</p>
+    </div>
+    <div id="para-div">
+      <p>Check to ensure the variable <span class="bold">vehicle3_contract</span> is initialized by executing the following
+        command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> vehicle3_contract</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>{
+  abi: [{
+      constant: true,
+      inputs: [],
+      name: "getStatus",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getOwner",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getDealer",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: false,
+      inputs: [],
+      name: "buyVehicle",
+      outputs: [],
+      payable: true,
+      stateMutability: "payable",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getCost",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getVin",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      inputs: [{...}, {...}, {...}, {...}, {...}],
+      payable: false,
+      stateMutability: "nonpayable",
+      type: "constructor"
+  }, {
+      anonymous: false,
+      inputs: [{...}, {...}, {...}, {...}],
+      name: "BoughtEvt",
+      type: "event"
+  }, {
+      anonymous: false,
+      inputs: [{...}, {...}, {...}, {...}],
+      name: "AmountEvt",
+      type: "event"
+  }],
+  eth: {
+    accounts: ["0xef17ec5df3116dea3b7abaf1ff3045639453cc76", "0x35ddac855e0029676f489dafca9ab405a348317c", "0x46bf8994c8702919434271d89bcad8abec915612", "0x518a6377a3863201aef3310da41f3448d959a310"],
+    blockNumber: 0,
+    coinbase: "0xef17ec5df3116dea3b7abaf1ff3045639453cc76",
+    compile: {
+      lll: function(),
+      serpent: function(),
+      solidity: function()
+    },
+    defaultAccount: undefined,
+    defaultBlock: "latest",
+    gasPrice: 18000000000,
+    hashrate: 0,
+    mining: false,
+    pendingTransactions: [],
+    protocolVersion: "0x3f",
+    syncing: false,
+    call: function(),
+    contract: function(abi),
+    estimateGas: function(),
+    filter: function(options, callback, filterCreationErrorCallback),
+    getAccounts: function(callback),
+    getBalance: function(),
+    getBlock: function(),
+    getBlockNumber: function(callback),
+    getBlockTransactionCount: function(),
+    getBlockUncleCount: function(),
+    getCode: function(),
+    getCoinbase: function(callback),
+    getCompilers: function(),
+    getGasPrice: function(callback),
+    getHashrate: function(callback),
+    getMining: function(callback),
+    getPendingTransactions: function(callback),
+    getProtocolVersion: function(callback),
+    getRawTransaction: function(),
+    getRawTransactionFromBlock: function(),
+    getStorageAt: function(),
+    getSyncing: function(callback),
+    getTransaction: function(),
+    getTransactionCount: function(),
+    getTransactionFromBlock: function(),
+    getTransactionReceipt: function(),
+    getUncle: function(),
+    getWork: function(),
+    iban: function(iban),
+    icapNamereg: function(),
+    isSyncing: function(callback),
+    namereg: function(),
+    resend: function(),
+    sendIBANTransaction: function(),
+    sendRawTransaction: function(),
+    sendTransaction: function(),
+    sign: function(),
+    signTransaction: function(),
+    submitTransaction: function(),
+    submitWork: function()
+  },
+  at: function(address, callback),
+  getData: function(),
+  new: function()
+}</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 12</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>Create a variable called <span class="hi-yellow">vehicle3_contract_txn</span> to represent the contract transaction
+        object, encapsulating the address of the dealer, the bytecode of the vehicle contract, and a gas price. Execute the following
+        expression in the Javascript shell as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var vehicle3_contract_txn = { from: dealer, data: '0x'+vehicle3.contracts['src/Vehicle3.sol:Vehicle3'].bin, gas: gas }</p>
+    </div>
+    <div id="para-div">
+      <p>Check to ensure the variable <span class="bold">vehicle3_contract_txn</span> is initialized by executing the following
+        command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> vehicle3_contract_txn</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>{
+  data: "0x6060604052341561000f57600080fd5b60405160a0806106a1833981016040528080519190602001805191906020018051919060200180519190602001805160008781556001879055600286905560038054600160a060020a03878116600160a060020a03199283161792839055600480543383169084161760a060020a60ff021916905560058054909216858216179091559294507f95220c63110cc8cabcb0e392391cb923d89015bec2afbb6e668d8f463dd8c9bf9350909188918391166040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a1505050505061059b806101066000396000f3006060604052600436106100775763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416634e69d560811461007c578063893d20e8146100b35780639cf6d1af146100e2578063a4e72902146100f5578063bd3e19d4146100ff578063bf20f94014610124575b600080fd5b341561008757600080fd5b61008f610137565b6040518082600181111561009f57fe5b60ff16815260200191505060405180910390f35b34156100be57600080fd5b6100c6610158565b604051600160a060020a03909116815260200160405180910390f35b34156100ed57600080fd5b6100c6610167565b6100fd610176565b005b341561010a57600080fd5b610112610543565b60405190815260200160405180910390f35b341561012f57600080fd5b610112610549565b60045474010000000000000000000000000000000000000000900460ff1690565b600354600160a060020a031690565b600454600160a060020a031690565b60008060025460015401600460009054906101000a9004600160a060020a03167fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c60013484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a134829010156101fd57600080fd5b7fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c60023484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a1600354620f4240945034935033600160a060020a039081169116141561048c57600054600354600080516020610550833981519152916001918690600160a060020a03166040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a16004805474ff00000000000000000000000000000000000000001916740100000000000000000000000000000000000000001790819055600154600160a060020a039091169080156108fc0290604051600060405180830381858888f19350505050151561033a57600080fd5b600154600054600354919094039360008051602061055083398151915291600291908690600160a060020a03166040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a1600554600054600354600160a060020a039283169263cca10a219288928892166040517c010000000000000000000000000000000000000000000000000000000063ffffffff87160281526004810192909252600160a060020a031660248201526044016000604051808303818589803b151561041657600080fd5b88f1151561042357600080fd5b50506002546000546003805492909803976000805160206105508339815191529550935091508690600160a060020a03166040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a16104e4565b600054600354600080516020610550833981519152916004913490600160a060020a03166040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a15b7fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c60033484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a150505050565b60015490565b60005490560095220c63110cc8cabcb0e392391cb923d89015bec2afbb6e668d8f463dd8c9bfa165627a7a7230582031c62c3945703dc4333755b805a2120992c21af05e4cd84644a9e2b77c733b860029",
+  from: "0x46bf8994c8702919434271d89bcad8abec915612",
+  gas: 1000000
+}</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 13</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>Now we are ready to deploy our <span class="bold">Smart Contract</span> for the vehicle called <span class="bold">Vehicle3</span>
+        into our private <span class="bold">Ethereum</span> network.</p>
+    </div>
+    <div id="para-div">
+      <p>Since the contract will be deployed by the dealer account, we need to unlock the dealer account before proceeding further.</p>
+      <p>To unlock the dealer account, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> personal.unlockAccount(dealer)</p>
+    </div>
+    <div id="para-div">
+      <p>This will prompt us for the password for the dmv account. The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>Unlock account 0x46bf8994c8702919434271d89bcad8abec915612
+Passphrase: dealer
+true</pre>
+    </div>
+    <div id="para-div">
+      <p>Create a contract instance object called <span class="bold">vehicle3_contract_inst</span>, by calling the
+        <span class="hi-yellow">new</span> method on the contract object <span class="bold">vehicle3_contract</span>,
+        passing a constructor argument for the vin number (vin), the cost of the vehicle (cost), the processing fees (fees),
+        the account address of the buyer (buyer), the contract address of the dmv <span class="bold">Smart Contract</span>
+        (dmvregister_contract_addr), and the contract transaction object <span class="bold">vehicle3_contract_txn</span>.
+        Execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var vehicle3_contract_inst = vehicle3_contract.new(vin, cost, fees, buyer, dmvregister_contract_addr, vehicle3_contract_txn)</p>
+    </div>
+    <div id="para-div">
+      <p>Check to ensure the variable <span class="bold">vehicle3_contract_inst</span> is initialized by executing the
+        following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> vehicle3_contract_inst</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>{
+  abi: [{
+      constant: true,
+      inputs: [],
+      name: "getStatus",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getOwner",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getDealer",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: false,
+      inputs: [],
+      name: "buyVehicle",
+      outputs: [],
+      payable: true,
+      stateMutability: "payable",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getCost",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getVin",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      inputs: [{...}, {...}, {...}, {...}, {...}],
+      payable: false,
+      stateMutability: "nonpayable",
+      type: "constructor"
+  }, {
+      anonymous: false,
+      inputs: [{...}, {...}, {...}, {...}],
+      name: "BoughtEvt",
+      type: "event"
+  }, {
+      anonymous: false,
+      inputs: [{...}, {...}, {...}, {...}],
+      name: "AmountEvt",
+      type: "event"
+  }],
+  address: undefined,
+  transactionHash: "0xd5dd939c3d03315a627fe226ede625f85a4d5fdc2023cd4b1defbe1995285748"
+}</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 14</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The above contract instance creation command will generate an <span class="bold">Ethereum</span> transaction that needs
+        to be mined for the contract to be deployed into the private <span class="bold">Blockchain</span> network.</p>
+    </div>
+    <div id="para-div">
+      <p>To check all the pending transactions, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> eth.pendingTransactions</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.17</h4>
+      <pre>[{
+    blockHash: null,
+    blockNumber: null,
+    from: "0x46bf8994c8702919434271d89bcad8abec915612",
+    gas: 1000000,
+    gasPrice: 18000000000,
+    hash: "0xd5dd939c3d03315a627fe226ede625f85a4d5fdc2023cd4b1defbe1995285748",
+    input: "0x6060604052341561000f57600080fd5b60405160a0806106a1833981016040528080519190602001805191906020018051919060200180519190602001805160008781556001879055600286905560038054600160a060020a03878116600160a060020a03199283161792839055600480543383169084161760a060020a60ff021916905560058054909216858216179091559294507f95220c63110cc8cabcb0e392391cb923d89015bec2afbb6e668d8f463dd8c9bf9350909188918391166040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a1505050505061059b806101066000396000f3006060604052600436106100775763ffffffff7c01000000000000000000000000000000000000000000000000000000006000350416634e69d560811461007c578063893d20e8146100b35780639cf6d1af146100e2578063a4e72902146100f5578063bd3e19d4146100ff578063bf20f94014610124575b600080fd5b341561008757600080fd5b61008f610137565b6040518082600181111561009f57fe5b60ff16815260200191505060405180910390f35b34156100be57600080fd5b6100c6610158565b604051600160a060020a03909116815260200160405180910390f35b34156100ed57600080fd5b6100c6610167565b6100fd610176565b005b341561010a57600080fd5b610112610543565b60405190815260200160405180910390f35b341561012f57600080fd5b610112610549565b60045474010000000000000000000000000000000000000000900460ff1690565b600354600160a060020a031690565b600454600160a060020a031690565b60008060025460015401600460009054906101000a9004600160a060020a03167fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c60013484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a134829010156101fd57600080fd5b7fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c60023484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a1600354620f4240945034935033600160a060020a039081169116141561048c57600054600354600080516020610550833981519152916001918690600160a060020a03166040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a16004805474ff00000000000000000000000000000000000000001916740100000000000000000000000000000000000000001790819055600154600160a060020a039091169080156108fc0290604051600060405180830381858888f19350505050151561033a57600080fd5b600154600054600354919094039360008051602061055083398151915291600291908690600160a060020a03166040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a1600554600054600354600160a060020a039283169263cca10a219288928892166040517c010000000000000000000000000000000000000000000000000000000063ffffffff87160281526004810192909252600160a060020a031660248201526044016000604051808303818589803b151561041657600080fd5b88f1151561042357600080fd5b50506002546000546003805492909803976000805160206105508339815191529550935091508690600160a060020a03166040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a16104e4565b600054600354600080516020610550833981519152916004913490600160a060020a03166040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a15b7fa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c60033484846040519384526020840192909252604080840191909152600160a060020a0390911660608301526080909101905180910390a150505050565b60015490565b60005490560095220c63110cc8cabcb0e392391cb923d89015bec2afbb6e668d8f463dd8c9bfa165627a7a7230582031c62c3945703dc4333755b805a2120992c21af05e4cd84644a9e2b77c733b86002900000000000000000000000000000000000000000000000000000000499602d20000000000000000000000000000000000000000000000003782dace9d9000000000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000035ddac855e0029676f489dafca9ab405a348317c0000000000000000000000001727b37a8a3334d62b5f669423a74517d18b9aeb",
+    nonce: 0,
+    r: "0x7a63a6413f3b2ccdba4fcb9446e2a23e6de1a4151d89ed0fb6367c5ba0a72928",
+    s: "0x25f2b828c2a04b2d429efa26f5010d333dd55064958c2940a8018bae12a1694b",
+    to: null,
+    transactionIndex: 0,
+    v: "0x4d",
+    value: 0
+}]</pre>
+    </div>
+    <div id="para-div">
+      <p>To start the miner with one thread, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> miner.start(1)</p>
+    </div>
+    <div id="para-div">
+      <p>Wait a few seconds (about 10 to 15 seconds) for the contract deployment transaction to be mined. The end result
+        is that the contract will be deployed into our private <span class="bold">Blockchain</span> network.</p>
+    </div>
+    <div id="para-div">
+      <p>Once the transaction is mined, we can stop the miner. Execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> miner.stop()</p>
+    </div>
+    <div id="para-div">
+      <p>To retrieve the transaction details for the dmv contract deployment, execute the following command in the Javascript shell
+        prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> eth.getTransactionReceipt(vehicle3_contract_inst.transactionHash)</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.18</h4>
+      <pre>{
+  blockHash: "0x195f42065b8784552a306a5623f1fa608ecfc389c2b4b2a08aabdf4eefe5d52b",
+  blockNumber: 6,
+  contractAddress: "0xfa332003301955dd8526f0ef3aa7c670bda5f4fa",
+  cumulativeGasUsed: 572400,
+  from: "0x46bf8994c8702919434271d89bcad8abec915612",
+  gasUsed: 572400,
+  logs: [{
+      address: "0xfa332003301955dd8526f0ef3aa7c670bda5f4fa",
+      blockHash: "0x195f42065b8784552a306a5623f1fa608ecfc389c2b4b2a08aabdf4eefe5d52b",
+      blockNumber: 6,
+      data: "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000499602d2000000000000000000000000000000000000000000000000000000000000000000000000000000000000000035ddac855e0029676f489dafca9ab405a348317c",
+      logIndex: 0,
+      removed: false,
+      topics: ["0x95220c63110cc8cabcb0e392391cb923d89015bec2afbb6e668d8f463dd8c9bf"],
+      transactionHash: "0xd5dd939c3d03315a627fe226ede625f85a4d5fdc2023cd4b1defbe1995285748",
+      transactionIndex: 0
+  }],
+  logsBloom: "0x00000000000100000001000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000002000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  root: "0x8474c4b84ca25450047f39ad6ee6b23337a8ed73dc6215e3ede705bc01060dda",
+  to: null,
+  transactionHash: "0xd5dd939c3d03315a627fe226ede625f85a4d5fdc2023cd4b1defbe1995285748",
+  transactionIndex: 0
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>The presence of a value for the <span class="hi-yellow">contractAddress</span> (0xfa332003301955dd8526f0ef3aa7c670bda5f4fa)
+        from the Output.17 indicates that the contract has been successfully deployed to our private <span class="bold">Blockchain</span>
+        network.</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, let us display account balances using the Javascript utility function <span class="bold">showBalances</span>.
+        Execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="para-div">
+      <p>Before proceeding further, we will once again display the account balances. To display account balances using the Javascript
+        utility function <span class="bold">showBalances</span>, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> showBalances()</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.19</h4>
+      <pre>---> eth.accounts[0]: 0xef17ec5df3116dea3b7abaf1ff3045639453cc76   balance: 90.017449272 ether
+---> eth.accounts[1]: 0x35ddac855e0029676f489dafca9ab405a348317c  balance: 10 ether
+---> eth.accounts[2]: 0x46bf8994c8702919434271d89bcad8abec915612  balance: 4.9896968 ether
+---> eth.accounts[3]: 0x518a6377a3863201aef3310da41f3448d959a310  balance: 2.992853928 ether
+undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>Since the dealer deployed the contract <span class="bold">Vehicle3</span> into our private <span class="bold">Blockchain</span>,
+        as expected, the dealer account incurred a small processing fees in the form of <span class="bold">gas</span>.</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 15</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>Define a variable called <span class="hi-yellow">vehicle3_contract_addr</span> that is initialized with the value of
+        the deployed vehicle contract address. Execute the following statement in the Javascript shell as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var vehicle3_contract_addr = eth.getTransactionReceipt(vehicle3_contract_inst.transactionHash).contractAddress</p>
+    </div>
+    <div id="para-div">
+      <p>To check the value of the contract transaction object variable <span class="bold">vehicle3_contract_addr</span>, execute
+        the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="para-div">
+      <p>Check to ensure the variable <span class="bold">vehicle3_contract_addr</span> is initialized by executing the following
+        command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> vehicle3_contract_addr</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.20</h4>
+      <pre>"0xfa332003301955dd8526f0ef3aa7c670bda5f4fa"</pre>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 16</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>To interact (invoke functions) with the deployed <span class="bold">Vehicle3</span> contract, we need an instance of
+        the contract. To create an instance of the <span class="bold">Vehicle3</span> contract, invoke the
+        <span class="hi-yellow">at</span> method on the contract object <span class="bold">vehicle3_contract</span>, passing
+        in the value of the variable <span class="bold">vehicle3_contract_addr</span> as an argument. Execute the following
+        command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var vehicle3_obj = vehicle3_contract.at(vehicle3_contract_addr)</p>
+    </div>
+    <div id="para-div">
+      <p>To check the value of the contract instance variable <span class="bold">vehicle3_obj</span>, execute the following command
+        in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> vehicle3_obj</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.21</h4>
+      <pre>{
+  abi: [{
+      constant: true,
+      inputs: [],
+      name: "getStatus",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getOwner",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getDealer",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: false,
+      inputs: [],
+      name: "buyVehicle",
+      outputs: [],
+      payable: true,
+      stateMutability: "payable",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getCost",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      constant: true,
+      inputs: [],
+      name: "getVin",
+      outputs: [{...}],
+      payable: false,
+      stateMutability: "view",
+      type: "function"
+  }, {
+      inputs: [{...}, {...}, {...}, {...}, {...}],
+      payable: false,
+      stateMutability: "nonpayable",
+      type: "constructor"
+  }, {
+      anonymous: false,
+      inputs: [{...}, {...}, {...}, {...}],
+      name: "BoughtEvt",
+      type: "event"
+  }, {
+      anonymous: false,
+      inputs: [{...}, {...}, {...}, {...}],
+      name: "AmountEvt",
+      type: "event"
+  }],
+  address: "0xfa332003301955dd8526f0ef3aa7c670bda5f4fa",
+  transactionHash: null,
+  AmountEvt: function(),
+  BoughtEvt: function(),
+  allEvents: function(),
+  buyVehicle: function(),
+  getCost: function(),
+  getDealer: function(),
+  getOwner: function(),
+  getStatus: function(),
+  getVin: function()
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>Before proceeding further, let us verify the license number associated with the vehicle vin number. Remember, that
+        the buyer has not yet initiated any transaction on the deployed vehicle contract, and hence there should not be any
+        valid license number associated with the vin. Invoke the <span class="hi-blue">getLicense</span> method on the dmv
+        contract instance <span class="bold">dmvregister_obj</span> by executing the following command in the Javascript
+        shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> dmvregister_obj.getLicense(vin)</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.22</h4>
+      <pre>0</pre>
+    </div>
+    <div id="para-div">
+      <p>From the Output.22 above, it is clear that there is no valid license number assigned to the specified vin yet.</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 17</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>The buyer will send a transaction message to invoke the method <span class="hi-blue">buyVehicle</span> on the object
+        <span class="bold">vehicle3_obj</span>, along with a payment covering the total cost for the vehicle (cost + fees).</p>
+    </div>
+    <div id="para-div">
+      <p>Define a variable called <span class="hi-yellow">buyer_txn</span> to represent the transaction message that encapsulates
+        the address of the buyer (buyer), the total cost of the vehicle (total), and the gas price (gas). Execute the following
+        statement in the Javascript shell as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var buyer_txn = { from: buyer, value: total, gas: gas }</p>
+    </div>
+    <div id="para-div">
+      <p>To check the value of the variable <span class="bold">buyer_txn</span>, execute the following command in the Javascript
+        shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> buyer_txn</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.23</h4>
+      <pre>{
+  from: "0x35ddac855e0029676f489dafca9ab405a348317c",
+  gas: 1000000,
+  value: 5000000000000000000
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>Since the buyer is initiating the transaction, we need to unlock the buyer account before proceeding further.</p>
+      <p>To unlock the buyer account, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> personal.unlockAccount(buyer)</p>
+    </div>
+    <div id="para-div">
+      <p>This will prompt us for the password for the buyer account. The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.24</h4>
+      <pre>Unlock account 0x35ddac855e0029676f489dafca9ab405a348317c
+Passphrase: buyer
+true</pre>
+    </div>
+    <div id="para-div">
+      <p>The buyer will activate the contract by calling the <span class="hi-yellow">sendTransaction</span> method on the
+        object <span class="bold">vehicle3_obj.buyVehicle</span>. Execute the following command in the Javascript shell
+        prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var buyer_txn_hash = vehicle3_obj.buyVehicle.sendTransaction(buyer_txn)</p>
+    </div>
+    <div id="para-div">
+      <p>Check the value of the variable <span class="bold">buyer_txn_hash</span> that represents the transaction hash by executing
+        the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> buyer_txn_hash</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.25</h4>
+      <pre>"0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396"</pre>
+    </div>
+    <div id="para-div">
+      <p>The transaction created by the buyer needs to be mined in order to trigger the method invocation on the deployed contract
+        on our private <span class="bold">Blockchain</span> network.</p>
+    </div>
+    <div id="para-div">
+      <p>To check all the pending transactions, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> eth.pendingTransactions</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.26</h4>
+      <pre>[{
+    blockHash: null,
+    blockNumber: null,
+    from: "0x35ddac855e0029676f489dafca9ab405a348317c",
+    gas: 1000000,
+    gasPrice: 18000000000,
+    hash: "0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396",
+    input: "0xa4e72902",
+    nonce: 0,
+    r: "0x73c53ba5375edc4e13c39d88e1001a4a3ed924710382432d80d85b71726666bf",
+    s: "0x142f1483e475c06432ba25dab883bdf7cdd21abe663e15810a0d6f9a83eceb04",
+    to: "0xfa332003301955dd8526f0ef3aa7c670bda5f4fa",
+    transactionIndex: 0,
+    v: "0x4d",
+    value: 5000000000000000000
+}]</pre>
+    </div>
+    <div id="para-div">
+      <p>To start the miner with one thread, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> miner.start(1)</p>
+    </div>
+    <div id="para-div">
+      <p>Wait a few seconds (about 10 to 15 seconds) for the buyer transaction message to be mined. The end result is that the
+        contract method <span class="bold">vehicle3_obj.buyVehicle</span> will be invoked, executing the logic in the method.</p>
+    </div>
+    <div id="para-div">
+      <p>Once the transaction is mined, we can stop the miner. Execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> miner.stop()</p>
+    </div>
+    <div id="para-div">
+      <p>To retrieve the transaction details for the buyer contract execution, execute the following command in the Javascript
+        shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> eth.getTransactionReceipt(buyer_txn_hash)</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.27</h4>
+      <pre>{
+  blockHash: "0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99",
+  blockNumber: 15,
+  contractAddress: null,
+  cumulativeGasUsed: 144400,
+  from: "0x35ddac855e0029676f489dafca9ab405a348317c",
+  gasUsed: 144400,
+  logs: [{
+      address: "0xfa332003301955dd8526f0ef3aa7c670bda5f4fa",
+      blockHash: "0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99",
+      blockNumber: 15,
+      data: "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000004563918244f400000000000000000000000000000000000000000000000000004563918244f4000000000000000000000000000046bf8994c8702919434271d89bcad8abec915612",
+      logIndex: 0,
+      removed: false,
+      topics: ["0xa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c"],
+      transactionHash: "0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396",
+      transactionIndex: 0
+  }, {
+      address: "0xfa332003301955dd8526f0ef3aa7c670bda5f4fa",
+      blockHash: "0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99",
+      blockNumber: 15,
+      data: "0x00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000004563918244f400000000000000000000000000000000000000000000000000004563918244f4000000000000000000000000000046bf8994c8702919434271d89bcad8abec915612",
+      logIndex: 1,
+      removed: false,
+      topics: ["0xa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c"],
+      transactionHash: "0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396",
+      transactionIndex: 0
+  }, {
+      address: "0xfa332003301955dd8526f0ef3aa7c670bda5f4fa",
+      blockHash: "0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99",
+      blockNumber: 15,
+      data: "0x000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000499602d20000000000000000000000000000000000000000000000004563918244f4000000000000000000000000000035ddac855e0029676f489dafca9ab405a348317c",
+      logIndex: 2,
+      removed: false,
+      topics: ["0x95220c63110cc8cabcb0e392391cb923d89015bec2afbb6e668d8f463dd8c9bf"],
+      transactionHash: "0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396",
+      transactionIndex: 0
+  }, {
+      address: "0xfa332003301955dd8526f0ef3aa7c670bda5f4fa",
+      blockHash: "0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99",
+      blockNumber: 15,
+      data: "0x000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000499602d20000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000035ddac855e0029676f489dafca9ab405a348317c",
+      logIndex: 3,
+      removed: false,
+      topics: ["0x95220c63110cc8cabcb0e392391cb923d89015bec2afbb6e668d8f463dd8c9bf"],
+      transactionHash: "0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396",
+      transactionIndex: 0
+  }, {
+      address: "0x1727b37a8a3334d62b5f669423a74517d18b9aeb",
+      blockHash: "0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99",
+      blockNumber: 15,
+      data: "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000000de0b6b3a7640000000000000000000000000000518a6377a3863201aef3310da41f3448d959a310",
+      logIndex: 4,
+      removed: false,
+      topics: ["0xa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c"],
+      transactionHash: "0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396",
+      transactionIndex: 0
+  }, {
+      address: "0x1727b37a8a3334d62b5f669423a74517d18b9aeb",
+      blockHash: "0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99",
+      blockNumber: 15,
+      data: "0x00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000000de0b6b3a7640000000000000000000000000000518a6377a3863201aef3310da41f3448d959a310",
+      logIndex: 5,
+      removed: false,
+      topics: ["0xa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c"],
+      transactionHash: "0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396",
+      transactionIndex: 0
+  }, {
+      address: "0x1727b37a8a3334d62b5f669423a74517d18b9aeb",
+      blockHash: "0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99",
+      blockNumber: 15,
+      data: "0x000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000499602d200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000de0b6b3a764000000000000000000000000000035ddac855e0029676f489dafca9ab405a348317c",
+      logIndex: 6,
+      removed: false,
+      topics: ["0xd48742c718bff6639d660fdc7ee2490144cec186cbc6e2672aad33b0d7c7f1e6"],
+      transactionHash: "0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396",
+      transactionIndex: 0
+  }, {
+      address: "0x1727b37a8a3334d62b5f669423a74517d18b9aeb",
+      blockHash: "0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99",
+      blockNumber: 15,
+      data: "0x000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000499602d20000000000000000000000000000000000000000000000000000000000000065000000000000000000000000000000000000000000000000000000000000000000000000000000000000000035ddac855e0029676f489dafca9ab405a348317c",
+      logIndex: 7,
+      removed: false,
+      topics: ["0xd48742c718bff6639d660fdc7ee2490144cec186cbc6e2672aad33b0d7c7f1e6"],
+      transactionHash: "0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396",
+      transactionIndex: 0
+  }, {
+      address: "0x1727b37a8a3334d62b5f669423a74517d18b9aeb",
+      blockHash: "0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99",
+      blockNumber: 15,
+      data: "0x00000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000de0b6b3a76400000000000000000000000000000000000000000000000000000de0b6b3a7640000000000000000000000000000518a6377a3863201aef3310da41f3448d959a310",
+      logIndex: 8,
+      removed: false,
+      topics: ["0xa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c"],
+      transactionHash: "0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396",
+      transactionIndex: 0
+  }, {
+      address: "0xfa332003301955dd8526f0ef3aa7c670bda5f4fa",
+      blockHash: "0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99",
+      blockNumber: 15,
+      data: "0x000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000499602d2000000000000000000000000000000000000000000000000000000000000000000000000000000000000000035ddac855e0029676f489dafca9ab405a348317c",
+      logIndex: 9,
+      removed: false,
+      topics: ["0x95220c63110cc8cabcb0e392391cb923d89015bec2afbb6e668d8f463dd8c9bf"],
+      transactionHash: "0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396",
+      transactionIndex: 0
+  }, {
+      address: "0xfa332003301955dd8526f0ef3aa7c670bda5f4fa",
+      blockHash: "0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99",
+      blockNumber: 15,
+      data: "0x00000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000004563918244f400000000000000000000000000000000000000000000000000004563918244f4000000000000000000000000000046bf8994c8702919434271d89bcad8abec915612",
+      logIndex: 10,
+      removed: false,
+      topics: ["0xa6eeda949aa9e928463d0850d41fb5d526023dabcf145aeca26f46853246cf2c"],
+      transactionHash: "0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396",
+      transactionIndex: 0
+  }],
+  logsBloom: "0x00000000000100000201000000000000000000000000000000000020000000000000000000020000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000040000002000010000000000000000000000000000000000000000000000208000000000000000002000000000000000000000000000001000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  root: "0x3bba2970db1e2b7ab52b03e434ad1b29a9da80e965ff7e9409f95f480b04c601",
+  to: "0xfa332003301955dd8526f0ef3aa7c670bda5f4fa",
+  transactionHash: "0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396",
+  transactionIndex: 0
+}</pre>
+    </div>
+    <div id="para-div">
+      <p>Once again, let us display account balances using the Javascript utility function <span class="bold">showBalances</span>.
+        Execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="para-div">
+      <p>Before proceeding further, we will once again display the account balances. To display account balances using the Javascript
+        utility function <span class="bold">showBalances</span>, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> showBalances()</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.28</h4>
+      <pre>---> eth.accounts[0]: 0xef17ec5df3116dea3b7abaf1ff3045639453cc76   balance: 105.020048472 ether
+---> eth.accounts[1]: 0x35ddac855e0029676f489dafca9ab405a348317c  balance: 4.9974008 ether
+---> eth.accounts[2]: 0x46bf8994c8702919434271d89bcad8abec915612  balance: 8.9896968 ether
+---> eth.accounts[3]: 0x518a6377a3863201aef3310da41f3448d959a310  balance: 3.992853928 ether
+undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>Comparing Output.26 to Output.18, we see the account balance of the dealer has increased by 4 ethers and the account
+        balance of the dmv has increased by an ether.</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, let us verify the license number associated with the vehicle vin number. Invoke the <span class="hi-blue">
+        getLicense</span> method on the dmv contract instance <span class="bold">dmvregister_obj</span> by executing the following
+        command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> dmvregister_obj.getLicense(vin)</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.29</h4>
+      <pre>101</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">BINGO !!!</span> This time around, from the Output.29 above, we see a valid license number assigned to
+        the specified vin number.</p>
+    </div>
+    <table id="step-table">
+      <tbody>
+        <tr>
+          <td class="text-td">Step - 18</td>
+          <td class="pointer-td"></td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="para-div">
+      <p>To display all the events emitted during the invocation of the method <span class="bold">vehicle3_obj.buyVehicle</span>, we need
+        to create an instance of the <span class="hi-yellow">allEvents</span> filter. We then invoke the <span class="hi-yellow">watch</span>
+        method on the filter instance, specifying a callback function to display the event details.</p>
+    </div>
+    <div id="para-div">
+      <p>To create a filter instance for all events, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var vehicle3_events = vehicle3_obj.allEvents({fromBlock: 0, toBlock: 'latest'})</p>
+    </div>
+    <div id="para-div">
+      <p>We want to scan the transaction log(s) for all the mined blocks, and hence the <span class="bold">fromBlock</span> of
+        <span class="bold">0</span> to the <span class="bold">toBlock</span> of <span class="bold">latest</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To start the display of event(s) from the transaction log(s), execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> var dummy = vehicle3_events.watch(function (error, result) { console.log("=> " + JSON.stringify(result)); })</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.30</h4>
+      <pre>=> {"address":"0xfa332003301955dd8526f0ef3aa7c670bda5f4fa","args":{"buyer":"0x35ddac855e0029676f489dafca9ab405a348317c","flag":"0","value":"0","vin":"1234567890"},"blockHash":"0x195f42065b8784552a306a5623f1fa608ecfc389c2b4b2a08aabdf4eefe5d52b","blockNumber":6,"event":"BoughtEvt","logIndex":0,"removed":false,"transactionHash":"0xd5dd939c3d03315a627fe226ede625f85a4d5fdc2023cd4b1defbe1995285748","transactionIndex":0}
+=> {"address":"0xfa332003301955dd8526f0ef3aa7c670bda5f4fa","args":{"amount":"5000000000000000000","context":"0x46bf8994c8702919434271d89bcad8abec915612","flag":"1","value":"5000000000000000000"},"blockHash":"0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99","blockNumber":15,"event":"AmountEvt","logIndex":0,"removed":false,"transactionHash":"0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396","transactionIndex":0}
+=> {"address":"0xfa332003301955dd8526f0ef3aa7c670bda5f4fa","args":{"amount":"5000000000000000000","context":"0x46bf8994c8702919434271d89bcad8abec915612","flag":"2","value":"5000000000000000000"},"blockHash":"0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99","blockNumber":15,"event":"AmountEvt","logIndex":1,"removed":false,"transactionHash":"0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396","transactionIndex":0}
+=> {"address":"0xfa332003301955dd8526f0ef3aa7c670bda5f4fa","args":{"buyer":"0x35ddac855e0029676f489dafca9ab405a348317c","flag":"1","value":"5000000000000000000","vin":"1234567890"},"blockHash":"0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99","blockNumber":15,"event":"BoughtEvt","logIndex":2,"removed":false,"transactionHash":"0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396","transactionIndex":0}
+=> {"address":"0xfa332003301955dd8526f0ef3aa7c670bda5f4fa","args":{"buyer":"0x35ddac855e0029676f489dafca9ab405a348317c","flag":"2","value":"1000000000000000000","vin":"1234567890"},"blockHash":"0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99","blockNumber":15,"event":"BoughtEvt","logIndex":3,"removed":false,"transactionHash":"0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396","transactionIndex":0}
+=> {"address":"0xfa332003301955dd8526f0ef3aa7c670bda5f4fa","args":{"buyer":"0x35ddac855e0029676f489dafca9ab405a348317c","flag":"3","value":"0","vin":"1234567890"},"blockHash":"0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99","blockNumber":15,"event":"BoughtEvt","logIndex":9,"removed":false,"transactionHash":"0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396","transactionIndex":0}
+=> {"address":"0xfa332003301955dd8526f0ef3aa7c670bda5f4fa","args":{"amount":"5000000000000000000","context":"0x46bf8994c8702919434271d89bcad8abec915612","flag":"3","value":"5000000000000000000"},"blockHash":"0x9449fd8223aeebe8548f534b8f104fac759725e5fad7a60e61f3ae78452b8e99","blockNumber":15,"event":"AmountEvt","logIndex":10,"removed":false,"transactionHash":"0x7c5b7485d4ff37f2eea7853f65d60ea266e3375121b1d66a08bfc2d224ecb396","transactionIndex":0}
+undefined</pre>
+    </div>
+    <div id="para-div">
+      <p>To stop the event watcher, execute the following command in the Javascript shell prompt:</p>
+    </div>
+    <div id="cmd-div">
+      <p>> vehicle3_events.stopWatching()</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">YIPEE !!!</span> We have successfully demonstrated the end-to-end use-case for the simple vehicle buying
+      use-case (involving the buyer, the dealer, and the dmv) as laid out in our first introductory article.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="http://www.polarsparc.com/Ethereum/Ethereum-3.html" target="_blank"><span class="bold">Introduction to Ethereum - Part 3
+        </span></a></p>
+      <p><a href="http://www.polarsparc.com/Ethereum/Ethereum-2.html" target="_blank"><span class="bold">Introduction to Ethereum - Part 2
+        </span></a></p>
+      <p><a href="http://www.polarsparc.com/Ethereum/Ethereum-1.html" target="_blank"><span class="bold">Introduction to Ethereum - Part 1
+        </span></a></p>
+      <p><a href="http://http://www.polarsparc.com/Blockchain/Blockchain.html" target="_blank"><span class="bold">Introduction to Blockchain
+        </span></a></p>
+    </div>
+  </body>
+</html>
