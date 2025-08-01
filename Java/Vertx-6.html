@@ -1,0 +1,1114 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+      <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+      <meta name="author" content="Bhaskar.S">
+      <meta name="description" content="Introduction to Vert.x - Part 6">
+      <meta name="subject" content="Introduction to Vert.x - Part 6">
+      <meta name="keywords" content="java, reactive, vert.x">
+      <meta name="robots" content="index,follow">
+      <meta name="googlebot" content="index,follow">
+      <title>Introduction to Vert.x - Part 6</title>
+      <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Introduction to Vert.x - Part 6</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">06/15/2019</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="step-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="http://polarsparc.github.io/Java/Vertx-5.html" target="_blank"><span class="bold">Part-5</span></a> of this
+        series, we finally pulled together all the foundational concepts of <span class="bold">Vert.x</span> to implement and
+        demonstrate a loosely-coupled, distributed REST based Contacts Management microservice with a simple memory based
+        persistence layer (JVM heap) and a REST based service layer (using HTTP), which communicated with each other via message
+        passing using the <span class="bold">EventBus</span>.</p>
+      <p>In this final part, instead of using a simple memory based persistence layer (JVM heap) for the Contacts Management
+        microservice, we will implement and demonstrate the use of a database based persistence layer for the microservice.</p>
+    </div>
+    <div id="step-div">
+      <p>Hands-on with Vert.x - 6</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="bold">Vert.x</span> JDBC Client extension (<span class="bold">vertx-jdbc-client</span>) allows one to
+        interact with any JDBC compliant database using an asynchronous callback based API. For this demonstration, we will use 
+        the <span class="hi-yellow">H2</span> database (written in Java).</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the modified listing of the <span class="bold">Maven</span> project file <span class="bold">pom.xml
+        </span> that includes the additional libraries <span class="bold">vertx-jdbc-client</span> and <span class="bold">h2
+        </span> as dependencies:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>pom.xml</legend>
+      <pre>&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+  &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+  
+  &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+  &lt;artifactId&gt;Vertx&lt;/artifactId&gt;
+  &lt;version&gt;1.0&lt;/version&gt;
+  &lt;packaging&gt;jar&lt;/packaging&gt;
+  &lt;name&gt;Vertx&lt;/name&gt;
+
+  &lt;build&gt;
+    &lt;pluginManagement&gt;
+      &lt;plugins&gt;
+        &lt;plugin&gt;
+          &lt;artifactId&gt;maven-compiler-plugin&lt;/artifactId&gt;
+          &lt;version&gt;3.3&lt;/version&gt;
+          &lt;configuration&gt;
+            &lt;fork&gt;true&lt;/fork&gt;
+            &lt;meminitial&gt;128m&lt;/meminitial&gt;
+            &lt;maxmem&gt;512m&lt;/maxmem&gt;
+            &lt;source&gt;1.8&lt;/source&gt;
+            &lt;target&gt;1.8&lt;/target&gt;
+          &lt;/configuration&gt;
+        &lt;/plugin&gt;
+      &lt;/plugins&gt;
+    &lt;/pluginManagement&gt;
+  &lt;/build&gt;
+
+  &lt;dependencies&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;io.vertx&lt;/groupId&gt;
+        &lt;artifactId&gt;vertx-core&lt;/artifactId&gt;
+        &lt;version&gt;3.7.0&lt;/version&gt;
+    &lt;/dependency&gt;  
+    &lt;dependency&gt;
+        &lt;groupId&gt;io.vertx&lt;/groupId&gt;
+        &lt;artifactId&gt;vertx-config&lt;/artifactId&gt;
+        &lt;version&gt;3.7.0&lt;/version&gt;
+    &lt;/dependency&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;io.vertx&lt;/groupId&gt;
+        &lt;artifactId&gt;vertx-hazelcast&lt;/artifactId&gt;
+        &lt;version&gt;3.7.0&lt;/version&gt;
+    &lt;/dependency&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;io.vertx&lt;/groupId&gt;
+        &lt;artifactId&gt;vertx-web&lt;/artifactId&gt;
+        &lt;version&gt;3.7.0&lt;/version&gt;
+    &lt;/dependency&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;io.vertx&lt;/groupId&gt;
+        &lt;artifactId&gt;vertx-jdbc-client&lt;/artifactId&gt;
+        &lt;version&gt;3.7.0&lt;/version&gt;
+    &lt;/dependency&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.projectlombok&lt;/groupId&gt;
+        &lt;artifactId&gt;lombok&lt;/artifactId&gt;
+        &lt;version&gt;1.18.2&lt;/version&gt;
+        &lt;scope&gt;provided&lt;/scope&gt;
+    &lt;/dependency&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;com.h2database&lt;/groupId&gt;
+        &lt;artifactId&gt;h2&lt;/artifactId&gt;
+        &lt;version&gt;1.4.199&lt;/version&gt;
+    &lt;/dependency&gt;    
+    &lt;dependency&gt;
+      &lt;groupId&gt;junit&lt;/groupId&gt;
+      &lt;artifactId&gt;junit&lt;/artifactId&gt;
+      &lt;version&gt;3.8.1&lt;/version&gt;
+      &lt;scope&gt;test&lt;/scope&gt;
+    &lt;/dependency&gt;
+  &lt;/dependencies&gt;
+&lt;/project&gt;</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Performing a <span class="bold">Maven</span> update will download the <span class="bold">H2</span> database jar file
+        <span class="hi-yellow">h2-1.4.199.jar</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Assuming the <span class="bold">H2</span> database jar is in the <span class="bold">lib</span> directory, open a new
+        <span class="bold">Terminal</span> window and execute the following command to start the database server:</p>
+    </div>
+    <div id="cmd-div">
+      <p>java -cp ./lib/h2-1.4.199.jar org.h2.tools.Server -tcp -ifNotExists -baseDir ./data</p>
+    </div>
+    <div id="para-div">
+      <p>We will use <a href="https://dbeaver.io/" target="_blank"><span class="bold">DBeaver</span></a> (community edition) as
+        our SQL client tool for creating and managing the <span class="bold">contacts</span> database.</p>
+    </div>
+    <div id="para-div">
+      <p>Launch <span class="bold">DBeaver</span> and proceed to create a new database. Select <span class="bold">H2 Server</span>
+        as the database and click on <span class="bold">Next&gt;</span> as shown in the illustration below:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/vertx-6.png" alt="DB Setup" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <div id="para-div">
+      <p>Next, select <span class="bold">./lib/h2-1.4.199.jar</span> as the database driver, and create the database
+        <span class="hi-yellow">contacts</span> with the credentials (user id <span class="hi-green">admin</span> and password
+        <span class="hi-green">s3cr3t</span>) as shown in the illustration below:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/vertx-7.png" alt="Contacts DB" />
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <div id="para-div">
+      <p>Next, click on <span class="bold">Test Connection</span> to verify we are able to connect to the <span class="bold">
+        contacts</span> database as shown in the illustration below:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/vertx-8.png" alt="Test Connection" />
+      <div class="img-cap">Figure.3</div>
+    </div>
+    <div id="para-div">
+      <p>Finally, create a database table <span class="hi-yellow">CONTACTS</span> with the table columns (<span class="bold">
+        FIRST_NAME</span>, <span class="bold">LAST_NAME</span>, <span class="bold">EMAIL_ID</span>, and <span class="bold">
+        MOBILE</span>) as shown in the illustration below:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/vertx-9.png" alt="Contacts Table" />
+      <div class="img-cap">Figure.4</div>
+    </div>
+    <div id="para-div">
+      <p>The <span class="bold">Vert.x</span> JDBC Client (<span class="bold">vertx-jdbc-client</span>) expects the following
+        configuration parameters to be specified:</p>
+      <ul id="blue-disc-ul">
+        <li><span class="bold">driver_class</span> &#8680; the JDBC driver class for the database</li>
+        <li><span class="bold">url</span> &#8680; the JDBC connection url</li>
+        <li><span class="bold">user</span> &#8680; the database user id</li>
+        <li><span class="bold">password</span> &#8680; the database user password</li>
+      </ul>
+      <p>By default, the <span class="bold">Vert.x</span> JDBC Client under-the-hood uses the C3P0 connection pool. The default
+        pool size is <span class="bold">15</span>.</p>
+      <p>Rather than hard-coding the <span class="bold">Vert.x</span> JDBC Client configuration parameters, we will specify these
+        parameters and values in the <span class="bold">Vert.x</span> config file (<span class="bold">conf/config.json</span>).</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the listing for the config file <span class="hi-green">conf/config.json</span> in the JSON format:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>conf/config.json</legend>
+      <pre>{
+  "http.port" : 8080,
+  "commands.endpoint": "contact.commands",
+  "driver_class": "org.h2.Driver",
+  "url": "jdbc:h2:tcp://localhost:9092/contacts",
+  "user": "admin",
+  "password": "s3cr3t"
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The following is the listing for the contacts management JDBC compliant database based persistence layer
+        <span class="hi-green">Sample12.java</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Sample12.java</legend>
+      <pre>/*
+ * Topic:  Introduction to Vert.x
+ * 
+ * Name:   Sample 12
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.Vertx;
+
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+
+import io.vertx.config.ConfigRetriever;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.spi.cluster.ClusterManager;
+import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.sql.SQLConnection;
+import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
+
+public class Sample12 {
+    private static Logger LOGGER = Logger.getLogger(Sample12.class.getName());
+    
+    private static String ADDRESS = null;
+    
+    private static JDBCClient JDBC = null;
+    
+    private static String SQL_ADD_CONTACT     = "INSERT INTO CONTACTS (FIRST_NAME, LAST_NAME, EMAIL_ID, MOBILE) VALUES (?, ?, ?, ?)";
+    private static String SQL_DEL_CONTACT     = "DELETE FROM CONTACTS WHERE LAST_NAME = ?";
+    private static String SQL_QRY_ALL_CONTACT = "SELECT FIRST_NAME, LAST_NAME, EMAIL_ID, MOBILE FROM CONTACTS";
+    private static String SQL_QRY_ONE_CONTACT = "SELECT FIRST_NAME, LAST_NAME, EMAIL_ID, MOBILE FROM CONTACTS WHERE LAST_NAME = ?";
+    private static String SQL_UPD_CONTACT     = "UPDATE CONTACTS SET EMAIL_ID = ?, MOBILE = ? WHERE LAST_NAME = ?";
+    
+    // Consumer verticle that responds to "commands"
+    private static class DbCommandConsumerVerticle extends AbstractVerticle {
+        @Override
+        public void start(Future&lt;Void&gt; fut) {
+            ConfigRetriever retriever = ConfigRetriever.create(vertx);
+            
+            ConfigRetriever.getConfigAsFuture(retriever).setHandler(confres -&gt; {
+                 if (confres.succeeded()) {
+                     JsonObject config = confres.result();
+                     
+                     ADDRESS = config.getString("commands.endpoint");
+                     
+                     JDBC = JDBCClient.createShared(vertx, config, "ContactsMgmt");
+                     
+                     LOGGER.log(Level.INFO, "Eventbus commands address: " + ADDRESS);
+                    
+                     vertx.eventBus().consumer(ADDRESS, message -&gt; {
+                        String payload = message.body().toString();
+                                
+                        LOGGER.log(Level.INFO, "Received payload - " + payload);
+                         
+                        JsonObject req = new JsonObject(payload);
+                        
+                        String cmd = req.getString(Commands.FLD_COMMAND);
+                        
+                        switch (cmd) {
+                            case Commands.ADD_NEW: {
+                                JsonObject data = new JsonObject(req.getString(Commands.FLD_PAYLOAD));
+                                
+                                String fname = data.getString(Commands.FLD_FNAME);
+                                String lname = data.getString(Commands.FLD_LNAME);
+                                String email = data.getString(Commands.FLD_EMAIL);
+                                String mobile = data.getString(Commands.FLD_MOBILE);
+                                
+                                LOGGER.log(Level.INFO, Commands.ADD_NEW + ":: Contact first name - " + fname
+                                    + ", last name: " + lname + ", email: " + email + ", mobile: " + mobile);
+                                
+                                addContact(fname, lname, email, mobile).setHandler(res -&gt; {
+                                    if (res.succeeded()) {
+                                        message.reply(res.result());
+                                    }
+                                    else {
+                                        message.reply(errorResponse());
+                                    }
+                                });
+                                
+                                break;
+                            }
+                            case Commands.DEL_BY_LASTNAME: {
+                                JsonObject data = new JsonObject(req.getString(Commands.FLD_PAYLOAD));
+                                
+                                String name = data.getString(Commands.FLD_LNAME);
+                                
+                                LOGGER.log(Level.INFO, Commands.DEL_BY_LASTNAME + ":: Contact last name - " + name);
+                                
+                                deleteContactByLastName(name).setHandler(res -&gt; {
+                                    if (res.succeeded()) {
+                                        message.reply(res.result());
+                                    }
+                                    else {
+                                        message.reply(errorResponse());
+                                    }
+                                });
+                                
+                                break;
+                            }
+                            case Commands.GET_ALL: {
+                                getAllContacts().setHandler(res -&gt; {
+                                    if (res.succeeded()) {
+                                        message.reply(res.result());
+                                    }
+                                    else {
+                                        message.reply(errorResponse());
+                                    }
+                                });
+                                
+                                break;
+                            }
+                            case Commands.GET_BY_LASTNAME: {
+                                JsonObject data = new JsonObject(req.getString(Commands.FLD_PAYLOAD));
+                                
+                                String name = data.getString(Commands.FLD_LNAME);
+                                
+                                LOGGER.log(Level.INFO, Commands.GET_BY_LASTNAME + ":: Contact last name - " + name);
+                                
+                                getContactByLastName(name).setHandler(res -&gt; {
+                                    if (res.succeeded()) {
+                                        message.reply(res.result());
+                                    }
+                                    else {
+                                        message.reply(errorResponse());
+                                    }
+                                });
+                                
+                                break;
+                            }
+                            case Commands.UPD_BY_LASTNAME: {
+                                JsonObject data = new JsonObject(req.getString(Commands.FLD_PAYLOAD));
+                                
+                                String email = data.getString(Commands.FLD_EMAIL);
+                                String mobile = data.getString(Commands.FLD_MOBILE);
+                                String name = data.getString(Commands.FLD_LNAME);
+                                
+                                LOGGER.log(Level.INFO, Commands.UPD_BY_LASTNAME + ":: Contact last name - " + name + ", email: "
+                                    + email + ", mobile: " + mobile);
+                                
+                                updateContactByLastName(name, email, mobile).setHandler(res -&gt; {
+                                    if (res.succeeded()) {
+                                        message.reply(res.result());
+                                    }
+                                    else {
+                                        message.reply(errorResponse());
+                                    }
+                                });
+                                
+                                break;
+                            }
+                        }
+                     });
+                    
+                     fut.complete();
+                 } else {
+                     fut.fail(confres.cause());
+                 }
+            });
+        }
+    }
+    
+    // ----- Database Operation(s) -----
+    
+    // Get an SQL connection
+    private static Future&lt;SQLConnection&gt; connect() {
+        Future&lt;SQLConnection&gt; future = Future.future();
+        
+        JDBC.getConnection(res -&gt; {
+            if (res.succeeded()) {
+                future.complete(res.result());
+            }
+            else {
+                future.fail(res.cause());
+            }
+        });
+        
+        return future;
+    }
+    
+    // Database insert
+    private static Future&lt;Contact&gt; insert(SQLConnection connection, Contact obj) {
+        Future&lt;Contact&gt; future = Future.future();
+        
+        LOGGER.log(Level.INFO, "insert() - fname: " + obj.getFirstName() + ", lname: " + obj.getLastName()
+            + ", email: " + obj.getEmailId() + ", mobile: " + obj.getMobile());
+        
+        JsonArray params = new JsonArray();
+        params.add(obj.getFirstName()).add(obj.getLastName()).add(obj.getEmailId()).add(obj.getMobile());
+        
+        connection.updateWithParams(SQL_ADD_CONTACT, params, res -&gt; {
+            connection.close();
+            if (res.succeeded()) {
+                future.complete(obj);
+            }
+            else {
+                future.fail(res.cause());
+            }
+        });
+        
+        return future;
+    }
+    
+    // Database delete
+    private static Future&lt;Void&gt; delete(SQLConnection connection, String name) {
+        Future&lt;Void&gt; future = Future.future();
+        
+        LOGGER.log(Level.INFO, "delete() - name: " + name);
+        
+        JsonArray params = new JsonArray();
+        params.add(name);
+        
+        connection.updateWithParams(SQL_DEL_CONTACT, params, res -&gt; {
+            connection.close();
+            if (res.succeeded()) {
+                if (res.result().getUpdated() == 0) {
+                    future.fail(new NoSuchElementException("delete() - No contact with LAST_NAME = " + name));
+                }
+                else {
+                    future.complete();
+                }
+            }
+            else {
+                future.fail(res.cause());
+            }
+        });
+        
+        return future;
+    }
+    
+    // Database select all
+    private static Future&lt;List&lt;JsonObject&gt;&gt; select(SQLConnection connection) {
+        Future&lt;List&lt;JsonObject&gt;&gt; future = Future.future();
+        
+        connection.query(SQL_QRY_ALL_CONTACT, res -&gt; {
+            connection.close();
+            if (res.succeeded()) {
+                future.complete(res.result().getRows().stream().collect(Collectors.toList()));
+            }
+            else {
+                future.fail(res.cause());
+            }
+        });
+        
+        return future;
+    }
+    
+    // Database select one
+    private static Future&lt;JsonObject&gt; selectOne(SQLConnection connection, String name) {
+        Future&lt;JsonObject&gt; future = Future.future();
+        
+        LOGGER.log(Level.INFO, "selectOne() - name: " + name);
+        
+        JsonArray params = new JsonArray();
+        params.add(name);
+        
+        connection.queryWithParams(SQL_QRY_ONE_CONTACT, params, res -&gt; {
+            connection.close();
+            if (res.succeeded()) {
+                if (res.result().getRows().size() == 0) {
+                    future.fail(new NoSuchElementException("selectOne() - No contact with LAST_NAME = " + name));
+                }
+                else {
+                    future.complete(res.result().getRows().get(0));
+                }
+            }
+            else {
+                future.fail(res.cause());
+            }
+        });
+        
+        return future;
+    }
+    
+    // Database update
+    private static Future&lt;Void&gt; update(SQLConnection connection, String name, String email, String mobile) {
+        Future&lt;Void&gt; future = Future.future();
+        
+        LOGGER.log(Level.INFO, "update() - name: " + name + ", email: " + email + ", mobile:" + mobile);
+        
+        JsonArray params = new JsonArray();
+        params.add(email);
+        params.add(mobile);
+        params.add(name);
+        
+        connection.updateWithParams(SQL_UPD_CONTACT, params, res -&gt; {
+            connection.close();
+            if (res.succeeded()) {
+                if (res.result().getUpdated() == 0) {
+                    future.fail(new NoSuchElementException("update() - No contact with LAST_NAME = " + name));
+                }
+                else {
+                    future.complete();
+                }
+            }
+            else {
+                future.fail(res.cause());
+            }
+        });
+        
+        return future;
+    }
+    
+    // ----- Command Handler(s) -----
+    
+    // Error JSON response
+    private static String errorResponse() {
+         JsonObject json = new JsonObject();
+         json.put(Commands.FLD_ERRCODE, 1);
+         
+         return json.encode();
+    }
+    
+    // Add a new contact
+    private static Future&lt;String&gt; addContact(String fname, String lname, String email, String mobile) {
+        Future&lt;String&gt; future = Future.future();
+        
+        // Valid contact:
+        // 1. First name and last name are required
+        // 2. Email and/or mobile required (either or both)
+        if ((fname != null && fname.trim().length() &gt; 0) &&
+            (lname != null && lname.trim().length() &gt; 0)) {
+            Contact obj = new Contact(fname, lname, "", "");
+            if (email != null && email.trim().length() &gt; 0) {
+                obj.setEmailId(email);
+            }
+            if (mobile != null && mobile.trim().length() &gt; 0) {
+                obj.setMobile(mobile);
+            }
+            
+            // Database insert
+            connect().setHandler(sqlres -&gt; {
+                if (sqlres.succeeded()) {
+                    insert(sqlres.result(), obj).setHandler(conres -&gt; {
+                         if (conres.succeeded()) {
+                             JsonObject json = new JsonObject();
+                             json.put(Commands.FLD_ERRCODE, 0);
+                             json.put(Commands.FLD_PAYLOAD, JsonObject.mapFrom(conres.result()).encode());
+                             
+                             String response = json.encode();
+                            
+                             LOGGER.log(Level.INFO, "addContact() - " + response);
+                            
+                             future.complete(response);
+                         }
+                         else {
+                             future.fail(conres.cause());
+                         }
+                    });
+                }
+                else {
+                    future.fail(sqlres.cause());
+                }
+            });
+        }
+        else {
+            future.fail(new IllegalArgumentException("addContact - Invalid name for contact"));
+        }
+        
+        return future;
+    }
+    
+    // Delete a contact by last name
+    private static Future&lt;String&gt; deleteContactByLastName(String name) {
+        Future&lt;String&gt; future = Future.future();
+
+        if (name != null && name.trim().length() &gt; 0) {
+            // Database delete
+            connect().setHandler(sqlres -&gt; {
+                if (sqlres.succeeded()) {
+                    delete(sqlres.result(), name).setHandler(conres -&gt; {
+                         if (conres.succeeded()) {
+                             JsonObject json = new JsonObject();
+                             json.put(Commands.FLD_ERRCODE, 0);
+                             json.put(Commands.FLD_PAYLOAD, new JsonObject().put(Commands.FLD_LNAME, name).encode());
+                             
+                             String response = json.encode();
+                            
+                             LOGGER.log(Level.INFO, "deleteContactByLastName() - " + response);
+                             
+                             future.complete(response);
+                         }
+                         else {
+                             future.fail(conres.cause());
+                         }
+                    });
+                }
+                else {
+                    future.fail(sqlres.cause());
+                }
+            });
+        }
+        else {
+            future.fail(new IllegalArgumentException("deleteContactByLastName - Invalid last name for contact"));
+        }
+        
+        return future;
+    }
+    
+    // Fetch all contacts
+    private static Future&lt;String&gt; getAllContacts() {
+        Future&lt;String&gt; future = Future.future();
+        
+        // Database select all
+        connect().setHandler(sqlres -&gt; {
+            if (sqlres.succeeded()) {
+                select(sqlres.result()).setHandler(conres -&gt; {
+                     if (conres.succeeded()) {
+                         JsonArray array = new JsonArray(conres.result());
+                         JsonObject json = new JsonObject();
+                         json.put(Commands.FLD_ERRCODE, 0);
+                         json.put(Commands.FLD_PAYLOAD, array.encode());
+                         
+                         String response = json.encode();
+                        
+                         LOGGER.log(Level.INFO, "getAllContacts() - " + response);
+                         
+                         future.complete(response);
+                     }
+                     else {
+                         future.fail(conres.cause());
+                     }
+                });
+            }
+            else {
+                future.fail(sqlres.cause());
+            }
+        });
+        
+        return future;
+    }
+    
+    // Fetch a contact by last name
+    private static Future&lt;String&gt; getContactByLastName(String name) {
+        Future&lt;String&gt; future = Future.future();
+        
+        if (name != null && name.trim().length() &gt; 0) {
+            // Database delete
+            connect().setHandler(sqlres -&gt; {
+                if (sqlres.succeeded()) {
+                    selectOne(sqlres.result(), name).setHandler(conres -&gt; {
+                         if (conres.succeeded()) {
+                             JsonObject json = new JsonObject();
+                             json.put(Commands.FLD_ERRCODE, 0);
+                             json.put(Commands.FLD_PAYLOAD, conres.result().encode());
+                             
+                             String response = json.encode();
+                            
+                             LOGGER.log(Level.INFO, "getContactByLastName() - " + response);
+                             
+                             future.complete(response);
+                         }
+                         else {
+                             future.fail(conres.cause());
+                         }
+                    });
+                }
+                else {
+                    future.fail(sqlres.cause());
+                }
+            });
+        }
+        else {
+            future.fail(new IllegalArgumentException("getContactByLastName - Invalid last name for contact"));
+        }
+        
+        return future;
+    }
+    
+    // Update a contact by last name
+    private static Future&lt;String&gt; updateContactByLastName(String name, String email, String mobile) {
+        Future&lt;String&gt; future = Future.future();
+
+        if ((name != null && name.trim().length() &gt; 0) &&
+            (email != null && email.trim().length() &gt; 0) &&
+            (mobile != null && mobile.trim().length() &gt; 0)) {
+            // Database update
+            connect().setHandler(sqlres -&gt; {
+                if (sqlres.succeeded()) {
+                    update(sqlres.result(), name, email, mobile).setHandler(conres -&gt; {
+                         if (conres.succeeded()) {
+                             JsonObject json = new JsonObject();
+                             json.put(Commands.FLD_ERRCODE, 0);
+                             json.put(Commands.FLD_PAYLOAD, new JsonObject().put(Commands.FLD_LNAME, name).encode());
+                             
+                             String response = json.encode();
+                            
+                             LOGGER.log(Level.INFO, "updateContactByLastName() - " + response);
+                             
+                             future.complete(response);
+                         }
+                         else {
+                             future.fail(conres.cause());
+                         }
+                    });
+                }
+                else {
+                    future.fail(sqlres.cause());
+                }
+            });
+        }
+        else {
+            future.fail(new IllegalArgumentException("updateContactByLastName - Invalid last name, email, mobile for contact"));
+        }
+        
+        return future;
+    }
+    
+    // ----- Main -----
+    
+    public static void main(String[] args) {
+        ClusterManager manager = new HazelcastClusterManager();
+        
+        VertxOptions options = new VertxOptions().setClusterManager(manager);
+        
+        Vertx.clusteredVertx(options, cluster -&gt; {
+            if (cluster.succeeded()) {
+                cluster.result().deployVerticle(new DbCommandConsumerVerticle(), res -&gt; {
+                    if (res.succeeded()) {
+                        LOGGER.log(Level.INFO, "Deployed command consumer instance ID: " + res.result());
+                    } else {
+                        res.cause().printStackTrace();
+                    }
+               });
+            } else {
+                cluster.cause().printStackTrace();
+            }
+        });
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Let us explain and understand the code from <span class="bold">Sample12</span> listed above.</p>
+      <p>This is just a *<span class="underbold">REMINDER</span>* as it is very critical for the understanding - the interface
+        <span class="hi-yellow">io.vertx.core.Future</span> is not the same as the one from core Java <span class="bold">
+        java.util.concurrent.Future</span>. The <span class="bold">Future</span> from <span class="bold">Vert.x</span> has a
+        non-blocking behavior (handled through asynchronous callback into a handler) unlike the Java <span class="bold">Future
+        </span> which has a blocking semantics (calling the <span class="hi-blue">get()</span> method will block the caller).
+        The <span class="bold">Future</span> interface from <span class="bold">Vert.x</span> represents the result of an action
+        that may not have completed yet and calls into a registered <span class="bold">io.vertx.core.Handler&lt;T&gt;</span> on
+        completion (either success or failures).</p>
+      <p>The interface <span class="hi-yellow">io.vertx.ext.jdbc.JDBCClient</span> represents the JDBC client API for interacting
+        with any JDBC compliant database. The static method <span class="hi-blue">createShared(Vertx, JsonObject, String)</span>
+        creates an instance of <span class="bold">JDBCClient</span> for the database whose config parameters are specified in the
+        second argument as a <span class="bold">JsonObject</span>.</p>
+      <p>The method <span class="hi-blue">getConnection(Handler&lt;T&gt;)</span> (where &lt;T&gt; is of type <span class="bold">
+        AsyncResult&lt;U&gt;</span>) returns a SQL connection (from the connection pool) to the underlying database.</p>
+      <p>The interface <span class="hi-yellow">io.vertx.ext.jdbc.SQLConnection</span> represents a SQL connection to the
+        database and an instance of <span class="bold">SQLConnection</span> is used to perform the CRUD (insert, query, update,
+        delete) operations on the database table(s).</p>
+      <p>The method <span class="hi-blue">updateWithParams(String, JsonArray, Handler&lt;T&gt;)</span> (where &lt;T&gt; is of
+        type <span class="bold">AsyncResult&lt;U&gt;</span>) allows one to execute the specified prepared SQL statement which
+        can be a DELETE, or an INSERT, or an UPDATE statement.</p>
+      <p>The method <span class="hi-blue">query(String, Handler&lt;T&gt;)</span> (where &lt;T&gt; is of type <span class="bold">
+        AsyncResult&lt;U&gt;</span>) allows one to execute the specified SQL SELECT statement. The database table rows are
+        returned as a Java <span class="bold">java.util.List</span> of <span class="bold">JsonObject</span>s.</p>
+      <p>The method <span class="hi-blue">queryWithParams(String, JsonArray, Handler&lt;T&gt;)</span> (where &lt;T&gt; is of
+        type <span class="bold">AsyncResult&lt;U&gt;</span>) allows one to execute the specified prepared SQL SELECT statement.
+        The database table rows are returned as a Java <span class="bold">java.util.List</span> of <span class="bold">
+        JsonObject</span>s.</p>
+      <p>Notice that we call the <span class="hi-blue">close()</span> method on the instance of <span class="bold">
+        SQLConnection</span> after every database operation. This will return the database connection back to the pool.</p>
+    </div>
+    <div id="para-div">
+      <p>Since we have added support for jdbc compliant database, we need to tweak the shell script called <span class="bold">
+        run.sh</span> as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>#!/bin/sh</p>
+      <p>JARS=""</p>
+      <p>for f in `ls ./lib/jackson*`</p>
+      <p>do</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;JARS=$JARS:$f</p>
+      <p>done</p>
+      <p>for f in `ls ./lib/netty*`</p>
+      <p>do</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;JARS=$JARS:$f</p>
+      <p>done</p>
+      <p>JARS=$JARS:./lib/vertx-core-3.7.0.jar:./lib/vertx-config-3.7.0.jar:./lib/hazelcast-3.10.5.jar:./lib/vertx-hazelcast-3.7.0.jar:./lib/vertx-web-3.7.0.jar:./lib/vertx-jdbc-client-3.7.0.jar:./lib/vertx-sql-common-3.7.0.jar:./lib/c3p0-0.9.5.2.jar:./lib/mchange-commons-java-0.2.11.jar:./lib/h2-1.4.199.jar</p>
+      <p>echo $JARS</p>
+      <p>java -Dvertx.hazelcast.config=./resources/my-cluster.xml -cp ./classes:./resources:$JARS com.polarsparc.Vertx.$1 $2</p>
+    </div>
+    <div id="para-div">
+      <p>To start the contacts management database based persistence layer, open a new <span class="bold">Terminal</span> window
+        and execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>./bin/run.sh Sample12</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>:./lib/jackson-annotations-2.9.0.jar:./lib/jackson-core-2.9.8.jar:./lib/jackson-databind-2.9.8.jar:./lib/netty-buffer-4.1.30.Final.jar:./lib/netty-codec-4.1.30.Final.jar:./lib/netty-codec-dns-4.1.30.Final.jar:./lib/netty-codec-http2-4.1.30.Final.jar:./lib/netty-codec-http-4.1.30.Final.jar:./lib/netty-codec-socks-4.1.30.Final.jar:./lib/netty-common-4.1.30.Final.jar:./lib/netty-handler-4.1.30.Final.jar:./lib/netty-handler-proxy-4.1.30.Final.jar:./lib/netty-resolver-4.1.30.Final.jar:./lib/netty-resolver-dns-4.1.30.Final.jar:./lib/netty-transport-4.1.30.Final.jar:./lib/vertx-core-3.7.0.jar:./lib/vertx-config-3.7.0.jar:./lib/hazelcast-3.10.5.jar:./lib/vertx-hazelcast-3.7.0.jar:./lib/vertx-web-3.7.0.jar:./lib/vertx-jdbc-client-3.7.0.jar:./lib/vertx-sql-common-3.7.0.jar:./lib/c3p0-0.9.5.2.jar:./lib/mchange-commons-java-0.2.11.jar:./lib/h2-1.4.199.jar
+Jun 15, 2019 3:27:48 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [polarsparc] [3.10.5] Interfaces is enabled, trying to pick one address matching to one of: [127.0.0.1]
+Jun 15, 2019 3:27:48 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [polarsparc] [3.10.5] Picked [127.0.0.1]:5701, using socket ServerSocket[addr=/0:0:0:0:0:0:0:0,localport=5701], bind any local is true
+Jun 15, 2019 3:27:48 PM com.hazelcast.system
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Hazelcast 3.10.5 (20180913 - 6ffa2ee) starting at [127.0.0.1]:5701
+Jun 15, 2019 3:27:48 PM com.hazelcast.system
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+Jun 15, 2019 3:27:48 PM com.hazelcast.system
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Configured Hazelcast Serialization version: 1
+Jun 15, 2019 3:27:48 PM com.hazelcast.instance.Node
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] A non-empty group password is configured for the Hazelcast member. Starting with Hazelcast version 3.8.2, members with the same group name, but with different group passwords (that do not use authentication) form a cluster. The group password configuration will be removed completely in a future release.
+Jun 15, 2019 3:27:48 PM com.hazelcast.spi.impl.operationservice.impl.BackpressureRegulator
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Backpressure is disabled
+Jun 15, 2019 3:27:48 PM com.hazelcast.spi.impl.operationservice.impl.InboundResponseHandlerSupplier
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Running with 2 response threads
+Jun 15, 2019 3:27:48 PM com.hazelcast.instance.Node
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Creating TcpIpJoiner
+Jun 15, 2019 3:27:48 PM com.hazelcast.spi.impl.operationexecutor.impl.OperationExecutorImpl
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Starting 16 partition threads and 9 generic threads (1 dedicated for priority tasks)
+Jun 15, 2019 3:27:48 PM com.hazelcast.internal.diagnostics.Diagnostics
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Diagnostics disabled. To enable add -Dhazelcast.diagnostics.enabled=true to the JVM arguments.
+Jun 15, 2019 3:27:48 PM com.hazelcast.core.LifecycleService
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] [127.0.0.1]:5701 is STARTING
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by com.hazelcast.internal.networking.nio.SelectorOptimizer (file:/home/bswamina/Downloads/TTT/lib/hazelcast-3.10.5.jar) to field sun.nio.ch.SelectorImpl.selectedKeys
+WARNING: Please consider reporting this to the maintainers of com.hazelcast.internal.networking.nio.SelectorOptimizer
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+Jun 15, 2019 3:27:48 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Connecting to /127.0.0.1:5703, timeout: 0, bind-any: true
+Jun 15, 2019 3:27:48 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Connecting to /127.0.0.1:5702, timeout: 0, bind-any: true
+Jun 15, 2019 3:27:48 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Could not connect to: /127.0.0.1:5703. Reason: SocketException[Connection refused to address /127.0.0.1:5703]
+Jun 15, 2019 3:27:48 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Could not connect to: /127.0.0.1:5702. Reason: SocketException[Connection refused to address /127.0.0.1:5702]
+Jun 15, 2019 3:27:48 PM com.hazelcast.cluster.impl.TcpIpJoiner
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] [127.0.0.1]:5703 is added to the blacklist.
+Jun 15, 2019 3:27:48 PM com.hazelcast.cluster.impl.TcpIpJoiner
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] [127.0.0.1]:5702 is added to the blacklist.
+Jun 15, 2019 3:27:49 PM com.hazelcast.system
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Cluster version set to 3.10
+Jun 15, 2019 3:27:49 PM com.hazelcast.internal.cluster.ClusterService
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] 
+
+Members {size:1, ver:1} [
+  Member [127.0.0.1]:5701 - 466d89c7-87af-4636-9fa5-5221329981be this
+]
+
+Jun 15, 2019 3:27:49 PM com.hazelcast.core.LifecycleService
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] [127.0.0.1]:5701 is STARTED
+Jun 15, 2019 3:27:50 PM com.hazelcast.internal.partition.impl.PartitionStateManager
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Initializing cluster partition table arrangement...
+Jun 15, 2019 3:27:50 PM io.vertx.config.impl.ConfigRetrieverImpl
+INFO: Config file path: conf/config.json, format:json
+Jun 15, 2019 3:27:50 PM com.mchange.v2.log.MLog 
+INFO: MLog clients using java 1.4+ standard logging.
+Jun 15, 2019 3:27:50 PM com.mchange.v2.c3p0.C3P0Registry 
+INFO: Initializing c3p0-0.9.5.2 [built 08-December-2015 22:06:04 -0800; debug? true; trace: 10]
+Jun 15, 2019 3:27:50 PM com.polarsparc.Vertx.Sample12$DbCommandConsumerVerticle lambda$0
+INFO: Eventbus commands address: contact.commands
+Jun 15, 2019 3:27:50 PM com.polarsparc.Vertx.Sample12 lambda$17
+INFO: Deployed command consumer instance ID: adfbb1bd-024c-4bbb-a24e-ddef48d43fde</pre>
+    </div>
+    <div id="para-div">
+      <p>To start the contacts management service layer, open a new <span class="bold">Terminal</span> window and execute the
+        following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>./bin/run.sh Sample11</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>:./lib/jackson-annotations-2.9.0.jar:./lib/jackson-core-2.9.8.jar:./lib/jackson-databind-2.9.8.jar:./lib/netty-buffer-4.1.30.Final.jar:./lib/netty-codec-4.1.30.Final.jar:./lib/netty-codec-dns-4.1.30.Final.jar:./lib/netty-codec-http2-4.1.30.Final.jar:./lib/netty-codec-http-4.1.30.Final.jar:./lib/netty-codec-socks-4.1.30.Final.jar:./lib/netty-common-4.1.30.Final.jar:./lib/netty-handler-4.1.30.Final.jar:./lib/netty-handler-proxy-4.1.30.Final.jar:./lib/netty-resolver-4.1.30.Final.jar:./lib/netty-resolver-dns-4.1.30.Final.jar:./lib/netty-transport-4.1.30.Final.jar:./lib/vertx-core-3.7.0.jar:./lib/vertx-config-3.7.0.jar:./lib/hazelcast-3.10.5.jar:./lib/vertx-hazelcast-3.7.0.jar:./lib/vertx-web-3.7.0.jar:./lib/vertx-jdbc-client-3.7.0.jar:./lib/vertx-sql-common-3.7.0.jar:./lib/c3p0-0.9.5.2.jar:./lib/mchange-commons-java-0.2.11.jar:./lib/h2-1.4.199.jar
+Jun 15, 2019 3:28:31 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [polarsparc] [3.10.5] Interfaces is enabled, trying to pick one address matching to one of: [127.0.0.1]
+Jun 15, 2019 3:28:31 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [polarsparc] [3.10.5] Picked [127.0.0.1]:5702, using socket ServerSocket[addr=/0:0:0:0:0:0:0:0,localport=5702], bind any local is true
+Jun 15, 2019 3:28:31 PM com.hazelcast.system
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Hazelcast 3.10.5 (20180913 - 6ffa2ee) starting at [127.0.0.1]:5702
+Jun 15, 2019 3:28:31 PM com.hazelcast.system
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+Jun 15, 2019 3:28:31 PM com.hazelcast.system
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Configured Hazelcast Serialization version: 1
+Jun 15, 2019 3:28:31 PM com.hazelcast.instance.Node
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] A non-empty group password is configured for the Hazelcast member. Starting with Hazelcast version 3.8.2, members with the same group name, but with different group passwords (that do not use authentication) form a cluster. The group password configuration will be removed completely in a future release.
+Jun 15, 2019 3:28:31 PM com.hazelcast.spi.impl.operationservice.impl.BackpressureRegulator
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Backpressure is disabled
+Jun 15, 2019 3:28:31 PM com.hazelcast.spi.impl.operationservice.impl.InboundResponseHandlerSupplier
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Running with 2 response threads
+Jun 15, 2019 3:28:32 PM com.hazelcast.instance.Node
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Creating TcpIpJoiner
+Jun 15, 2019 3:28:32 PM com.hazelcast.spi.impl.operationexecutor.impl.OperationExecutorImpl
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Starting 16 partition threads and 9 generic threads (1 dedicated for priority tasks)
+Jun 15, 2019 3:28:32 PM com.hazelcast.internal.diagnostics.Diagnostics
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Diagnostics disabled. To enable add -Dhazelcast.diagnostics.enabled=true to the JVM arguments.
+Jun 15, 2019 3:28:32 PM com.hazelcast.core.LifecycleService
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] [127.0.0.1]:5702 is STARTING
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by com.hazelcast.internal.networking.nio.SelectorOptimizer (file:/home/bswamina/Downloads/TTT/lib/hazelcast-3.10.5.jar) to field sun.nio.ch.SelectorImpl.selectedKeys
+WARNING: Please consider reporting this to the maintainers of com.hazelcast.internal.networking.nio.SelectorOptimizer
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+Jun 15, 2019 3:28:32 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Connecting to /127.0.0.1:5703, timeout: 0, bind-any: true
+Jun 15, 2019 3:28:32 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Could not connect to: /127.0.0.1:5703. Reason: SocketException[Connection refused to address /127.0.0.1:5703]
+Jun 15, 2019 3:28:32 PM com.hazelcast.cluster.impl.TcpIpJoiner
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] [127.0.0.1]:5703 is added to the blacklist.
+Jun 15, 2019 3:28:32 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Connecting to /127.0.0.1:5701, timeout: 0, bind-any: true
+Jun 15, 2019 3:28:32 PM com.hazelcast.nio.tcp.TcpIpConnectionManager
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Established socket connection between /127.0.0.1:40795 and /127.0.0.1:5701
+Jun 15, 2019 3:28:33 PM com.hazelcast.system
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Cluster version set to 3.10
+Jun 15, 2019 3:28:33 PM com.hazelcast.internal.cluster.ClusterService
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] 
+
+Members {size:2, ver:2} [
+  Member [127.0.0.1]:5701 - 466d89c7-87af-4636-9fa5-5221329981be
+  Member [127.0.0.1]:5702 - 2ae8bce5-cfa7-4046-b1ba-ac368e4bc36b this
+]
+
+Jun 15, 2019 3:28:34 PM com.hazelcast.core.LifecycleService
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] [127.0.0.1]:5702 is STARTED
+Jun 15, 2019 3:28:34 PM io.vertx.config.impl.ConfigRetrieverImpl
+INFO: Config file path: conf/config.json, format:json
+Jun 15, 2019 3:28:34 PM com.polarsparc.Vertx.Sample11$ContactsServiceVerticle lambda$0
+INFO: Configured server port: 8080
+Jun 15, 2019 3:28:34 PM com.polarsparc.Vertx.Sample11$ContactsServiceVerticle lambda$6
+INFO: Started contacts service on localhost:8080...
+Jun 15, 2019 3:28:34 PM com.polarsparc.Vertx.Sample11 lambda$2
+INFO: Deployed contacts service instance ID: a2b36c8f-c147-4e10-8a3f-86db3dea7996</pre>
+    </div>
+    <div id="para-div">
+      <p>From <span class="bold">DBeaver</span> database tool, we see the database table <span class="bold">CONTACTS</span>
+        is empty (has no data rows) as shown in the illustration below:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/vertx-10.png" alt="Contacts Empty" />
+      <div class="img-cap">Figure.5</div>
+    </div>
+    <div id="para-div">
+      <p>Open a new <span class="bold">Terminal</span> window and execute the following command to add a new contact:</p>
+    </div>
+    <div id="cmd-div">
+      <p>curl -v -d "{\"fname\":\"Frank\",\"lname\":\"Polymer\",\"email\":\"frank_p@spacelab.io\",\"mobile\":\"777-888-9999\"}" -X POST http://localhost:8080/api/contacts/v1/addContact</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>*   Trying 127.0.0.1...
+* TCP_NODELAY set
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+> POST /api/contacts/v1/addContact HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.64.1
+> Accept: */*
+> Content-Length: 89
+> Content-Type: application/x-www-form-urlencoded
+> 
+* upload completely sent off: 89 out of 89 bytes
+< HTTP/1.1 200 OK
+< content-type: application/json
+< content-length: 140
+< 
+* Connection #0 to host localhost left intact
+{"errcode":0,"payload":"{\"firstName\":\"Frank\",\"lastName\":\"Polymer\",\"emailId\":\"frank_p@spacelab.io\",\"mobile\":\"777-888-9999\"}"}
+* Closing connection 0</pre>
+    </div>
+    <div id="para-div">
+      <p>From <span class="bold">DBeaver</span> database tool, we see the database table <span class="bold">CONTACTS</span>
+        now has one row (as expected) as shown in the illustration below:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/vertx-11.png" alt="Contacts One Row" />
+      <div class="img-cap">Figure.6</div>
+    </div>
+    <div id="para-div">
+      <p>Next, execute the following command to update the contact for the person with the last-name Polymer:</p>
+    </div>
+    <div id="cmd-div">
+      <p>curl -v -d "{\"email\":\"fpolymer_2000@jupiter.io\",\"mobile\":\"888-666-5555\"}" -X PUT http://localhost:8080/api/contacts/v1/updateByLastName/Polymer</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>*   Trying 127.0.0.1...
+* TCP_NODELAY set
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+> PUT /api/contacts/v1/updateByLastName/Polymer HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.64.1
+> Accept: */*
+> Content-Length: 60
+> Content-Type: application/x-www-form-urlencoded
+> 
+* upload completely sent off: 60 out of 60 bytes
+< HTTP/1.1 200 OK
+< content-type: application/json
+< content-length: 49
+< 
+* Connection #0 to host localhost left intact
+{"errcode":0,"payload":"{\"lname\":\"Polymer\"}"}
+* Closing connection 0</pre>
+    </div>
+    <div id="para-div">
+      <p>From <span class="bold">DBeaver</span> database tool, we see the database table <span class="bold">CONTACTS</span>
+        row information has been updated as shown in the illustration below:</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/vertx-12.png" alt="Contacts Updated Row" />
+      <div class="img-cap">Figure.7</div>
+    </div>
+    <div id="para-div">
+      <p>Next, execute the following command to fetch the contact for the person with the last-name Polymer:</p>
+    </div>
+    <div id="cmd-div">
+      <p>curl -v http://localhost:8080/api/contacts/v1/getByLastName/Polymer</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>*   Trying 127.0.0.1...
+* TCP_NODELAY set
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+> GET /api/contacts/v1/getByLastName/Polymer HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.64.1
+> Accept: */*
+> 
+< HTTP/1.1 200 OK
+< content-type: application/json
+< content-length: 148
+< 
+* Connection #0 to host localhost left intact
+{"errcode":0,"payload":"{\"FIRST_NAME\":\"Frank\",\"LAST_NAME\":\"Polymer\",\"EMAIL_ID\":\"fpolymer_2000@jupiter.io\",\"MOBILE\":\"888-666-5555\"}"}
+* Closing connection 0</pre>
+    </div>
+    <div id="para-div">
+      <p>Next, execute the following command to fetch the contact for the person with the last-name Martian:</p>
+    </div>
+    <div id="cmd-div">
+      <p>curl -v http://localhost:8080/api/contacts/v1/getByLastName/Martian</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>*   Trying 127.0.0.1...
+* TCP_NODELAY set
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+> GET /api/contacts/v1/getByLastName/Martian HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.64.1
+> Accept: */*
+> 
+< HTTP/1.1 200 OK
+< content-type: application/json
+< content-length: 13
+< 
+* Connection #0 to host localhost left intact
+{"errcode":1}
+* Closing connection 0</pre>
+    </div>
+    <div id="para-div">
+      <p>We have successfully demonstrated the database based persistence layer for the contacts management service and with this
+        we conclude the series on the <span class="bold">Introduction to Vert.x</span>. We have barely scratched the surface of the
+        capabilities and features in <span class="bold">Vert.x</span>.</p>
+    </div>
+    <div id="step-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">[1] </span><a href="http://polarsparc.github.io/Java/Vertx-1.html" target="_blank"><span class="bold">Introduction to Vert.x - Part-1</span></a></p>
+      <p><span class="bold">[2] </span><a href="http://polarsparc.github.io/Java/Vertx-2.html" target="_blank"><span class="bold">Introduction to Vert.x - Part-2</span></a></p>
+      <p><span class="bold">[3] </span><a href="http://polarsparc.github.io/Java/Vertx-3.html" target="_blank"><span class="bold">Introduction to Vert.x - Part-3</span></a></p>
+      <p><span class="bold">[4] </span><a href="http://polarsparc.github.io/Java/Vertx-4.html" target="_blank"><span class="bold">Introduction to Vert.x - Part-4</span></a></p>
+      <p><span class="bold">[5] </span><a href="http://polarsparc.github.io/Java/Vertx-5.html" target="_blank"><span class="bold">Introduction to Vert.x - Part-5</span></a></p>
+      <p><span class="bold">[6] </span><a href="https://vertx.io/docs/vertx-core/java/" target="_blank"><span class="bold">Vert.x Core Manual (Java)</span></a></p>
+      <p><span class="bold">[7] </span><a href="https://vertx.io/docs/vertx-jdbc-client/java/" target="_blank"><span class="bold">Vert.x JDBC Client Manual (Java)</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

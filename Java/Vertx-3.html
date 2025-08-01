@@ -1,0 +1,439 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+      <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+      <meta name="author" content="Bhaskar.S">
+      <meta name="description" content="Introduction to Vert.x - Part 3">
+      <meta name="subject" content="Introduction to Vert.x - Part 3">
+      <meta name="keywords" content="java, reactive, vert.x">
+      <meta name="robots" content="index,follow">
+      <meta name="googlebot" content="index,follow">
+      <title>Introduction to Vert.x - Part 3</title>
+      <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Introduction to Vert.x - Part 3</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">05/18/2019</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="step-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="http://polarsparc.github.io/Java/Vertx-2.html" target="_blank"><span class="bold">Part-2</span></a> of this
+        series, we explored the use of a configuration file to externalize parameters (rather than hardcoding parameters) as well
+        as simplify the handling of asynchronous callbacks (callback hell) using chaining of functions that return a
+        <span class="bold">Future</span> in <span class="bold"> Vert.x</span>.</p>
+      <p>In this part, we will continue with examples around the <span class="bold">EventBus</span>.</p>
+    </div>
+    <div id="step-div">
+      <p>Hands-on with Vert.x - 3</p>
+    </div>
+    <div id="para-div">
+      <p>As indicated in <a href="http://polarsparc.github.io/Java/Vertx-1.html" target="_blank"><span class="bold">Part-1</span></a>
+        of this series, the <span class="hi-yellow">Event Bus</span> is the messaging backbone through which different <span class="bold">
+        Verticle</span>(s) communicate with each other. One <span class="bold">Verticle</span> instance can publish a message to a
+        named destination address (basic string name) that could be consumed by other <span class="bold">Verticle</span> instance(s)
+        via the <span class="bold">Event Bus</span>. The <span class="bold">Event Bus</span> supports the following 3 types of message
+        passing patterns:</p>
+      <ul id="blue-disc-ul">
+        <li><span class="bold">Point-to-Point</span></li>
+        <li><span class="bold">Request-Response</span></li>
+        <li><span class="bold">Publish-Subscribe</span></li>
+      </ul>
+      <p><span class="bold">Vertx</span> uses the <span class="hi-blue">Best-Effort</span> delivery mechanism. What this means is
+        that <span class="bold">Vertx</span> will do its best to deliver message(s); there is a possibility of message loss in case
+        of any failures.</p>
+      <p>The following is the listing for <span class="hi-green">Sample05.java</span>, which demonstrates the <span class="bold">
+        Point-to-Point</span> communication pattern:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Sample05.java</legend>
+      <pre>/*
+ * Topic:  Introduction to Vert.x
+ * 
+ * Name:   Sample 5
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.Vertx;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Vertx;
+
+public class Sample05 {
+    private static Logger LOGGER = Logger.getLogger(Sample05.class.getName());
+    
+    private static String ADDRESS = "msg.address";
+    private static String MESSAGE = "Hello from Vert.x";
+    
+    // Publisher verticle
+    private static class MsgSendVerticle extends AbstractVerticle {
+        @Override
+        public void start() {
+            vertx.eventBus().send(ADDRESS, MESSAGE);
+            
+            LOGGER.log(Level.INFO, "Message send to address " + ADDRESS);
+        }
+    }
+    
+    // Consumer verticle
+    private static class MsgConsumerVerticle extends AbstractVerticle {
+        @Override
+        public void start() {
+            vertx.eventBus().consumer(ADDRESS, res -&gt; {
+                 LOGGER.log(Level.INFO, "Received message - " + res.body());
+            });
+        }
+    }
+    
+    public static void main(String[] args) {
+        Vertx vertx = Vertx.vertx();
+        vertx.deployVerticle(new MsgConsumerVerticle(), res1 -&gt; {
+            if (res1.succeeded()) {
+                LOGGER.log(Level.INFO, "Deployed consumer instance ID: " + res1.result());
+                
+                vertx.deployVerticle(new MsgSendVerticle(), res2 -&gt; {
+                    if (res2.succeeded()) {
+                        LOGGER.log(Level.INFO, "Deployed sender instance ID: " + res2.result());
+                    } else {
+                        res2.cause().printStackTrace();
+                    }
+                });
+            } else {
+                res1.cause().printStackTrace();
+            }
+        });
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Let us explain and understand the code from <span class="bold">Sample05</span> listed above.</p>
+      <p>The method <span class="hi-blue">eventBus()</span> on the class <span class="bold">io.vertx.core.Vertx</span> returns
+        an instance of the class <span class="hi-yellow">io.vertx.core.eventbus.EventBus</span>, which is the messaging system
+        of <span class="bold">Vertx</span>.</p>
+      <p>The call to the method <span class="hi-blue">send()</span> on the instance of <span class="bold">EventBus</span> takes
+        two arguments - a destination address (which is a simple string) and the message object. The message object is serialized
+        and sent to the specified address. The message is delivered to <span class="underbold">*AT MOST*</span> one of the handlers
+        registered at the specified address.</p>
+      <p>The call to the method <span class="hi-blue">consumer()</span> on the instance of <span class="bold">EventBus</span> takes
+        two arguments - a destination address (which is a simple string) and the callback handler of type <span class="bold">
+        io.vertx.core.Handler&lt;E&gt;</span>, where &lt;E&gt; is an interface of type
+        <span class="hi-yellow">io.vertx.core.eventbus.Message&lt;T&gt;</span>. When a message arrives at the specified address,
+        the registered handler(s) are invoked with the incoming message.</p>
+    </div>
+    <div id="para-div">
+      <p>Executing the Java program <span class="bold">Sample05</span> listed above should generate an output similar to
+        the following:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>May 18, 2019 11:45:04 AM com.polarsparc.Vertx.Sample05 lambda$0
+INFO: Deployed consumer instance ID: 748cbbca-6db9-4c46-bba0-f0775d830526
+May 18, 2019 11:45:04 AM com.polarsparc.Vertx.Sample05$MsgSendVerticle start
+INFO: Message send to address msg.address
+May 18, 2019 11:45:04 AM com.polarsparc.Vertx.Sample05 lambda$1
+INFO: Deployed sender instance ID: f5b8e7d7-eba5-41fe-ba02-35f414becdbb
+May 18, 2019 11:45:04 AM com.polarsparc.Vertx.Sample05$MsgConsumerVerticle lambda$0
+INFO: Received message - Hello from Vert.x</pre>
+    </div>
+    <div id="para-div">
+      <p>Moving on to the next example, we will demonstrate the <span class="bold">Request-Reply</span> communication pattern.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the listing for <span class="hi-green">Sample06.java</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Sample06.java</legend>
+      <pre>/*
+ * Topic:  Introduction to Vert.x
+ * 
+ * Name:   Sample 6
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.Vertx;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Vertx;
+
+public class Sample06 {
+    private static Logger LOGGER = Logger.getLogger(Sample06.class.getName());
+    
+    private static String ADDRESS = "msg.address";
+    private static String MESSAGE = "Hola from Vert.x";
+    
+    // Producer verticle that expects a reply from the consumer
+    private static class MsgSendVerticle extends AbstractVerticle {
+        @Override
+        public void start() {
+            vertx.eventBus().send(ADDRESS, MESSAGE, reply -&gt; {
+                if (reply.succeeded()) {
+                    LOGGER.log(Level.INFO, "Reply from " + ADDRESS + " =&gt; " + reply.result().body());
+                } else {
+                    reply.cause().printStackTrace();
+                }
+            });
+            
+            LOGGER.log(Level.INFO, "Message send to address " + ADDRESS);
+        }
+    }
+    
+    // Consumer verticle that sends a reply back to the producer
+    private static class MsgConsumerVerticle extends AbstractVerticle {
+        @Override
+        public void start() {
+            vertx.eventBus().consumer(ADDRESS, message -&gt; {
+                 LOGGER.log(Level.INFO, "Received message - " + message.body());
+                 
+                 message.reply("Fantastico !!!");
+            });
+        }
+    }
+    
+    public static void main(String[] args) {
+        Vertx vertx = Vertx.vertx();
+        vertx.deployVerticle(new MsgConsumerVerticle(), res1 -&gt; {
+            if (res1.succeeded()) {
+                LOGGER.log(Level.INFO, "Deployed consumer instance ID: " + res1.result());
+                
+                vertx.deployVerticle(new MsgSendVerticle(), res2 -&gt; {
+                    if (res2.succeeded()) {
+                        LOGGER.log(Level.INFO, "Deployed sender instance ID: " + res2.result());
+                    } else {
+                        res2.cause().printStackTrace();
+                    }
+                });
+            } else {
+                res1.cause().printStackTrace();
+            }
+        });
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Let us explain and understand the code from <span class="bold">Sample06</span> listed above.</p>
+      <p>The call to the method <span class="hi-blue">send()</span> on the instance of <span class="bold">EventBus</span> in this
+        example takes three arguments - a destination address (which is a simple string), the message object to dispatch, and a
+        callback handler of type <span class="bold">io.vertx.core.Handler&lt;E&gt;</span>, where &lt;E&gt; is of type
+        <span class="bold">io.vertx.core.AsyncResult&lt;Message&lt;T&gt;&gt;</span>. The type <span class="bold">AsyncResult</span>
+        encapsulates the reply message.</p>
+      <p>The call to the method <span class="hi-blue">reply()</span> on the instance of <span class="bold">Message</span> takes
+        one argument - the reply message object. The message acknowledgement is targetted at the message sender. When the message
+        arrives at the sender, the register reply callback handler is invoked.</p>
+    </div>
+    <div id="para-div">
+      <p>Executing the Java program <span class="bold">Sample06</span> listed above should generate an output similar to
+        the following:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>May 18, 2019 12:05:02 PM com.polarsparc.Vertx.Sample06 lambda$0
+INFO: Deployed consumer instance ID: 50fcd279-e23c-4a4f-8a9e-7a0dafd642b4
+May 18, 2019 12:05:02 PM com.polarsparc.Vertx.Sample06$MsgSendVerticle start
+INFO: Message send to address msg.address
+May 18, 2019 12:05:02 PM com.polarsparc.Vertx.Sample06 lambda$1
+INFO: Deployed sender instance ID: 6b1e1bd8-f08d-42a4-afe3-946e755b56a4
+May 18, 2019 12:05:02 PM com.polarsparc.Vertx.Sample06$MsgConsumerVerticle lambda$0
+INFO: Received message - Hola from Vert.x
+May 18, 2019 12:05:02 PM com.polarsparc.Vertx.Sample06$MsgSendVerticle lambda$0
+INFO: Reply from msg.address => Fantastico !!!</pre>
+    </div>
+    <div id="para-div">
+      <p>Moving on to the next example, we will demonstrate the <span class="bold">Publish-Subscribe</span> communication pattern.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the listing for <span class="hi-green">Sample07.java</span>, which demonstrates a single publisher and
+        multiple consumers:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Sample07.java</legend>
+      <pre>/*
+ * Topic:  Introduction to Vert.x
+ * 
+ * Name:   Sample 7
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.Vertx;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.CompositeFuture;
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
+
+public class Sample07 {
+    private static Logger LOGGER = Logger.getLogger(Sample07.class.getName());
+    
+    private static String ADDRESS = "msg.address";
+    private static String MESSAGE = "Bojour from Vert.x";
+    
+    // Publisher verticle
+    private static class MsgPublisherVerticle extends AbstractVerticle {
+        @Override
+        public void start(Future&lt;Void&gt; fut) {
+            vertx.eventBus().publish(ADDRESS, String.format("[1] %s", MESSAGE));
+            vertx.eventBus().publish(ADDRESS, String.format("[2] %s", MESSAGE));
+            vertx.eventBus().publish(ADDRESS, String.format("[3] %s", MESSAGE));
+            
+            LOGGER.log(Level.INFO, String.format("Messages published to address %s", ADDRESS));
+            
+            fut.complete();
+        }
+    }
+    
+    // Consumer verticle
+    private static class MsgConsumerVerticle extends AbstractVerticle {
+        String name;
+        
+        MsgConsumerVerticle(String str) {
+            this.name = str;
+        }
+        
+        @Override
+        public void start() {
+            vertx.eventBus().consumer(ADDRESS, res -&gt; {
+                 LOGGER.log(Level.INFO, String.format("[%s] - Received message - %s", name, res.body()));
+            });
+        }
+    }
+    
+    private static Future&lt;Void&gt; deployConsumer(String name, Vertx vertx) {
+        Future&lt;Void&gt; fut = Future.future();
+        
+        vertx.deployVerticle(new MsgConsumerVerticle(name), res -&gt; {
+            if (res.succeeded()) {
+                LOGGER.log(Level.INFO, "Deployed consumer &lt;" + name + "&gt; with instance ID: " + res.result());
+                
+                fut.complete();
+            } else {
+                fut.fail(res.cause());
+            }
+        });
+        
+        return fut;
+    }
+    
+    public static void main(String[] args) {
+        Vertx vertx = Vertx.vertx();
+        
+        Future&lt;Void&gt; f1 = deployConsumer("C1", vertx);
+        Future&lt;Void&gt; f2 = deployConsumer("C2", vertx);
+        
+        CompositeFuture.join(f1, f2).setHandler(res -&gt; {
+            if (res.succeeded()) {
+                LOGGER.log(Level.INFO, "Deployed consumer instances");
+            } else {
+                res.cause().printStackTrace();
+            }
+        });
+        
+        // Wait for deployment of consumers
+        try {
+            Thread.sleep(1000);
+        }
+        catch (Exception ex) {
+        }
+        
+        vertx.deployVerticle(new MsgPublisherVerticle(), res -&gt; {
+            if (res.succeeded()) {
+                LOGGER.log(Level.INFO, "Deployed publisher instance ID: " + res.result());
+            } else {
+                res.cause().printStackTrace();
+            }
+        });
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Let us explain and understand the code from <span class="bold">Sample07</span> listed above.</p>
+      <p>The call to the method <span class="hi-blue">publish()</span> on the instance of <span class="bold">EventBus</span> takes
+        two arguments - a destination address (which is a simple string) and the message object. The message object is serialized
+        and sent to the specified address. The message is delivered to <span class="underbold">*ALL*</span> the handlers that are
+        registered at the specified address.</p>
+      <p>An instance of type <span class="hi-yellow">io.vertx.core.CompositeFuture</span> allows one to wrap and coordinate the
+        completion of a list of <span class="bold">Future</span> instance(s).</p>
+      <p>The method <span class="hi-blue">join(Future&lt;T&gt;, Future&lt;T&gt;)</span> on the instance of <span class="bold">
+        CompositeFuture</span> succeeds when all the specified <span class="bold">Future</span> instance(s) complete successfully
+        .</p>
+    </div>
+    <div id="para-div">
+      <p>Executing the Java program <span class="bold">Sample07</span> listed above should generate an output similar to
+        the following:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>May 18, 2019 3:36:55 PM com.polarsparc.Vertx.Sample07 lambda$0
+INFO: Deployed consumer <C2> with instance ID: 98b2fee4-01ec-4698-8ddf-eb48155dbf18
+May 18, 2019 3:36:55 PM com.polarsparc.Vertx.Sample07 lambda$0
+INFO: Deployed consumer <C1> with instance ID: 47afe704-6b7b-4691-a060-c916cc4a1be1
+May 18, 2019 3:36:55 PM com.polarsparc.Vertx.Sample07 lambda$1
+INFO: Deployed consumer instances
+May 18, 2019 3:36:56 PM com.polarsparc.Vertx.Sample07$MsgPublisherVerticle start
+INFO: Messages published to address msg.address
+May 18, 2019 3:36:56 PM com.polarsparc.Vertx.Sample07 lambda$2
+INFO: Deployed publisher instance ID: 0d6aebf9-6585-4aaf-9fa0-1f7b1fada241
+May 18, 2019 3:36:56 PM com.polarsparc.Vertx.Sample07$MsgConsumerVerticle lambda$0
+INFO: [C2] - Received message - [1] Bojour from Vert.x
+May 18, 2019 3:36:56 PM com.polarsparc.Vertx.Sample07$MsgConsumerVerticle lambda$0
+INFO: [C1] - Received message - [1] Bojour from Vert.x
+May 18, 2019 3:36:56 PM com.polarsparc.Vertx.Sample07$MsgConsumerVerticle lambda$0
+INFO: [C2] - Received message - [2] Bojour from Vert.x
+May 18, 2019 3:36:56 PM com.polarsparc.Vertx.Sample07$MsgConsumerVerticle lambda$0
+INFO: [C1] - Received message - [2] Bojour from Vert.x
+May 18, 2019 3:36:56 PM com.polarsparc.Vertx.Sample07$MsgConsumerVerticle lambda$0
+INFO: [C2] - Received message - [3] Bojour from Vert.x
+May 18, 2019 3:36:56 PM com.polarsparc.Vertx.Sample07$MsgConsumerVerticle lambda$0
+INFO: [C1] - Received message - [3] Bojour from Vert.x</pre>
+    </div>
+    <div id="para-div">
+      <p>More to be covered in the next part of this series ... &#128526;</p>
+    </div>
+    <div id="step-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">[1] </span><a href="http://polarsparc.github.io/Java/Vertx-1.html" target="_blank"><span class="bold">Introduction to Vert.x - Part-1</span></a></p>
+      <p><span class="bold">[2] </span><a href="http://polarsparc.github.io/Java/Vertx-2.html" target="_blank"><span class="bold">Introduction to Vert.x - Part-2</span></a></p>
+      <p><span class="bold">[3] </span><a href="https://vertx.io/docs/vertx-core/java/" target="_blank"><span class="bold">Vert.x Core Manual (Java)</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,1132 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+      <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+      <meta name="author" content="Bhaskar.S">
+      <meta name="description" content="Introduction to Vert.x - Part 5">
+      <meta name="subject" content="Introduction to Vert.x - Part 5">
+      <meta name="keywords" content="java, reactive, vert.x">
+      <meta name="robots" content="index,follow">
+      <meta name="googlebot" content="index,follow">
+      <title>Introduction to Vert.x - Part 5</title>
+      <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Introduction to Vert.x - Part 5</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">06/07/2019</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="step-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="http://polarsparc.github.io/Java/Vertx-4.html" target="_blank"><span class="bold">Part-4</span></a> of this
+        series, we explored the distributed cluster mode of the <span class="bold">EventBus</span> using <span class="bold">
+        Hazelcast</span>, which allowed <span class="bold">Verticle</span>(s) running on different JVMs to communicate with each
+        other. With that, we have covered all the foundational concepts in <span class="bold">Vert.x</span>.</p>
+      <p>In this part, we will use what we learnt thus far to develop and test a REST based microservice. We could have used the
+        <span class="bold">HttpServer</span> class from <span class="bold">vertx-core</span>. Instead, we will be using
+        <span class="hi-yellow">vertx-web</span> to build the REST based microservice, since it is much more easier and simpler
+        to implement microservices.</p>
+    </div>
+    <div id="step-div">
+      <p>Hands-on with Vert.x - 5</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="bold">Vert.x</span> Web extension (<span class="bold">vertx-web</span>) uses a router object to dispatch
+        HTTP requests to the appropriate handlers. Request routing could be based on the HTTP method or the URI path. In addition,
+        there are many helper methods that allow for easy manipulation of HTTP headers/cookies, getting access to HTTP request
+        parameters, etc.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the modified listing of the <span class="bold">Maven</span> project file <span class="bold">pom.xml
+        </span> that includes the additional libraries <span class="bold">vertx-web</span> and <span class="bold">lombok</span>
+        as dependencies:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>pom.xml</legend>
+      <pre>&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+  &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+  
+  &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+  &lt;artifactId&gt;Vertx&lt;/artifactId&gt;
+  &lt;version&gt;1.0&lt;/version&gt;
+  &lt;packaging&gt;jar&lt;/packaging&gt;
+  &lt;name&gt;Vertx&lt;/name&gt;
+
+  &lt;build&gt;
+    &lt;pluginManagement&gt;
+      &lt;plugins&gt;
+        &lt;plugin&gt;
+          &lt;artifactId&gt;maven-compiler-plugin&lt;/artifactId&gt;
+          &lt;version&gt;3.3&lt;/version&gt;
+          &lt;configuration&gt;
+            &lt;fork&gt;true&lt;/fork&gt;
+            &lt;meminitial&gt;128m&lt;/meminitial&gt;
+            &lt;maxmem&gt;512m&lt;/maxmem&gt;
+            &lt;source&gt;1.8&lt;/source&gt;
+            &lt;target&gt;1.8&lt;/target&gt;
+          &lt;/configuration&gt;
+        &lt;/plugin&gt;
+      &lt;/plugins&gt;
+    &lt;/pluginManagement&gt;
+  &lt;/build&gt;
+
+  &lt;dependencies&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;io.vertx&lt;/groupId&gt;
+        &lt;artifactId&gt;vertx-core&lt;/artifactId&gt;
+        &lt;version&gt;3.7.0&lt;/version&gt;
+    &lt;/dependency&gt;  
+    &lt;dependency&gt;
+        &lt;groupId&gt;io.vertx&lt;/groupId&gt;
+        &lt;artifactId&gt;vertx-config&lt;/artifactId&gt;
+        &lt;version&gt;3.7.0&lt;/version&gt;
+    &lt;/dependency&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;io.vertx&lt;/groupId&gt;
+        &lt;artifactId&gt;vertx-hazelcast&lt;/artifactId&gt;
+        &lt;version&gt;3.7.0&lt;/version&gt;
+    &lt;/dependency&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;io.vertx&lt;/groupId&gt;
+        &lt;artifactId&gt;vertx-web&lt;/artifactId&gt;
+        &lt;version&gt;3.7.0&lt;/version&gt;
+    &lt;/dependency&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;com.h2database&lt;/groupId&gt;
+        &lt;artifactId&gt;h2&lt;/artifactId&gt;
+        &lt;version&gt;1.4.199&lt;/version&gt;
+    &lt;/dependency&gt;    
+    &lt;dependency&gt;
+        &lt;groupId&gt;org.projectlombok&lt;/groupId&gt;
+        &lt;artifactId&gt;lombok&lt;/artifactId&gt;
+        &lt;version&gt;1.18.2&lt;/version&gt;
+        &lt;scope&gt;provided&lt;/scope&gt;
+    &lt;/dependency&gt;
+    &lt;dependency&gt;
+      &lt;groupId&gt;junit&lt;/groupId&gt;
+      &lt;artifactId&gt;junit&lt;/artifactId&gt;
+      &lt;version&gt;3.8.1&lt;/version&gt;
+      &lt;scope&gt;test&lt;/scope&gt;
+    &lt;/dependency&gt;
+  &lt;/dependencies&gt;
+&lt;/project&gt;</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>In this part, we will develop a very simple REST based <span class="hi-yellow">Contact</span>s Management microservice
+        that exposes the following capabilities:</p>
+      <ul id="blue-disc-ul">
+        <li><span class="bold">Add a new contact</span></li>
+        <li><span class="bold">Delete a contact by last name</span></li>
+        <li><span class="bold">Fetch a contact by last name</span></li>
+        <li><span class="bold">Fetch all the contacts</span></li>
+        <li><span class="bold">Update a contact by last name</span></li>
+      </ul>
+      <p>Each <span class="bold">Contact</span> entity captures the first name, last name, email id, and mobile number of a
+        person.</p>
+      <p>Our microservice will be very <span class="underbold">*SIMPLE*</span> and will not handle multiple contacts with the
+        same last name.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Contact</span> entity:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Contact</legend>
+      <pre>/*
+ * Topic:  Introduction to Vert.x
+ * 
+ * Name:   Contact
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.Vertx;
+
+import java.io.Serializable;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
+
+@AllArgsConstructor
+@Getter
+@Setter
+public class Contact implements Serializable {
+    private static final long serialVersionUID = 1L;
+    
+    private String firstName;
+    private String lastName;
+    private String emailId;
+    private String mobile;
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Notice that we are using <span class="bold">lombok</span> to generate the all-parameter constructor, getters, and
+        setters.</p>
+    </div>
+    <div id="para-div">
+      <p>For this use-case, we will keep things simple and persist the contact information in the JVM memory rather than in
+        a database.</p>
+      <p>We started off in <a href="http://polarsparc.github.io/Java/Vertx-1.html" target="_blank"><span class="bold">Part-1
+        </span></a> by indicating that the current trend is to build loosely-coupled microservices. This implies we should
+        decouple the REST persistence layer from the REST service layer. To do that, we will leverage the messaging layer
+        <span class="bold">EventBus</span> to communicate between the persistence layer and the service layer using
+        well-defined <span class="underbold">COMMAND</span>s.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Commands</span> entity that defines all the commands and
+        fields that will be exchanged via messages (in JSON format) between the persistence layer and the service layer:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Commands</legend>
+      <pre>/*
+ * Topic:  Introduction to Vert.x
+ * 
+ * Name:   Commands
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.Vertx;
+
+public interface Commands {
+  public static String FLD_COMMAND = "command";
+  public static String FLD_PAYLOAD = "payload";
+  public static String FLD_ERRCODE = "errcode";
+  
+  public static String FLD_EMAIL   = "email";
+  public static String FLD_MOBILE  = "mobile";
+  public static String FLD_FNAME   = "fname";
+  public static String FLD_LNAME   = "lname";
+  
+  public static String ADD_NEW = "addNew";
+  public static String DEL_BY_LASTNAME = "deleteByLastName";
+  public static String GET_ALL = "getAllContacts";
+  public static String GET_BY_LASTNAME = "getByLastName";
+  public static String UPD_BY_LASTNAME = "updateByLastName";
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The following is the listing for the contacts management persistence layer <span class="hi-green">Sample10.java</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Sample10.java</legend>
+      <pre>/*
+ * Topic:  Introduction to Vert.x
+ * 
+ * Name:   Sample 10
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.Vertx;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.spi.cluster.ClusterManager;
+import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
+
+public class Sample10 {
+    private static Logger LOGGER = Logger.getLogger(Sample10.class.getName());
+    
+    private static String ADDRESS = "contact.commands";
+    
+    private static Map<String, Contact> CONTACTS = new HashMap&lt;&gt;();
+    
+    // Consumer verticle that responds to "commands"
+    private static class CommandConsumerVerticle extends AbstractVerticle {
+        @Override
+        public void start() {
+            vertx.eventBus().consumer(ADDRESS, message -> {
+                String payload = message.body().toString();
+                        
+                LOGGER.log(Level.INFO, "Received payload - " + payload);
+                 
+                JsonObject req = new JsonObject(payload);
+                
+                String cmd = req.getString(Commands.FLD_COMMAND);
+                
+                switch (cmd) {
+                    case Commands.ADD_NEW: {
+                        JsonObject data = new JsonObject(req.getString(Commands.FLD_PAYLOAD));
+                        
+                        String fname = data.getString(Commands.FLD_FNAME);
+                        String lname = data.getString(Commands.FLD_LNAME);
+                        String email = data.getString(Commands.FLD_EMAIL);
+                        String mobile = data.getString(Commands.FLD_MOBILE);
+                        
+                        LOGGER.log(Level.INFO, Commands.ADD_NEW + ":: Contact first name - " + fname
+                            + ", last name: " + lname + ", email: " + email + ", mobile: " + mobile);
+                        
+                        message.reply(addContact(fname, lname, email, mobile));
+                        
+                        break;
+                    }
+                    case Commands.DEL_BY_LASTNAME: {
+                        JsonObject data = new JsonObject(req.getString(Commands.FLD_PAYLOAD));
+                        
+                        String name = data.getString(Commands.FLD_LNAME);
+                        
+                        LOGGER.log(Level.INFO, Commands.DEL_BY_LASTNAME + ":: Contact last name - " + name);
+                        
+                        message.reply(deleteContactByLastName(name));
+                        
+                        break;
+                    }
+                    case Commands.GET_ALL: {
+                        message.reply(getAllContacts());
+                        
+                        break;
+                    }
+                    case Commands.GET_BY_LASTNAME: {
+                        JsonObject data = new JsonObject(req.getString(Commands.FLD_PAYLOAD));
+                        
+                        String name = data.getString(Commands.FLD_LNAME);
+                        
+                        LOGGER.log(Level.INFO, Commands.GET_BY_LASTNAME + ":: Contact last name - " + name);
+                        
+                        message.reply(getContactByLastName(name));
+                        
+                        break;
+                    }
+                    case Commands.UPD_BY_LASTNAME: {
+                        JsonObject data = new JsonObject(req.getString(Commands.FLD_PAYLOAD));
+                        
+                        String email = data.getString(Commands.FLD_EMAIL);
+                        String mobile = data.getString(Commands.FLD_MOBILE);
+                        String name = data.getString(Commands.FLD_LNAME);
+                        
+                        LOGGER.log(Level.INFO, Commands.UPD_BY_LASTNAME + ":: Contact last name - " + name + ", email: "
+                            + email + ", mobile: " + mobile);
+                        
+                        message.reply(updateContactByLastName(name, email, mobile));
+                        
+                        break;
+                    }
+                }
+            });
+        }
+    }
+    
+    // Initialize pre-canned contacts
+    private static void initFakeContacts() {
+        Contact c1 = new Contact("Alice", "Earthling", "alice@earth.io", "123-456-1100");
+        Contact c2 = new Contact("Bob", "Martian", "bob@mars.co", "789-123-1080");
+        Contact c3 = new Contact("Charlie", "Drummer", "charlie@musician.org", "666-777-9006");
+        Contact c4 = new Contact("Dummy", "Cracker", "dummy@cracker.org", "000-000-0000");
+        
+        CONTACTS.put(c1.getLastName().toLowerCase(), c1);
+        CONTACTS.put(c2.getLastName().toLowerCase(), c2);
+        CONTACTS.put(c3.getLastName().toLowerCase(), c3);
+        CONTACTS.put(c4.getLastName().toLowerCase(), c4);
+    }
+    
+    // Add a new contact
+    private static String addContact(String fname, String lname, String email, String mobile) {
+        JsonObject json = new JsonObject();
+        
+        // Valid contact:
+        // 1. First name and last name are required
+        // 2. Email and/or mobile required (either or both)
+        if ((fname != null && fname.trim().length() > 0) &&
+            (lname != null && lname.trim().length() > 0)) {
+            json.put(Commands.FLD_ERRCODE, 1);
+            
+            Contact con = new Contact(fname, lname, "", "");
+            if (email != null && email.trim().length() > 0) {
+                json.put(Commands.FLD_ERRCODE, 0);
+                con.setEmailId(email);
+                CONTACTS.put(con.getLastName().toLowerCase(), con);
+            }
+            if (mobile != null && mobile.trim().length() > 0) {
+                json.put(Commands.FLD_ERRCODE, 0);
+                con.setMobile(mobile);
+                CONTACTS.put(con.getLastName().toLowerCase(), con);
+            }
+            
+            json.put(Commands.FLD_PAYLOAD, JsonObject.mapFrom(con).encode());
+        }
+        else {
+            json.put(Commands.FLD_ERRCODE, 1);
+        }
+        
+        String response = json.encode();
+        
+        LOGGER.log(Level.INFO, "addContact() - " + response);
+        
+        return response;
+    }
+    
+    // Delete a contact by last name
+    private static String deleteContactByLastName(String name) {
+        JsonObject json = new JsonObject();
+        
+        Contact con = CONTACTS.remove(name.toLowerCase());
+        if (con != null) {
+            json.put(Commands.FLD_ERRCODE, 0);
+            json.put(Commands.FLD_PAYLOAD, JsonObject.mapFrom(con).encode());
+        }
+        else {
+            json.put(Commands.FLD_ERRCODE, 1);
+        }
+        
+        String response = json.encode();
+        
+        LOGGER.log(Level.INFO, "deleteContactByLastName() - " + response);
+        
+        return response;
+    }
+    
+    // Fetch all contacts
+    private static String getAllContacts() {
+        JsonArray array = new JsonArray(CONTACTS.values().stream().collect(Collectors.toList()));
+        
+        JsonObject json = new JsonObject();
+        json.put(Commands.FLD_ERRCODE, 0);
+        json.put(Commands.FLD_PAYLOAD, array.encode());
+        
+        String response = json.encode();
+        
+        LOGGER.log(Level.INFO, "getAllContacts() - " + response);
+        
+        return response;
+    }
+    
+    // Fetch a contact by last name
+    private static String getContactByLastName(String name) {
+        JsonObject json = new JsonObject();
+        
+        Contact con = CONTACTS.get(name.toLowerCase());
+        if (con != null) {
+            json.put(Commands.FLD_ERRCODE, 0);
+            json.put(Commands.FLD_PAYLOAD, JsonObject.mapFrom(con).encode());
+        }
+        else {
+            json.put(Commands.FLD_ERRCODE, 1);
+        }
+        
+        String response = json.encode();
+        
+        LOGGER.log(Level.INFO, "getContactByLastName() - " + response);
+        
+        return response;
+    }
+    
+    // Update a contact by last name
+    private static String updateContactByLastName(String name, String email, String mobile) {
+        JsonObject json = new JsonObject();
+        
+        Contact con = CONTACTS.get(name.toLowerCase());
+        if (con != null) {
+            json.put(Commands.FLD_ERRCODE, 1);
+            if (email != null && email.trim().length() > 0) {
+                json.put(Commands.FLD_ERRCODE, 0);
+                con.setEmailId(email);
+            }
+            if (mobile != null && mobile.trim().length() > 0) {
+                json.put(Commands.FLD_ERRCODE, 0);
+                con.setMobile(mobile);
+            }
+            json.put(Commands.FLD_PAYLOAD, JsonObject.mapFrom(con).encode());
+        }
+        else {
+            json.put(Commands.FLD_ERRCODE, 1);
+        }
+        
+        String response = json.encode();
+        
+        LOGGER.log(Level.INFO, "updateContactByLastName() - " + response);
+        
+        return response;
+    }
+    
+    // ----- Main -----
+    
+    public static void main(String[] args) {
+        initFakeContacts();
+        
+        ClusterManager manager = new HazelcastClusterManager();
+        
+        VertxOptions options = new VertxOptions().setClusterManager(manager);
+        
+        Vertx.clusteredVertx(options, cluster -> {
+            if (cluster.succeeded()) {
+                cluster.result().deployVerticle(new CommandConsumerVerticle(), res -> {
+                    if (res.succeeded()) {
+                        LOGGER.log(Level.INFO, "Deployed command consumer instance ID: " + res.result());
+                    } else {
+                        res.cause().printStackTrace();
+                    }
+               });
+            } else {
+                cluster.cause().printStackTrace();
+            }
+        });
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Let us explain and understand the code from <span class="bold">Sample10</span> listed above.</p>
+      <p>The class <span class="bold">Sample10</span> represents the persistence layer. It creates 4 sample contacts and stores
+        it in a Java <span class="bold">java.util.HashMap</span> indexed by the last-name (see the method
+        <span class="hi-blue">initFakeContacts()</span>).</p>
+      <p>The verticle <span class="hi-yellow">com.polarsparc.Vertx.Sample10.CommandConsumerVerticle</span> is the consumer of the
+        command messages from the <span class="bold">EventBus</span>. The incoming command messages are in the form:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;<span class="bold">{"command":"&lt;COMMAND_NAME&gt;" [,"payload":"{&lt;NAME_VALUE_PAIRS&gt;}"]}
+        </span></p>
+      <p>Once the command is processed, a reply goes back to the sender (the service layer) in the form:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;<span class="bold">{"errorcode":"&lt;0|1&gt;" [,"payload":"{&lt;NAME_VALUE_PAIRS&gt;}"]}</span></p>
+      <p>The class <span class="hi-yellow">io.vertx.core.json.JsonObject</span> is the representation of a JSON string as a Java
+      object. One can initialize an object instance from a JSON string.</p>
+      <p>The method <span class="hi-blue">getString(ELEMENT)</span> on an instance of <span class="bold">JsonObject</span> allows
+      one to access the value of a JSON ELEMENT.</p>
+      <p>The method <span class="hi-blue">put(ELEMENT, VALUE)</span> on an instance of <span class="bold">JsonObject</span> allows
+      one to add a JSON ELEMENT with VALUE.</p>
+      <p>The static method <span class="hi-blue">mapFrom(OBJECT)</span> on the class <span class="bold">JsonObject</span> allows
+        one to convert an OBJECT to an instance of type <span class="bold">JsonObject</span>.</p>
+      <p>The method <span class="hi-blue">encode()</span> on an instance of <span class="bold">JsonObject</span> converts to a
+        JSON string.</p>
+      <p>The class <span class="hi-yellow">io.vertx.core.json.JsonArray</span> is the representation of a JSON array as a Java
+        object. One can initialize an object instance from a <span class="bold">java.util.List</span> of Java objects.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the listing for the contacts management service layer <span class="hi-green">Sample11.java</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Sample11.java</legend>
+      <pre>/*
+ * Topic:  Introduction to Vert.x
+ * 
+ * Name:   Sample 11
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.Vertx;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import io.vertx.config.ConfigRetriever;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.http.HttpServerResponse;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.spi.cluster.ClusterManager;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
+
+public class Sample11 {
+    private static Logger LOGGER = Logger.getLogger(Sample11.class.getName());
+    
+    private static String ADDRESS = "contact.commands";
+    
+    private static Vertx VERTX = null;
+    
+    private static class ContactsServiceVerticle extends AbstractVerticle {
+        @Override
+        public void start(Future<Void> fut) {
+            ConfigRetriever retriever = ConfigRetriever.create(vertx);
+            
+            ConfigRetriever.getConfigAsFuture(retriever).compose(config -> {
+                int port = config.getInteger("http.port");
+                
+                LOGGER.log(Level.INFO, "Configured server port: " + port);
+                
+                Router router = Router.router(vertx);
+                
+                router.route().handler(BodyHandler.create().setHandleFileUploads(false));
+                router.delete("/api/contacts/v1/deleteByLastName/:lastName").handler(Sample11::deleteContactByLastName);
+                router.get("/api/contacts/v1/getAll").handler(Sample11::getAll);
+                router.get("/api/contacts/v1/getByLastName/:lastName").handler(Sample11::getContactByLastName);
+                router.post("/api/contacts/v1/addContact").handler(Sample11::addContact);
+                router.put("/api/contacts/v1/updateByLastName/:lastName").handler(Sample11::updateContactByLastName);
+                
+                Future<Void> next = Future.future();
+                
+                vertx.createHttpServer().requestHandler(router).listen(port, res -> {
+                     if (res.succeeded()) {
+                         LOGGER.log(Level.INFO, "Started contacts service on localhost:" + port + "...");
+                         
+                         next.complete();
+                     } else {
+                         next.fail(res.cause());
+                     }
+                 });
+                
+                return next;
+            })
+            .setHandler(res -> {
+                 if (res.succeeded()) {
+                     fut.complete();
+                 } else {
+                     fut.fail(res.cause());
+                 }
+            });
+        }
+    }
+    
+    // Common request-response handler
+    private static void requestResponseHandler(JsonObject json, HttpServerResponse response) {
+        VERTX.eventBus().send(ADDRESS, json.encode(), reply -> {
+            if (reply.succeeded()) {
+                LOGGER.log(Level.INFO, json.getString(Commands.FLD_COMMAND) + ":: Reply from " + ADDRESS + " => "
+                    + reply.result().body());
+                
+                JsonObject payload = new JsonObject(reply.result().body().toString());
+                
+                response.putHeader("content-type", "application/json").end(payload.encode());
+            } else {
+                reply.cause().printStackTrace();
+                
+                response.setStatusCode(400).end();
+            }
+        });
+    }
+    
+    // Add new contact
+    private static void addContact(RoutingContext context) {
+        JsonObject data = context.getBodyAsJson();
+        
+        LOGGER.log(Level.INFO, Commands.ADD_NEW + ":: payload to send: " + data.encode());
+        
+        JsonObject json = new JsonObject();
+        json.put(Commands.FLD_COMMAND, Commands.ADD_NEW);
+        json.put(Commands.FLD_PAYLOAD, data.encode());
+        
+        requestResponseHandler(json, context.response());
+    }
+    
+    // Delete contact by last name
+    private static void deleteContactByLastName(RoutingContext context) {
+        HttpServerResponse response = context.response();
+        
+        String lname = context.request().getParam("lastName");
+        if (lname == null || lname.trim().isEmpty()) {
+            response.setStatusCode(400).end();
+        }
+        
+        LOGGER.log(Level.INFO, Commands.DEL_BY_LASTNAME + ":: Last name: " + lname);
+        
+        JsonObject data = new JsonObject();
+        data.put(Commands.FLD_LNAME, lname);
+        
+        JsonObject json = new JsonObject();
+        json.put(Commands.FLD_COMMAND, Commands.DEL_BY_LASTNAME);
+        json.put(Commands.FLD_PAYLOAD, data.encode());
+        
+        requestResponseHandler(json, response);
+    }
+    
+    // Get all contacts
+    private static void getAll(RoutingContext context) {
+        JsonObject json = new JsonObject();
+        json.put(Commands.FLD_COMMAND, Commands.GET_ALL);
+        
+        requestResponseHandler(json, context.response());
+    }
+    
+    // Get contact by last name
+    private static void getContactByLastName(RoutingContext context) {
+        HttpServerResponse response = context.response();
+        
+        String lname = context.request().getParam("lastName");
+        if (lname == null || lname.trim().isEmpty()) {
+            response.setStatusCode(400).end();
+        }
+        
+        LOGGER.log(Level.INFO, Commands.GET_BY_LASTNAME + ":: Last name: " + lname);
+        
+        JsonObject data = new JsonObject();
+        data.put(Commands.FLD_LNAME, lname);
+        
+        JsonObject json = new JsonObject();
+        json.put(Commands.FLD_COMMAND, Commands.GET_BY_LASTNAME);
+        json.put(Commands.FLD_PAYLOAD, data.encode());
+        
+        requestResponseHandler(json, response);
+    }
+    
+    // Update contact by last name
+    private static void updateContactByLastName(RoutingContext context) {
+        HttpServerResponse response = context.response();
+        
+        String lname = context.request().getParam("lastName");
+        if (lname == null || lname.trim().isEmpty()) {
+            response.setStatusCode(400).end();
+        }
+        
+        LOGGER.log(Level.INFO, Commands.UPD_BY_LASTNAME + ":: Last name: " + lname);
+        
+        JsonObject data = context.getBodyAsJson();
+        data.put(Commands.FLD_LNAME, lname);
+        
+        LOGGER.log(Level.INFO, Commands.UPD_BY_LASTNAME + ":: payload to send: " + data.encode());
+        
+        JsonObject json = new JsonObject();
+        json.put(Commands.FLD_COMMAND, Commands.UPD_BY_LASTNAME);
+        json.put(Commands.FLD_PAYLOAD, data.encode());
+        
+        requestResponseHandler(json, response);
+    }
+
+    public static void main(String[] args) {
+        ClusterManager manager = new HazelcastClusterManager();
+        
+        VertxOptions options = new VertxOptions().setClusterManager(manager);
+        
+        Vertx.clusteredVertx(options, cluster -> {
+            if (cluster.succeeded()) {
+                VERTX = cluster.result();
+                VERTX.deployVerticle(new ContactsServiceVerticle(), res -> {
+                    if (res.succeeded()) {
+                        LOGGER.log(Level.INFO, "Deployed contacts service instance ID: " + res.result());
+                    } else {
+                        res.cause().printStackTrace();
+                    }
+               });
+            } else {
+                cluster.cause().printStackTrace();
+            }
+        });
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Let us explain and understand the code from <span class="bold">Sample11</span> listed above.</p>
+      <p>The class <span class="bold">Sample11</span> represents the service layer, which communicates with the persistence layer
+        (<span class="bold">Sample10</span>) via message passing through the <span class="bold">EventBus</span>.</p>
+      <p>The class <span class="hi-yellow">io.vertx.ext.web.Router</span> manages one or more routes (that are based on a HTTP
+        method or a request URI path). It takes the request from the <span class="bold">HttpServer</span> and dispatches it to the
+        appropriate handler for that route.</p>
+      <p>The static method <span class="hi-blue">router(Vertx)</span> on the class <span class="bold">Router</span> creates an
+        instance of type <span class="bold">Router</span> for a given instance of <span class="bold">Vertx</span>.</p>
+      <p>The class <span class="hi-yellow">io.vertx.ext.web.RoutingContext</span> encapsulates the context for handling a web
+        request from the <span class="bold">HttpServer</span>. It provides access to the various pieces of data pertaining to the
+        HTTP request, such as the headers, parameters, cookies, the body, etc.</p>
+      <p>The class <span class="hi-yellow">io.vertx.ext.web.handler.BodyHandler</span> is the handler that fetches the request
+        body from the <span class="bold">HttpServer</span> and sets it on the instance of <span class="bold">RoutingContext</span>
+        .</p>
+      <p>The static method <span class="hi-blue">create()</span> on the class <span class="bold">BodyHandler</span> creates an
+        instance of type <span class="bold">BodyHandler</span> with default settings. By default, file uploads is enabled for
+        this handler. The method <span class="hi-blue">setHandleFileUploads(false)</span> disables file uploads.</p>
+      <p>The call <span class="hi-blue">router.route().handler(BodyHandler.create().setHandleFileUploads(false))</span> sets the
+        default body handler to fetch the request body for all the routes.</p>
+      <p>Every request handler method must be of the form <span class="hi-yellow">void method(RoutingContext)</span> with one
+        method argument of type <span class="bold">RoutingContext</span>.</p>
+      <p>The call <span class="hi-blue">router.delete(PATH/:PARAM").handler(T)</span> registers a request handler of type T for
+        the HTTP method DELETE on the PATH with the :PARAM as the user specified parameter. For example, for the route
+        /api/v1/contacts/getByLastName/c3p0, PATH = /api/v1/contacts/getByLastName/ and PARAM = c3p0. The value for the
+        parameter :PARAM can be accessed through the <span class="bold">RoutingContext</span>. For our REST based microservice,
+        the DELETE method is used to delete an existing contact.</p>
+      <p>The call <span class="hi-blue">router.get(PATH/:PARAM").handler(T)</span> registers a request handler of type T for
+        the HTTP method GET on the PATH with the :PARAM as the user specified parameter. For our REST based microservice, the
+        GET method is used to fetch an existing contact.</p>
+      <p>The call <span class="hi-blue">router.post(PATH/").handler(T)</span> registers a request handler of type T for the
+        HTTP method POST on the PATH. For our REST based microservice, the POST method is used to create a new contact.</p>
+      <p>The call <span class="hi-blue">router.put(PATH/:PARAM").handler(T)</span> registers a request handler of type T for
+        the HTTP method PUT on the PATH with the :PARAM as the user specified parameter. For our REST based microservice, the
+        PUT method is used to update an existing contact.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the pictorial illustration for one of the services <span class="bold">getByLastName</span> (happy
+        path):</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/vertx-4.png" alt="Get By LastName Good" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <div id="para-div">
+      <p>The following is the pictorial illustration for the same service <span class="bold">getByLastName</span> (exception
+        path):</p>
+    </div>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/vertx-5.png" alt="Get By LastName Bad" />
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <div id="para-div">
+      <p>Since we have added support for REST based services, we need to tweak the shell script called <span class="bold">
+        run.sh</span> as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>#!/bin/sh</p>
+      <p>JARS=""</p>
+      <p>for f in `ls ./lib/jackson*`</p>
+      <p>do</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;JARS=$JARS:$f</p>
+      <p>done</p>
+      <p>for f in `ls ./lib/netty*`</p>
+      <p>do</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;JARS=$JARS:$f</p>
+      <p>done</p>
+      <p>JARS=$JARS:./lib/vertx-core-3.7.0.jar:./lib/vertx-config-3.7.0.jar:./lib/hazelcast-3.10.5.jar:./lib/vertx-hazelcast-3.7.0.jar:./lib/vertx-web-3.7.0.jar</p>
+      <p>echo $JARS</p>
+      <p>java -Dvertx.hazelcast.config=./resources/my-cluster.xml -cp ./classes:./resources:$JARS com.polarsparc.Vertx.$1 $2</p>
+    </div>
+    <div id="para-div">
+      <p>To start the contacts management persistence layer, open a new <span class="bold">Terminal</span> window and execute
+        the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>./bin/run.sh Sample10</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>:./lib/jackson-annotations-2.9.0.jar:./lib/jackson-core-2.9.8.jar:./lib/jackson-databind-2.9.8.jar:./lib/netty-buffer-4.1.30.Final.jar:./lib/netty-codec-4.1.30.Final.jar:./lib/netty-codec-dns-4.1.30.Final.jar:./lib/netty-codec-http2-4.1.30.Final.jar:./lib/netty-codec-http-4.1.30.Final.jar:./lib/netty-codec-socks-4.1.30.Final.jar:./lib/netty-common-4.1.30.Final.jar:./lib/netty-handler-4.1.30.Final.jar:./lib/netty-handler-proxy-4.1.30.Final.jar:./lib/netty-resolver-4.1.30.Final.jar:./lib/netty-resolver-dns-4.1.30.Final.jar:./lib/netty-transport-4.1.30.Final.jar:./lib/vertx-core-3.7.0.jar:./lib/vertx-config-3.7.0.jar:./lib/hazelcast-3.10.5.jar:./lib/vertx-hazelcast-3.7.0.jar:./lib/vertx-web-3.7.0.jar
+Jun 07, 2019 8:59:07 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [polarsparc] [3.10.5] Interfaces is enabled, trying to pick one address matching to one of: [127.0.0.1]
+Jun 07, 2019 8:59:08 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [polarsparc] [3.10.5] Picked [127.0.0.1]:5701, using socket ServerSocket[addr=/0:0:0:0:0:0:0:0,localport=5701], bind any local is true
+Jun 07, 2019 8:59:08 PM com.hazelcast.system
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Hazelcast 3.10.5 (20180913 - 6ffa2ee) starting at [127.0.0.1]:5701
+Jun 07, 2019 8:59:08 PM com.hazelcast.system
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+Jun 07, 2019 8:59:08 PM com.hazelcast.system
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Configured Hazelcast Serialization version: 1
+Jun 07, 2019 8:59:08 PM com.hazelcast.instance.Node
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] A non-empty group password is configured for the Hazelcast member. Starting with Hazelcast version 3.8.2, members with the same group name, but with different group passwords (that do not use authentication) form a cluster. The group password configuration will be removed completely in a future release.
+Jun 07, 2019 8:59:08 PM com.hazelcast.spi.impl.operationservice.impl.BackpressureRegulator
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Backpressure is disabled
+Jun 07, 2019 8:59:08 PM com.hazelcast.spi.impl.operationservice.impl.InboundResponseHandlerSupplier
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Running with 2 response threads
+Jun 07, 2019 8:59:08 PM com.hazelcast.instance.Node
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Creating TcpIpJoiner
+Jun 07, 2019 8:59:08 PM com.hazelcast.spi.impl.operationexecutor.impl.OperationExecutorImpl
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Starting 16 partition threads and 9 generic threads (1 dedicated for priority tasks)
+Jun 07, 2019 8:59:08 PM com.hazelcast.internal.diagnostics.Diagnostics
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Diagnostics disabled. To enable add -Dhazelcast.diagnostics.enabled=true to the JVM arguments.
+Jun 07, 2019 8:59:08 PM com.hazelcast.core.LifecycleService
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] [127.0.0.1]:5701 is STARTING
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by com.hazelcast.internal.networking.nio.SelectorOptimizer (file:/home/bswamina/Downloads/TTT/lib/hazelcast-3.10.5.jar) to field sun.nio.ch.SelectorImpl.selectedKeys
+WARNING: Please consider reporting this to the maintainers of com.hazelcast.internal.networking.nio.SelectorOptimizer
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+Jun 07, 2019 8:59:08 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Connecting to /127.0.0.1:5703, timeout: 0, bind-any: true
+Jun 07, 2019 8:59:08 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Connecting to /127.0.0.1:5702, timeout: 0, bind-any: true
+Jun 07, 2019 8:59:08 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Could not connect to: /127.0.0.1:5702. Reason: SocketException[Connection refused to address /127.0.0.1:5702]
+Jun 07, 2019 8:59:08 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Could not connect to: /127.0.0.1:5703. Reason: SocketException[Connection refused to address /127.0.0.1:5703]
+Jun 07, 2019 8:59:08 PM com.hazelcast.cluster.impl.TcpIpJoiner
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] [127.0.0.1]:5702 is added to the blacklist.
+Jun 07, 2019 8:59:08 PM com.hazelcast.cluster.impl.TcpIpJoiner
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] [127.0.0.1]:5703 is added to the blacklist.
+Jun 07, 2019 8:59:09 PM com.hazelcast.system
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Cluster version set to 3.10
+Jun 07, 2019 8:59:09 PM com.hazelcast.internal.cluster.ClusterService
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] 
+
+Members {size:1, ver:1} [
+  Member [127.0.0.1]:5701 - 2e2a1777-ddc3-4489-80cd-1b35c3789bf8 this
+]
+
+Jun 07, 2019 8:59:09 PM com.hazelcast.core.LifecycleService
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] [127.0.0.1]:5701 is STARTED
+Jun 07, 2019 8:59:10 PM com.hazelcast.internal.partition.impl.PartitionStateManager
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Initializing cluster partition table arrangement...
+Jun 07, 2019 8:59:10 PM com.polarsparc.Vertx.Sample10 lambda$1
+INFO: Deployed command consumer instance ID: 578f4d29-8863-4e5e-9744-833662a6baaf</pre>
+    </div>
+    <div id="para-div">
+      <p>To start the contacts management service layer, open a new <span class="bold">Terminal</span> window and execute the
+        following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>./bin/run.sh Sample11</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>:./lib/jackson-annotations-2.9.0.jar:./lib/jackson-core-2.9.8.jar:./lib/jackson-databind-2.9.8.jar:./lib/netty-buffer-4.1.30.Final.jar:./lib/netty-codec-4.1.30.Final.jar:./lib/netty-codec-dns-4.1.30.Final.jar:./lib/netty-codec-http2-4.1.30.Final.jar:./lib/netty-codec-http-4.1.30.Final.jar:./lib/netty-codec-socks-4.1.30.Final.jar:./lib/netty-common-4.1.30.Final.jar:./lib/netty-handler-4.1.30.Final.jar:./lib/netty-handler-proxy-4.1.30.Final.jar:./lib/netty-resolver-4.1.30.Final.jar:./lib/netty-resolver-dns-4.1.30.Final.jar:./lib/netty-transport-4.1.30.Final.jar:./lib/vertx-core-3.7.0.jar:./lib/vertx-config-3.7.0.jar:./lib/hazelcast-3.10.5.jar:./lib/vertx-hazelcast-3.7.0.jar:./lib/vertx-web-3.7.0.jar
+Jun 07, 2019 8:59:13 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [polarsparc] [3.10.5] Interfaces is enabled, trying to pick one address matching to one of: [127.0.0.1]
+Jun 07, 2019 8:59:13 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [polarsparc] [3.10.5] Picked [127.0.0.1]:5702, using socket ServerSocket[addr=/0:0:0:0:0:0:0:0,localport=5702], bind any local is true
+Jun 07, 2019 8:59:13 PM com.hazelcast.system
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Hazelcast 3.10.5 (20180913 - 6ffa2ee) starting at [127.0.0.1]:5702
+Jun 07, 2019 8:59:13 PM com.hazelcast.system
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+Jun 07, 2019 8:59:13 PM com.hazelcast.system
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Configured Hazelcast Serialization version: 1
+Jun 07, 2019 8:59:13 PM com.hazelcast.instance.Node
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] A non-empty group password is configured for the Hazelcast member. Starting with Hazelcast version 3.8.2, members with the same group name, but with different group passwords (that do not use authentication) form a cluster. The group password configuration will be removed completely in a future release.
+Jun 07, 2019 8:59:13 PM com.hazelcast.spi.impl.operationservice.impl.BackpressureRegulator
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Backpressure is disabled
+Jun 07, 2019 8:59:13 PM com.hazelcast.spi.impl.operationservice.impl.InboundResponseHandlerSupplier
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Running with 2 response threads
+Jun 07, 2019 8:59:13 PM com.hazelcast.instance.Node
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Creating TcpIpJoiner
+Jun 07, 2019 8:59:14 PM com.hazelcast.spi.impl.operationexecutor.impl.OperationExecutorImpl
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Starting 16 partition threads and 9 generic threads (1 dedicated for priority tasks)
+Jun 07, 2019 8:59:14 PM com.hazelcast.internal.diagnostics.Diagnostics
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Diagnostics disabled. To enable add -Dhazelcast.diagnostics.enabled=true to the JVM arguments.
+Jun 07, 2019 8:59:14 PM com.hazelcast.core.LifecycleService
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] [127.0.0.1]:5702 is STARTING
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by com.hazelcast.internal.networking.nio.SelectorOptimizer (file:/home/bswamina/Downloads/TTT/lib/hazelcast-3.10.5.jar) to field sun.nio.ch.SelectorImpl.selectedKeys
+WARNING: Please consider reporting this to the maintainers of com.hazelcast.internal.networking.nio.SelectorOptimizer
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+Jun 07, 2019 8:59:14 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Connecting to /127.0.0.1:5703, timeout: 0, bind-any: true
+Jun 07, 2019 8:59:14 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Could not connect to: /127.0.0.1:5703. Reason: SocketException[Connection refused to address /127.0.0.1:5703]
+Jun 07, 2019 8:59:14 PM com.hazelcast.cluster.impl.TcpIpJoiner
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] [127.0.0.1]:5703 is added to the blacklist.
+Jun 07, 2019 8:59:14 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Connecting to /127.0.0.1:5701, timeout: 0, bind-any: true
+Jun 07, 2019 8:59:14 PM com.hazelcast.nio.tcp.TcpIpConnectionManager
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Established socket connection between /127.0.0.1:35785 and /127.0.0.1:5701
+Jun 07, 2019 8:59:15 PM com.hazelcast.system
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Cluster version set to 3.10
+Jun 07, 2019 8:59:15 PM com.hazelcast.internal.cluster.ClusterService
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] 
+
+Members {size:2, ver:2} [
+  Member [127.0.0.1]:5701 - 2e2a1777-ddc3-4489-80cd-1b35c3789bf8
+  Member [127.0.0.1]:5702 - 0e9c8e93-4aea-4eb6-a309-fb53c576ddd3 this
+]
+
+Jun 07, 2019 8:59:16 PM com.hazelcast.core.LifecycleService
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] [127.0.0.1]:5702 is STARTED
+Jun 07, 2019 8:59:16 PM io.vertx.config.impl.ConfigRetrieverImpl
+INFO: Config file path: conf/config.json, format:json
+Jun 07, 2019 8:59:16 PM com.polarsparc.Vertx.Sample11$ContactsServiceVerticle lambda$0
+INFO: Configured server port: 8080
+Jun 07, 2019 8:59:16 PM com.polarsparc.Vertx.Sample11$ContactsServiceVerticle lambda$6
+INFO: Started contacts service on localhost:8080...
+Jun 07, 2019 8:59:16 PM com.polarsparc.Vertx.Sample11 lambda$2
+INFO: Deployed contacts service instance ID: 1eccf68f-c228-4aad-8a49-cabb5880d30c</pre>
+    </div>
+    <div id="para-div">
+      <p>To test the contacts management microservice, we will use the Linux <span class="hi-yellow">curl</span> command.</p>
+      <p>Open a new <span class="bold">Terminal</span> window and execute the following command to fetch all the contacts:</p>
+    </div>
+    <div id="cmd-div">
+      <p>curl -v http://localhost:8080/api/contacts/v1/getAll</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>*   Trying 127.0.0.1...
+* TCP_NODELAY set
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+> GET /api/contacts/v1/getAll HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.64.1
+> Accept: */*
+> 
+< HTTP/1.1 200 OK
+< content-type: application/json
+< content-length: 475
+< 
+* Connection #0 to host localhost left intact
+{"errcode":0,"payload":"[{\"firstName\":\"Dummy\",\"lastName\":\"Cracker\",\"emailId\":\"dummy@cracker.org\",\"mobile\":\"000-000-0000\"},{\"firstName\":\"Alice\",\"lastName\":\"Earthling\",\"emailId\":\"alice@earth.io\",\"mobile\":\"123-456-1100\"},{\"firstName\":\"Bob\",\"lastName\":\"Martian\",\"emailId\":\"bob@mars.co\",\"mobile\":\"789-123-1080\"},{\"firstName\":\"Charlie\",\"lastName\":\"Drummer\",\"emailId\":\"charlie@musician.org\",\"mobile\":\"666-777-9006\"}]"}
+* Closing connection 0</pre>
+    </div>
+    <div id="para-div">
+      <p>Next, execute the following command to fetch the contact for the person with the last-name Martian:</p>
+    </div>
+    <div id="cmd-div">
+      <p>curl -v http://localhost:8080/api/contacts/v1/getByLastName/Martian</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>*   Trying 127.0.0.1...
+* TCP_NODELAY set
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+> GET /api/contacts/v1/getByLastName/Martian HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.64.1
+> Accept: */*
+> 
+< HTTP/1.1 200 OK
+< content-type: application/json
+< content-length: 130
+< 
+* Connection #0 to host localhost left intact
+{"errcode":0,"payload":"{\"firstName\":\"Bob\",\"lastName\":\"Martian\",\"emailId\":\"bob@mars.co\",\"mobile\":\"789-123-1080\"}"}
+* Closing connection 0</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, execute the following command to fetch the contact for the person with the last-name Jupiter:</p>
+    </div>
+    <div id="cmd-div">
+      <p>curl -v http://localhost:8080/api/contacts/v1/getByLastName/Jupiter</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>*   Trying 127.0.0.1...
+* TCP_NODELAY set
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+> GET /api/contacts/v1/getByLastName/Jupiter HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.64.1
+> Accept: */*
+> 
+< HTTP/1.1 200 OK
+< content-type: application/json
+< content-length: 13
+< 
+* Connection #0 to host localhost left intact
+{"errcode":1}
+* Closing connection 0</pre>
+    </div>
+    <div id="para-div">
+      <p>Next, execute the following command to update the contact for the person with the last-name Drummer:</p>
+    </div>
+    <div id="cmd-div">
+      <p>curl -v -d "{\"mobile\":\"300-111-2222\"}" -X PUT http://localhost:8080/api/contacts/v1/updateByLastName/Drummer</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>*   Trying 127.0.0.1...
+* TCP_NODELAY set
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+> PUT /api/contacts/v1/updateByLastName/Drummer HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.64.1
+> Accept: */*
+> Content-Length: 25
+> Content-Type: application/x-www-form-urlencoded
+> 
+* upload completely sent off: 25 out of 25 bytes
+< HTTP/1.1 200 OK
+< content-type: application/json
+< content-length: 143
+< 
+* Connection #0 to host localhost left intact
+{"errcode":0,"payload":"{\"firstName\":\"Charlie\",\"lastName\":\"Drummer\",\"emailId\":\"charlie@musician.org\",\"mobile\":\"300-111-2222\"}"}
+* Closing connection 0</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, execute the following command to delete the contact for the person with the last-name Cracker:</p>
+    </div>
+    <div id="cmd-div">
+      <p>curl -v -X DELETE http://localhost:8080/api/contacts/v1/deleteByLastName/Cracker</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>*   Trying 127.0.0.1...
+* TCP_NODELAY set
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+> DELETE /api/contacts/v1/deleteByLastName/Cracker HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.64.1
+> Accept: */*
+> 
+< HTTP/1.1 200 OK
+< content-type: application/json
+< content-length: 138
+< 
+* Connection #0 to host localhost left intact
+{"errcode":0,"payload":"{\"firstName\":\"Dummy\",\"lastName\":\"Cracker\",\"emailId\":\"dummy@cracker.org\",\"mobile\":\"000-000-0000\"}"}
+* Closing connection 0</pre>
+    </div>
+    <div id="para-div">
+      <p>Finally, execute the following command to add a new contact:</p>
+    </div>
+    <div id="cmd-div">
+      <p>curl -v -d "{\"fname\":\"Frank\",\"lname\":\"Polymer\",\"email\":\"frank_p@spacelab.io\",\"mobile\":\"777-888-9999\"}" -X POST http://localhost:8080/api/contacts/v1/addContact</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>*   Trying 127.0.0.1...
+* TCP_NODELAY set
+* Connected to localhost (127.0.0.1) port 8080 (#0)
+> POST /api/contacts/v1/addContact HTTP/1.1
+> Host: localhost:8080
+> User-Agent: curl/7.64.1
+> Accept: */*
+> Content-Length: 89
+> Content-Type: application/x-www-form-urlencoded
+> 
+* upload completely sent off: 89 out of 89 bytes
+< HTTP/1.1 200 OK
+< content-type: application/json
+< content-length: 140
+< 
+* Connection #0 to host localhost left intact
+{"errcode":0,"payload":"{\"firstName\":\"Frank\",\"lastName\":\"Polymer\",\"emailId\":\"frank_p@spacelab.io\",\"mobile\":\"777-888-9999\"}"}
+* Closing connection 0</pre>
+    </div>
+    <div id="para-div">
+      <p>More to be covered in the next and final part of this series ... &#128526;</p>
+    </div>
+    <div id="step-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">[1] </span><a href="http://polarsparc.github.io/Java/Vertx-1.html" target="_blank"><span class="bold">Introduction to Vert.x - Part-1</span></a></p>
+      <p><span class="bold">[2] </span><a href="http://polarsparc.github.io/Java/Vertx-2.html" target="_blank"><span class="bold">Introduction to Vert.x - Part-2</span></a></p>
+      <p><span class="bold">[3] </span><a href="http://polarsparc.github.io/Java/Vertx-3.html" target="_blank"><span class="bold">Introduction to Vert.x - Part-3</span></a></p>
+      <p><span class="bold">[4] </span><a href="http://polarsparc.github.io/Java/Vertx-4.html" target="_blank"><span class="bold">Introduction to Vert.x - Part-4</span></a></p>
+      <p><span class="bold">[5] </span><a href="https://vertx.io/docs/vertx-core/java/" target="_blank"><span class="bold">Vert.x Core Manual (Java)</span></a></p>
+      <p><span class="bold">[6] </span><a href="https://vertx.io/docs/vertx-web/java/" target="_blank"><span class="bold">Vert.x Web Manual (Java)</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,999 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="Getting Started with Serverless using OpenFaaS (ARM Edition)" content="author: Bhaskar.S, category: arm, docker, openfaas, serverless">
+    <title>Getting Started with Serverless using OpenFaaS (ARM Edition)</title>
+    <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Getting Started with Serverless using OpenFaaS (ARM Edition)</p>
+    </div>
+    <br />
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">02/22/2019</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" /> <br />
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>There has been quite a buzz around <span class="hi-yellow">Serverless</span> for a while now, which all started
+        with the introduction of <span class="bold">AWS Lambda</span>, followed by <span class="bold">Google Functions</span>
+        and <span class="bold">Microsoft Azure Functions</span>. So what is <span class="bold">Serverless</span> ???</p>
+      <p><span class="bold">Serverless</span> is a software design pattern, in which, one builds and runs applications as
+        individual and autonomous functions, without worrying about the infrastructure (hardware and software) administration
+        and management.</p>
+      <p>In other words, application developers focus on building business applications, while the <span class="bold">
+        Serverless</span> platform provider(s) focus on automatic provisioning, scaling, and managing of the backend
+        infrastructure components (compute, database, network, storage, etc).</p>
+      <p><span class="bold">Serverless</span> does not mean there is no server (compute, network, storage, software), but is
+        fully outsourced, administered, and managed by the cloud provider, which is highly-resilient and fault-tolerant. This
+        way the developers can focus primarily on the business applications, processes, and procedures for application
+        upgrades.</p>
+      <p><span class="bold">Serverless</span> is the combination of *<span class="underbold">BOTH</span>* the business logic
+        deployed as independent, autonomous functions often referred to as <span class="hi-yellow">Function as a Service</span>
+        (<span class="hi-green">FaaS</span> for short) *<span class="underbold">AS WELL AS</span>* the fully managed backend
+        infrastructure components that is often referred to as <span class="hi-yellow">Backend as a Service</span>
+        (<span class="hi-green">BaaS</span> for short).</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">OpenFaaS</span> is an open-source framework for building and running <span class="bold">
+        Serverless</span> functions either on-premise (using container orchestration platforms, such as, <span class="bold">
+        Docker Swarm</span>, <span class="bold">Kubernetes</span>, etc) or in any of the cloud providers
+        (<span class="bold">AWS</span>, <span class="bold">Azure</span>, <span class="bold">GCE</span>, etc), using
+        <span class="bold">Docker</span> containers, without worrying about any kind of vendor lock-in.</p>
+      <p>Functions in <span class="bold">OpenFaaS</span> can be implemented in any of the popular languages, such as,
+        <span class="bold">C#</span>, <span class="bold">Go</span>, <span class="bold">Java</span>, <span class="bold">
+        Node</span>, <span class="bold">Python</span>, <span class="bold">Ruby</span>, etc.</p>
+      <p>In this article, we will demonstrate how to setup, deploy, and test <span class="bold">OpenFaaS</span> on-premise
+        using <span class="bold">Docker Swarm</span>, running on a 5-node <a href="http://polarsparc.github.io/xhtml/XU4-Cluster.html"
+        target="_blank"><span class="bold">ARM</span></a> cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Figure-1 illustrates the high-level architectural overview of <span class="bold">OpenFaaS</span> running
+        deployed on <span class="bold">Docker Swarm</span> cluster:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/OpenFaaS-1.png" class="img-cls" alt="OpenFaaS" />
+      <div class="img-cap">Figure-1</div>
+    </div>
+    <div id="para-div">
+      <p>The core components of the <span class="bold">OpenFaaS</span> stack are as follows:</p>
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-yellow">API Gateway</span> :: is a REST based microservice running in a container (called
+            <span class="hi-green">func_gateway</span>) that acts as the entry-point for the user-defined functions as
+            well as the control functions deployed in <span class="bold">OpenFaaS</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Handler</span> :: is the generic wrapper for a function defined in <span class="bold">
+            OpenFaaS</span>. This is where one implements the business logic for the <span class="bold">Serverless</span>
+            function</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Watchdog</span> :: is a lightweight HTTP server that forks a process to execute the
+            <span class="bold">Serverless</span> function, passing in the request data via <span class="bold">STDIN</span>.
+            The <span class="bold">STDOUT</span> from the <span class="bold">Serverless</span> function is returned back
+            to the caller as the HTTP response</p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Prometheus</span> :: is the monitoring agent running in a container (called
+            <span class="hi-green">func_prometheus</span>) that collects metrics on the usage of the deployed
+            <span class="bold">Serverless</span> functions in <span class="bold">OpenFaaS</span></p>
+        </li>
+        <li>
+          <p><span class="hi-yellow">Alert Manager</span> :: is the component running in a container (called
+            <span class="hi-green">func_alertmanager</span>) that works in conjunction with the monitoring
+            agent to auto-scale the number of instance(s) of the deployed <span class="bold">Serverless</span> functions
+            to handle demand in <span class="bold">OpenFaaS</span></p>
+        </li>
+      </ul>
+    </div>
+    <div id="section-div">
+      <p>Installation and Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The installation will be on a 5-node <a href="http://polarsparc.github.io/xhtml/XU4-Cluster.html" target="_blank">
+        <span class="bold">ODroid XU4 Cluster</span></a> running Linux.</p>
+    </div>
+    <div id="para-div">
+      <p>For this tutorial, let us assume the 5-nodes in the cluster to have the following host names and ip addresses:</p>
+    </div>
+    <table id="col2-table">
+    <thead>
+    <tr>
+      <th>Host name</th>
+      <th>IP Address</th>
+    </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="col2-c1-odd">my-xu4-1</td>
+        <td class="col2-c2-odd">192.168.1.31</td>
+      </tr>
+      <tr>
+        <td class="col2-c1-even">my-xu4-2</td>
+        <td class="col2-c2-even">192.168.1.32</td>
+      </tr>
+      <tr>
+        <td class="col2-c1-odd">my-xu4-3</td>
+        <td class="col2-c2-odd">192.168.1.33</td>
+      </tr>
+      <tr>
+        <td class="col2-c1-even">my-xu4-4</td>
+        <td class="col2-c2-even">192.168.1.34</td>
+      </tr>
+      <tr>
+        <td class="col2-c1-odd">my-xu4-5</td>
+        <td class="col2-c2-odd">192.168.1.35</td>
+      </tr>
+    </tbody>
+    </table>
+    <div id="para-div">
+      <p>Open a Terminal window and open a tab for each of the 5 nodes my-xu4-1 thru my-xu4-5. In each of the Terminal tabs,
+        <span class="bold">ssh</span> into the corresponding node.</p>
+    </div>
+    <div id="para-div">
+      <p>First we need to install <span class="bold">Docker</span> on each of the nodes my-xu4-&lt;N&gt;, where &lt;N&gt; ranges
+        from 1 thru 5. The current version as of this article is <span class="hi-blue">18.06</span>. Execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt-get update</p>
+      <p>$ sudo apt-get install -y docker.io</p>
+      <p>$ sudo usermod -aG docker $USER</p>
+      <p>$ sudo reboot now</p>
+    </div>
+    <div id="para-div">
+      <p>Once <span class="bold">reboot</span> completes, open a Terminal window, open a tab for each of the 5 nodes
+        <span class="bold">my-xu4-1</span> thru <span class="bold">my-xu4-5</span>, and <span class="bold">ssh</span>
+        into each of the nodes.</p>
+    </div>
+    <div id="para-div">
+      <p>To verify <span class="bold">Docker</span> installation, execute the following command on the master node
+        <span class="bold">my-xu4-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker info</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Containers: 5
+ Running: 0
+ Paused: 0
+ Stopped: 5
+Images: 19
+Server Version: 18.06.1-ce
+Storage Driver: overlay2
+ Backing Filesystem: extfs
+ Supports d_type: true
+ Native Overlay Diff: true
+Logging Driver: json-file
+Cgroup Driver: cgroupfs
+Plugins:
+ Volume: local
+ Network: bridge host macvlan null overlay
+ Log: awslogs fluentd gcplogs gelf journald json-file logentries splunk syslog
+Swarm: active
+ NodeID: knqpusrw3u3fcbi5dv8p4q4g9
+ Is Manager: true
+ ClusterID: uoo4ekrlqnyx0oer97y48ohrv
+ Managers: 1
+ Nodes: 5
+ Orchestration:
+  Task History Retention Limit: 5
+ Raft:
+  Snapshot Interval: 10000
+  Number of Old Snapshots to Retain: 0
+  Heartbeat Tick: 1
+  Election Tick: 10
+ Dispatcher:
+  Heartbeat Period: 5 seconds
+ CA Configuration:
+  Expiry Duration: 3 months
+  Force Rotate: 0
+ Autolock Managers: false
+ Root Rotation In Progress: false
+ Node Address: 192.168.1.31
+ Manager Addresses:
+  192.168.1.31:2377
+Runtimes: runc
+Default Runtime: runc
+Init Binary: docker-init
+containerd version:  (expected: 468a545b9edcd5932818eb9de8e72413e616e86e)
+runc version: N/A (expected: 69663f0bd4b60df09991c08812a60108003fa340)
+init version: v0.18.0 (expected: fec3683b971d9c3ef73f284f176672c44b448662)
+Security Options:
+ seccomp
+  Profile: default
+Kernel Version: 4.14.94-odroidxu4
+Operating System: Ubuntu 18.04.2 LTS
+OSType: linux
+Architecture: armv7l
+CPUs: 8
+Total Memory: 1.95GiB
+Name: my-xu4-1
+ID: ADJ5:ZABT:S7RF:UAZH:5U5R:F7F4:BE4U:TXIW:FCMZ:6TXN:ONLH:VG6L
+Docker Root Dir: /var/lib/docker
+Debug Mode (client): false
+Debug Mode (server): false
+Username: bswamina
+Registry: https://index.docker.io/v1/
+Labels:
+Experimental: false
+Insecure Registries:
+ 127.0.0.0/8
+Live Restore Enabled: false</pre>
+    </div>
+    <div id="para-div">
+      <p>We will be using <span class="hi-yellow">golang</span> to write a simple <span class="bold">Serverless</span> functions using 
+        <span class="bold">OpenFaaS</span>. So, we need to install <span class="bold">golang</span> on each of the nodes
+        <span class="bold">my-xu4-&lt;N&gt;</span>, where &lt;N&gt; ranges from 1 thru 5. The current version as of this article is
+        <span class="hi-blue">1.10.4</span>. Execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ sudo apt install -y golang</p>
+    </div>
+    <div id="para-div">
+      <p>To verify <span class="bold">golang</span> installation, execute the following command on the master node
+        <span class="bold">my-xu4-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ go version</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>go version go1.10.4 linux/arm</pre>
+    </div>
+    <div id="para-div">
+      <p>The node <span class="hi-yellow">my-xu4-1</span> will be the master node in our <span class="bold">Docker Swarm</span>
+        cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>On the master node <span class="bold">my-xu4-1</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker swarm init</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>Swarm initialized: current node (abcd12345efgh67890ijklmo1) is now a manager.
+
+To add a worker to this swarm, run the following command:
+
+    docker swarm join --token SWMTKN-1-3l12aaabbb23bbbbbcccccc45dddd67eeeeeee89ffffffffff-0gggggg1hhhhhh2jjjjjjj3kk 192.168.1.31:2377
+
+To add a manager to this swarm, run 'docker swarm join-token manager' and follow the instructions.</pre>
+    </div>
+    <div id="para-div">
+      <p>On the master node <span class="bold">my-xu4-1</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker node ls</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>ID                            HOSTNAME            STATUS              AVAILABILITY        MANAGER STATUS      ENGINE VERSION
+abcd12345efgh67890ijklmo1 *   my-xu4-1            Ready               Active              Leader              18.06.1-ce</pre>
+    </div>
+    <div id="para-div">
+      <p>On the worker nodes <span class="bold">my-xu4-2</span> thru <span class="bold">my-xu4-5</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker swarm join --token SWMTKN-1-3l12aaabbb23bbbbbcccccc45dddd67eeeeeee89ffffffffff-0gggggg1hhhhhh2jjjjjjj3kk 192.168.1.31:2377</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>This node joined a swarm as a worker.</pre>
+    </div>
+    <div id="para-div">
+      <p>On the master node <span class="bold">my-xu4-1</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker node ls</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>ID                            HOSTNAME            STATUS              AVAILABILITY        MANAGER STATUS      ENGINE VERSION
+abcd12345efgh67890ijklmo1 *   my-xu4-1            Ready               Active              Leader              18.06.1-ce
+n5rspb60lgux2g4cna2rr79gj     my-xu4-2            Ready               Active                                  18.06.1-ce
+a73k8zolxxij3tajv7geje1o7     my-xu4-3            Ready               Active                                  18.06.1-ce
+c09m70194x72ffb2j858gshe7     my-xu4-4            Ready               Active                                  18.06.1-ce
+oz1jz0prf2r0wb2j5os7xbcbx     my-xu4-5            Ready               Active                                  18.06.1-ce</pre>
+    </div>
+    <div id="para-div">
+      <p>On the master node <span class="bold">my-xu4-1</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker service ls</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>ID                  NAME                MODE                REPLICAS            IMAGE               PORTS</pre>
+    </div>
+    <div id="para-div">
+      <p>As can be inferred from Output.7 above, there are no services running yet.</p>
+    </div>
+    <div id="para-div">
+      <p>Now we want to download and deploy <span class="bold">OpenFaaS</span> on our <span class="bold">Docker Swarm</span> cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>On the master node <span class="bold">my-xu4-1</span>, execute the following commands:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/Downloads</p>
+      <p>$ git clone https://github.com/alexellis/faas/</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>Cloning into 'faas'...
+remote: Enumerating objects: 11, done.
+remote: Counting objects: 100% (11/11), done.
+remote: Compressing objects: 100% (10/10), done.
+remote: Total 18141 (delta 1), reused 3 (delta 1), pack-reused 18130
+Receiving objects: 100% (18141/18141), 22.47 MiB | 11.13 MiB/s, done.
+Resolving deltas: 100% (7590/7590), done.</pre>
+    </div>
+    <div id="para-div">
+      <p>To deploy the <span class="bold">OpenFaaS</span> stack in our <span class="bold">Docker Swarm</span> cluster, execute
+        the following commands on the master node <span class="bold">my-xu4-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ cd $HOME/Downloads/faas</p>
+      <p>$ ./deploy_stack.sh</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>Attempting to create credentials for gateway..
+rf8sjlfez8r4erqf7op378e71
+4x09nxubnam53ukxshzzkdna0
+[Credentials]
+ username: admin 
+ password: 111111aaaaaa222222bbbbbb333333cccccc444444dddddd555555eeeeee6f7g
+ echo -n 111111aaaaaa222222bbbbbb333333cccccc444444dddddd555555eeeeee6f7g | faas-cli login --username=admin --password-stdin
+
+Enabling basic authentication for gateway..
+
+Deploying OpenFaaS core services for ARM
+Creating network func_functions
+Creating config func_alertmanager_config
+Creating config func_prometheus_config
+Creating config func_prometheus_rules
+Creating service func_faas-swarm
+Creating service func_nats
+Creating service func_queue-worker
+Creating service func_prometheus
+Creating service func_alertmanager
+Creating service func_gateway</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">OpenFaaS</span> expects basic-auth credentials in all communications with it.</p>
+      <p>From the Output.9 above, we see the default user is <span class="hi-yellow">admin</span> and the password
+        <span class="hi-yellow">111111aaaaaa222222bbbbbb333333cccccc444444dddddd555555eeeeee6f7g</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>On the master node <span class="bold">my-xu4-1</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker service ls</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>ID                  NAME                MODE                REPLICAS            IMAGE                                 PORTS
+1fi7v6wqu251        func_alertmanager   replicated          1/1                 functions/alertmanager:0.15.0-armhf   
+bn718v0e17j6        func_faas-swarm     replicated          1/1                 openfaas/faas-swarm:0.6.1-armhf       
+ta5l78be3sd7        func_gateway        replicated          1/1                 openfaas/gateway:0.11.0-armhf         *:8080->8080/tcp
+s0rzg4g9frs3        func_nats           replicated          1/1                 nats-streaming:0.11.2                 
+u3924uaou0dx        func_prometheus     replicated          1/1                 functions/prometheus:2.7.0-armhf      *:9090->9090/tcp
+wud849pyaqym        func_queue-worker   replicated          1/1                 openfaas/queue-worker:0.6.0-armhf</pre>
+    </div>
+    <div id="para-div">
+      <p>As is evident from the Output.10 above, we have successfully deployed the components of <span class="bold">OpenFaaS</span>
+        stack in our <span class="bold">Docker Swarm</span> cluster.</p>
+      <p>One important point to note from the Output.10 above - we have an API gateway running at the endpoint
+        <span class="hi-pink">http://192.168.1.31:8080</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a browser and enter the API gateway URL running at <span class="bold">http://192.168.1.31:8080</span>.</p>
+      <p>The following Figure-2 illustrates the view of the API gateway in the browser:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/OpenFaaS-2.png" class="img-cls" alt="API Gateway" />
+      <div class="img-cap">Figure-2</div>
+    </div>
+    <div id="para-div">
+      <p>In order to manage the lifecycle (create, build, deploy, delete) of <span class="bold">Serverless</span> functions
+        in <span class="bold">OpenFaaS</span>, we need to install a CLI utility called <span class="hi-yellow">faas-cli</span>.
+        To do that, execute the following command on the master node <span class="bold">my-xu4-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ curl -sSL cli.openfaas.com | sudo sh</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>armv7l
+Downloading package https://github.com/openfaas/faas-cli/releases/download/0.8.3/faas-cli-armhf as /tmp/faas-cli-armhf
+Download complete.
+
+Running as root - Attempting to move faas-cli to /usr/local/bin
+New version of faas-cli installed to /usr/local/bin
+Creating alias 'faas' for 'faas-cli'.
+  ___                   _____           ____
+ / _ \ _ __   ___ _ __ |  ___|_ _  __ _/ ___|
+| | | | '_ \ / _ \ '_ \| |_ / _` |/ _` \___ \
+| |_| | |_) |  __/ | | |  _| (_| | (_| |___) |
+ \___/| .__/ \___|_| |_|_|  \__,_|\__,_|____/
+      |_|
+
+CLI:
+ commit:  a141dedf94ffeed84412365fd591bdc8999c5a1b
+ version: 0.8.3</pre>
+    </div>
+    <div id="para-div">
+      <p>To verify if the CLI utility <span class="bold">faas-cli</span> has been installed properly, execute the following
+        command on the master node <span class="bold">my-xu4-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ faas-cli</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>  ___                   _____           ____
+ / _ \ _ __   ___ _ __ |  ___|_ _  __ _/ ___|
+| | | | '_ \ / _ \ '_ \| |_ / _` |/ _` \___ \
+| |_| | |_) |  __/ | | |  _| (_| | (_| |___) |
+ \___/| .__/ \___|_| |_|_|  \__,_|\__,_|____/
+      |_|
+
+
+Manage your OpenFaaS functions from the command line
+
+Usage:
+  faas-cli [flags]
+  faas-cli [command]
+
+Available Commands:
+  build          Builds OpenFaaS function containers
+  cloud          OpenFaaS Cloud commands
+  deploy         Deploy OpenFaaS functions
+  describe       Describe an OpenFaaS function
+  generate       Generate Kubernetes CRD YAML file
+  help           Help about any command
+  invoke         Invoke an OpenFaaS function
+  list           List OpenFaaS functions
+  login          Log in to OpenFaaS gateway
+  logout         Log out from OpenFaaS gateway
+  new            Create a new template in the current folder with the name given as name
+  push           Push OpenFaaS functions to remote registry (Docker Hub)
+  remove         Remove deployed OpenFaaS functions
+  secret         OpenFaaS secret commands
+  store          OpenFaaS store commands
+  template       OpenFaaS template store and pull commands
+  up             Builds, pushes and deploys OpenFaaS function containers
+  version        Display the clients version information
+
+Flags:
+      --filter string   Wildcard to match with function names in YAML file
+  -h, --help            help for faas-cli
+      --regex string    Regex to match with function names in YAML file
+  -f, --yaml string     Path to YAML file describing function(s)
+
+Use "faas-cli [command] --help" for more information about a command.</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Thats it</span> !!! This completes the installation and setup process.</p>
+    </div>
+    <div id="section-div">
+      <p>Hands-on with OpenFaaS</p>
+    </div>
+    <div id="para-div">
+      <p>We want to quickly demonstrate a <span class="bold">Serverless</span> function using <span class="bold">golang</span>
+        running on <span class="bold">OpenFaaS</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>First we need to setup a structure for our <span class="bold">golang</span> project. To do that, execute the following
+        commands on <span class="bold">my-xu4-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/Projects/go</p>
+      <p>$ export GOPATH=$HOME/Projects/go</p>
+      <p>$ cd $GOPATH</p>
+      <p>$ mkdir -p src/functions</p>
+      <p>$ cd src/functions</p>
+    </div>
+    <div id="para-div">
+      <p>To create a new <span class="bold">Serverless</span> function, with the API gateway running at <span class="bold">
+        http://192.168.1.31:8080</span>, execute the following commands on the master node <span class="bold">my-xu4-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ mkdir goecho</p>
+      <p>$ cd goecho</p>
+      <p>$ faas-cli new --lang go-armhf goecho --gateway http://192.168.1.31:8080</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>2019/02/18 15:15:48 No templates found in current directory.
+2019/02/18 15:15:48 Attempting to expand templates from https://github.com/openfaas/templates.git
+2019/02/18 15:15:48 Fetched 15 template(s) : [csharp csharp-armhf dockerfile go go-armhf java8 node node-arm64 node-armhf php7 python python-armhf python3 python3-armhf ruby] from https://github.com/openfaas/templates.git
+Folder: goecho created.
+  ___                   _____           ____
+ / _ \ _ __   ___ _ __ |  ___|_ _  __ _/ ___|
+| | | | '_ \ / _ \ '_ \| |_ / _` |/ _` \___ \
+| |_| | |_) |  __/ | | |  _| (_| | (_| |___) |
+ \___/| .__/ \___|_| |_|_|  \__,_|\__,_|____/
+      |_|
+
+
+Function created in folder: goecho
+Stack file written: goecho.yml</pre>
+    </div>
+    <br/>
+    <div id="error-div">
+      <h4>ATTENTION: ARM Users</h4>
+      <pre><span class="underbold">Ensure</span> the value for the option <span class="bold">--lang</span> is *<span class="underbold">go-armhf</span>*. Else later will encounter the following error:<br/><br/><span class="bold">standard_init_linux.go:190: exec user process caused "exec format error"</span></pre>
+    </div>
+    <div id="para-div">
+      <p>On the master node <span class="bold">my-xu4-1</span>, execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ ls -l</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>total 12
+drwx------  2 xu4 xu4 4096 Feb 18 13:54 goecho
+-rw-------  1 xu4 xu4  137 Feb 18 13:54 goecho.yml
+drwxrwxr-x 17 xu4 xu4 4096 Feb 18 13:54 template</pre>
+    </div>
+    <div id="para-div">
+      <p>The <span class="bold">OpenFaaS</span> function creation process creates a sub-directory by the name
+        <span class="hi-yellow">goecho</span> which will contain the function wrapper file called
+        <span class="hi-yellow">handler.go</span> as shown below:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>goecho/handler.go</legend>
+      <pre>package function
+
+import (
+  "fmt"
+)
+
+// Handle a serverless request
+func Handle(req []byte) string {
+  return fmt.Sprintf("Hello, Go. You said: %s", string(req))
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>It is the above function wrapper that gets executed when the <span class="bold">Serverless</span>
+        function is invoked.</p>
+    </div>
+    <div id="para-div">
+      <p>Since we will be running the <span class="bold">OpenFaaS</span> build process to package our simple
+        <span class="bold">Serverless</span> function as a <span class="bold">Docker</span> image locally on
+        the master node <span class="bold">my-xu4-1</span>, we need to push the <span class="bold">Docker</span>
+        image to either a private <span class="bold">Docker</span> registry or the public <span class="bold">
+        Docker</span> hub. This way the <span class="bold">Docker</span> image will be accessible to the other
+        nodes in the <span class="bold">Docker Swarm</span> cluster.</p>
+      <p>For this exercise, will be pushing the <span class="bold">Docker</span> image to my registered public
+        <span class="bold">Docker</span> hub repository. Ensure you have registered and created your own
+        repository at <a href="https://hub.docker.com" target="_blank"><span class="bold">Docker Hub</span></a>
+        site.</p>
+      <p>In order to push the <span class="bold">Docker</span> image to a registered public <span class="bold">
+        Docker</span> hub repository, modify the line <span class="hi-blue">image:</span> in the file
+        <span class="hi-yellow">goecho.yml</span> to point to your repository in the format:
+        <span class="hi-yellow">user-id/image-name:latest</span> (<span class="bold">bswamina/goecho:latest</span>
+        for my case), as shown below:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>goecho.yml</legend>
+      <pre>provider:
+  name: faas
+  gateway: http://192.168.1.31:8080
+functions:
+  goecho:
+    lang: go
+    handler: ./goecho
+    image: bswamina/goecho:latest</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>To build the newly created <span class="bold">Serverless</span> function, execute the following command
+        on the master node <span class="bold">my-xu4-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ faas-cli build -f goecho.yml</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>[0] > Building goecho.
+Clearing temporary build folder: ./build/goecho/
+Preparing ./goecho/ ./build/goecho/function
+Building: bswamina/goecho:latest with go-armhf template. Please wait..
+Sending build context to Docker daemon  6.656kB
+Step 1/18 : FROM golang:1.10.4-alpine3.8 as builder
+1.10.4-alpine3.8: Pulling from library/golang
+905674ea9d94: Already exists 
+d91fe322e169: Already exists 
+539e55f19a97: Pull complete 
+709c5449f2ce: Pull complete 
+bc40f6a203c9: Pull complete 
+b311e7c16063: Pull complete 
+Digest: sha256:55ff778715a4f37ef0f2f7568752c696906f55602be0e052cbe147becb65dca3
+Status: Downloaded newer image for golang:1.10.4-alpine3.8
+ ---> e9cd6992c34f
+Step 2/18 : RUN apk --no-cache add curl     && echo "Pulling watchdog binary from Github."     && curl -sSL https://github.com/openfaas/faas/releases/download/0.9.14/fwatchdog-armhf > /usr/bin/fwatchdog     && chmod +x /usr/bin/fwatchdog     && apk del curl --no-cache
+ ---> Running in 5a94c235b4b2
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.8/main/armhf/APKINDEX.tar.gz
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.8/community/armhf/APKINDEX.tar.gz
+(1/4) Installing nghttp2-libs (1.32.0-r0)
+(2/4) Installing libssh2 (1.8.0-r3)
+(3/4) Installing libcurl (7.61.1-r1)
+(4/4) Installing curl (7.61.1-r1)
+Executing busybox-1.28.4-r1.trigger
+OK: 5 MiB in 18 packages
+Pulling watchdog binary from Github.
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.8/main/armhf/APKINDEX.tar.gz
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.8/community/armhf/APKINDEX.tar.gz
+(1/4) Purging curl (7.61.1-r1)
+(2/4) Purging libcurl (7.61.1-r1)
+(3/4) Purging nghttp2-libs (1.32.0-r0)
+(4/4) Purging libssh2 (1.8.0-r3)
+Executing busybox-1.28.4-r1.trigger
+OK: 4 MiB in 14 packages
+Removing intermediate container 5a94c235b4b2
+ ---> a5f3507a4acc
+Step 3/18 : WORKDIR /go/src/handler
+ ---> Running in 7a824ec36182
+Removing intermediate container 7a824ec36182
+ ---> 174da2669536
+Step 4/18 : COPY . .
+ ---> fcf1c1e290c1
+Step 5/18 : RUN test -z "$(gofmt -l $(find . -type f -name '*.go' -not -path "./vendor/*" -not -path "./function/vendor/*"))" || { echo "Run \"gofmt -s -w\" on your Golang code"; exit 1; }
+ ---> Running in e8181f03983d
+Removing intermediate container e8181f03983d
+ ---> 1018979bc626
+Step 6/18 : RUN CGO_ENABLED=0 GOOS=linux     go build --ldflags "-s -w" -a -installsuffix cgo -o handler . &&     go test ./... -cover
+ ---> Running in 7f71e2530cb5
+?     handler [no test files]
+?     handler/function  [no test files]
+Removing intermediate container 7f71e2530cb5
+ ---> 1eb4a39a95de
+Step 7/18 : FROM alpine:3.8
+3.8: Pulling from library/alpine
+5b678b67777f: Pull complete 
+d9f0b2b885d9: Pull complete 
+Digest: sha256:dad671370a148e9d9573e3e10a9f8cc26ce937bea78f3da80b570c2442364406
+Status: Downloaded newer image for alpine:3.8
+ ---> d2696274f894
+Step 8/18 : RUN apk --no-cache add ca-certificates
+ ---> Running in e0b8d5e08e28
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.8/main/armhf/APKINDEX.tar.gz
+fetch http://dl-cdn.alpinelinux.org/alpine/v3.8/community/armhf/APKINDEX.tar.gz
+(1/1) Installing ca-certificates (20171114-r3)
+Executing busybox-1.28.4-r2.trigger
+Executing ca-certificates-20171114-r3.trigger
+OK: 4 MiB in 14 packages
+Removing intermediate container e0b8d5e08e28
+ ---> e74f07dd1e11
+Step 9/18 : RUN addgroup -S app && adduser -S -g app app
+ ---> Running in d2339abaa87f
+Removing intermediate container d2339abaa87f
+ ---> 51abcebb1738
+Step 10/18 : RUN mkdir -p /home/app
+ ---> Running in f235f97e381e
+Removing intermediate container f235f97e381e
+ ---> 4623d0af0926
+Step 11/18 : RUN chown app /home/app
+ ---> Running in f8adab6db4c2
+Removing intermediate container f8adab6db4c2
+ ---> 24c51ba52440
+Step 12/18 : WORKDIR /home/app
+ ---> Running in 586d354913de
+Removing intermediate container 586d354913de
+ ---> 59b1ced9399f
+Step 13/18 : COPY --from=builder /go/src/handler/handler    .
+ ---> 45e369824609
+Step 14/18 : COPY --from=builder /usr/bin/fwatchdog         .
+ ---> 4688e2f1e6f4
+Step 15/18 : USER app
+ ---> Running in 8471863762a4
+Removing intermediate container 8471863762a4
+ ---> 577e2ea75659
+Step 16/18 : ENV fprocess="./handler"
+ ---> Running in e249eb4c0d06
+Removing intermediate container e249eb4c0d06
+ ---> 6654ca56a089
+Step 17/18 : EXPOSE 8080
+ ---> Running in 25e522029405
+Removing intermediate container 25e522029405
+ ---> 2bccc4e3964f
+Step 18/18 : CMD ["./fwatchdog"]
+ ---> Running in 1dbba351c064
+Removing intermediate container 1dbba351c064
+ ---> 864958423067
+Successfully built 864958423067
+Successfully tagged bswamina/goecho:latest
+Image: bswamina/goecho:latest built.
+[0] < Building goecho done.
+[0] worker done.</pre>
+    </div>
+    <div id="para-div">
+      <p>To push the locally build <span class="bold">Docker</span> image to the registered public <span class="bold">
+        Docker</span> hub repository, execute the following command on the master node <span class="bold">my-xu4-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ faas-cli push -f goecho.yml</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>The push refers to repository [docker.io/bswamina/goecho]
+b044b70d3985: Preparing 
+f9f02de17ab9: Preparing 
+1795e4fc8c3d: Preparing 
+0b82126cfc0d: Preparing 
+153b2ef38418: Preparing 
+169699648f59: Waiting 
+4d6f2b7ff2f4: Waiting 
+e093aa48fce2: Waiting 
+denied: requested access to the resource is denied
+2019/02/18 14:14:14 ERROR - Could not execute command: [docker push bswamina/goecho:latest]</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">OOPS !!!</span> What happened here ???</p>
+    </div>
+    <div id="para-div">
+      <p>In order to push a <span class="bold">Docker</span> image to the registered public <span class="bold">Docker</span>
+        hub repository, we need to first login with our registered credentials.</p>
+    </div>
+    <div id="para-div">
+      <p>To login to our registered public <span class="bold">Docker</span> hub repository, execute the following command on
+        the master node <span class="bold">my-xu4-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker login</p>
+    </div>
+    <div id="para-div">
+      <p>We will be prompted for our <span class="bold">user-id</span> and <span class="bold">password</span>. Once we enter
+        those, the following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.17</h4>
+      <pre>Login with your Docker ID to push and pull images from Docker Hub. If you don't have a Docker ID, head over to https://hub.docker.com to create one.
+Username: bswamina
+Password: 
+WARNING! Your password will be stored unencrypted in /home/xu4/.docker/config.json.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+
+Login Succeeded</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, retry to push the just built <span class="bold">Docker</span> image by executing the following command on
+        the master node <span class="bold">my-xu4-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ faas-cli push -f goecho.yml</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.18</h4>
+      <pre>[0] > Pushing goecho [bswamina/goecho:latest].
+The push refers to repository [docker.io/bswamina/goecho]
+d376bd085999: Pushed 
+15e64d94e801: Pushed 
+dea44b3f24ed: Pushed 
+93012c148c7b: Pushed 
+a58ab9e53859: Pushed 
+4d6f2b7ff2f4: Mounted from library/alpine 
+e093aa48fce2: Mounted from library/alpine 
+latest: digest: sha256:af0afb00ba26881c665ca0160d79f846f66d0a7ca4c2f1e11a1facbed913b3f6 size: 1781
+[0] < Pushing goecho [bswamina/goecho:latest] done.
+[0] worker done.</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">BINGO</span> !!! success this time.</p>
+    </div>
+    <div id="para-div">
+      <p>Now comes the interesting part. To deploy our <span class="bold">Serverless</span> function packaged in a
+        <span class="bold">Docker</span> image called <span class="hi-vanila">bswamina/goecho:latest</span> (with
+        the API gateway running at <span class="bold">http://192.168.1.31:8080</span>), execute the following
+        command on the master node <span class="bold">my-xu4-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ faas-cli deploy -f goecho.yml --gateway http://192.168.1.31:8080</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.19</h4>
+      <pre>Deploying: goecho.
+
+unauthorized access, run "faas-cli login" to setup authentication for this server</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">WHAT ???</span></p>
+    </div>
+    <div id="para-div">
+      <p>Remember <span class="bold">OpenFaaS</span> uses basic-auth protection. Hence, we first need to authenticate with
+       the API gateway <span class="bold">http://192.168.1.31:8080</span> using the basic-auth credentials.</p>
+    </div>
+    <div id="para-div">
+      <p>To authenticate with the API gateway at <span class="bold">http://192.168.1.31:8080</span>, execute the following
+        command on the master node <span class="bold">my-xu4-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ echo -n 111111aaaaaa222222bbbbbb333333cccccc444444dddddd555555eeeeee6f7g | faas-cli login --username=admin --password-stdin --gateway http://192.168.1.31:8080</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.20</h4>
+      <pre>Calling the OpenFaaS server to validate the credentials...
+WARNING! Communication is not secure, please consider using HTTPS. Letsencrypt.org offers free SSL/TLS certificates.
+credentials saved for admin http://192.168.1.31:8080</pre>
+    </div>
+    <div id="para-div">
+      <p>Now, we will re-try the command to deploy our <span class="bold">Serverless</span> function by executing the
+        following command on the master node <span class="bold">my-xu4-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ faas-cli deploy -f goecho.yml --gateway http://192.168.1.31:8080</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.21</h4>
+      <pre>Deploying: goecho.
+
+Deployed. 202 Accepted.
+URL: http://192.168.1.31:8080/function/goecho</pre>
+    </div>
+    <div id="para-div">
+      <p>To verify deployment of our <span class="bold">Serverless</span> function, execute the following command on the
+        master node <span class="bold">my-xu4-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker service ls</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.22</h4>
+      <pre>ID                  NAME                MODE                REPLICAS            IMAGE                                 PORTS
+1fi7v6wqu251        func_alertmanager   replicated          1/1                 functions/alertmanager:0.15.0-armhf   
+bn718v0e17j6        func_faas-swarm     replicated          1/1                 openfaas/faas-swarm:0.6.1-armhf       
+ta5l78be3sd7        func_gateway        replicated          1/1                 openfaas/gateway:0.11.0-armhf         *:8080->8080/tcp
+s0rzg4g9frs3        func_nats           replicated          1/1                 nats-streaming:0.11.2                 
+u3924uaou0dx        func_prometheus     replicated          1/1                 functions/prometheus:2.7.0-armhf      *:9090->9090/tcp
+wud849pyaqym        func_queue-worker   replicated          1/1                 openfaas/queue-worker:0.6.0-armhf     
+1nkewwozf2g0        goecho              replicated          1/1                 bswamina/goecho:latest</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">BINGO</span> !!! As is evident from the Output.22 above, we see that we have successfully
+        deployed our first <span class="bold">Serverless</span> function to our <span class="bold">Docker Swarm</span>
+        cluster.</p>
+    </div>
+    <div id="para-div">
+      <p>Now comes the *<span class="underbold">FUN</span>* part. To test our deployed <span class="bold">Serverless</span> function
+        called <span class="hi-yellow">goecho</span> (with the API gateway running at <span class="bold">
+        http://192.168.1.31:8080</span>), execute the following command on the master node <span class="bold">my-xu4-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ echo "Howdy" | faas-cli invoke goecho --gateway http://192.168.1.31:8080</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.23</h4>
+      <pre>Hello, Go. You said: Howdy</pre>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-green">YIPEE</span> !!! As is evident from the Output.23 above, we have a successful response
+        from our first <span class="bold">Serverless</span> function.</p>
+    </div>
+    <div id="para-div">
+      <p>One can also invoke the deployed <span class="bold">Serverless</span> function via a web-browser through the
+        API gateway URL located at <span class="bold">http://192.168.1.31:8080</span>.</p>
+      <p>The following Figure-3 illustrates the view of the <span class="bold">Serverless</span> function invocation via
+        the API gateway in the browser:</p>
+    </div>
+    <div id="img-outer-div"> <img src="./images/OpenFaaS-3.png" class="img-cls" alt="Invoke Function" />
+      <div class="img-cap">Figure-3</div>
+    </div>
+    <div id="para-div">
+      <p>To delete our deployed <span class="bold">Serverless</span> function called <span class="hi-yellow">goecho</span>
+        (with the API gateway running at <span class="bold">http://192.168.1.31:8080</span>), execute the following command
+        on the master node <span class="bold">my-xu4-1</span>:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ faas-cli remove goecho --gateway http://192.168.1.31:8080</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.24</h4>
+      <pre>Deleting: goecho.
+Removing old function.</pre>
+    </div>
+    <div id="para-div">
+      <p>With this, we conclude the basic exercises we performed on our <span class="bold">Docker Swarm</span> cluster
+        running <span class="bold">OpenFaaS</span>.</p>
+    </div>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://docs.openfaas.com/" target="_blank"><span class="bold">Official OpenFaaS Documentation</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,655 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+      <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+      <meta name="author" content="Bhaskar.S">
+      <meta name="description" content="Introduction to Vert.x - Part 4">
+      <meta name="subject" content="Introduction to Vert.x - Part 4">
+      <meta name="keywords" content="java, reactive, vert.x">
+      <meta name="robots" content="index,follow">
+      <meta name="googlebot" content="index,follow">
+      <title>Introduction to Vert.x - Part 4</title>
+      <link href="../css/polarsparc-v2.0.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Introduction to Vert.x - Part 4</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">05/26/2019</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="step-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="http://polarsparc.github.io/Java/Vertx-3.html" target="_blank"><span class="bold">Part-3</span></a> of this
+        series, we explored the 3 types of messaging patterns using the <span class="bold">EventBus</span>, which is the core
+        communication backbone in <span class="bold">Vert.x</span>.</p>
+      <p>In this part, we will continue with examples around the distributed cluster mode of the <span class="bold">EventBus</span>
+        using <span class="hi-yellow">Hazelcast</span>, which allows <span class="bold">Verticle</span>(s) running in different
+        JVMs to communicate with each other.</p>
+    </div>
+    <div id="step-div">
+      <p>Hands-on with Vert.x - 4</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Vert.x</span> uses a pluggable architecture to enable a specific implementation of a cluster manager
+        for distributed computing. <span class="bold">Hazelcast</span> is the default cluster manager in <span class="bold">Vert.x
+        </span>. A cluster manager is used for the following purposes in <span class="bold">Vert.x</span>:</p>
+      <ul id="blue-disc-ul">
+        <li><span class="bold">Discovery cluster-wide members</span></li>
+        <li><span class="bold">Maintain cluster-wide consumers and publishers</span></li>
+        <li><span class="bold">Support cluster-wide maps, locks, and counters</span></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the modified listing of the <span class="bold">Maven</span> project file <span class="bold">pom.xml
+        </span> that includes the additional library <span class="bold">vertx-hazelcast</span> as a dependency:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>pom.xml</legend>
+      <pre>&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+  &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+  
+  &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+  &lt;artifactId&gt;Vertx&lt;/artifactId&gt;
+  &lt;version&gt;1.0&lt;/version&gt;
+  &lt;packaging&gt;jar&lt;/packaging&gt;
+  &lt;name&gt;Vertx&lt;/name&gt;
+
+  &lt;build&gt;
+    &lt;pluginManagement&gt;
+      &lt;plugins&gt;
+        &lt;plugin&gt;
+          &lt;artifactId&gt;maven-compiler-plugin&lt;/artifactId&gt;
+          &lt;version&gt;3.3&lt;/version&gt;
+          &lt;configuration&gt;
+            &lt;fork&gt;true&lt;/fork&gt;
+            &lt;meminitial&gt;128m&lt;/meminitial&gt;
+            &lt;maxmem&gt;512m&lt;/maxmem&gt;
+            &lt;source&gt;1.8&lt;/source&gt;
+            &lt;target&gt;1.8&lt;/target&gt;
+          &lt;/configuration&gt;
+        &lt;/plugin&gt;
+      &lt;/plugins&gt;
+    &lt;/pluginManagement&gt;
+  &lt;/build&gt;
+
+  &lt;dependencies&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;io.vertx&lt;/groupId&gt;
+        &lt;artifactId&gt;vertx-core&lt;/artifactId&gt;
+        &lt;version&gt;3.7.0&lt;/version&gt;
+    &lt;/dependency&gt;  
+    &lt;dependency&gt;
+        &lt;groupId&gt;io.vertx&lt;/groupId&gt;
+        &lt;artifactId&gt;vertx-config&lt;/artifactId&gt;
+        &lt;version&gt;3.7.0&lt;/version&gt;
+    &lt;/dependency&gt;
+    &lt;dependency&gt;
+        &lt;groupId&gt;io.vertx&lt;/groupId&gt;
+        &lt;artifactId&gt;vertx-hazelcast&lt;/artifactId&gt;
+        &lt;version&gt;3.7.0&lt;/version&gt;
+    &lt;/dependency&gt;
+    &lt;dependency&gt;
+      &lt;groupId&gt;junit&lt;/groupId&gt;
+      &lt;artifactId&gt;junit&lt;/artifactId&gt;
+      &lt;version&gt;3.8.1&lt;/version&gt;
+      &lt;scope&gt;test&lt;/scope&gt;
+    &lt;/dependency&gt;
+  &lt;/dependencies&gt;
+&lt;/project&gt;</pre>
+    </fieldset>
+    <div id="para-div">
+      <p><span class="bold">Hazelcast</span> is a popular in-memory data grid that distributes and shards data across a cluster
+        of nodes in a network. It can either use a multicast network or use TCP to discovery nodes (or members) of the cluster.
+        For our example, we will use TCP network for member discovery. To configure <span class="bold">Hazelcast</span>, one
+        must provide a configuration file in XML format.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the listing for the config file <span class="bold">my-cluster.xml</span> in the XML format:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>my-cluster.xml</legend>
+      <pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+
+&lt;hazelcast xsi:schemaLocation="http://www.hazelcast.com/schema/config hazelcast-config-3.10.xsd"
+           xmlns="http://www.hazelcast.com/schema/config"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"&gt;
+
+    &lt;properties&gt;
+        &lt;property name="hazelcast.wait.seconds.before.join"&gt;0&lt;/property&gt;
+    &lt;/properties&gt;
+       
+    &lt;group&gt;
+        &lt;name&gt;polarsparc&lt;/name&gt;
+    &lt;/group&gt;
+   
+    &lt;network&gt;
+        &lt;join&gt;
+            &lt;multicast enabled="false"/&gt;
+            &lt;tcp-ip enabled="true"&gt;
+                &lt;interface&gt;127.0.0.1&lt;/interface&gt;
+            &lt;/tcp-ip&gt;
+        &lt;/join&gt;
+        &lt;interfaces enabled="true"&gt;
+            &lt;interface&gt;127.0.0.1&lt;/interface&gt;
+        &lt;/interfaces&gt;
+    &lt;/network&gt;
+   
+&lt;/hazelcast&gt;</pre>
+    </fieldset>
+    <div id="para-div">
+      <p><span class="hi-pink">NOTE</span> :: the path to the configuration file must be specified using the system property
+        <span class="hi-yellow">vertx.hazelcast.config</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Let us explain and understand the configuration parameters listed above.</p>
+      <p>The value for the property <span class="hi-blue">hazelcast.wait.seconds.before.join</span> indicates how long (in
+        seconds) <span class="bold">Hazelcast</span> should block to complete any operation before joining the cluster.</p>
+      <p>The group <span class="hi-blue">&lt;name&gt;</span> element specifies the <span class="bold">Hazelcast</span> cluster
+        name.</p>
+      <p><span class="bold">Hazelcast</span> by default uses multicast networking to discovery nodes in a cluster. In our case,
+        we have disabled multicast networking and enabled TCP networking on the interface <span class="bold">127.0.0.1</span>
+        for the cluster member discovery.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the listing for the message consumer verticle <span class="hi-green">Sample08.java</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Sample08.java</legend>
+      <pre>/*
+ * Topic:  Introduction to Vert.x
+ * 
+ * Name:   Sample 8
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.Vertx;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.spi.cluster.ClusterManager;
+import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
+
+public class Sample08 {
+    private static Logger LOGGER = Logger.getLogger(Sample08.class.getName());
+    
+    private static String ADDRESS = "msg.address";
+    
+    // Consumer verticle
+    private static class MsgConsumerVerticle extends AbstractVerticle {
+        String name;
+        
+        MsgConsumerVerticle(String str) {
+            this.name = str;
+        }
+        
+        @Override
+        public void start() {
+            vertx.eventBus().consumer(ADDRESS, res -> {
+                 LOGGER.log(Level.INFO, String.format("[%s] :: Received message - %s", name, res.body()));
+            });
+        }
+    }
+    
+    public static void main(String[] args) {
+        if (args.length != 1) {
+            System.out.printf("Usage: java %s <name>\n", Sample08.class.getName());
+            System.exit(1);
+        }
+        
+        ClusterManager manager = new HazelcastClusterManager();
+        
+        VertxOptions options = new VertxOptions().setClusterManager(manager);
+        
+        Vertx.clusteredVertx(options, cluster -> {
+            if (cluster.succeeded()) {
+                cluster.result().deployVerticle(new MsgConsumerVerticle(args[0]), res -> {
+                    if (res.succeeded()) {
+                        LOGGER.log(Level.INFO, "Deployed consumer <" + args[0] + "> with instance ID: " + res.result());
+                    } else {
+                        res.cause().printStackTrace();
+                    }
+                });
+            } else {
+                cluster.cause().printStackTrace();
+            }
+        });
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>Let us explain and understand the code from <span class="bold">Sample08</span> listed above.</p>
+      <p>The interface <span class="hi-yellow">io.vertx.core.spi.cluster.ClusterManager</span> must be implemented by a cluster
+        provider so that it can be plugged and used in <span class="bold">Vertx</span> as a cluster manager.</p>
+      <p>The class <span class="hi-yellow">io.vertx.spi.cluster.hazelcast.HazelcastClusterManager</span> is the default cluster
+        manager in <span class="bold">Vertx</span> implemented by <a href="https://hazelcast.com/" target="_blank">
+        <span class="bold">Hazelcast</span></a>.</p>
+      <p>An instance of the class <span class="hi-yellow">io.vertx.core.VertxOptions</span> allows one to programatically configure
+        <span class="bold">Vertx</span>.</p>
+      <p>The call to the method <span class="hi-blue">setClusterManager()</span> on the instance of <span class="bold">VertxOptions
+        </span> allows one to programatically set the cluster manager. In our example, we are using an instance of
+        <span class="bold">Hazelcast</span> cluster manager.</p>
+      <p>The call to the static method <span class="hi-blue">clusteredVertx()</span> on <span class="bold">Vertx</span> takes two
+        arguments - an instance of type <span class="bold">VertxOptions</span> and a callback handler of type <span class="bold">
+        io.vertx.core.Handler&lt;E&gt;</span>, where &lt;E&gt; is of type <span class="bold">
+        io.vertx.core.AsyncResult&lt;Vertx&lt;T&gt;&gt;</span>. The callback handler is invoked once a clustered instance of
+        <span class="bold">Vertx</span> is created.</p>
+      <p>Once a clustered version of <span class="bold">Vertx</span> is created, one can used it to deploy verticle instance(s)
+        like the regular <span class="bold">Vertx</span> instance. In this example, we deploy an instance of a message cunsumer.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the listing for the message producer verticle <span class="hi-green">Sample09.java</span>:</p>
+    </div>
+    <fieldset id="sc-fieldset"> <legend>Sample09.java</legend>
+      <pre>/*
+ * Topic:  Introduction to Vert.x
+ * 
+ * Name:   Sample 9
+ * 
+ * Author: Bhaskar S
+ * 
+ * URL:    https://polarsparc.github.io
+ */
+
+package com.polarsparc.Vertx;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
+import io.vertx.core.spi.cluster.ClusterManager;
+import io.vertx.spi.cluster.hazelcast.HazelcastClusterManager;
+
+public class Sample09 {
+    private static Logger LOGGER = Logger.getLogger(Sample09.class.getName());
+    
+    private static String ADDRESS = "msg.address";
+    private static String MESSAGE = "Vert.x is Reactive";
+    
+    // Publisher verticle
+    private static class MsgPublisherVerticle extends AbstractVerticle {
+        @Override
+        public void start(Future&lt;Void&gt; fut) {
+            vertx.eventBus().publish(ADDRESS, String.format("[1] =&gt; %s", MESSAGE));
+            vertx.eventBus().publish(ADDRESS, String.format("[2] =&gt; %s", MESSAGE));
+            vertx.eventBus().publish(ADDRESS, String.format("[3] =&gt; %s", MESSAGE));
+            
+            vertx.eventBus().send(ADDRESS, String.format("[4] -&gt; %s", MESSAGE));
+            vertx.eventBus().send(ADDRESS, String.format("[5] -&gt; %s", MESSAGE));
+            
+            LOGGER.log(Level.INFO, String.format("Messages published to address %s", ADDRESS));
+            
+            fut.complete();
+        }
+    }
+    
+    public static void main(String[] args) {
+        ClusterManager manager = new HazelcastClusterManager();
+        
+        VertxOptions options = new VertxOptions().setClusterManager(manager);
+        
+        Vertx.clusteredVertx(options, cluster -&gt; {
+            if (cluster.succeeded()) {
+                cluster.result().deployVerticle(new MsgPublisherVerticle(), res -&gt; {
+                    if (res.succeeded()) {
+                        LOGGER.log(Level.INFO, "Deployed publisher instance ID: " + res.result());
+                    } else {
+                        res.cause().printStackTrace();
+                    }
+               });
+            } else {
+                cluster.cause().printStackTrace();
+            }
+        });
+    }
+}</pre>
+    </fieldset>
+    <div id="para-div">
+      <p>The code from <span class="bold">Sample09</span> listed above is similar to the code from <span class="bold">Sample08
+        </span> and hence will not need any further explanation.</p>
+    </div>
+    <div id="para-div">
+      <p>To demonstrate the distributed clustering feature in <span class="bold">Vertx</span>, we will execute two instances of
+        the consumer class <span class="bold">Sample08</span> and one instance of the producer class <span class="bold">Sample09
+        </span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To make it easy to launch the Java programs, we create the following shell script called <span class="bold">run.sh</span>
+        as shown below:</p>
+    </div>
+    <div id="cmd-div">
+      <p>#!/bin/sh</p>
+      <p>JARS=""</p>
+      <p>for f in `ls ./lib/jackson*`</p>
+      <p>do</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;JARS=$JARS:$f</p>
+      <p>done</p>
+      <p>for f in `ls ./lib/netty*`</p>
+      <p>do</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;JARS=$JARS:$f</p>
+      <p>done</p>
+      <p>JARS=$JARS:./lib/vertx-core-3.7.0.jar:./lib/vertx-config-3.7.0.jar:./lib/hazelcast-3.10.5.jar:./lib/vertx-hazelcast-3.7.0.jar</p>
+      <p>echo $JARS</p>
+      <p>java -Dvertx.hazelcast.config=./resources/my-cluster.xml -cp ./classes:./resources:$JARS com.polarsparc.Vertx.$1 $2</p>
+    </div>
+    <div id="para-div">
+      <p>Open a new <span class="bold">Terminal</span> window (referred to as Terminal-C1) and execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>./bin/run.sh Sample08 C1</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>:./lib/jackson-annotations-2.9.0.jar:./lib/jackson-core-2.9.8.jar:./lib/jackson-databind-2.9.8.jar:./lib/netty-buffer-4.1.30.Final.jar:./lib/netty-codec-4.1.30.Final.jar:./lib/netty-codec-dns-4.1.30.Final.jar:./lib/netty-codec-http2-4.1.30.Final.jar:./lib/netty-codec-http-4.1.30.Final.jar:./lib/netty-codec-socks-4.1.30.Final.jar:./lib/netty-common-4.1.30.Final.jar:./lib/netty-handler-4.1.30.Final.jar:./lib/netty-handler-proxy-4.1.30.Final.jar:./lib/netty-resolver-4.1.30.Final.jar:./lib/netty-resolver-dns-4.1.30.Final.jar:./lib/netty-transport-4.1.30.Final.jar:./lib/vertx-core-3.7.0.jar:./lib/vertx-config-3.7.0.jar:./lib/hazelcast-3.10.5.jar:./lib/vertx-hazelcast-3.7.0.jar
+May 26, 2019 7:30:24 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [polarsparc] [3.10.5] Interfaces is enabled, trying to pick one address matching to one of: [127.0.0.1]
+May 26, 2019 7:30:24 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [polarsparc] [3.10.5] Picked [127.0.0.1]:5701, using socket ServerSocket[addr=/0:0:0:0:0:0:0:0,localport=5701], bind any local is true
+May 26, 2019 7:30:24 PM com.hazelcast.system
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Hazelcast 3.10.5 (20180913 - 6ffa2ee) starting at [127.0.0.1]:5701
+May 26, 2019 7:30:24 PM com.hazelcast.system
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+May 26, 2019 7:30:24 PM com.hazelcast.system
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Configured Hazelcast Serialization version: 1
+May 26, 2019 7:30:24 PM com.hazelcast.instance.Node
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] A non-empty group password is configured for the Hazelcast member. Starting with Hazelcast version 3.8.2, members with the same group name, but with different group passwords (that do not use authentication) form a cluster. The group password configuration will be removed completely in a future release.
+May 26, 2019 7:30:24 PM com.hazelcast.spi.impl.operationservice.impl.BackpressureRegulator
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Backpressure is disabled
+May 26, 2019 7:30:24 PM com.hazelcast.spi.impl.operationservice.impl.InboundResponseHandlerSupplier
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Running with 2 response threads
+May 26, 2019 7:30:25 PM com.hazelcast.instance.Node
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Creating TcpIpJoiner
+May 26, 2019 7:30:25 PM com.hazelcast.spi.impl.operationexecutor.impl.OperationExecutorImpl
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Starting 16 partition threads and 9 generic threads (1 dedicated for priority tasks)
+May 26, 2019 7:30:25 PM com.hazelcast.internal.diagnostics.Diagnostics
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Diagnostics disabled. To enable add -Dhazelcast.diagnostics.enabled=true to the JVM arguments.
+May 26, 2019 7:30:25 PM com.hazelcast.core.LifecycleService
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] [127.0.0.1]:5701 is STARTING
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by com.hazelcast.internal.networking.nio.SelectorOptimizer (file:/home/polarsparc/Vertx/lib/hazelcast-3.10.5.jar) to field sun.nio.ch.SelectorImpl.selectedKeys
+WARNING: Please consider reporting this to the maintainers of com.hazelcast.internal.networking.nio.SelectorOptimizer
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+May 26, 2019 7:30:25 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Connecting to /127.0.0.1:5703, timeout: 0, bind-any: true
+May 26, 2019 7:30:25 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Could not connect to: /127.0.0.1:5703. Reason: SocketException[Connection refused to address /127.0.0.1:5703]
+May 26, 2019 7:30:25 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Connecting to /127.0.0.1:5702, timeout: 0, bind-any: true
+May 26, 2019 7:30:25 PM com.hazelcast.cluster.impl.TcpIpJoiner
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] [127.0.0.1]:5703 is added to the blacklist.
+May 26, 2019 7:30:25 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Could not connect to: /127.0.0.1:5702. Reason: SocketException[Connection refused to address /127.0.0.1:5702]
+May 26, 2019 7:30:25 PM com.hazelcast.cluster.impl.TcpIpJoiner
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] [127.0.0.1]:5702 is added to the blacklist.
+May 26, 2019 7:30:26 PM com.hazelcast.system
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Cluster version set to 3.10
+May 26, 2019 7:30:26 PM com.hazelcast.internal.cluster.ClusterService
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] 
+
+Members {size:1, ver:1} [
+    Member [127.0.0.1]:5701 - 980a27d1-643b-49e1-b147-13643622374e this
+]
+
+May 26, 2019 7:30:26 PM com.hazelcast.core.LifecycleService
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] [127.0.0.1]:5701 is STARTED
+May 26, 2019 7:30:26 PM com.hazelcast.internal.partition.impl.PartitionStateManager
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Initializing cluster partition table arrangement...
+May 26, 2019 7:30:26 PM com.polarsparc.Vertx.Sample08 lambda$1
+INFO: Deployed consumer &lt;C1&gt; with instance ID: 51066155-f4fc-46d4-9baf-bc5e685516e3</pre>
+    </div>
+    <div id="para-div">
+      <p>To start another consumer, open another new <span class="bold">Terminal</span> window (referred to as Terminal-C2) and
+        execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>./bin/run.sh Sample08 C2</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>:./lib/jackson-annotations-2.9.0.jar:./lib/jackson-core-2.9.8.jar:./lib/jackson-databind-2.9.8.jar:./lib/netty-buffer-4.1.30.Final.jar:./lib/netty-codec-4.1.30.Final.jar:./lib/netty-codec-dns-4.1.30.Final.jar:./lib/netty-codec-http2-4.1.30.Final.jar:./lib/netty-codec-http-4.1.30.Final.jar:./lib/netty-codec-socks-4.1.30.Final.jar:./lib/netty-common-4.1.30.Final.jar:./lib/netty-handler-4.1.30.Final.jar:./lib/netty-handler-proxy-4.1.30.Final.jar:./lib/netty-resolver-4.1.30.Final.jar:./lib/netty-resolver-dns-4.1.30.Final.jar:./lib/netty-transport-4.1.30.Final.jar:./lib/vertx-core-3.7.0.jar:./lib/vertx-config-3.7.0.jar:./lib/hazelcast-3.10.5.jar:./lib/vertx-hazelcast-3.7.0.jar
+May 26, 2019 7:33:30 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [polarsparc] [3.10.5] Interfaces is enabled, trying to pick one address matching to one of: [127.0.0.1]
+May 26, 2019 7:33:30 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [polarsparc] [3.10.5] Picked [127.0.0.1]:5702, using socket ServerSocket[addr=/0:0:0:0:0:0:0:0,localport=5702], bind any local is true
+May 26, 2019 7:33:30 PM com.hazelcast.system
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Hazelcast 3.10.5 (20180913 - 6ffa2ee) starting at [127.0.0.1]:5702
+May 26, 2019 7:33:30 PM com.hazelcast.system
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+May 26, 2019 7:33:30 PM com.hazelcast.system
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Configured Hazelcast Serialization version: 1
+May 26, 2019 7:33:30 PM com.hazelcast.instance.Node
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] A non-empty group password is configured for the Hazelcast member. Starting with Hazelcast version 3.8.2, members with the same group name, but with different group passwords (that do not use authentication) form a cluster. The group password configuration will be removed completely in a future release.
+May 26, 2019 7:33:31 PM com.hazelcast.spi.impl.operationservice.impl.BackpressureRegulator
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Backpressure is disabled
+May 26, 2019 7:33:31 PM com.hazelcast.spi.impl.operationservice.impl.InboundResponseHandlerSupplier
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Running with 2 response threads
+May 26, 2019 7:33:31 PM com.hazelcast.instance.Node
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Creating TcpIpJoiner
+May 26, 2019 7:33:31 PM com.hazelcast.spi.impl.operationexecutor.impl.OperationExecutorImpl
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Starting 16 partition threads and 9 generic threads (1 dedicated for priority tasks)
+May 26, 2019 7:33:31 PM com.hazelcast.internal.diagnostics.Diagnostics
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Diagnostics disabled. To enable add -Dhazelcast.diagnostics.enabled=true to the JVM arguments.
+May 26, 2019 7:33:31 PM com.hazelcast.core.LifecycleService
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] [127.0.0.1]:5702 is STARTING
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by com.hazelcast.internal.networking.nio.SelectorOptimizer (file:/home/polarsparc/Vertx/lib/hazelcast-3.10.5.jar) to field sun.nio.ch.SelectorImpl.selectedKeys
+WARNING: Please consider reporting this to the maintainers of com.hazelcast.internal.networking.nio.SelectorOptimizer
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+May 26, 2019 7:33:31 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Connecting to /127.0.0.1:5703, timeout: 0, bind-any: true
+May 26, 2019 7:33:31 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Could not connect to: /127.0.0.1:5703. Reason: SocketException[Connection refused to address /127.0.0.1:5703]
+May 26, 2019 7:33:31 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Connecting to /127.0.0.1:5701, timeout: 0, bind-any: true
+May 26, 2019 7:33:31 PM com.hazelcast.cluster.impl.TcpIpJoiner
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] [127.0.0.1]:5703 is added to the blacklist.
+May 26, 2019 7:33:31 PM com.hazelcast.nio.tcp.TcpIpConnectionManager
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Established socket connection between /127.0.0.1:48609 and /127.0.0.1:5701
+May 26, 2019 7:33:32 PM com.hazelcast.system
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Cluster version set to 3.10
+May 26, 2019 7:33:32 PM com.hazelcast.internal.cluster.ClusterService
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] 
+
+Members {size:2, ver:2} [
+    Member [127.0.0.1]:5701 - 980a27d1-643b-49e1-b147-13643622374e
+    Member [127.0.0.1]:5702 - ea52a237-be4d-4726-a02d-c1aed93e706d this
+]
+
+May 26, 2019 7:33:33 PM com.hazelcast.core.LifecycleService
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] [127.0.0.1]:5702 is STARTED
+May 26, 2019 7:33:33 PM com.polarsparc.Vertx.Sample08 lambda$1
+INFO: Deployed consumer &lt;C2&gt; with instance ID: c7ea9c19-ccde-40d1-b5c8-d1025976486e</pre>
+    </div>
+    <div id="para-div">
+      <p>From the above Output.2, we see the two consumer instances have found each other.</p>
+    </div>
+    <div id="para-div">
+      <p>To start the publisher, open yet another new <span class="bold">Terminal</span> window and execute the following command:</p>
+    </div>
+    <div id="cmd-div">
+      <p>./bin/run.sh Sample09</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>:./lib/jackson-annotations-2.9.0.jar:./lib/jackson-core-2.9.8.jar:./lib/jackson-databind-2.9.8.jar:./lib/netty-buffer-4.1.30.Final.jar:./lib/netty-codec-4.1.30.Final.jar:./lib/netty-codec-dns-4.1.30.Final.jar:./lib/netty-codec-http2-4.1.30.Final.jar:./lib/netty-codec-http-4.1.30.Final.jar:./lib/netty-codec-socks-4.1.30.Final.jar:./lib/netty-common-4.1.30.Final.jar:./lib/netty-handler-4.1.30.Final.jar:./lib/netty-handler-proxy-4.1.30.Final.jar:./lib/netty-resolver-4.1.30.Final.jar:./lib/netty-resolver-dns-4.1.30.Final.jar:./lib/netty-transport-4.1.30.Final.jar:./lib/vertx-core-3.7.0.jar:./lib/vertx-config-3.7.0.jar:./lib/hazelcast-3.10.5.jar:./lib/vertx-hazelcast-3.7.0.jar
+May 26, 2019 7:38:47 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [polarsparc] [3.10.5] Interfaces is enabled, trying to pick one address matching to one of: [127.0.0.1]
+May 26, 2019 7:38:47 PM com.hazelcast.instance.AddressPicker
+INFO: [LOCAL] [polarsparc] [3.10.5] Picked [127.0.0.1]:5703, using socket ServerSocket[addr=/0:0:0:0:0:0:0:0,localport=5703], bind any local is true
+May 26, 2019 7:38:47 PM com.hazelcast.system
+INFO: [127.0.0.1]:5703 [polarsparc] [3.10.5] Hazelcast 3.10.5 (20180913 - 6ffa2ee) starting at [127.0.0.1]:5703
+May 26, 2019 7:38:47 PM com.hazelcast.system
+INFO: [127.0.0.1]:5703 [polarsparc] [3.10.5] Copyright (c) 2008-2018, Hazelcast, Inc. All Rights Reserved.
+May 26, 2019 7:38:47 PM com.hazelcast.system
+INFO: [127.0.0.1]:5703 [polarsparc] [3.10.5] Configured Hazelcast Serialization version: 1
+May 26, 2019 7:38:47 PM com.hazelcast.instance.Node
+INFO: [127.0.0.1]:5703 [polarsparc] [3.10.5] A non-empty group password is configured for the Hazelcast member. Starting with Hazelcast version 3.8.2, members with the same group name, but with different group passwords (that do not use authentication) form a cluster. The group password configuration will be removed completely in a future release.
+May 26, 2019 7:38:47 PM com.hazelcast.spi.impl.operationservice.impl.BackpressureRegulator
+INFO: [127.0.0.1]:5703 [polarsparc] [3.10.5] Backpressure is disabled
+May 26, 2019 7:38:47 PM com.hazelcast.spi.impl.operationservice.impl.InboundResponseHandlerSupplier
+INFO: [127.0.0.1]:5703 [polarsparc] [3.10.5] Running with 2 response threads
+May 26, 2019 7:38:47 PM com.hazelcast.instance.Node
+INFO: [127.0.0.1]:5703 [polarsparc] [3.10.5] Creating TcpIpJoiner
+May 26, 2019 7:38:47 PM com.hazelcast.spi.impl.operationexecutor.impl.OperationExecutorImpl
+INFO: [127.0.0.1]:5703 [polarsparc] [3.10.5] Starting 16 partition threads and 9 generic threads (1 dedicated for priority tasks)
+May 26, 2019 7:38:47 PM com.hazelcast.internal.diagnostics.Diagnostics
+INFO: [127.0.0.1]:5703 [polarsparc] [3.10.5] Diagnostics disabled. To enable add -Dhazelcast.diagnostics.enabled=true to the JVM arguments.
+May 26, 2019 7:38:47 PM com.hazelcast.core.LifecycleService
+INFO: [127.0.0.1]:5703 [polarsparc] [3.10.5] [127.0.0.1]:5703 is STARTING
+WARNING: An illegal reflective access operation has occurred
+WARNING: Illegal reflective access by com.hazelcast.internal.networking.nio.SelectorOptimizer (file:/home/polarsparc/Vertx/lib/hazelcast-3.10.5.jar) to field sun.nio.ch.SelectorImpl.selectedKeys
+WARNING: Please consider reporting this to the maintainers of com.hazelcast.internal.networking.nio.SelectorOptimizer
+WARNING: Use --illegal-access=warn to enable warnings of further illegal reflective access operations
+WARNING: All illegal access operations will be denied in a future release
+May 26, 2019 7:38:47 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5703 [polarsparc] [3.10.5] Connecting to /127.0.0.1:5702, timeout: 0, bind-any: true
+May 26, 2019 7:38:47 PM com.hazelcast.nio.tcp.TcpIpConnector
+INFO: [127.0.0.1]:5703 [polarsparc] [3.10.5] Connecting to /127.0.0.1:5701, timeout: 0, bind-any: true
+May 26, 2019 7:38:47 PM com.hazelcast.nio.tcp.TcpIpConnectionManager
+INFO: [127.0.0.1]:5703 [polarsparc] [3.10.5] Established socket connection between /127.0.0.1:41305 and /127.0.0.1:5701
+May 26, 2019 7:38:47 PM com.hazelcast.nio.tcp.TcpIpConnectionManager
+INFO: [127.0.0.1]:5703 [polarsparc] [3.10.5] Established socket connection between /127.0.0.1:40071 and /127.0.0.1:5702
+May 26, 2019 7:38:48 PM com.hazelcast.system
+INFO: [127.0.0.1]:5703 [polarsparc] [3.10.5] Cluster version set to 3.10
+May 26, 2019 7:38:48 PM com.hazelcast.internal.cluster.ClusterService
+INFO: [127.0.0.1]:5703 [polarsparc] [3.10.5] 
+
+Members {size:3, ver:3} [
+    Member [127.0.0.1]:5701 - 980a27d1-643b-49e1-b147-13643622374e
+    Member [127.0.0.1]:5702 - ea52a237-be4d-4726-a02d-c1aed93e706d
+    Member [127.0.0.1]:5703 - e15d985b-5338-4805-acdb-1a51199897a3 this
+]
+
+May 26, 2019 7:38:49 PM com.hazelcast.core.LifecycleService
+INFO: [127.0.0.1]:5703 [polarsparc] [3.10.5] [127.0.0.1]:5703 is STARTED
+May 26, 2019 7:38:50 PM com.polarsparc.Vertx.Sample09$MsgPublisherVerticle start
+INFO: Messages published to address msg.address
+May 26, 2019 7:38:50 PM com.polarsparc.Vertx.Sample09 lambda$1
+INFO: Deployed publisher instance ID: 99a0db89-4e11-4fe8-acbe-b9f01e413aec</pre>
+    </div>
+    <div id="para-div">
+      <p>Moving to Terminal-C1, we should typically see the following additional output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>May 26, 2019 7:33:32 PM com.hazelcast.internal.partition.impl.MigrationManager
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Re-partitioning cluster data... Migration queue size: 271
+May 26, 2019 7:33:34 PM com.hazelcast.internal.partition.impl.MigrationThread
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] All migration tasks have been completed, queues are empty.
+May 26, 2019 7:38:47 PM com.hazelcast.nio.tcp.TcpIpAcceptor
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Accepting socket connection from /127.0.0.1:41305
+May 26, 2019 7:38:47 PM com.hazelcast.nio.tcp.TcpIpConnectionManager
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Established socket connection between /127.0.0.1:5701 and /127.0.0.1:41305
+May 26, 2019 7:38:48 PM com.hazelcast.internal.cluster.ClusterService
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] 
+
+Members {size:3, ver:3} [
+    Member [127.0.0.1]:5701 - 980a27d1-643b-49e1-b147-13643622374e this
+    Member [127.0.0.1]:5702 - ea52a237-be4d-4726-a02d-c1aed93e706d
+    Member [127.0.0.1]:5703 - e15d985b-5338-4805-acdb-1a51199897a3
+]
+
+May 26, 2019 7:38:48 PM com.hazelcast.internal.partition.impl.MigrationManager
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] Re-partitioning cluster data... Migration queue size: 271
+May 26, 2019 7:38:50 PM com.polarsparc.Vertx.Sample08$MsgConsumerVerticle lambda$0
+INFO: [C1] :: Received message - [1] => Vert.x is Reactive
+May 26, 2019 7:38:50 PM com.polarsparc.Vertx.Sample08$MsgConsumerVerticle lambda$0
+INFO: [C1] :: Received message - [2] => Vert.x is Reactive
+May 26, 2019 7:38:50 PM com.polarsparc.Vertx.Sample08$MsgConsumerVerticle lambda$0
+INFO: [C1] :: Received message - [3] => Vert.x is Reactive
+May 26, 2019 7:38:50 PM com.polarsparc.Vertx.Sample08$MsgConsumerVerticle lambda$0
+INFO: [C1] :: Received message - [4] -> Vert.x is Reactive
+May 26, 2019 7:38:50 PM com.hazelcast.internal.partition.impl.MigrationThread
+INFO: [127.0.0.1]:5701 [polarsparc] [3.10.5] All migration tasks have been completed, queues are empty.</pre>
+    </div>
+    <div id="para-div">
+      <p>Similarly, moving to Terminal-C2, we should typically see the following additional output:</p>
+    </div>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>May 26, 2019 7:35:34 PM com.hazelcast.spi.impl.operationservice.impl.InvocationMonitor
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Invocations:1 timeouts:1 backup-timeouts:0
+May 26, 2019 7:38:47 PM com.hazelcast.nio.tcp.TcpIpAcceptor
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Accepting socket connection from /127.0.0.1:40071
+May 26, 2019 7:38:47 PM com.hazelcast.nio.tcp.TcpIpConnectionManager
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] Established socket connection between /127.0.0.1:5702 and /127.0.0.1:40071
+May 26, 2019 7:38:48 PM com.hazelcast.internal.cluster.ClusterService
+INFO: [127.0.0.1]:5702 [polarsparc] [3.10.5] 
+
+Members {size:3, ver:3} [
+    Member [127.0.0.1]:5701 - 980a27d1-643b-49e1-b147-13643622374e
+    Member [127.0.0.1]:5702 - ea52a237-be4d-4726-a02d-c1aed93e706d this
+    Member [127.0.0.1]:5703 - e15d985b-5338-4805-acdb-1a51199897a3
+]
+
+May 26, 2019 7:38:50 PM com.polarsparc.Vertx.Sample08$MsgConsumerVerticle lambda$0
+INFO: [C2] :: Received message - [1] => Vert.x is Reactive
+May 26, 2019 7:38:50 PM com.polarsparc.Vertx.Sample08$MsgConsumerVerticle lambda$0
+INFO: [C2] :: Received message - [2] => Vert.x is Reactive
+May 26, 2019 7:38:50 PM com.polarsparc.Vertx.Sample08$MsgConsumerVerticle lambda$0
+INFO: [C2] :: Received message - [3] => Vert.x is Reactive
+May 26, 2019 7:38:50 PM com.polarsparc.Vertx.Sample08$MsgConsumerVerticle lambda$0
+INFO: [C2] :: Received message - [5] -> Vert.x is Reactive</pre>
+    </div>
+    <div id="para-div">
+      <p>An interesting observation from Output.4 and Output.5 is that, all consumers receive messages dispatched via the
+        <span class="hi-blue">publish()</span> method, while only one consumer will receive a message dispatched via the
+        <span class="hi-blue">send()</span> method.</p>
+    </div>
+    <div id="para-div">
+      <p>More to be covered in the next part of this series ... &#128526;</p>
+    </div>
+    <div id="step-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">[1] </span><a href="http://polarsparc.github.io/Java/Vertx-1.html" target="_blank"><span class="bold">Introduction to Vert.x - Part-1</span></a></p>
+      <p><span class="bold">[2] </span><a href="http://polarsparc.github.io/Java/Vertx-2.html" target="_blank"><span class="bold">Introduction to Vert.x - Part-2</span></a></p>
+      <p><span class="bold">[3] </span><a href="http://polarsparc.github.io/Java/Vertx-3.html" target="_blank"><span class="bold">Introduction to Vert.x - Part-3</span></a></p>
+      <p><span class="bold">[4] </span><a href="https://vertx.io/docs/vertx-core/java/" target="_blank"><span class="bold">Vert.x Core Manual (Java)</span></a></p>
+      <p><span class="bold">[5] </span><a href="https://vertx.io/docs/vertx-hazelcast/java/" target="_blank"><span class="bold">Vert.x Hazelcast Cluster Manager Manual (Java)</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>

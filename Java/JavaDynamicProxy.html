@@ -1,0 +1,272 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+<title>Introduction to Java Dynamic Proxy</title>
+
+<link rel="stylesheet" type="text/css" href="../css/polarsparc-v1.0.css" />
+
+</head>
+<body>
+<br />
+
+<div id="title-div">
+<p>Introduction to Java Dynamic Proxy</p>
+</div>
+
+<br />
+
+<table id="ad-table">
+
+  <tbody>
+    <tr>
+      <td class="author-td">Bhaskar S</td>
+      <td class="date-td">11/04/2011</td>
+    </tr>
+  </tbody>
+</table>
+
+<hr class="line-hr" />
+<br />
+
+<div id="section-div">
+<p>Overview</p>
+</div>
+
+<div id="para-div">
+<p>We have all had situations where we wanted to intercept calls to
+some method(s)
+and do interesting things like logging or measuring performance etc.
+Enter the
+<span class="bold">Proxy</span> design pattern.</p>
+</div>
+
+<div id="para-div">
+<p>The word proxy means substitute for another. In other words, a proxy
+is an
+object that implements the interface of a target object and acts as a
+substitute
+for the target object. Let us explore this popular design pattern with
+an example
+of an arbitrary Product Inventory checker application. Given a product
+code,
+find how many are in the inventory.</p>
+</div>
+
+<div id="section-div">
+<p>Hands-on with Code</p>
+</div>
+
+<div id="para-div">
+<p>The following is an interface for our Product Inventory checker:</p>
+</div>
+
+<fieldset id="sc-fieldset">
+<legend>Listing.1</legend>
+<pre>package com.polarsparc.dynamicproxy;<br /><br />public interface ProductInventory {<br />        public int checkInventory(String code);<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The following is an arbitrary implementation of the <span class="bold">ProductInventory</span>
+interface that kind of mimics database access:</p>
+</div>
+
+<fieldset id="sc-fieldset">
+<legend>Listing.2</legend>
+<pre>package com.polarsparc.dynamicproxy;<br /><br />import java.util.Random;<br /><br />public class DbProductInventory implements ProductInventory {<br />    private Random rand = new Random();<br /><br />    @Override<br />    public int checkInventory(String code) {<br />        int qty = rand.nextInt(10);<br /><br />        // Simulate DB access delay for upto 5 secs<br /><br />        try {<br />            Thread.sleep(rand.nextInt(5000));<br />        }<br />        catch (Exception ex) {<br />        }<br /><br />        return qty;<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The following is an arbitrary application that uses the above
+Product Inventory checker
+implementation <span class="bold">DbProductInventory</span>:</p>
+</div>
+
+<fieldset id="sc-fieldset">
+<legend>Listing.3</legend>
+<pre>package com.polarsparc.dynamicproxy;<br /><br />public class ProductInventoryApplication1 {<br />    public static void main(String[] args) {<br />        ProductInventory inventory = new DbProductInventory();<br /><br />        System.out.printf("Quantity for P1000 = %d\n", inventory.checkInventory("P1000"));<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>After testing our arbitrary Product Inventory checker application,
+we release
+it to production for general use. Everything seems to go well until one
+day the
+users start complaining of slowness in using our Product Inventory
+checker
+application.</p>
+</div>
+
+<div id="para-div">
+<p>To analyze and troubleshoot the performance issue, we decide to
+measure the
+performance of the <span class="bold">checkInventory</span>
+method in our Product Inventory checker
+application. A simple way to achieve that would be to instrument the
+method
+<span class="bold">checkInventory</span> in our <span class="bold">ProductInventory</span> implementation
+class <span class="bold">DbProductInventory</span>
+as follows:</p>
+</div>
+
+<fieldset id="sc-fieldset">
+<legend>Listing.4</legend>
+<pre>package com.polarsparc.dynamicproxy;<br /><br />import java.util.Random;<br /><br />public class DbProductInventory implements ProductInventory {<br />    private Random rand = new Random();<br /><br />    @Override<br />    public int checkInventory(String code) {<br />        int qty = rand.nextInt(10);<br /><br />        long start = System.currentTimeMillis();<br /><br />        // Simulate DB access delay for upto 5 secs<br />        try {<br />            Thread.sleep(rand.nextInt(5000));<br />        }<br />        catch (Exception ex) {<br />        }<br /><br />        long end = System.currentTimeMillis();<br /><br />        System.out.printf("[%s] checkInventory for code %s took %d ms", new Date().toString(), code, (end-start));<br /><br />        return qty;<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>This would work, but what if we wanted to instrument many more
+method(s).
+Yikes !!! That is a lot of painstaking and cumbersome task. A better
+and
+cleaner approach would be to implement the same using the <span class="bold">Proxy</span>
+design pattern.</p>
+</div>
+
+<div id="para-div">
+<p>The following class implements the <span class="bold">Proxy</span>
+design pattern for our
+<span class="bold">ProductInventory</span> instance:</p>
+</div>
+
+<fieldset id="sc-fieldset">
+<legend>Listing.5</legend>
+<pre>package com.polarsparc.dynamicproxy;<br /><br />import java.util.Date;<br /><br />public class ProductInventoryProxy {<br />    private ProductInventory target;<br /><br />    public ProductInventoryProxy(ProductInventory target) {<br />        this.target = target;<br />    }<br /><br />    public int checkInventory(String code) {<br />        long start = System.currentTimeMillis();<br /><br />        int qty = target.checkInventory(code);<br /><br />        long end = System.currentTimeMillis();<br /><br />        System.out.printf("[%s] checkInventory for code %s took %d ms\n",<br />            new Date(), code, (end-start));<br /><br />        return qty;<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>To use the <span class="bold">Proxy</span>
+implementation, we need to change
+the arbitrary application as follows:</p>
+</div>
+
+<fieldset id="sc-fieldset">
+<legend>Listing.6</legend>
+<pre>package com.polarsparc.dynamicproxy;<br /><br />public class ProductInventoryApplication2 {<br />    public static void main(String[] args) {<br />        ProductInventory target = new DbProductInventory();<br /><br />        ProductInventoryProxy inventory = new ProductInventoryProxy(target);<br /><br />        System.out.printf("Quantity for P1000 = %d\n", inventory.checkInventory("P1000"));<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>See how clean and elegant it is !!! This is the power of the <span class="bold">Proxy</span>
+design pattern.</p>
+</div>
+
+<div id="para-div">
+<p>The one drawback to this approach is that we will need a proxy
+implementation
+for every interface that we wish to instrument in our application.
+Wouldn't it be
+great if we just had one class for instrumentation and use it
+dynamically at runtime
+across many interface(s) in our application !!! This is exactly what
+the Java
+Dynamic Proxy that was introduced in Java 1.3 does.</p>
+</div>
+
+<div id="para-div">
+<p>Java dynamic proxies allow one to dynamically create proxy classes
+on the fly
+at runtime for specified interface(s). All method calls on a dynamic
+proxy are
+dispatch to a single method called invoke on a single interface called
+the
+<span class="bold">InvocationHandler</span>. Every
+dynamic proxy class has a corresponding
+invocation
+handler class associated with it.</p>
+</div>
+
+<div id="para-div">
+<p>The following is the interface for <span class="bold">InvocationHandler</span>
+taken from the
+Java JDK
+source code for illustration purposes:</p>
+</div>
+
+<fieldset id="sc-fieldset">
+<legend>Listing.7</legend>
+<pre>package java.lang.reflect;<br /><br />public interface InvocationHandler {<br />    public Object invoke(Object proxy, Method method, Object[] args)<br />        throws Throwable;<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The <span class="bold">InvocationHandler</span>
+interface defines a single method called invoke. Every time a
+method from one the interface(s) of the dynamic proxy is called, it is
+dispatched to
+the <span class="bold">invoke</span> method on the
+corresponding implementation of the <span class="bold">InvocationHandler</span>.</p>
+</div>
+
+<div id="para-div">
+<p>The <span class="bold">invoke</span> method is called
+with the following arguments:</p>
+<ol id="blue-ol">
+  <li><span>The instance of the dynamic proxy class on which the method
+was called</span></li>
+  <li><span>The instance of method of the corresponding interface
+method that was called on the dynamic proxy</span></li>
+  <li><span>The array of arguments that were passed to the
+corresponding interface method that was called on the dynamic proxy</span></li>
+</ol>
+</div>
+
+<div id="para-div">
+<p>The following is our instrumentation class <span class="bold">MethodTimingProxy</span> that
+implements the
+<span class="bold">InvocationHandler</span> interface for
+measuring the <span class="bold">checkInventory</span>
+method in our Product
+Inventory checker application:</p>
+</div>
+
+<fieldset id="sc-fieldset">
+<legend>Listing.8</legend>
+<pre>package com.polarsparc.dynamicproxy;<br /><br />import java.lang.reflect.InvocationHandler;<br />import java.lang.reflect.Method;<br />import java.util.Date;<br /><br />public class MethodTimingProxy implements InvocationHandler {<br />    private Object target;<br /><br />    public MethodTimingProxy(Object target) {<br />        this.target = target;<br />    }<br /><br />    public Object invoke(Object proxy, Method method, Object[] args)<br />        throws Throwable {<br />        long start = System.currentTimeMillis();<br /><br />        Object out = method.invoke(target, args);<br /><br />        long end = System.currentTimeMillis();<br /><br />        System.out.printf("[%s] %s &lt;proxy&gt; for code %s took %d ms\n",<br />            new Date().toString(), method.getName(), args[0], (end-start));<br /><br />        return out;<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>Notice that the above implementation of the <span class="bold">InvocationHandler</span> interface is
+generic
+in nature and does not have references to any of our Product Inventory
+checker
+application interface or classes.</p>
+</div>
+
+<div id="para-div">
+<p>Next, we will need a way to dynamically create an instance of the proxy for the
+interface <span class="bold">ProductInventory</span>.
+Remember that the proxy will
+need reference to an instance
+of <span class="bold">MethodTimingProxy</span> class. In
+order to create the dynamic proxy, we will use the
+following factory class:</p>
+</div>
+
+<fieldset id="sc-fieldset">
+<legend>Listing.9</legend>
+<pre>package com.polarsparc.dynamicproxy;<br /><br />import java.lang.reflect.Proxy;<br /><br />public class ProductInventoryProxyFactory {<br />    public static ProductInventory createProductInventoryProxy(ProductInventory target) {<br />        return (ProductInventory) Proxy.newProxyInstance(<br />            target.getClass().getClassLoader(),<br />            target.getClass().getInterfaces(),<br />            new MethodTimingProxy(target));<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>The call to <span class="bold">Proxy.newProxyInstance</span>
+dynamically creates the byte code for the
+proxy at runtime and instantiates it in the Java Virtual Machine.</p>
+</div>
+
+<div id="para-div">
+<p>To use the Java Dynamic Proxy, we need to change the arbitrary
+application as follows:</p>
+</div>
+
+<fieldset id="sc-fieldset">
+<legend>Listing.10</legend>
+<pre>package com.polarsparc.dynamicproxy;<br /><br />public class ProductInventoryApplication3 {<br />    public static void main(String[] args) {<br />        ProductInventory target = new DbProductInventory();<br /><br />        ProductInventory inventory = <br />            ProductInventoryProxyFactory.createProductInventoryProxy(target);<br /><br />        System.out.printf("Quantity for P1000 = %d\n", inventory.checkInventory("P1000"));<br />    }<br />}<br /></pre>
+</fieldset>
+
+<div id="para-div">
+<p>Cool, ain't it !!! We can use the same <span class="bold">MethodTimingProxy</span> implementation to
+measure
+the performances of other method(s) in other interface(s) in our
+application.</p>
+</div>
+
+</body>
+</html>

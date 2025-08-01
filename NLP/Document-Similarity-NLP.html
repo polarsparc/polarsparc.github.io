@@ -1,0 +1,480 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Document Similarity using NLTK and Scikit-Learn">
+    <meta name="subject" content="Document Similarity using NLTK and Scikit-Learn">
+    <meta name="keywords" content="python, nlp, nltk, scikit-learn">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Document Similarity using NLTK and Scikit-Learn</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script>
+      MathJax = {
+        tex: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+      };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="gen-home"></span></td>
+        <td valign="bottom"><span id="gen-home-a"><a id="gen-home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="gen-title-div">
+      <p>Document Similarity using NLTK and Scikit-Learn</p>
+    </div>
+    <br/>
+    <table id="gen-ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">02/17/2023</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="gen-line-hr"/>
+    <br/>
+    <div id="gen-step-div">
+      <p>Overview</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the articles, <a href="https://polarsparc.github.io/NLP/Python-NLTK.html" target="_blank"><span class="bold">Basics of
+        Natural Language Processing using NLTK</span></a> and <a href="https://polarsparc.github.io/NLP/Feature-Extraction-NLP.html"
+        target="_blank"><span class="bold">Feature Extraction for Natural Language Processing</span></a>, we covered the necessary
+        ingredients of Natural Language Processing (or NLP for short).</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">Document Similarity</span> in NLP determines how similar documents (textual data) are to each other
+        using their vector representation.</p>
+    </div>
+    <div id="para-div">
+      <p>In this following sections, we will demonstrate how one can determine if two documents (sentences) are similar to one another
+        using nltk and scikit-learn.</p>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>Mathematical Intuition</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In order to perform any type of analysis, one needs to convert a text document into a feature vector, which was covered in
+        the article <a href="https://polarsparc.github.io/NLP/Feature-Extraction-NLP.html" target="_blank"><span class="bold">Feature
+        Extraction for Natural Language Processing</span></a>.</p>
+      <p>Once we have a vector representation of a text document, how do we measure the similarity between two documents ???</p>
+      <p>This is where <a href="https://polarsparc.github.io/Mathematics/LinearAlgebra-1.html" target="_blank"><span class="bold">Linear
+        Algebra</span></a> comes into play.</p>
+    </div>
+    <div id="para-div">
+      <p>To get a better understanding, let us start with a very simple example. Assume a corpus that has four documents, each with
+        only two unique words describing them. This implies the vector representation of each document will have only two elements,
+        which can easily be represented in a two-dimensional coordinate space.</p>
+      <p>The following would be the graph for two documents (represented as vectors) that contain similar count of the same words:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Reviews Information" class="gen-img-cls" src="./images/nlp-similarity-01.png">
+        <div class="gen-img-cap">Figure.1</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the graph for two documents (represented as vectors) that contain one word in common and the other
+        different:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Reviews Information" class="gen-img-cls" src="./images/nlp-similarity-02.png">
+        <div class="gen-img-cap">Figure.2</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the graph for two documents (represented as vectors) that contain totally different words:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Reviews Information" class="gen-img-cls" src="./images/nlp-similarity-03.png">
+        <div class="gen-img-cap">Figure.3</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>From the illustrations above, we can infer that the <span class="bold">Document Similarity</span> is related to the angle
+        between the two vectors. This measure is referred to as the <span class="hi-yellow">Cosine Similarity</span>. The smaller
+        the angle, the closer the documents in similarity.</p>
+    </div>
+    <div id="para-div">
+      <p>From Linear Algebra, we know that the dot product of two vectors $\vec{a}$ and $\vec{b}$ in a two dimensional space is the
+        cosine of the angle between the two vectors multiplied with the lengths of the two vectors.</p>
+      <p>In other words:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$a^Tb = \sum\limits_{i=1}^n\vec{a_i}\vec{b_i} = \lVert \vec{a} \rVert \lVert \vec{b} \rVert \cos
+        \theta$</p>
+      <p>Note that $\theta$ is the angle between the two vectors $\vec{a}$ and $\vec{b}$.</p>
+      <p>Rearranging the equation, we get:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$\cos \theta = \Large{\frac{a^Tb}{\lVert \vec{a} \rVert \lVert \vec{b} \rVert}}$</p>
+      <p>The following graph is the illustration of the two vectors:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Reviews Information" class="gen-img-cls" src="./images/nlp-similarity-04.png">
+        <div class="gen-img-cap">Figure.4</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>From the triangle above, using the Pythagorean Theorem, we can infer the following:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$c^2 = p^2 + q^2$ ..... $\color{red} (1)$</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$a^2 = p^2 + (b-q)^2$ ..... $\color{red} (2)$</p>
+      <p>Using Trigonometry, we can infer the following:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$\sin \theta = \Large{\frac{p}{a}}$ OR $p = a \sin \theta$ ..... $\color{red} (3)$</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$\cos \theta = \Large{\frac{b-q}{a}}$ OR $q = b - a \cos \theta$ ..... $\color{red} (4)$</p>
+      <p>Expanding the equation $\color{red} (2)$ from above, we get:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$p^2 + (b^2 + q^2 - 2bq) = a^2$</p>
+      <p>That is:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$(p^2 + q^2) + b^2 -2bq = a^2$</p>
+      <p>Replacing the first term with $c^2$ from equation $\color{red} (1)$ above, we get:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$c^2 + b^2 -2bq = a^2$</p>
+      <p>Replacing q from equation $\color{red} (4)$ above, we get:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$c^2 + b^2 -2b(b - a \cos \theta) = a^2$</p>
+      <p>Simplifying, we get:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$c^2 = a^2 + b^2 - 2ab \cos \theta = {\lVert \vec{a} \rVert}^2 + {\lVert \vec{b} \rVert}^2 - 2\lVert
+        \vec{a} \rVert \lVert \vec{b} \rVert \cos \theta$</p>
+    </div>
+    <div id="para-div">
+      <p>From geometry, we can infer $\vec{c} = \vec{a} - \vec{b}$</p>
+      <p>In other words:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$\lVert \vec{c} \rVert = \lVert \vec{a} \rVert - \lVert \vec{b} \rVert$</p>
+      <p>We know $\lVert \vec{a} \rVert = a^Ta$. Therefore, rewriting the above equation as:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$\lVert \vec{c} \rVert = (a - b)^T(a - b) = a^Ta - 2a^Tb + b^Tb = {\lVert \vec{a} \rVert}^2 + {\lVert
+        \vec{b} \rVert}^2 - 2a^Tb$</p>
+      <p>Substituting in the equation for the law of cosines, we get:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;${\lVert \vec{a} \rVert}^2 + {\lVert \vec{b} \rVert}^2 - 2a^Tb = {\lVert \vec{a} \rVert}^2 + {\lVert
+        \vec{b} \rVert}^2 - 2ab \cos \theta$</p>
+      <p>Simplifying the equation, we get:</p>
+      <p>&nbsp;&nbsp;&nbsp;&nbsp;$a^Tb = \lVert \vec{a} \rVert \lVert \vec{b} \rVert \cos \theta$</p>
+      <p>Thus proving the geometric interpretation of the vector dot product.</p>
+      <p>This concepts applies to two vectors in the n-dimensional hyperspace as well.</p>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>Installation and Setup</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Please refer to the article <a href="https://polarsparc.github.io/NLP/Feature-Extraction-NLP.html" target="_blank">
+        <span class="bold">Feature Extraction for Natural Language Processing</span></a> for the environment installation and setup.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a <span class="bold">Terminal</span> window in which we will excute the various commands.</p>
+    </div>
+    <div id="para-div">
+      <p>To launch the Jupyter Notebook, execute the following command in the Terminal:</p>
+    </div>
+    <div id="gen-cmd-div">
+      <p>$ jupyter notebook</p>
+    </div>
+    <br/>
+    <br/>
+    <div id="gen-step-div">
+      <p>Hands-On Document Similarity</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The first step is to import all the necessary Python modules such as, pandas, nltk, matplotlib, scikit-learn, and wordcloud
+        by running the following statements in the Jupyter cell:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>import nltk
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from collections import defaultdict
+from nltk.corpus import stopwords
+from nltk.tokenize import WordPunctTokenizer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from wordcloud import WordCloud</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To set the correct path to the nltk data packages, run the following statement in the Jupyter cell:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>nltk.data.path.append("/home/alice/nltk_data")</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To initialize the tiny corpus containing 4 sentences for ease of understanding, run the following statement in the Jupyter
+        cell:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>documents = [
+  'Python is a high-level, general-purpose programming language that is dynamically typed and garbage-collected.',
+  'Go is a statically typed, compiled high-level programming language designed with memory safety, garbage collection, and CSP-style concurrency.',
+  'Java is a high-level, class-based, object-oriented programming language that is designed to have as few implementation dependencies as possible.',
+  'Leadership encompasses the ability of an individual, group or organization to "lead", influence or guide other individuals, teams, or entire organizations.'
+]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To load the Stop Words from the English language defined in nltk, run the following statement in the Jupyter cell:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>stop_words = stopwords.words('english')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To initialize an instance of a word tokenizer, run the following statement in the Jupyter cell:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>word_tokenizer = WordPunctTokenizer()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To initialize an instance of the wordnet lemmatizer, run the following statement in the Jupyter cell:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>word_lemmatizer = nltk.WordNetLemmatizer()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To cleanse the sentences from the corpus by removing the punctuations, two-letter words, converting words to their roots,
+        collecting all the unique words from the corpus, and display the cleansed sentences, run the following statements in the
+        Jupyter cell:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>vocabulary_dict = defaultdict(int)
+cleansed_documents = []
+for doc in documents:
+    tokens = word_tokenizer.tokenize(doc)
+    alpha_words = [word.lower() for word in tokens if word.isalpha() and len(word) > 2 and word not in stop_words]
+    final_words = [word_lemmatizer.lemmatize(word) for word in alpha_words]
+    for word in final_words:
+        vocabulary_dict[word] += 1
+    cleansed_doc = ' '.join(final_words)
+    cleansed_documents.append(cleansed_doc)
+cleansed_documents</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Cleansed Corpus" class="gen-img-cls" src="./images/nlp-similarity-05.png">
+        <div class="gen-img-cap">Figure.5</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display a word cloud of all the unique words (features) from the corpus, run the following statements in the Jupyter cell:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>word_cloud = WordCloud()
+word_cloud.generate_from_frequencies(vocabulary_dict)
+plt.imshow(word_cloud, interpolation='bilinear')
+plt.axis('off')
+plt.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Word Cloud" class="gen-img-cls" src="./images/nlp-similarity-06.png">
+        <div class="gen-img-cap">Figure.6</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the first 15 most frequently occuring unique words from our corpus, run the following statements in the Jupyter
+        cell:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>sorted_vocabulary = sorted(vocabulary_dict.items(), key=lambda kv: kv[1], reverse=True)
+sorted_vocabulary[:15]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Vocabulary Frequency" class="gen-img-cls" src="./images/nlp-similarity-07.png">
+        <div class="gen-img-cap">Figure.7</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To collect all the unique words from the corpus into a list and display the first 15 vocabulary entries, run the following
+        statements in the Jupyter cell:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>vocabulary = []
+for word, count in sorted_vocabulary:
+    vocabulary.append(word)
+vocabulary[:15]</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Corpus Vocabulary" class="gen-img-cls" src="./images/nlp-similarity-08.png">
+        <div class="gen-img-cap">Figure.8</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create an instance of the TF-IDF vectorizer, run the following statement in the Jupyter cell:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>word_vectorizer = TfidfVectorizer(vocabulary=vocabulary)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a new TF-IDF scores vector for our corpus, run the following statement in the Jupyter cell:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>matrix = word_vectorizer.fit_transform(cleansed_documents).toarray()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a pandas dataframe for the TF-IDF scores vector and display the rows of the dataframe, run the following statements
+        in the Jupyter cell:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>documents_df = pd.DataFrame(data=matrix, columns=vocabulary)
+documents_df</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="TF-IDF Dataframe" class="gen-img-cls" src="./images/nlp-similarity-09.png">
+        <div class="gen-img-cap">Figure.9</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To compute and display the cosine similarity score between the first document compared to the other documents in the corpus,
+        run the following statements in the Jupyter cell:</p>
+    </div>
+    <br/>
+    <div id="gen-src-outer-div">
+      <div class="gen-src-body">
+<pre>first_doc = matrix[0].reshape(1, -1)
+for i in range(1, len(matrix)):
+    next_doc = matrix[i].reshape(1, -1)
+    similarity_score = cosine_similarity(first_doc, next_doc)
+    print(f'Doc-1 vs Doc-{i+1} => {similarity_score}')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <div id="gen-img-outer-div">
+        <img alt="Similarity Scores" class="gen-img-cls" src="./images/nlp-similarity-10.png">
+        <div class="gen-img-cap">Figure.10</div>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>As is evident from the Figure.10 above, the first and the second document are more similar than the others in the corpus,
+        which makes sense as they are related to the topic of high-level programming languages with garbage collection. The fourth
+        document is related to leadership and hence not similar.</p>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>Jupyter Notebook</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the link to the <span class="bold">Jupyter Notebook</span> that provides an hands-on demo for this
+        article:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><a href="https://github.com/bhaskars-repo/TextAnalytics/blob/main/document_similarity.ipynb" target="_blank">
+          <span class="bold">Document Similarity</span></a></p></li>
+      </ul>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>References</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/NLP/Python-NLTK.html" target="_blank"><span class="bold">Basics of Natural Language Processing using NLTK</span></a></p>
+      <p><a href="https://polarsparc.github.io/NLP/Feature-Extraction-NLP.html" target="_blank"><span class="bold">Feature Extraction for Natural Language Processing</span></a></p>
+      <p><a href="https://www.nltk.org/" target="_blank"><span class="bold">NLTK Documentation</span></a></p>
+      <p><a href="https://polarsparc.github.io/xhtml/LinearAlgebra-1.html" target="_blank"><span class="bold">Introduction to Linear Algebra - Part 1</span></a></p>
+    </div>
+    <br/>
+    <hr class="gen-line-hr" />
+    <div>
+      <a id="gen-footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
