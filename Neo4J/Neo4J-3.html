@@ -1,0 +1,471 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+<head>
+  <title>Getting Started with Neo4J - Part 3</title>
+  <link rel="stylesheet" type="text/css" href="../css/polarsparc-v2.0.css"/>
+</head>
+<body>
+  <br />
+  <div id="title-div">
+    <p>Getting Started with Neo4J - Part 3</p>
+  </div>
+  <br/>
+  <table id="ad-table">
+    <tbody>
+      <tr>
+        <td class="author-td">Bhaskar S</td>
+        <td class="date-td">12/09/2017</td>
+      </tr>
+    </tbody>
+  </table>
+  <hr class="line-hr" /> <br />
+  <div id="step-div">
+    <p>Overview</p>
+  </div>
+  <div id="para-div">
+  	<p>In <a href="http://polarsparc.github.io/Neo4J/Neo4J-2.html" target="_blank"><span class="bold">Part-2</span></a>
+      of this series, we briefly explored the SQL like query language for <span class="bold">Neo4J</span> called
+      <span class="bold">Cypher</span>, dabbling with the <span class="bold">CREATE</span> clauses and the various
+      <span class="bold">MATCH</span> clauses, via the web-browser interface as well as the command-line interface.</p>
+  </div>
+  <div id="step-div">
+    <p>Hands-on with Cypher</p>
+  </div>
+  <div id="para-div">
+    <p>Lets us continue from where we left off to wrap a few loose ends.</p>
+  </div>
+  <div id="para-div">
+    <p>To query the property values of the keys <span class="bold">uid</span> and <span class="bold">email</span>
+      for all the nodes with the label <span class="bold">User</span>, by skipping the first 2 rows and limiting the
+      output to just 3 rows, execute the following <span class="bold">MATCH</span> query:</p>
+  </div>
+  <div id="cmd-div">
+    <p>MATCH (u:User) RETURN u.uid, u.email SKIP 2 LIMIT 3;</p>
+  </div>
+  <div id="para-div">
+    <p>On executing the above query, the results should look like the one shown below:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.1</h4>
+    <pre>+---------------------------------------+
+| u.uid     | u.email                   |
++---------------------------------------+
+| "charlie" | "charlie.brown@earth.com" |
+| "david"   | "david.black@earth.com"   |
+| "frank"   | "frank.grey@earth.com"    |
++---------------------------------------+
+
+3 rows available after 86 ms, consumed after another 34 ms</pre>
+  </div>
+  <div id="para-div">
+    <p>To query the property value of the key <span class="bold">state</span> with the value <span class="bold">nj</span>
+      for all the nodes with the label <span class="bold">User</span> and return the count of the entries, execute the
+      following <span class="bold">MATCH</span> query:</p>
+  </div>
+  <div id="cmd-div">
+    <p>MATCH (u:User) WHERE u.state = 'nj' RETURN COUNT(u.state);</p>
+  </div>
+  <div id="para-div">
+    <p>On executing the above query, the results should look like the one shown below:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.2</h4>
+    <pre>+----------------+
+| COUNT(u.state) |
++----------------+
+| 3              |
++----------------+
+
+1 row available after 200 ms, consumed after another 0 ms</pre>
+  </div>
+  <div id="para-div">
+    <p>As can be seen from the Output.2 above, the column name for the resulting count is the function invoked
+      <span class="bold">COUNT(u.state)</span>. To assign a user friendly column name for the resulting count,
+      execute the following <span class="bold">MATCH</span> query:</p>
+  </div>
+  <div id="cmd-div">
+    <p>MATCH (u:User) WHERE u.state = 'nj' RETURN COUNT(*) AS Count;</p>
+  </div>
+  <div id="para-div">
+    <p>On executing the above query, the results should look like the one shown below:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.3</h4>
+    <pre>+-------+
+| Count |
++-------+
+| 3     |
++-------+
+
+1 row available after 41 ms, consumed after another 0 ms</pre>
+  </div>
+  <div id="para-div">
+    <p>One can combine the results from multiple <span class="bold">MATCH</span> queries to appear as one using the 
+      <span class="hi-yellow">UNION</span> clause. One constraint is that the column names have to be the same from
+      the multiple queries.</p>
+    <p>The following is an example querying the property values of the keys <span class="bold">uid</span> and
+      <span class="bold">email</span> from two separate <span class="bold">MATCH</span> queries:</p>
+  </div>
+  <div id="cmd-div">
+    <p>MATCH (u1:User) -[g1:BELONGS_TO]-> () WHERE u1.state = 'tx' AND g1.context = 'pm' RETURN u1.uid AS Uid, u1.email
+      As Email UNION MATCH (u2:User) -[g2:BELONGS_TO]-> () WHERE g2.context = 'pm' RETURN u2.uid AS Uid, u2.email AS Email;</p>
+  </div>
+  <div id="para-div">
+    <p>On executing the above query, the results should look like the one shown below:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.4</h4>
+    <pre>+---------------------------------------+
+| Uid       | Email                     |
++---------------------------------------+
+| "gary"    | "gary.white@earth.com"    |
+| "alice"   | "alice.pink@earth.com"    |
+| "bob"     | "bob.green@earth.com"     |
+| "charlie" | "charlie.brown@earth.com" |
++---------------------------------------+
+
+4 rows available after 82 ms, consumed after another 7 ms</pre>
+  </div>
+  <div id="para-div">
+    <p>Let us now create an additional node with the label <span class="bold">User</span> by executing the following
+      <span class="bold">CREATE</span> clause:</p>
+  </div>
+  <div id="cmd-div">
+    <p>CREATE (Zion:User {name:'Zion Red', uid: 'zion', email: 'zion.red@mars.com', state: 'tx'});</p>
+  </div>
+  <div id="para-div">
+    <p>On executing the above query, the results should look like the one shown below:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.5</h4>
+    <pre>0 rows available after 147 ms, consumed after another 0 ms
+Added 1 nodes, Set 4 properties, Added 1 labels</pre>
+  </div>
+  <div id="para-div">
+    <p>Let us now relate the above created <span class="bold">User</span> node to the <span class="bold">Group</span>
+      node called <span class="bold">ProjectManagement</span> by executing the following <span class="bold">CREATE</span>
+      clause:</p>
+  </div>
+  <div id="cmd-div">
+    <p>MATCH (u:User) WHERE u.uid = 'zion' CREATE (u) -[:BELONGS_TO {context: 'pm'}]-> (ProjectManagement);</p>
+  </div>
+  <div id="para-div">
+    <p>On executing the above query, the results should look like the one shown below:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.6</h4>
+    <pre>0 rows available after 57 ms, consumed after another 0 ms
+Added 1 nodes, Created 1 relationships, Set 1 properties</pre>
+  </div>
+  <div id="para-div">
+    <p>Verify the relationship was successful by executing the following <span class="bold">MATCH</span> query:</p>
+  </div>
+  <div id="cmd-div">
+    <p>MATCH (u) -[:BELONGS_TO {context: 'pm'}]-> () RETURN u.name;</p>
+  </div>
+  <div id="para-div">
+    <p>On executing the above query, the results should look like the one shown below:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.7</h4>
+    <pre>+-----------------+
+| u.name          |
++-----------------+
+| "Gary White"    |
+| "Charlie Brown" |
+| "Bob Green"     |
+| "Alice Pink"    |
+| "Zion Red"      |
++-----------------+
+
+5 rows available after 29 ms, consumed after another 3 ms</pre>
+  </div>
+  <div id="para-div">
+    <p>To query the property value of the key <span class="bold">uid</span> with the value <span class="bold">zion</span>
+      for all the nodes with the label <span class="bold">User</span> and delete the entries, execute the following
+      <span class="bold">MATCH</span> query:</p>
+  </div>
+  <div id="cmd-div">
+    <p>MATCH (u:User) WHERE u.uid = 'zion' DELETE u;</p>
+  </div>
+  <div id="para-div">
+    <p>On executing the above query, the results should look like the one shown below:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.8</h4>
+    <pre>Cannot delete node&lt;9&gt;, because it still has relationships. To delete this node, you must first delete its relationships.</pre>
+  </div>
+  <div id="para-div">
+    <p><span class="bold">OOPS</span> !!! What happened here ???</p>
+    <p>Remember from above, we created a relationship with the <span class="bold">Group</span> node called
+      <span class="bold">ProjectManagement</span>. One needs to delete all the relationship(s) from a node before it can
+      be targetted for deletion.</p>
+  </div>
+  <div id="para-div">
+    <p>To delete <span class="bold">User</span> node for <span class="bold">zion</span> along with all the relationships
+      to other nodes, execute the following <span class="bold">MATCH</span> query:</p>
+  </div>
+  <div id="cmd-div">
+    <p>MATCH (u:User) -[r]- () WHERE u.uid = 'zion' DELETE r, u;</p>
+  </div>
+  <div id="para-div">
+    <p>On executing the above query, the results should look like the one shown below:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.9</h4>
+    <pre>0 rows available after 34 ms, consumed after another 0 ms
+Deleted 1 nodes, Deleted 1 relationships</pre>
+  </div>
+  <div id="para-div">
+    <p>Often times there is a need to bulk load data from external file(s). <span class="bold">Neo4J</span> provides
+      facilities to load data from <span class="hi-yellow">CSV</span> files.</p>
+    <p>Since we are using a <span class="bold">docker</span> instance of <span class="bold">Neo4J</span>, we need to
+      make few adjustments to our environment in order to import data from <span class="bold">CSV</span> files.</p>
+  </div>
+  <div id="para-div">
+    <p>Exit off the <span class="bold">cypher-shell</span> and shutdown the running <span class="bold">docker</span> instance.</p>
+  </div>
+  <div id="para-div">
+    <p>Create an additional directory called <span class="hi-yellow">import</span> under <span class="bold">/home/alice/Neo4J</span>
+      by executing the following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>mkdir -p /home/alice/Neo4J/import</p>
+  </div>
+  <div id="para-div">
+    <p>To launch a new <span class="bold">docker</span> instance for <span class="bold">Neo4J</span> with the directory of
+      <span class="bold">import</span> enabled, execute the following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>docker run --rm --name neo4j --publish=7474:7474 --publish=7687:7687 --volume=$HOME/Neo4J/data:/data --volume=$HOME/Neo4J/logs:
+    /logs --volume=$HOME/Neo4J/conf:/conf --volume=$HOME/Neo4J/import:/import neo4j:3.3.0</p>
+  </div>
+  <div id="para-div">
+    <p>The following should be the typical output:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.10</h4>
+    <pre>Active database: demo_graph.db
+Directories in use:
+  home:         /var/lib/neo4j
+  config:       /var/lib/neo4j/conf
+  logs:         /logs
+  plugins:      /var/lib/neo4j/plugins
+  import:       /import
+  data:         /data
+  certificates: /var/lib/neo4j/certificates
+  run:          /var/lib/neo4j/run
+Starting Neo4j.
+2017-12-09 20:49:53.944+0000 WARN  Unknown config option: causal_clustering.discovery_listen_address
+2017-12-09 20:49:53.949+0000 WARN  Unknown config option: causal_clustering.raft_advertised_address
+2017-12-09 20:49:53.950+0000 WARN  Unknown config option: causal_clustering.raft_listen_address
+2017-12-09 20:49:53.950+0000 WARN  Unknown config option: ha.host.coordination
+2017-12-09 20:49:53.950+0000 WARN  Unknown config option: causal_clustering.transaction_advertised_address
+2017-12-09 20:49:53.950+0000 WARN  Unknown config option: causal_clustering.discovery_advertised_address
+2017-12-09 20:49:53.951+0000 WARN  Unknown config option: ha.host.data
+2017-12-09 20:49:53.951+0000 WARN  Unknown config option: causal_clustering.transaction_listen_address
+2017-12-09 20:49:53.967+0000 INFO  ======== Neo4j 3.3.0 ========
+2017-12-09 20:49:53.993+0000 INFO  Starting...
+2017-12-09 20:49:55.404+0000 INFO  Bolt enabled on 0.0.0.0:7687.
+2017-12-09 20:49:58.626+0000 INFO  Started.
+2017-12-09 20:49:59.526+0000 INFO  Remote interface available at http://localhost:7474/</pre>
+  </div>
+  <div id="para-div">
+    <p>Re-launch the <span class="bold">cypher-shell</span> by executing the following command:</p>
+  </div>
+  <div id="cmd-div">
+    <p>docker exec -ti neo4j bin/cypher-shell -u neo4j</p>
+  </div>
+  <div id="para-div">
+    <p>The following is a sample <span class="bold">CSV</span> file called <span class="hi-yellow">users.csv</span> that
+      contains rows for creating new <span class="bold">User</span> nodes:</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>users.csv</legend>
+    <pre>Full_Name,uid,Email,State,Type
+Jane Red,jane,jane.red@earth.com,ny,employee
+Kyle Orange,kyle,kyle.orange@earth.com,nj,consultant
+Lynda Pink,lynda,lynda.pink@earth.com,tx,employee
+Mary Green,mary,mary.green@earth.com,ny,employee
+Nathan Brown,nathan,nathan.brown@earth.com,tx,consultant</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>Similarly, the following is a sample <span class="bold">CSV</span> file called <span class="hi-yellow">relationships.csv</span>
+      that contains rows for creating relationships between the <span class="bold">User</span> nodes and <span class="bold">Group</span>
+      nodes:</p>
+  </div>
+  <fieldset id="sc-fieldset"> <legend>relationships.csv</legend>
+    <pre>uid,Context,Group_Name
+jane,architect,Core Engineering
+kyle,developer,Core Engineering
+lynda,pm,Project Management
+mary,pm,Project Management
+mary,manager,Core Engineering
+nathan,developer,Core Engineering</pre>
+  </fieldset>
+  <div id="para-div">
+    <p>Copy the above two sample <span class="bold">CSV</span> files <span class="bold">users.csv</span> and
+      <span class="bold">relationships.csv</span> to the directory <span class="bold">/home/alice/Neo4J/import</span>.</p>
+  </div>
+  <div id="para-div">
+    <p>To access any <span class="bold">CSV</span> file in <span class="bold">Neo4J</span>, use the <span class="bold">Cypher</span>
+      clause <span class="hi-yellow">LOAD CSV</span>.</p>
+    <p>To validate that we are able to access the <span class="bold">users.csv</span> file in <span class="bold">cypher-shell</span>,
+      execute the following <span class="bold">LOAD CSV</span> statement:</p>
+  </div>
+  <div id="cmd-div">
+    <p>LOAD CSV WITH HEADERS FROM "file:///users.csv" AS row RETURN COUNT(*);</p>
+  </div>
+  <div id="para-div">
+    <p>On executing the above query, the results should look like the one shown below:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.11</h4>
+    <pre>+----------+
+| COUNT(*) |
++----------+
+| 5        |
++----------+
+
+1 row available after 98 ms, consumed after another 98 ms</pre>
+  </div>
+  <div id="para-div">
+    <p>To list the existing <span class="bold">User</span> nodes, execute the following <span class="bold">MATCH</span> query:</p>
+  </div>
+  <div id="cmd-div">
+    <p>MATCH (u:User) RETURN u.uid;</p>
+  </div>
+  <div id="para-div">
+    <p>On executing the above query, the results should look like the one shown below:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.12</h4>
+    <pre>+-----------+
+| u.uid     |
++-----------+
+| "alice"   |
+| "bob"     |
+| "charlie" |
+| "david"   |
+| "frank"   |
+| "gary"    |
+| "harry"   |
++-----------+
+
+7 rows available after 56 ms, consumed after another 13 ms</pre>
+  </div>
+  <div id="para-div">
+    <p>To import data from the <span class="bold">users.csv</span> file as new <span class="bold">User</span> nodes (for
+      each row), execute the following <span class="bold">LOAD CSV</span> statement:</p>
+  </div>
+  <div id="cmd-div">
+    <p>LOAD CSV WITH HEADERS FROM "file:///users.csv" AS row CREATE (:User  {name: row.Full_Name, uid: row.uid, email: row.Email,
+      state: row.State, type: row.Type});</p>
+  </div>
+  <div id="para-div">
+    <p>On executing the above statement, the results should look like the one shown below:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.13</h4>
+    <pre>0 rows available after 211 ms, consumed after another 0 ms
+Added 5 nodes, Set 25 properties, Added 5 labels</pre>
+  </div>
+  <div id="para-div">
+    <p>To verify the list of all the <span class="bold">User</span> nodes, execute the following <span class="bold">MATCH</span>
+      query:</p>
+  </div>
+  <div id="cmd-div">
+    <p>MATCH (u:User) RETURN u.uid;</p>
+  </div>
+  <div id="para-div">
+    <p>On executing the above query, the results should look like the one shown below:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.14</h4>
+    <pre>+-----------+
+| u.uid     |
++-----------+
+| "alice"   |
+| "bob"     |
+| "charlie" |
+| "david"   |
+| "frank"   |
+| "gary"    |
+| "harry"   |
+| "jane"    |
+| "kyle"    |
+| "lynda"   |
+| "mary"    |
+| "nathan"  |
++-----------+
+
+12 rows available after 9 ms, consumed after another 5 ms</pre>
+  </div>
+  <div id="para-div">
+    <p><span class="bold">WALLA</span> !!! We have successfully imported data from the <span class="bold">users.csv</span> file.</p>
+  </div>
+  <div id="para-div">
+    <p>To import data from the <span class="bold">relationships.csv</span> file for creating relationships of type
+      <span class="bold">BELONGS_TO</span> for the newly created <span class="bold">User</span> nodes, execute the following
+      <span class="bold">LOAD CSV</span> statement:</p>
+  </div>
+  <div id="cmd-div">
+    <p>LOAD CSV WITH HEADERS FROM "file:///relationships.csv" AS row MATCH (u:User) WHERE u.uid = row.uid MATCH (g:Group) WHERE
+      g.name = row.Group_Name CREATE (u) -[:BELONGS_TO {context: row.Context}]-> (g);</p>
+  </div>
+  <div id="para-div">
+    <p>On executing the above statement, the results should look like the one shown below:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.15</h4>
+    <pre>0 rows available after 371 ms, consumed after another 0 ms
+Created 6 relationships, Set 6 properties</pre>
+  </div>
+  <div id="para-div">
+    <p>To verify the list of all the relationships of the type <span class="bold">BELONGS_TO</span>, execute the following
+      <span class="bold">MATCH</span> query:</p>
+  </div>
+  <div id="cmd-div">
+    <p>MATCH (u:User) -[r:BELONGS_TO]-> (g:Group) RETURN u.uid, r.context, g.name;</p>
+  </div>
+  <div id="para-div">
+    <p>On executing the above query, the results should look like the one shown below:</p>
+  </div>
+  <div id="out-div">
+    <h4>Output.16</h4>
+    <pre>+------------------------------------------------+
+| u.uid     | r.context   | g.name               |
++------------------------------------------------+
+| "mary"    | "pm"        | "Project Management" |
+| "lynda"   | "pm"        | "Project Management" |
+| "gary"    | "pm"        | "Project Management" |
+| "charlie" | "pm"        | "Project Management" |
+| "bob"     | "pm"        | "Project Management" |
+| "alice"   | "pm"        | "Project Management" |
+| "nathan"  | "developer" | "Core Engineering"   |
+| "mary"    | "manager"   | "Core Engineering"   |
+| "kyle"    | "developer" | "Core Engineering"   |
+| "jane"    | "architect" | "Core Engineering"   |
+| "harry"   | "architect" | "Core Engineering"   |
+| "frank"   | "developer" | "Core Engineering"   |
+| "david"   | "developer" | "Core Engineering"   |
+| "bob"     | "architect" | "Core Engineering"   |
++------------------------------------------------+
+
+14 rows available after 87 ms, consumed after another 14 ms</pre>
+  </div>
+  <div id="para-div">
+    <p><span class="bold">BINGO</span> !!! We have successfully imported data from the <span class="bold">relationships.csv</span>
+      file.</p>
+  </div>
+  <div id="step-div">
+    <p>References</p>
+  </div>
+  <div id="para-div">
+    <p><a href="http://polarsparc.github.io/Neo4J/Neo4J-1.html" target="_blank">
+      <span class="bold">Getting Started with Neo4J - Part 1</span></a></p>
+    <p><a href="http://polarsparc.github.io/Neo4J/Neo4J-2.html" target="_blank">
+      <span class="bold">Getting Started with Neo4J - Part 2</span></a></p>
+    <p><a href="https://neo4j.com/" target="_blank"><span class="bold">Neo4J Official Site</span></a></p>
+  </div>
+</body>
+</html>
