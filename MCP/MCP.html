@@ -99,7 +99,7 @@
     </div>
     <br/>
     <div id="cmd-div">
-      <p>$ pip install dotenv langchain lanchain-core langchain-ollama langgraph langchain-mcp-adapters mcp</p>
+      <p>$ pip install authlib dotenv fastapi httpx langchain lanchain-core langchain-ollama langgraph langchain-mcp-adapters mcp</p>
     </div>
     <br/>
     <div id="para-div">
@@ -125,7 +125,10 @@
 OLLAMA_MODEL='granite3.3:2b'
 OLLAMA_BASE_URL='http://192.168.1.25:11434'
 PY_PROJECT_DIR='/projects/python/MCP/'
-MCP_BASE_URL='http://192.168.1.25:8000/mcp'</pre>
+MCP_BASE_URL='http://192.168.1.25:8000/mcp'
+JWT_SECRET_KEY='0xB0R3D2CR3AT3AV3RYG00DS3CUR3K3Y'
+JWT_ALGORITHM='HS256'
+JWT_EXPIRATION_SECS=60</pre>
       </div>
     </div>
     <br/>
@@ -788,6 +791,399 @@ INFO 2025-08-16 20:25:18,771 - [AIMessage(content="The system has a total of 62 
     <div id="para-div">
       <p><span class="bold">WALLA</span> - it is evident from the above <span class="bold">Output.5</span> that the LLM app was able
         to sucessfully able to communicate with the <span class="bold">MCP server</span> using both transport modes !!!</p>
+    </div>
+    <div id="para-div">
+      <p>Until now, the MCP servers were unprotected (without any kind of authentication enforcement), with open access to a MCP
+        client. In the next example, we will demonstrate how one can use JWT token to allow/deny access to a MCP client.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the <span class="bold">JWT Manager</span> code in Python using the <span class="bold">authlib</span>
+        module:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">jwt_manager.py</div>
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   16 August 2025
+#
+
+from authlib.jose import JoseError, JsonWebToken
+from dotenv import load_dotenv, find_dotenv
+
+import datetime
+import logging
+import os
+
+# Logging Configuration
+logging.basicConfig(
+  format='%(asctime)s | %(levelname)s -> %(message)s',
+  datefmt='%Y-%m-%d %H:%M:%S',
+  level=logging.INFO
+)
+
+# Logger
+logger = logging.getLogger('jwt_manager')
+
+# JWT class with method for generating and verifying JWT key
+class JWTManager(object):
+  def __init__(self):
+    load_dotenv(find_dotenv())
+    self.jwt_secret_key = os.getenv('JWT_SECRET_KEY')
+    self.jwt_algorithm = os.getenv('JWT_ALGORITHM')
+    self.jwt_expiration_secs = int(os.getenv('JWT_EXPIRATION_SECS'))
+
+  def expiry_time_secs(self):
+    """This method returns the expiration time."""
+    return self.jwt_expiration_secs
+
+  def create_token(self, subject: str) -> str:
+    """This method creates a new JWT token."""
+    logger.info(f'Creating JWT token for subject {subject}')
+    now = datetime.datetime.now(datetime.UTC)
+    payload = {
+      'sub': subject,
+      'iat': int(now.timestamp()),
+      'exp': int((now + datetime.timedelta(seconds=self.jwt_expiration_secs)).timestamp()),
+      'iss': 'polarsparc.com',
+      'aud': 'polarsparc.com/mcp',
+    }
+    jws = JsonWebToken(self.jwt_algorithm)
+    return jws.encode({'alg': self.jwt_algorithm}, payload, self.jwt_secret_key).decode('utf-8')
+
+  def verify_token(self, token: str) -> bool:
+    """This method verifies a JWT token."""
+    logger.info(f'Verifying JWT token')
+    valid = True
+    jws = JsonWebToken(self.jwt_algorithm)
+    try:
+        jws.decode(token, self.jwt_secret_key)
+    except JoseError as e:
+        valid = False
+    return valid</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the <span class="bold">JWT Service</span> code in Python, which exposes an URL endpoint for the JWT token
+        creation (and validation) using the <span class="bold">fastapi</span> module:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">jwt_service.py</div>
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   16 August 2025
+#
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from typing import Any
+from jwt_manager import JWTManager
+
+import logging
+import uvicorn
+
+# Logging Configuration
+logging.basicConfig(
+  format='%(asctime)s | %(levelname)s -> %(message)s',
+  datefmt='%Y-%m-%d %H:%M:%S',
+  level=logging.INFO
+)
+
+# Logger
+logger = logging.getLogger('jwt_service')
+
+# FastAPI app
+app = FastAPI()
+
+# JWT manager
+jwt = JWTManager()
+
+# Utility method(s)
+def unauthorized(message: str):
+  response = JSONResponse({'error': message}, status_code=401)
+  response.headers['WWW-Authenticate'] = 'Basic realm="Bearer token required"'
+  return response
+
+# FastAPI route handlers
+
+# Usage: curl -X POST http://192.168.1.25:8080/api/generate -H 'Content-Type: application/json' -d '{"subject": "user@polarsparc.com"}'
+@app.post('/api/generate')
+async def generate(request: Request) -> JSONResponse:
+  logger.info(f'Generating new token for request: {request}')
+  try:
+    body = await request.json()
+  except Any:
+    body = {}
+  subject = body.get('subject', 'unknown') if isinstance(body, dict) else 'unknown'
+  token = jwt.create_token(subject)
+  return JSONResponse({'jwt_token': token, 'expires_in': jwt.expiry_time_secs()})
+
+# Usage: curl http://192.168.1.25:8080/api/hello -H "Authorization: Bearer <token>
+@app.get('/api/validate')
+async def validate(request: Request) -> JSONResponse:
+  logger.info(f'Validating JWT token, request: {request}')
+  auth_header = request.headers.get('Authorization', '')
+  if not auth_header.startswith('Bearer '):
+    return unauthorized('Missing or malformed Authorization Bearer header')
+  token = auth_header[len('Bearer '):].strip()
+  if not jwt.verify_token(token):
+    return unauthorized('Invalid JWT token')
+  return JSONResponse({'message': 'Success'})
+
+# Run with uvicorn server using app
+if __name__ == "__main__":
+  uvicorn.run(app, host='192.168.1.25', port=8080)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that the JWT service will be hosted at the endpoint <span class="bold">192.168.1.25:8080</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To execute the above Python code, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python jwt_service.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>INFO:     Started server process [12148]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://192.168.1.25:8080 (Press CTRL+C to quit)</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is our JWT protected <span class="bold">MCP Server</span> code in Python, which uses the <span class="bold">
+        streamable-http</span> transport:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">interest_mcp_server3.py</div>
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   16 August 2025
+#
+
+from mcp.server.auth.provider import AccessToken, TokenVerifier
+from mcp.server.auth.settings import AuthSettings
+from mcp.server.fastmcp import FastMCP
+from jwt_manager import JWTManager
+
+import logging
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s',
+                    level=logging.INFO)
+
+logger = logging.getLogger('interest_mcp_server3')
+
+# Simple custom token verifier
+class SimpleTokenVerifier(TokenVerifier):
+  def __init__(self):
+    self.jwt = JWTManager()
+
+  async def verify_token(self, token: str) -> AccessToken | None:
+    if self.jwt.verify_token(token):
+      return AccessToken(token=token, client_id='user@polarsparc.com', scopes=['user'])
+    return None
+
+mcp = FastMCP('InterestCalculator-3',
+              host='192.168.1.25',
+              port=8000,
+              token_verifier=SimpleTokenVerifier(),
+              auth=AuthSettings(issuer_url='http://192.168.1.25:8000',
+                                resource_server_url='http://192.168.1.25:8000'))
+
+@mcp.tool()
+def yearly_simple_interest(principal: float, rate:float) -> float:
+  """Tool to compute simple interest rate for a year."""
+  logger.info(f'Simple interest -> Principal: {principal}, Rate: {rate}')
+  return principal * rate / 100.00
+
+@mcp.tool()
+def yearly_compound_interest(principal: float, rate:float) -> float:
+  """Tool to compute compound interest rate for a year."""
+  logger.info(f'Compound interest -> Principal: {principal}, Rate: {rate}')
+  return principal * (1 + rate / 100.0)
+
+if __name__ == "__main__":
+  logger.info(f'Starting the protected interest calculator MCP server using HTTP ...')
+  mcp.run(transport='streamable-http')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the above Python code, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python interest_mcp_server3.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The output would be similar to that of Output.4 and hence will not repeat it here.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is our <span class="bold">MCP Host</span> LLM app code in Python, which invokes a protected tool exposed via
+        a HTTP service:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">multi_mcp_client3.py</div>
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   16 August 2025
+#
+
+from dotenv import load_dotenv, find_dotenv
+from langchain_ollama import ChatOllama
+from langchain_mcp_adapters.tools import load_mcp_tools
+from langgraph.prebuilt import create_react_agent
+from mcp import ClientSession
+from mcp.client.streamable_http import streamablehttp_client
+
+import asyncio
+import httpx
+import logging
+import os
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s',
+                    level=logging.INFO)
+
+logger = logging.getLogger('interest_mcp_client')
+
+load_dotenv(find_dotenv())
+
+llm_temperature = float(os.getenv('LLM_TEMPERATURE'))
+ollama_model = os.getenv('OLLAMA_MODEL')
+ollama_base_url = os.getenv('OLLAMA_BASE_URL')
+mcp_base_url = os.getenv('MCP_BASE_URL')
+
+ollama_chat_llm = ChatOllama(base_url=ollama_base_url,
+                             model=ollama_model,
+                             temperature=llm_temperature)
+
+async def main():
+  valid = bool(os.getenv('VALID'))
+  token = '123'
+  if valid:
+    # Make HTTP request to get a JWT token
+    response = httpx.post('http://192.168.1.25:8080/api/generate', data='{"subject": "user@polarsparc.com"}')
+    token = response.json()['jwt_token']
+
+  # Will launch the MCP server and communicate via stdio
+  async with streamablehttp_client(mcp_base_url, headers={'Authorization': 'Bearer '+token}) as (read, write, _):
+    # Create a MCP client session
+    async with ClientSession(read, write) as session:
+      # Connect to the MCP stdio server
+      await session.initialize()
+
+      # List all registered MCP tools
+      tools = await load_mcp_tools(session)
+      logger.info(f'List of MCP Tools:')
+      for tool in tools:
+        logger.info(f'\tMCP Tool: {tool.name}')
+
+      # Initialize a ReACT agent
+      agent = create_react_agent(ollama_chat_llm, tools)
+
+      # Case - 1 : Simple interest definition
+      agent_response_1 = await agent.ainvoke(
+        {'messages': 'explain the definition of simple interest ?'})
+      logger.info(agent_response_1['messages'][::-1])
+
+      # Case - 2 : Simple interest calculation
+      agent_response_2 = await agent.ainvoke(
+        {'messages': 'compute the simple interest for a principal of 1000 at rate 3.75 ?'})
+      logger.info(agent_response_2['messages'][::-1])
+
+      # Case - 3 : Compound interest calculation
+      agent_response_3 = await agent.ainvoke(
+        {'messages': 'compute the compound interest for a principal of 1000 at rate 4.25 ?'})
+      logger.info(agent_response_3['messages'][::-1])
+
+if __name__ == '__main__':
+  try:
+    asyncio.run(main())
+  except Exception as e:
+    logger.error(e)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the above Python code (with an invalid token), execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python interest_mcp_client3.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>INFO 2025-08-17 08:19:50,874 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 401 Unauthorized"
+ERROR 2025-08-17 08:19:51,102 - unhandled errors in a TaskGroup (1 sub-exception)</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Once again, to execute the above Python code (with an valid token), execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ VALID=True python interest_mcp_client3.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>INFO 2025-08-17 08:20:17,536 - HTTP Request: POST http://192.168.1.25:8080/api/generate "HTTP/1.1 200 OK"
+INFO 2025-08-17 08:20:17,558 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-08-17 08:20:17,558 - Received session ID: e868e7ea574b4a6780a7c9acc849b88c
+INFO 2025-08-17 08:20:17,558 - Negotiated protocol version: 2025-06-18
+INFO 2025-08-17 08:20:17,561 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 202 Accepted"
+INFO 2025-08-17 08:20:17,561 - HTTP Request: GET http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-08-17 08:20:17,562 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-08-17 08:20:17,563 - List of MCP Tools:
+INFO 2025-08-17 08:20:17,563 - 	MCP Tool: yearly_simple_interest
+INFO 2025-08-17 08:20:17,563 - 	MCP Tool: yearly_compound_interest
+INFO 2025-08-17 08:20:17,637 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-08-17 08:20:18,229 - [AIMessage(content="Simple interest is calculated on the initial principal amount only. It's determined by multiplying the principal, rate, and time (in years) using the formula: Simple Interest = Principal x Rate x Time. The rate is typically expressed as a yearly percentage and does not change over the life of the loan or investment.", additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T12:20:18.227718947Z', 'done': True, 'done_reason': 'stop', 'total_duration': 656390282, 'load_duration': 12340150, 'prompt_eval_count': 247, 'prompt_eval_duration': 41217018, 'eval_count': 66, 'eval_duration': 602321947, 'model_name': 'granite3.3:2b'}, id='run--48ec0bce-20bf-4324-894e-24ebaa273668-0', usage_metadata={'input_tokens': 247, 'output_tokens': 66, 'total_tokens': 313}), HumanMessage(content='explain the definition of simple interest ?', additional_kwargs={}, response_metadata={}, id='73e4a4f1-33d3-4ec1-9d9f-444d0c0fd5f7')]
+INFO 2025-08-17 08:20:18,545 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-08-17 08:20:18,559 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-08-17 08:20:18,601 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-08-17 08:20:18,881 - [AIMessage(content='The simple interest for a principal of 1000 at rate 3.75% per annum is 37.5.', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T12:20:18.880227187Z', 'done': True, 'done_reason': 'stop', 'total_duration': 317195121, 'load_duration': 11934293, 'prompt_eval_count': 307, 'prompt_eval_duration': 8634267, 'eval_count': 31, 'eval_duration': 293748873, 'model_name': 'granite3.3:2b'}, id='run--46152029-0d6f-4851-96f7-763a56953ef3-0', usage_metadata={'input_tokens': 307, 'output_tokens': 31, 'total_tokens': 338}), ToolMessage(content='37.5', name='yearly_simple_interest', id='de4ed659-6a55-4b2e-bddb-05238641c496', tool_call_id='4f9e33dd-fe74-42d1-94f9-247b9896e67d'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T12:20:18.554593738Z', 'done': True, 'done_reason': 'stop', 'total_duration': 323198128, 'load_duration': 12281900, 'prompt_eval_count': 261, 'prompt_eval_duration': 8379429, 'eval_count': 33, 'eval_duration': 302083542, 'model_name': 'granite3.3:2b'}, id='run--34c77dda-77fb-4d10-9dd6-5b2e0ff2d974-0', tool_calls=[{'name': 'yearly_simple_interest', 'args': {'principal': 1000, 'rate': 3.75}, 'id': '4f9e33dd-fe74-42d1-94f9-247b9896e67d', 'type': 'tool_call'}], usage_metadata={'input_tokens': 261, 'output_tokens': 33, 'total_tokens': 294}), HumanMessage(content='compute the simple interest for a principal of 1000 at rate 3.75 ?', additional_kwargs={}, response_metadata={}, id='b63ec687-747d-4c22-bbac-b14c4ae3c1f3')]
+INFO 2025-08-17 08:20:19,200 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-08-17 08:20:19,215 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-08-17 08:20:19,262 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-08-17 08:20:19,583 - [AIMessage(content='The compound interest for a principal of 1000 at rate 4.25% per annum over one year is $1042.5.', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T12:20:19.582794272Z', 'done': True, 'done_reason': 'stop', 'total_duration': 363018637, 'load_duration': 14603073, 'prompt_eval_count': 309, 'prompt_eval_duration': 10043967, 'eval_count': 36, 'eval_duration': 334569664, 'model_name': 'granite3.3:2b'}, id='run--77078b25-a80d-4a66-9d41-6f0a229c5a93-0', usage_metadata={'input_tokens': 309, 'output_tokens': 36, 'total_tokens': 345}), ToolMessage(content='1042.5', name='yearly_compound_interest', id='65b2d670-3867-4c0a-be61-4a9a3cf64dc1', tool_call_id='3bcd368b-d9fb-4497-a087-385ab6240536'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T12:20:19.211207428Z', 'done': True, 'done_reason': 'stop', 'total_duration': 327466317, 'load_duration': 11437887, 'prompt_eval_count': 261, 'prompt_eval_duration': 6376604, 'eval_count': 34, 'eval_duration': 309202350, 'model_name': 'granite3.3:2b'}, id='run--68cea6ef-4657-43ee-906c-4998c0a369e3-0', tool_calls=[{'name': 'yearly_compound_interest', 'args': {'principal': 1000, 'rate': 4.25}, 'id': '3bcd368b-d9fb-4497-a087-385ab6240536', 'type': 'tool_call'}], usage_metadata={'input_tokens': 261, 'output_tokens': 34, 'total_tokens': 295}), HumanMessage(content='compute the compound interest for a principal of 1000 at rate 4.25 ?', additional_kwargs={}, response_metadata={}, id='fa2f3d6a-438b-4b10-841c-ad8118123611')]
+INFO 2025-08-17 08:20:19,585 - HTTP Request: DELETE http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">BAM</span> - it is evident from the above <span class="bold">Output.7</span> and <span class="bold">
+        Output.8</span> that the MCP client behaved in the right way when trying to access a protect MCP server !!!</p>
     </div>
     <div id="para-div">
       <p>With this, we conclude the various hands-on demonstrations on using the <span class="bold">MCP</span> framework for building
