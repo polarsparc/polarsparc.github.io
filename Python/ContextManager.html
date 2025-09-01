@@ -1,0 +1,730 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Primer on Python Context Manager">
+    <meta name="subject" content="Primer on Python Context Manager">
+    <meta name="keywords" content="python">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Primer on Python Context Manager</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br />
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Primer on Python Context Manager</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">08/31/2025</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>When developing Enterprise grade applications with <span class="bold">Python</span>, one needs to properly manage references
+        external resources such as files, databases, locks, or network connections, such that those references are properly closed
+        when they are no longer needed. This is where the Python <span class="hi-yellow">Context Manager</span> comes in handy.</p>
+    </div>
+    <div id="para-div">
+      <p>A <span class="bold">Context Manager</span> in Python is an object that defines a temporary context surrounding a block of
+        code, which involves a critical resource that needs to be automatically setup on entry and cleaned up on exit. The context
+        manager is activated using the <span class="hi-yellow">with</span> statement and aims to simplify resource management even
+        in the event of runtime exceptions.</p>
+    </div>
+    <div id="para-div">
+      <p>The following simple Python script demonstrates how one would manage a file resource in a proper way:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">sample-1.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   30 Aug 2025
+#
+
+import logging
+
+# Logging Configuration
+logging.basicConfig(format='%(asctime)s | %(levelname)s -> %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    level=logging.INFO)
+
+# Logger
+logger = logging.getLogger('Sample-1')
+
+# Main method
+
+def main():
+  f_name = '/tmp/sample-1.log'
+  file = None
+  try:
+    file = open(f_name, 'r')
+    logger.info('Opened file %s', f_name)
+  except IOError as e:
+    logger.error(e)
+  finally:
+    if file is not None:
+      file.close()
+      logger.info('Closed file %s', f_name)
+
+if __name__ == '__main__':
+  main()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To run the Python script <span class="bold">sample-1.py</span>, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python3 sample-1.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>2025-08-30 22:18:03 | INFO -> File name /tmp/sample-1.log
+2025-08-30 22:18:03 | ERROR -> [Errno 2] No such file or directory: '/tmp/sample-1.log'</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>One could achieve the same result in a more elegant and succinct way using a context manager as shown in the following Python
+        script:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">sample-2.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   30 Aug 2025
+#
+
+import logging
+
+# Logging Configuration
+logging.basicConfig(format='%(asctime)s | %(levelname)s -> %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    level=logging.INFO)
+
+# Logger
+logger = logging.getLogger('Sample-2')
+
+# Main method
+
+def main():
+  f_name = '/tmp/sample-2.log'
+  with open(f_name, 'r') as file:
+    logger.info(f'File {f_name} opened')
+
+if __name__ == '__main__':
+  main()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To run the Python script <span class="bold">sample-2.py</span>, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python3 sample-2.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>2025-08-30 22:18:26 | INFO -> File name /tmp/sample-2.log
+Traceback (most recent call last):
+  File "/home/polarsparc/python/ContextManager/sample-2.py", line 26, in &lt;module&gt;
+    main()
+  File "/home/polarsparc/python/ContextManager/sample-2.py", line 22, in main
+    with open(f_name, 'r') as file:
+         ^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/sample-2.log'</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Under the hood, the context management protocol implements the following two special methods:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-blue">__enter__()</span> :: this method is invoked when the <span class="bold">with</span> keyword
+          is encountered to enter the runtime context and is typically used for setup of the managed resource</p></li>
+        <li><p><span class="hi-blue">__exit__()</span> :: this method is invoked when the execution exits the <span class="bold">
+          with</span> code block and is typically used for cleanup of the managed resource</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following Python script shows the ingredients of a Context Manager class under the hood:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">sample-3.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   30 Aug 2025
+#
+
+import logging
+
+# Logging Configuration
+logging.basicConfig(format='%(asctime)s | %(levelname)s -> %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    level=logging.INFO)
+
+# Logger
+logger = logging.getLogger('Sample-3')
+
+# Test context manager class
+
+class TestContextManager(object):
+  def __init__(self, name: str='Test'):
+    self.name = name
+    logger.info(f'Initializing context for {self.name}')
+
+  def __enter__(self):
+    logger.info(f'Entering context for {self.name}')
+    return self
+
+  def __exit__(self, ex_type, ex_value, ex_traceback):
+    logger.info(f'Exiting context for {self.name}')
+    logger.info(f'Exiting context for {self.name} with type: {ex_type}')
+    logger.info(f'Exiting context for {self.name} with value: {ex_value}')
+    logger.info(f'Exiting context for {self.name} with traceback: {ex_traceback}')
+
+  def action(self, flag: bool=False):
+    logger.info(f'Performing action in the context for {self.name}')
+    if flag:
+      logger.info(f'Flag is set to True, raising exception')
+      raise Exception('Test Exception')
+
+# Main method
+
+def main():
+  with TestContextManager(name='Good') as tc1:
+    tc1.action()
+
+  with TestContextManager(name='Bad') as tc2:
+    tc2.action(flag=True)
+
+if __name__ == '__main__':
+  main()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>One aspect of the <span class="bold">sample-3.py</span> from the above needs a little explanation.</p>
+      <p>The <span class="hi-blue">__exit__()</span> method takes in additional parameters which are <span class="underbold">ONLY
+        </span> applicable in an exception situation and are as follows:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-vanila">ex_type</span> :: indicates the class type of the exception</p></li>
+        <li><p><span class="hi-vanila">ex_value</span> :: indicates the exception message</p></li>
+        <li><p><span class="hi-vanila">ex_traceback</span> :: indicates all trace information about the exception</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To run the Python script <span class="bold">sample-3.py</span>, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python3 sample-3.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>2025-08-31 08:08:22 | INFO -> Initializing context for Good
+2025-08-31 08:08:22 | INFO -> Entering context for Good
+2025-08-31 08:08:22 | INFO -> Performing action in the context for Good
+2025-08-31 08:08:22 | INFO -> Exiting context for Good
+2025-08-31 08:08:22 | INFO -> Exiting context for Good with type: None
+2025-08-31 08:08:22 | INFO -> Exiting context for Good with value: None
+2025-08-31 08:08:22 | INFO -> Exiting context for Good with traceback: None
+2025-08-31 08:08:22 | INFO -> Initializing context for Bad
+2025-08-31 08:08:22 | INFO -> Entering context for Bad
+2025-08-31 08:08:22 | INFO -> Performing action in the context for Bad
+2025-08-31 08:08:22 | INFO -> Flag is set to True, raising exception
+2025-08-31 08:08:22 | INFO -> Exiting context for Bad
+2025-08-31 08:08:22 | INFO -> Exiting context for Bad with type: &lt;class 'Exception'&gt;
+2025-08-31 08:08:22 | INFO -> Exiting context for Bad with value: Test Exception
+2025-08-31 08:08:22 | INFO -> Exiting context for Bad with traceback: &lt;traceback object at 0x7ceb9ee3fd80&gt;
+Traceback (most recent call last):
+  File "/home/polarsparc/python/ContextManager/sample-3.py", line 50, in &lt;module&gt;
+    main()
+  File "/home/polarsparc/python/ContextManager/sample-3.py", line 47, in main
+    tc2.action(flag=True)
+  File "/home/polarsparc/python/ContextManager/sample-3.py", line 38, in action
+    raise Exception('Test Exception')
+Exception: Test Exception</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The built-in Python module <span class="hi-yellow">contextlib</span> provides a function decorator as well as a variety of
+        utility class(es) for context management, which can simplify application development of building and maintaining any custom
+        context manager(s).</p>
+      <p>The decorator <span class="hi-yellow">contextlib.contextmanager</span> allows one to convert a generator function into a
+        Context Manager.</p>
+    </div>
+    <div id="para-div">
+      <p>The following Python script demonstrates the use of the <span class="bold">contextmanager</span> decorator:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">sample-4.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   30 Aug 2025
+#
+
+import logging
+
+# Logging Configuration
+logging.basicConfig(format='%(asctime)s | %(levelname)s -> %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    level=logging.INFO)
+
+# Logger
+logger = logging.getLogger('Sample-4')
+
+# Context manager using decorator
+
+from contextlib import contextmanager
+
+@contextmanager
+def simple_text_context():
+  logger.info('Entered simple text context ...')
+  try:
+    yield 'Simple hello world!'
+  except RuntimeError as re:
+    logger.error(f'Exception occurred: {re}')
+  finally:
+    logger.info('Exiting simple text context ...')
+
+# Main method
+
+def main():
+  with simple_text_context() as value:
+    logger.info(f'Value: {value}')
+
+  with simple_text_context() as value:
+    raise RuntimeError('Simulated Runtime Error')
+
+  with simple_text_context() as value:
+    raise ValueError('Simulated Value Error')
+
+if __name__ == '__main__':
+  main()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To run the Python script <span class="bold">sample-4.py</span>, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python3 sample-4.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>2025-08-31 09:03:19 | INFO -> Entered simple text context ...
+2025-08-31 09:03:19 | INFO -> Value: Simple hello world!
+2025-08-31 09:03:19 | INFO -> Exiting simple text context ...
+2025-08-31 09:03:19 | INFO -> Entered simple text context ...
+2025-08-31 09:03:19 | ERROR -> Exception occurred: Simulated Runtime Error
+2025-08-31 09:03:19 | INFO -> Exiting simple text context ...
+2025-08-31 09:03:19 | INFO -> Entered simple text context ...
+2025-08-31 09:03:19 | INFO -> Exiting simple text context ...
+Traceback (most recent call last):
+  File "/home/polarsparc/python/ContextManager/sample-4.py", line 44, in &lt;module&gt;
+    main()
+  File "/home/polarsparc/python/ContextManager/sample-4.py", line 41, in main
+    raise ValueError('Simulated Value Error')
+ValueError: Simulated Value Error</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following Python script demonstrates a real world usage of the <span class="bold">contextmanager</span> decorator:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">sample-5.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   30 Aug 2025
+#
+
+import logging
+
+# Logging Configuration
+logging.basicConfig(format='%(asctime)s | %(levelname)s -> %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    level=logging.INFO)
+
+# Logger
+logger = logging.getLogger('Sample-5')
+
+# Context manager using decorator
+
+from contextlib import contextmanager
+
+@contextmanager
+def write_file_context(name):
+  logger.info(f'Entered write file context with {name}')
+  file = None
+  try:
+    logger.info(f'Opening file {name}')
+    file = open(name, 'w')
+    yield file
+  except RuntimeError as re:
+    logger.error(f'Exception occurred: {re}')
+  finally:
+    if file is not None:
+      logger.info(f'Closing file {name}')
+      file.close()
+    logger.info(f'Exiting write file context with {name}')
+
+# Main method
+
+def main():
+  f_name = '/tmp/test.log'
+  with write_file_context(f_name) as wf:
+    wf.write('Line - 1: Hello !!\n')
+    wf.write('Line - 2: Hola !!\n')
+
+if __name__ == '__main__':
+  main()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To run the Python script <span class="bold">sample-5.py</span>, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python3 sample-5.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>2025-08-31 12:13:17 | INFO -> Entered write file context with /tmp/test.log
+2025-08-31 12:13:17 | INFO -> Opening file /tmp/test.log
+2025-08-31 12:13:17 | INFO -> Closing file /tmp/test.log
+2025-08-31 12:13:17 | INFO -> Exiting write file context with /tmp/test.log</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following Python script demonstrates the support for redirecting the stdout to a different stream using the <span class
+        ="hi-yellow">contextlib.redirect_stdout</span> utility context manager:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">sample-6.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   30 Aug 2025
+#
+
+import contextlib
+import io
+import logging
+
+# Logging Configuration
+logging.basicConfig(format='%(asctime)s | %(levelname)s -> %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    level=logging.INFO)
+
+# Logger
+logger = logging.getLogger('Sample-6')
+
+# Stdout redirection context manager
+# Main method
+
+def main(io_stream):
+  with contextlib.redirect_stdout(io_stream):
+    print('Hello world !!!')
+
+if __name__ == '__main__':
+  txt_stream = io.StringIO()
+  logger.info('Redirecting stdout to txt stream')
+  main(txt_stream)
+  logger.info('Done with redirecting stdout to txt stream')
+  logger.info(f'Value in txt stream: {txt_stream.getvalue()}')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To run the Python script <span class="bold">sample-6.py</span>, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python3 sample-6.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>2025-08-31 13:15:34 | INFO -> Redirecting stdout to txt stream
+2025-08-31 13:15:34 | INFO -> Done with redirecting stdout to txt stream
+2025-08-31 13:15:34 | INFO -> Value in txt stream: Hello world !!!</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There are situations when one has to deal with two or more external resources and they need to be managed appropriately.
+        This is where the <span class="hi-yellow">contextlib.ExitStack</span> utility class comes in handy.</p>
+      <p>The following the Python script demonstrates how one can manage two or more resources using the context management protocol
+        in a clean and efficient manner:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">sample-7.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   30 Aug 2025
+#
+
+import logging
+
+# Logging Configuration
+logging.basicConfig(format='%(asctime)s | %(levelname)s -> %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    level=logging.INFO)
+
+# Logger
+logger = logging.getLogger('Sample-7')
+
+# Context manager using utility class
+
+from contextlib import ExitStack
+
+# Main method
+
+def main():
+  f_name_1 = '/tmp/f1.txt'
+  f_name_2 = '/tmp/f2.txt'
+  with ExitStack() as stack:
+    logger.info('Ready to write to file %s', f_name_1)
+    f1 = stack.enter_context(open(f_name_1, 'w'))
+    logger.info('Ready to read from file %s', f_name_2)
+    f2 = stack.enter_context(open(f_name_2, 'r'))
+    logger.info('Ready to perform operation on both %s and %s', f_name_1, f_name_2)
+
+if __name__ == '__main__':
+    main()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>If the second file fails, the first file will be properly closed.</p>
+    </div>
+    <div id="para-div">
+      <p>To run the Python script <span class="bold">sample-7.py</span>, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python3 sample-7.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>2025-08-31 17:58:40 | INFO -> Ready to write to file /tmp/f1.txt
+2025-08-31 17:58:40 | INFO -> Ready to read from file /tmp/f2.txt
+Traceback (most recent call last):
+  File "/home/polarsparc/python/ContextManager/sample-7.py", line 34, in &lt;module&gt;
+    main()
+  File "/home/polarsparc/python/ContextManager/sample-7.py", line 30, in main
+    f2 = stack.enter_context(open(f_name_2, 'r'))
+                             ^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/f2.txt</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Until now, we explored the context manager protocol for synchronous use-cases. The context manager protocol is also valid
+        for <span class="bold">async</span> cases.</p>
+    </div>
+    <div id="para-div">
+      <p>The async context management protocol implements the following two special methods:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-blue">__aenter__()</span> :: this method is invoked when the <span class="bold">async with</span>
+          keyword is encountered to enter the runtime context and is typically used for setup of the managed resource</p></li>
+        <li><p><span class="hi-blue">__aexit__()</span> :: this method is invoked when the execution exits the <span class="bold">
+          async with</span> code block and is typically used for cleanup of the managed resource</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following Python script shows the ingredients of an async context manager class under the hood:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">sample-8.py</div>
+      <div class="src-body-1">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   30 Aug 2025
+#
+
+import asyncio
+import logging
+
+# Logging Configuration
+logging.basicConfig(format='%(asctime)s | %(levelname)s -> %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S',
+                    level=logging.INFO)
+
+# Logger
+logger = logging.getLogger('Sample-8')
+
+# Test async context manager class
+
+class AsyncTestContextManager(object):
+  def __init__(self, name: str='AsyncTest'):
+    self.name = name
+    logger.info(f'Initializing async context for {self.name}')
+
+  async def __aenter__(self):
+    logger.info(f'Entering async context for {self.name}')
+    return self
+
+  async def __aexit__(self, ex_type, ex_value, ex_traceback):
+    logger.info(f'Exiting async context for {self.name}')
+    logger.info(f'Exiting async context for {self.name} with type: {ex_type}')
+    logger.info(f'Exiting async context for {self.name} with value: {ex_value}')
+    logger.info(f'Exiting async context for {self.name} with traceback: {ex_traceback}')
+
+  async def action(self, flag: bool=False):
+    logger.info(f'Performing action in the async context for {self.name}')
+    if flag:
+      logger.info(f'Flag is set to True, raising exception')
+      raise Exception('AsyncTest Exception')
+
+# Async main method
+
+async def main():
+  async with AsyncTestContextManager(name='Good') as tc1:
+    await tc1.action()
+
+  async with AsyncTestContextManager(name='Bad') as tc2:
+    await tc2.action(flag=True)
+
+if __name__ == '__main__':
+  asyncio.run(main())</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To run the Python script <span class="bold">sample-8.py</span>, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python3 sample-8.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>2025-08-31 21:20:06 | INFO -> Initializing async context for Good
+2025-08-31 21:20:06 | INFO -> Entering async context for Good
+2025-08-31 21:20:06 | INFO -> Performing action in the async context for Good
+2025-08-31 21:20:06 | INFO -> Exiting async context for Good
+2025-08-31 21:20:06 | INFO -> Exiting async context for Good with type: None
+2025-08-31 21:20:06 | INFO -> Exiting async context for Good with value: None
+2025-08-31 21:20:06 | INFO -> Exiting async context for Good with traceback: None
+2025-08-31 21:20:06 | INFO -> Initializing async context for Bad
+2025-08-31 21:20:06 | INFO -> Entering async context for Bad
+2025-08-31 21:20:06 | INFO -> Performing action in the async context for Bad
+2025-08-31 21:20:06 | INFO -> Flag is set to True, raising exception
+2025-08-31 21:20:06 | INFO -> Exiting async context for Bad
+2025-08-31 21:20:06 | INFO -> Exiting async context for Bad with type: &lt;class 'Exception'&gt;
+2025-08-31 21:20:06 | INFO -> Exiting async context for Bad with value: AsyncTest Exception
+2025-08-31 21:20:06 | INFO -> Exiting async context for Bad with traceback: &lt;traceback object at 0x70877e384140&gt;
+Traceback (most recent call last):
+  File "/home/polarsparc/python/ContextManager/sample-8.py", line 51, in &lt;module&gt;
+    asyncio.run(main())
+  File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/base_events.py", line 687, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/home/polarsparc/python/ContextManager/sample-8.py", line 48, in main
+    await tc2.action(flag=True)
+  File "/home/polarsparc/python/ContextManager/sample-8.py", line 39, in action
+    raise Exception('AsyncTest Exception')
+Exception: AsyncTest Exception</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>With this, we conclude the primer on Python Context Manager !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://docs.python.org/3/library/contextlib.html" target="_blank"><span class="bold">Python contextlib</span></a></p>
+    </div>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
