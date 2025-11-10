@@ -1000,6 +1000,11 @@ for step in agent.stream(
     </div>
     <br/>
     <div id="para-div">
+      <p>Notice that we are passing an instance of <span class="bold">RuntimeDbContext</span> as a runtime context to the agent. A
+        runtime context provides static configuration, such as, user id, db connection, or other dependencies to the agent during
+        its execution.</p>
+    </div>
+    <div id="para-div">
       <p>Executing the above <span class="bold">Python</span> code generates the following typical output:</p>
     </div>
     <br/>
@@ -1103,6 +1108,175 @@ Name: execute_sql
 The vehicle with the lowest miles per gallon (MPG) in the Auto MPG database is **"hi 1200d"**, originating from **USA**, and was manufactured in the year **70**.</pre>
     </div>
     <br/>
+    <div id="para-div">
+      <p>Finally, we will cover the topic on controlling the behavior of virtual agents using the <span class="bold">Middleware</span>
+        component in <span class="bold">LangChain</span>.</p>
+      <p>A <span class="bold">Middleware</span> essentially exposes method hooks, which are called at various points of a virtual
+        agent interaction, such as, before the agent call, before the model call, after the model call, after the agent call, etc.</p>
+      <p><span class="bold">LangChain</span> out of the box provides few <span class="bold">Middleware</span> implementations as
+        follows:</p>
+        <ul  id="blue-sqr-ul">
+          <li><span class="hi-vanila">SummarizationMiddleware</span> :: for summarization of the conversation history</li>
+          <li><span class="hi-vanila">HumanInTheLoopMiddleware</span> :: to pause the agent for human approval</li>
+          <li><span class="hi-vanila">PIIMiddleware</span> :: for detection and handling of Personally Identifiable Information
+            (PII) in conversations</li>
+        </ul>
+    </div>
+    <div id="para-div">
+      <p>The following illustration depicts the various interception points in a agent interaction:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/langchain-5.png" alt="Middleware Hooks" />
+      <div class="img-cap">Figure.5</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the next demonstration, we will make use of the <span class="bold">SummarizationMiddleware</span> along with a custom
+        logging <span class="bold">Middleware</span> !!!</p>
+    </div>
+    <div id="para-div">
+      <p>To create a custom logging <span class="bold">Middleware</span> that will intercept before and after a model call, execute
+        the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langchain.agents.middleware import AgentMiddleware, AgentState,
+from langgraph.runtime import Runtime
+from typing import Any
+
+class LoggingMiddleware(AgentMiddleware):
+  def before_model(self, state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
+    print(f'LoggingMiddleware:: Before - Messages Count: {len(state["messages"])}')
+    return None
+
+  def after_model(self, state: AgentState, runtime: Runtime) -> dict[str, Any] | None:
+    print(f'LoggingMiddleware:: After - Messages Count: {len(state["messages"])}')
+    return None</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To create an instance of the LoggingMiddleware and the SummarizationMiddleware that will only keep the last 3 conversational
+        messages, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langchain.agents.middleware import SummarizationMiddleware
+
+middleware = SummarizationMiddleware(
+    model=llm_provider+ollama_chat_model,
+    messages_to_keep=3,
+    summary_prompt='Summarize earlier context concisely.'
+)
+
+custom_middleware = LoggingMiddleware()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To create a virtual agent that will use the two <span class="bold">Middleware</span>s and interact with an underlying chat
+        model, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>config = {'configurable': {'thread_id': 'agent-1'}}
+
+memory = InMemorySaver()
+  
+agent = create_agent(ollama_tools_llm,
+                     system_prompt='You are a helpful assistant who addresses me by my name when you respond.',
+                     middleware=[custom_middleware, middleware],
+                     checkpointer=memory)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To interact with the virtual agent through a series of questions, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>questions = [
+  'Hey, my name is Vader. Would like to ask you few history questions',
+  'What is the capital of France?',
+  'What is the total population of France?',
+  'What is the currency of Japan?',
+  'What is the capital of Germany?'
+  'What is the total population of Germany?',
+  'What is the currency of Spain?',
+  'What is the capital of Italy?',
+  'What is the total population of Italy?'
+]
+
+for question in questions:
+  print(f'--- Question: {question}')
+  result = agent.invoke({
+    'messages': [{
+      'role': 'user',
+      'content': question
+    }]
+  },
+  config=config)
+  print(f'--- Answer: {result["messages"][-1].content}')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>--- Question: Hey, my name is Vader. Would like to ask you few history questions
+LoggingMiddleware:: Before - Messages Count: 1
+LoggingMiddleware:: After - Messages Count: 2
+--- Answer: Of course, Vader! I'd be happy to help with your history questions. Please feel free to ask anything you're curious about.
+--- Question: What is the capital of France?
+LoggingMiddleware:: Before - Messages Count: 3
+LoggingMiddleware:: After - Messages Count: 4
+--- Answer: The capital of France is Paris, Vader. It's a city known for its historical landmarks and cultural institutions such as the Eiffel Tower, Louvre Museum, and Notre-Dame Cathedral.
+--- Question: What is the total population of France?
+LoggingMiddleware:: Before - Messages Count: 5
+LoggingMiddleware:: After - Messages Count: 5
+--- Answer: As of my last update, the estimated population of France was around 67 million people, Vader. Please note that this number can vary slightly depending on the source and the exact date of the estimate.
+--- Question: What is the currency of Japan?
+LoggingMiddleware:: Before - Messages Count: 6
+LoggingMiddleware:: After - Messages Count: 5
+--- Answer: The currency of Japan, my dear friend, is the Japanese Yen (JPY).
+--- Question: What is the capital of Germany?What is the total population of Germany?
+LoggingMiddleware:: Before - Messages Count: 6
+LoggingMiddleware:: After - Messages Count: 5
+--- Answer: The capital city of Germany, John, is Berlin. As for its total population, it's quite hard to provide an exact number as it keeps changing over time due to births, deaths and migration. However, according to the latest data from 2021, the estimated population of Germany was around 83 million people.
+--- Question: What is the currency of Spain?
+LoggingMiddleware:: Before - Messages Count: 6
+LoggingMiddleware:: After - Messages Count: 5
+--- Answer: The official currency of Spain, John, is the Euro (€). It's represented by the symbol EUR and is used in many countries across Europe including Spain itself.
+--- Question: What is the capital of Italy?
+LoggingMiddleware:: Before - Messages Count: 6
+LoggingMiddleware:: After - Messages Count: 5
+--- Answer: The capital city of Italy, John, is Rome. It's a beautiful place with rich history and culture.
+--- Question: What is the total population of Italy?
+LoggingMiddleware:: Before - Messages Count: 6
+LoggingMiddleware:: After - Messages Count: 5
+--- Answer: As of my last update, the estimated population of Italy was around 60 million people, John. However, please note that this number can vary as it depends on when and where you look for the most recent data.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>From the <span class="bold">Output.12</span> above, notice that the agent only keeps upto 5 messages and has lost the context
+        of the name Vader after some interactions.</p>
+    </div>
     <div id="para-div">
       <p>With this, we conclude the hands-on demonstration of using the various <span class="bold">LangChain</span> components !!!</p>
     </div>
