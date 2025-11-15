@@ -5,7 +5,7 @@
     <meta name="author" content="Bhaskar.S">
     <meta name="description" content="Common LangChain Recipes">
     <meta name="subject" content="Common LangChain Recipes">
-    <meta name="keywords" content="ollama, langchain, llm, rag, vector_store, multi_model, agentic">
+    <meta name="keywords" content="ollama, langchain, llm, rag, vector_store, multi_model, agentic, sql_agent, human_in_the_loop">
     <meta name="robots" content="index, follow">
     <meta name="googlebot" content="index, follow">
     <title>Common LangChain Recipes</title>
@@ -28,7 +28,7 @@
       <tbody>
         <tr>
           <td class="author-td">Bhaskar S</td>
-          <td class="date-td"><span class="hi-yellow">*UPDATED*</span>06/15/2025</td>
+          <td class="date-td"><span class="hi-yellow">*UPDATED*</span>11/15/2025</td>
         </tr>
       </tbody>
     </table>
@@ -61,7 +61,7 @@
     </div>
     <br/>
     <div id="cmd-div">
-      <p>$ docker run --rm --name ollama -p 192.168.1.25:11434:11434 -v $HOME/.ollama:/root/.ollama ollama/ollama:0.9.0</p>
+      <p>$ docker run --rm --name ollama -p 192.168.1.25:11434:11434 -v $HOME/.ollama:/root/.ollama ollama/ollama:0.12.9</p>
     </div>
     <br/>
     <div id="para-div">
@@ -72,30 +72,55 @@
     </div>
     <br/>
     <div id="cmd-div">
-      <p>$ docker run --rm --name ollama --gpus=all -p 192.168.1.25:11434:11434 -v $HOME/.ollama:/root/.ollama ollama/ollama:0.9.0</p>
+      <p>$ docker run --rm --name ollama --gpus=all -p 192.168.1.25:11434:11434 -v $HOME/.ollama:/root/.ollama ollama/ollama:0.12.9</p>
     </div>
     <br/>
     <div id="para-div">
-      <p>For the LLM model, we will be using the recently released <span class="hi-purple">IBM Granite 3.3</span> 2B model.</p>
+      <p>For the LLM models, we will be using the <span class="hi-purple">Microsoft Phi-4 Mini</span> for the chat interactions, the
+        <span class="hi-purple">IBM Granite 4 Micro</span> model for the tools execution, and the <span class="hi-purple">Google Gemma
+        3</span> 4B model for image processing.</p>
     </div>
     <div id="para-div">
-      <p>Open a new terminal window and execute the following <span class="bold">docker</span> command to download the LLM model:</p>
-    </div>
-    <br/>
-    <div id="cmd-div">
-      <p>$ docker exec -it ollama ollama run granite3.3:2b</p>
-    </div>
-    <br/>
-    <div id="para-div">
-      <p>For the multi model (includes image processing), we will be using the recently released <span class="hi-purple">Gemma 3</span>
-        4B model.</p>
-    </div>
-    <div id="para-div">
-      <p>Open a new terminal window and execute the following <span class="bold">docker</span> command to download the LLM model:</p>
+      <p>Open a new terminal window and execute the following <span class="bold">docker</span> command to download the <span class=
+        "hi-purple">Google Gemma 3</span> 4B model model:</p>
     </div>
     <br/>
     <div id="cmd-div">
       <p>$ docker exec -it ollama ollama run gemma3:4b</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>After the model download, to exit the user input, execute the following user prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>&gt;&gt;&gt; /bye</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Next, in the same terminal window, execute the following <span class="bold">docker</span> command to download the <span class
+        ="hi-purple">IBM Granite 4 Micro</span> model:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker exec -it ollama ollama run granite4:micro</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>After the model download, to exit the user input, execute the following user prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>&gt;&gt;&gt; /bye</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Finally, in the same terminal window, execute the following <span class="bold">docker</span> command to download the <span
+        class="hi-purple">Microsoft Phi-4 Mini</span> 4B model:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker exec -it ollama ollama run phi4-mini</p>
     </div>
     <br/>
     <div id="para-div">
@@ -106,18 +131,21 @@
       <p>Code Recipes for LangChain</p>
     </div>
     <div id="para-div">
-      <p>Create a file called <span class="hi-yellow">.env</span> with the following environment variables defined:</p>
+      <p>Create a file called <span class="hi-yellow">recipes.env</span> with the following environment variables defined:</p>
     </div>
     <br/>
     <div id="src-outer-div-1">
       <div class="gen-src-body">
-<pre>LLM_TEMPERATURE=0.0
-OLLAMA_MODEL='granite3.3:2b'
-OLLAMA_VL_MODEL='gemma3:4b'
+<pre>LLM_TEMPERATURE=0.2
+OLLAMA_CHAT_MODEL='ollama:phi4-mini:latest'
+OLLAMA_TOOLS_MODEL='ollama:granite4:micro'
+OLLAMA_IMAGE_MODEL='ollama:gemma3:4b'
 OLLAMA_BASE_URL='http://192.168.1.25:11434'
 CHROMA_DB_DIR='/home/polarsparc/.chromadb'
+BOOKS_DATASET='./data/leadership_books.csv'
 GPU_DATASET='./data/gpu_specs.csv'
-RECEIPT_IMAGE='./data/test-receipt.jpg'</pre>
+RECEIPT_IMAGE='./data/test-receipt.jpg'
+MPG_SQLITE_URL='sqlite:///./data/auto_mpg.db'</pre>
       </div>
     </div>
     <br/>
@@ -128,19 +156,19 @@ RECEIPT_IMAGE='./data/test-receipt.jpg'</pre>
     <br/>
     <div id="src-outer-div-1">
       <div class="gen-src-body">
-<pre>from dotenv import load_dotenv, find_dotenv
+<pre>from dotenv import dotenv_values
 
-import os
+config = dotenv_values('recipes.env')
 
-load_dotenv(find_dotenv())
-
-llm_temperature = float(os.getenv('LLM_TEMPERATURE'))
-ollama_model = os.getenv('OLLAMA_MODEL')
-ollama_vl_model = os.getenv('OLLAMA_VL_MODEL')
-ollama_base_url = os.getenv('OLLAMA_BASE_URL')
-gpu_dataset = os.getenv('GPU_DATASET')
-chroma_db_dir = os.getenv('CHROMA_DB_DIR')
-receipt_image = os.getenv('RECEIPT_IMAGE')</pre>
+llm_temperature = float(config.get('LLM_TEMPERATURE'))
+ollama_chat_model = config.get('OLLAMA_CHAT_MODEL')
+ollama_tools_model = config.get('OLLAMA_TOOLS_MODEL')
+ollama_image_model = config.get('OLLAMA_IMAGE_MODEL')
+ollama_base_url = config.get('OLLAMA_BASE_URL')
+gpu_dataset = config.get('GPU_DATASET')
+chroma_db_dir = config.get('CHROMA_DB_DIR')
+receipt_image = config.get('RECEIPT_IMAGE')
+mpg_sqlite_url = config.get('MPG_SQLITE_URL')</pre>
       </div>
     </div>
     <br/>
@@ -148,15 +176,16 @@ receipt_image = os.getenv('RECEIPT_IMAGE')</pre>
       <p>Executing the above <span class="bold">Python</span> code snippet generates no output.</p>
     </div>
     <div id="para-div">
-      <p>To initialize an instance of <span class="bold">Ollama</span> running the our desired LLM model <span class="hi-purple">
-        granite3.3:2b</span>, execute the following code snippet:</p>
+      <p>To initialize an instance of a chat model, a tools model, and an image processing model, execute the following code snippet:</p>
     </div>
     <br/>
     <div id="src-outer-div-1">
       <div class="gen-src-body">
-<pre>from langchain_ollama import OllamaLLM
+<pre>from langchain.chat_models import init_chat_model
 
-ollama_llm = OllamaLLM(base_url=ollama_base_url, model=ollama_model, temperature=llm_temperature)</pre>
+ollama_chat_llm = init_chat_model(ollama_chat_model, base_url=ollama_base_url, temperature=llm_temperature)
+ollama_tools_llm = init_chat_model(ollama_tools_model, base_url=ollama_base_url, temperature=llm_temperature)
+ollama_image_llm = init_chat_model(ollama_image_model, base_url=ollama_base_url, temperature=llm_temperature)</pre>
       </div>
     </div>
     <br/>
@@ -164,31 +193,15 @@ ollama_llm = OllamaLLM(base_url=ollama_base_url, model=ollama_model, temperature
       <p>Executing the above <span class="bold">Python</span> code snippet generates no output.</p>
     </div>
     <div id="para-div">
-      <p>To initialize an instance of <span class="bold">Ollama</span> running the our desired multi model <span class="hi-purple">
-        gemma3:4b</span>, execute the following code snippet:</p>
+      <p>To initialize an instance of vector embedding class corresponding to the chat model, execute the following code snippet:</p>
     </div>
     <br/>
     <div id="src-outer-div-1">
       <div class="gen-src-body">
-<pre>from langchain_ollama import OllamaLLM
+<pre>from langchain_core.embeddings.embeddings import Embeddings
+from langchain_ollama import OllamaEmbeddings
 
-ollama_vl_llm = OllamaLLM(base_url=ollama_base_url, model=ollama_vl_model, temperature=llm_temperature)</pre>
-      </div>
-    </div>
-    <br/>
-    <div id="para-div">
-      <p>Executing the above <span class="bold">Python</span> code snippet generates no output.</p>
-    </div>
-    <div id="para-div">
-      <p>To initialize an instance of vector embedding class corresponding to the model running in <span class="bold">Ollama</span>,
-        execute the following code snippet:</p>
-    </div>
-    <br/>
-    <div id="src-outer-div-1">
-      <div class="gen-src-body">
-<pre>from langchain_ollama import OllamaEmbeddings
-
-ollama_embedding = OllamaEmbeddings(base_url=ollama_base_url, model=ollama_model)</pre>
+ollama_embedding: Embeddings = OllamaEmbeddings(base_url=ollama_base_url, model=ollama_chat_model[ollama_chat_model.index(':')+1:])</pre>
       </div>
     </div>
     <br/>
@@ -212,15 +225,14 @@ ollama_embedding = OllamaEmbeddings(base_url=ollama_base_url, model=ollama_model
 template = """
 Question: {question}
 
-Answer: Summarize in less than {tokens} words.
+Answer: Summarize the response in less than {tokens} words.
 """
 
 prompt = PromptTemplate.from_template(template=template)
 
-chain = prompt | ollama_llm
+chain = prompt | ollama_chat_llm
 
-result = chain.invoke({'question': 'describe langchain ai framework', 'tokens': 50})
-
+result = chain.invoke({'question': 'describe the python langchain ai framework', 'tokens': 50})
 print(result)</pre>
       </div>
     </div>
@@ -231,7 +243,7 @@ print(result)</pre>
     <br/>
     <div id="out-div">
       <h4>Output.1</h4>
-      <pre>Langchain is an AI development framework that streamlines natural language processing (NLP) tasks using machine learning models, enabling efficient data handling and model training for various applications like text classification, translation, and sentiment analysis. It simplifies the process with modular components and integrates seamlessly with popular libraries.</pre>
+      <pre>content='The LangChain AI framework is designed for building applications with large language models, offering tools and components to streamline development processes.' additional_kwargs={} response_metadata={'model': 'phi4-mini:latest', 'created_at': '2025-11-11T17:50:43.474265533Z', 'done': True, 'done_reason': 'stop', 'total_duration': 15304528663, 'load_duration': 14966942499, 'prompt_eval_count': 28, 'prompt_eval_duration': 19753959, 'eval_count': 25, 'eval_duration': 280905325, 'model_name': 'phi4-mini:latest', 'model_provider': 'ollama'} id='lc_run--ff20604f-a758-46d1-bde2-ba9f11d08970-0' usage_metadata={'input_tokens': 28, 'output_tokens': 25, 'total_tokens': 53}</pre>
     </div>
     <br/>
     <div id="para-div">
@@ -239,31 +251,24 @@ print(result)</pre>
     </div>
     <br/>
     <div id="step-div">
-      <p>Recipe 2 : Generate Structured Output from LLM</p>
+      <p>Recipe 2 : Execute a simple LLM chat using Messages</p>
     </div>
     <br/>
     <div id="para-div">
-      <p>The following code snippet creates an LLM chat instance, a data class that will conform to the structured output, a chain
-        using the data class as the schema, and executes the chain to get a structuredresponse from the LLM model:</p>
+      <p>The following code snippet creates a human and system messages and invokes the chat model to get a response from the LLM
+        chat model:</p>
     </div>
     <br/>
     <div id="src-outer-div-1">
       <div class="gen-src-body">
-<pre>from pydantic import BaseModel
-from langchain_ollama import ChatOllama
+<pre>from langchain_core.messages import HumanMessage, SystemMessage
 
-class GpuSpecs(BaseModel):
-  name: str
-  vram: int
-  cuda_cores: int
+human_msg = HumanMessage(content='What is the current time in India if the current time in New York is 8 am EST?')
+system_msg = SystemMessage(content='You are a helpful assistant.')
+messages = [system_msg, human_msg]
 
-ollama_struct_llm = ChatOllama(base_url=ollama_base_url, model=ollama_model, format='json', temperature=llm_temperature)
-
-structured_llm = ollama_struct_llm.with_structured_output(GpuSpecs)
-
-result2 = structured_llm.invoke('Get the GPU specs for RTX 4070 Ti')
-
-print(result2)</pre>
+result = ollama_chat_llm.invoke(messages)
+result.pretty_print()</pre>
       </div>
     </div>
     <br/>
@@ -273,7 +278,19 @@ print(result2)</pre>
     <br/>
     <div id="out-div">
       <h4>Output.2</h4>
-      <pre>name='RTX 4070 Ti' vram=16000 cuda_cores=5888</pre>
+      <pre>================================== Ai Message ==================================
+
+India typically follows Indian Standard Time (IST), which is UTC+5:30 hours ahead of Coordinated Universal Time (UTC). If it’s currently 8 AM Eastern Standard Time (EST) on October 1st, we need to convert this into IST.
+
+First, let's find the time difference between EST and UTC. New York operates under either EDT or EST depending upon daylight saving adjustments; however, for simplicity's sake in our calculation we'll assume it's during standard time when there is no DST adjustment involved (UTC-5).
+
+Now converting 8 AM EST to UTC:
+
+08:00 - (-05) = 13:00 (1 PM)
+
+Next we convert this from UTC to IST by adding the +5.30 hours difference.
+
+13:00 + 5:30 = 18:30</pre>
     </div>
     <br/>
     <div id="para-div">
@@ -281,51 +298,29 @@ print(result2)</pre>
     </div>
     <br/>
     <div id="step-div">
-      <p>Recipe 3 : Chat with LLM preserving History</p>
+      <p>Recipe 3 : Generate Structured Output from LLM</p>
     </div>
     <br/>
     <div id="para-div">
-      <p>The following code snippet creates a chat session, an in-memory chat history store, an LLM chain using the history store,
-        and executes the chain to get responses from the LLM model:</p>
+      <p>The following code snippet defines a data class that will conform to the structured output, instruct the LLM chat instance
+        to generate a structured response, and invokes the LLM chat model to generate a structured response:</p>
     </div>
     <br/>
     <div id="src-outer-div-1">
       <div class="gen-src-body">
-<pre>from langchain_ollama import ChatOllama
-from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
-from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+<pre>from pydantic import BaseModel
 
-ollama_chat_llm = ChatOllama(base_url=ollama_base_url, model=ollama_model, temperature=llm_temperature)
+class GpuSpecs(BaseModel):
+  name: str
+  manufacturer: str
+  chip: str
+  cores: int
+  memory: int
 
-in_memory_store = {}
+structured_llm = ollama_chat_llm.with_structured_output(GpuSpecs)
 
-def get_chat_history(session_id: str) -> BaseChatMessageHistory:
-  if session_id not in in_memory_store:
-    in_memory_store[session_id] = InMemoryChatMessageHistory()
-  return in_memory_store[session_id]
-
-prompt2 = ChatPromptTemplate.from_messages([
-  ('system', 'Helpful AI assistant!'),
-  MessagesPlaceholder(variable_name='chat_history'),
-  ('human', '{input}')
-])
-
-config = {'configurable': {'session_id': 'recipes'}}
-
-chain2 = prompt2 | ollama_chat_llm
-
-chain2_with_history = RunnableWithMessageHistory(chain2, get_chat_history, input_messages_key='input', history_messages_key='chat_history')
-
-result3 = chain2_with_history.invoke({'input': 'Suggest top 3 budget GPUs in one line'}, config=config)
-
-print(result3.content)
-
-print('-------------------------')
-
-result4 = chain2_with_history.invoke({'input': 'Not impressed, try again'}, config=config)
-
-print(result4.content)</pre>
+result = structured_llm.invoke('Get the GPU specs for NVidia RTX 3070 Ti GPU')
+print(result)</pre>
       </div>
     </div>
     <br/>
@@ -335,7 +330,7 @@ print(result4.content)</pre>
     <br/>
     <div id="out-div">
       <h4>Output.3</h4>
-      <pre>1. Nvidia GeForce GTX 1650 Super, 2. AMD Radeon RX 570, 3. Nvidia GeForce GTX 1660 Super. These are highly regarded for their balance of performance and price.</pre>
+      <pre>name='get_gpu_specs' manufacturer='NVidia' chip='RTX 3070 Ti' cores=4608 memory=12</pre>
     </div>
     <br/>
     <div id="para-div">
@@ -343,7 +338,116 @@ print(result4.content)</pre>
     </div>
     <br/>
     <div id="step-div">
-      <p>Recipe 4 : Q&A on a CSV file content using LLM</p>
+      <p>Recipe 4 : Chat with LLM preserving History</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following code snippet creates a chat session, an in-memory chat history store, an LLM chain using the history store,
+        and executes the chain to get responses from the LLM model:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.runnables.history import RunnableWithMessageHistory
+
+in_memory_store = {}
+
+def get_chat_history(session_id: str) -> BaseChatMessageHistory:
+  if session_id not in in_memory_store:
+    in_memory_store[session_id] = InMemoryChatMessageHistory()
+  return in_memory_store[session_id]
+
+prompt = ChatPromptTemplate.from_messages([
+  ('system', 'You are a helpful AI assistant!'),
+  MessagesPlaceholder(variable_name='chat_history'),
+  ('human', '{input}')
+])
+
+config = {'configurable': {'session_id': 'sid-1'}}
+
+chain = prompt | ollama_chat_llm
+
+chain_with_history = RunnableWithMessageHistory(chain, get_chat_history, input_messages_key='input', history_messages_key='chat_history')
+
+result = chain_with_history.invoke({'input': 'Suggest the top 3 budget consumer mirrorless cameras as a bulleted list'}, config=config)
+print(result.content)
+
+print('-------------------------')
+
+result = chain_with_history.invoke({'input': 'Not impressed with the suggestion, try again'}, config=config)
+print(result.content)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code snippet generates the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>Certainly, here is an updated and accurate representation of three popular entry-level (budget) camera brands that produce high-quality mirrorless systems:
+
+- Canon EOS M50
+- Sony Alpha A6000/A6300 series
+- Fujifilm X-T200
+
+These models are well-regarded for their performance in the budget category. Please note, however, as my knowledge is up to 2023 and prices can fluctuate over time due to market conditions or new releases by manufacturers.
+
+Canon EOS M50:
+* Price: Approximately $1,000 - $1,300
+* Features include a 24.2 MP APS-C CMOS sensor with DIGIC processing for fast performance.
+* Offers features like Wi-Fi connectivity (built-in), an articulating touchscreen display and electronic viewfinder that can be flipped up.
+
+Sony Alpha A6000/A6300 series:
+* Price: Approximately $1,000 - $1,300
+* Features include a 24.2 MP APS-C Exmor CMOS sensor with BIONZ X processing for excellent image quality.
+* Offers features like Wi-Fi connectivity (built-in), an articulating touchscreen display and electronic viewfinder that can be flipped up.
+
+Fujifilm X-T200:
+* Price: Approximately $1,000 - $1,300
+* Features include a 24.2 MP APS-C CMOS sensor with Fujifilm's unique film simulation modes.
+* Offers features like Wi-Fi connectivity (built-in), an articulating touchscreen display and electronic viewfinder that can be flipped up.
+
+These cameras are excellent choices for photographers looking to enter the mirrorless market without breaking their budget, offering a balance of quality image sensors, ease-of-use with touchscreens or EVFs/OVF displays, as well as modern connectivity options.
+-------------------------
+I apologize if my previous suggestions did not meet your expectations for top-tier value in mirrorless cameras within an entry-level budget range.
+
+Here are three more refined choices that have been highly praised by both consumers and professionals alike:
+
+- Sony Alpha A6000/A6100 series
+- Fujifilm X-T30/X-E4 (X-T Series)
+- Olympus OM-D E-M10 Mark III
+
+These models continue to offer excellent value for money, combining robust features with affordability.
+
+Sony Alpha A6000/A6100 series:
+* Price: Approximately $1,000 - $1,300
+* Features include a 24.2 MP APS-C Exmor CMOS sensor and BIONZ X image processor.
+* Offers Wi-Fi connectivity (built-in), an articulating touchscreen display that can flip up to reveal the electronic viewfinder.
+
+Fujifilm X-T30/X-E4:
+* Price: Approximately $1,000 - $1,300
+* Features include a 24.2 MP APS-C CMOS sensor with Fujifilm's unique film simulation modes for creative flexibility.
+* Offers Wi-Fi connectivity (built-in), an articulating touchscreen display that can flip up to reveal the electronic viewfinder.
+
+Olympus OM-D E-M10 Mark III:
+* Price: Approximately $1,000 - $1,300
+* Features include a 16.3 MP Four Thirds sensor with TruePic VIII processor.
+* Offers Wi-Fi connectivity (built-in), an articulating touchscreen display that can flip up to reveal the electronic viewfinder.
+
+These cameras are well-suited for photographers who want high-quality imaging capabilities without compromising on features like touchscreens, EVFs/OVF displays or modern wireless connections. Each of these models offers a unique set of characteristics and creative tools suitable for various photography styles from casual enthusiasts to serious hobbyists looking to step up their game in the mirrorless camera market.
+
+I hope this revised list better aligns with your expectations regarding value-for-money options within an entry-level budget range, offering you both quality imaging capabilities as well as modern features that cater to today's photographers.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We have successfully demonstrated the <span class="bold">Python</span> code snippet for <span class="bold">Recipe 4</span>.</p>
+    </div>
+    <br/>
+    <div id="step-div">
+      <p>Recipe 5 : Q&A on a CSV file content using LLM</p>
     </div>
     <br/>
     <div id="para-div">
@@ -385,9 +489,9 @@ Intel,Arc A780,16,4096,DG2-512</pre>
     <div id="src-outer-div-1">
       <div class="gen-src-body">
 <pre>from langchain_core.documents import Document
-from langchain.document_loaders import CSVLoader
 from langchain_core.vectorstores import InMemoryVectorStore
-from langchain.chains import RetrievalQA
+from langchain_classic.document_loaders import CSVLoader
+from langchain_classic.chains import RetrievalQA
 
 loader = CSVLoader(gpu_dataset, encoding='utf-8')
 
@@ -395,15 +499,14 @@ encoding = '\ufeff'
 newline = '\n'
 comma_space = ', '
 
-documents = [Document(metadata=doc.metadata, 
-                      page_content=doc.page_content.lstrip(encoding)
-                                                   .replace(newline, comma_space)) for doc in loader.load()]
+documents = [Document(metadata=doc.metadata, page_content=doc.page_content.lstrip(encoding)
+                      .replace(newline, comma_space)) for doc in loader.load()]
 
 vector_store = InMemoryVectorStore(ollama_embedding)
 
 vector_store.add_documents(documents)
 
-template2 = """
+template = """
 Given the following context, answer the question based only on the provided context.
 
 Context: {context}
@@ -411,27 +514,14 @@ Context: {context}
 Question: {question}
 """
 
-prompt2 = PromptTemplate.from_template(template2)
+prompt = PromptTemplate.from_template(template)
 
 retriever = vector_store.as_retriever()
 
-qa_chain = RetrievalQA.from_chain_type(llm=ollama_llm, retriever=retriever, chain_type_kwargs={'prompt': prompt})
+qa_chain = RetrievalQA.from_chain_type(llm=ollama_chat_llm, retriever=retriever, chain_type_kwargs={'prompt': prompt})
 
-result5 = qa_chain.invoke({'query': 'what is the memory size on GeForce RTX 3070 Ti'})
-
-print(result5)
-
-print('-------------------------')
-
-result6 = qa_chain.invoke({'query': 'who is the manufacturer of rx 7800 xt'})
-
-print(result6)
-
-print('-------------------------')
-
-result7 = qa_chain.invoke({'query': 'what is the GPU chip on RTX 3090 Ti'})
-
-print(result7)</pre>
+result = qa_chain.invoke({'query': 'memory size of RTX 3070 Ti'})
+print(result)</pre>
       </div>
     </div>
     <br/>
@@ -440,20 +530,16 @@ print(result7)</pre>
     </div>
     <br/>
     <div id="out-div">
-      <h4>Output.4</h4>
-      <pre>{'query': 'what is the memory size on GeForce RTX 3070 Ti', 'result': 'The provided context does not include information about a product named "GeForce RTX 3070 Ti". Therefore, I cannot provide an answer based on the given data.'}
--------------------------
-{'query': 'who is the manufacturer of rx 7800 xt', 'result': 'The provided context does not include information about an AMD product named "RX 7800 XT". Therefore, based on the given data, it\'s not possible to determine the manufacturer of the RX 7800 XT.'}
--------------------------
-{'query': 'what is the GPU chip on RTX 3090 Ti', 'result': 'The provided context does not include information about an NVIDIA product named "RTX 3090 Ti". Therefore, I cannot provide the GPU chip for this product based on the given data.'}</pre>
+      <h4>Output.5</h4>
+      <pre>{'query': 'memory size of RTX 3070 Ti', 'result': 'The provided context does not include information about the memory size of an NVIDIA GeForce RTX 3070 Ti. Therefore, based on this specific given data alone, it is impossible to determine or answer what the memory size for that product would be. More detailed and relevant sources are needed in order to find out such specifications accurately.\n\n'}</pre>
     </div>
     <br/>
     <div id="para-div">
-      <p>We have successfully demonstrated the <span class="bold">Python</span> code snippet for <span class="bold">Recipe 4</span>.</p>
+      <p>We have successfully demonstrated the <span class="bold">Python</span> code snippet for <span class="bold">Recipe 5</span>.</p>
     </div>
     <br/>
     <div id="step-div">
-      <p>Recipe 5 : Q&A on a PDF file content using LLM</p>
+      <p>Recipe 6 : Q&A on a PDF file content using LLM</p>
     </div>
     <br/>
     <div id="para-div">
@@ -475,9 +561,9 @@ print(result7)</pre>
     <br/>
     <div id="src-outer-div-1">
       <div class="gen-src-body">
-<pre>from langchain.document_loaders import PyPDFLoader
-from langchain_chroma import Chroma
-from langchain.chains import RetrievalQA
+<pre>from langchain_chroma import Chroma
+from langchain_classic.chains import RetrievalQA
+from langchain_classic.document_loaders import PyPDFLoader
 
 nvidia_q3_2024 = './data/NVIDIA-3Q-2024.pdf'
 
@@ -485,11 +571,11 @@ pdf_loader = PyPDFLoader(nvidia_q3_2024)
 
 pdf_pages = pdf_loader.load_and_split()
 
-vector_store2 = Chroma(collection_name='pdf_docs', embedding_function=ollama_embedding, persist_directory=chroma_db_dir)
+vector_store = Chroma(collection_name='pdf_docs', embedding_function=ollama_embedding, persist_directory=chroma_db_dir)
 
-vector_store2.add_documents(pdf_pages)
+vector_store.add_documents(pdf_pages)
 
-template3 = """
+template = """
 Given the following context, answer the question based only on the provided context.
 
 Context: {context}
@@ -497,21 +583,19 @@ Context: {context}
 Question: {question}
 """
 
-prompt4 = PromptTemplate.from_template(template3)
+prompt = PromptTemplate.from_template(template)
 
-retriever2 = vector_store2.as_retriever()
+retriever = vector_store.as_retriever()
 
-qa_chain2 = RetrievalQA.from_chain_type(llm=ollama_llm, retriever=retriever2, chain_type_kwargs={'prompt': prompt4})
+qa_chain = RetrievalQA.from_chain_type(llm=ollama_chat_llm, retriever=retriever, chain_type_kwargs={'prompt': prompt})
 
-result8 = qa_chain2.invoke({'query': 'what was the revenue in q3 2024'})
-
-print(result8)
+result = qa_chain.invoke({'query': 'what was the revenue in q1 2025'})
+print(result)
 
 print('-------------------------')
 
-result9 = qa_chain2.invoke({'query': 'what were the expenses in q3 2023'})
-
-print(result9)</pre>
+result = qa_chain.invoke({'query': 'what were the expenses in q4 2024'})
+print(result)</pre>
       </div>
     </div>
     <br/>
@@ -520,18 +604,18 @@ print(result9)</pre>
     </div>
     <br/>
     <div id="out-div">
-      <h4>Output.5</h4>
-      <pre>{'query': 'what was the revenue in q3 2024', 'result': 'The revenue for Q3 FY24 was $18,120 million.'}
+      <h4>Output.6</h4>
+      <pre>{'query': 'what was the revenue in q1 2025', 'result': 'The first-quarter (Q1) fiscal year 2025 revenue for NVIDIA Corporation was $26.0 billion.'}
 -------------------------
-{'query': 'what were the expenses in q3 2023', 'result': "In Q3 2023, NVIDIA's total GAAP operating expenses amounted to $2,983 million, and non-GAAP operating expenses were $2,026 million. The GAAP operating income for the same quarter was $10,417 million, while the non-GAAP operating income was $11,557 million."}</pre>
+{'query': 'what were the expenses in q4 2024', 'result': "The operating expenses for Q4 FY24 (fourth quarter of fiscal year 2024) are not explicitly stated within the provided context. However, it is mentioned that there was an increase from $2,210 million to $3,497 million between Q1 and Q4 in the same fiscal period.\n\nTo find out the exact expenses for Q4 FY24 specifically, one would need access to NVIDIA's full financial statements or notes accompanying those reports where detailed breakdowns of operating expenses are typically provided. Since this information is not included within your given context, I cannot provide you with a precise figure for Q4 2024 expenses from that specific data set alone."}</pre>
     </div>
     <br/>
     <div id="para-div">
-      <p>We have successfully demonstrated the <span class="bold">Python</span> code snippet for <span class="bold">Recipe 5</span>.</p>
+      <p>We have successfully demonstrated the <span class="bold">Python</span> code snippet for <span class="bold">Recipe 6</span>.</p>
     </div>
     <br/>
     <div id="step-div">
-      <p>Recipe 6 : Basic usage of the ReAct Framework</p>
+      <p>Recipe 7 : Basic usage of the ReAct Framework</p>
     </div>
     <br/>
     <div id="para-div">
@@ -545,76 +629,78 @@ print(result9)</pre>
     </div>
     <div id="para-div">
       <p>The following code snippet creates a custom tool for executing shell commands, creates a ReAct prompt template, creates a
-        ReAct agent that will use the LLM model and the custom tool, creates an instance of <span class="bold">AgentExecutor</span>
-        that enables the multi-step reasoning process for the ReAct agent, and invokes the virtual agent to get specific answers to
-        the questions from the LLM model:</p>
+        ReAct agent, which enables the multi-step reasoning process for the ReAct agent, and invokes the virtual agent to get specific
+        answers to the questions from the LLM model:</p>
     </div>
     <br/>
     <div id="src-outer-div-1">
       <div class="gen-src-body">
 <pre>import subprocess
-  
-from langchain_core.prompts import PromptTemplate
-from langchain_ollama import ChatOllama
-from langchain.agents import tool
-from langchain.agents import AgentExecutor, create_react_agent
+from langchain.agents import create_agent
+from langgraph.checkpoint.memory import InMemorySaver
+from langchain.tools import tool
 
 @tool
 def execute_shell_command(command: str) -> str:
-  """Tool to execute shell commands"""
+  """Tool to execute shell commands
+  Arg:
+    command (str): Shell command to execute
+  Returns:
+    str: Output of the command execution
+  """
   print(f'Executing shell command: {command}')
 
   try:
-    result = subprocess.run(command, shell=True, check=True, text=True, capture_output=True)
-    if result.returncode != 0:
+    output = subprocess.run(command, shell=True, check=True, text=True, capture_output=True)
+    if output.returncode != 0:
       return f'Error executing shell command - {command}'
-    return result.stdout
+    return output.stdout
   except subprocess.CalledProcessError as e:
     print(e)
 
-react_template = '''Answer the following questions as best you can. You have access to the following tools:
-
-{tools}
-
-Use the following format:
-
-Question: the input question you must answer
-Thought: you should always think about what to do
-Action: the action to take, should be one of [{tool_names}]
-Action Input: the input to the action
-Observation: the result of the action
-... (this Thought/Action/Action Input/Observation can repeat no more than N times)
-Thought: I now know the final answer
-Final Answer: the final answer to the original input question
-
-Begin!
-
-Question: {input}
-Thought: {agent_scratchpad}'''
-
-react_prompt_template = PromptTemplate.from_template(react_template)
-
 tools = [execute_shell_command]
 
-react_agent = create_react_agent(ollama_chat_llm, tools, react_prompt_template, stop_sequence=True)
+prompt = '''
+You are a helpful assistant. Be concise and accurate.
+You have access to the following tools:
+{tools}
+Use these tools to answer the user's question.
+Only respond with the output of the command execution.
+'''
 
-agent_executor = AgentExecutor(agent=react_agent, tools=tools, max_iterations=5, max_execution_time=30, verbose=True, handle_parsing_errors=True)
+config = {'configurable': {'thread_id': 'thr-1'}}
 
-question_1 = 'Can you find what operating system is running on this system?'
+agent = create_agent(ollama_tools_llm,
+                     tools,
+                     system_prompt=prompt,
+                     checkpointer=InMemorySaver())
 
-print(agent_executor.invoke({'input': question_1}))
+question_1 = 'Can you all the network interfaces on this system?'
+question_2 = 'What is the primary Ethernet interface on this system?'
+
+result = agent.invoke(
+  {'messages': [
+    {
+      'role': 'user',
+      'content': question_1
+    }
+  ]},
+  config=config
+)
+result['messages'][-1].pretty_print()
 
 print('-------------------------')
 
-question_2 = 'Can you all the network interfaces from this system?'
-
-print(agent_executor.invoke({'input': question_2}))
-
-print('-------------------------')
-
-question_3 = 'Linux system seems a bit sluggish, can you help find which processes maybe consuming system resources?'
-
-print(agent_executor.invoke({'input': question_3}))</pre>
+result = agent.invoke(
+  {'messages': [
+    {
+      'role': 'user',
+      'content': question_2
+    }
+  ]},
+  config=config
+)
+result['messages'][-1].pretty_print()</pre>
       </div>
     </div>
     <br/>
@@ -623,23 +709,195 @@ print(agent_executor.invoke({'input': question_3}))</pre>
     </div>
     <br/>
     <div id="out-div">
-      <h4>Output.6</h4>
-      <pre>> Finished chain.
-{'input': 'Can you find what operating system is running on this system?', 'output': 'The operating system running on this system is Linux, specifically version 6.8.0-58-generic (Ubuntu).'}
+      <h4>Output.7</h4>
+      <pre>Executing shell command: ip addr show
+================================== Ai Message ==================================
+
+Here are the network interfaces on this system:
+
+1. **lo** (Loopback)
+   - Description: Localhost interface for internal communication within the system.
+   - Status: UP
+   - IP Addresses:
+     - IPv4: 127.0.0.1/8
+     - IPv6: ::1/128
+
+2. **enp42s0**
+   - Description: Ethernet interface (likely a physical network port).
+   - Status: UP
+   - MTU: 1500 bytes
+   - IP Addresses:
+     - IPv4: 192.168.1.25/24
+     - IPv6: fe80::a85e:4dca:5db3:2919/64 (link-local)
+   - MAC Address: 04:7c:16:17:0e:5a
+
+3. **wlo1**
+   - Description: Wi-Fi interface.
+   - Status: DOWN
+   - MTU: 1500 bytes
+   - MAC Address: 50:c2:e8:ee:d1:73 (and aliased as `wlp41s0`)
+
+4. **br-b83cfae028ea**
+   - Description: Bridge interface.
+   - Status: DOWN
+   - MTU: 1500 bytes
+   - IP Address: 172.19.0.1/16
+   - MAC Address: b2:90:02:d7:1b:a6
+
+5. **docker0**
+   - Description: Docker bridge interface for container networking.
+   - Status: UP
+   - MTU: 1500 bytes
+   - IP Addresses:
+     - IPv4: 172.17.0.1/16
+     - IPv6: fe80::d42c:83ff:fe59:1cca/64 (link-local)
+   - MAC Address: d6:2c:83:59:1c:ca
+
+6. **veth7ea82ba**
+   - Description: Virtual Ethernet interface pair.
+   - Status: UP
+   - MTU: 1500 bytes
+   - IP Addresses:
+     - IPv6: fe80::dc34:1aff:fed9:b335/64 (link-local)
+   - MAC Address: de:34:1a:d9:b3:35
+
+These interfaces provide connectivity for various purposes, including local communication, network access via Ethernet or Wi-Fi, container networking with Docker, and bridging between different network segments.
 -------------------------
-> Finished chain.
-{'input': 'Can you all the network interfaces from this system?', 'output': 'The network interfaces on this system are:\n\n1. lo (LOOPBACK,UP,LOWER_UP)\n2. enp42s0 (BROADCAST,MULTICAST,UP,LOWER_UP)\n3. wlo1 (NO-CARRIER,BROADCAST,MULTICAST,UP)\n4. docker0 (NO-CARRIER,BROADCAST,MULTICAST,UP)'}
--------------------------
-> Finished chain.
-{'input': 'Linux system seems a bit sluggish, can you help find which processes maybe consuming system resources?', 'output': 'Agent stopped due to iteration limit or time limit.'}</pre>
+================================== Ai Message ==================================
+
+The primary Ethernet interface on this system is **enp42s0**. It has a status of UP, an IP address of 192.168.1.25/24, and a MAC address of 04:7c:16:17:0e:5a. This interface is likely the main network connection for accessing external networks or other devices on the local network.</pre>
     </div>
     <br/>
     <div id="para-div">
-      <p>We have successfully demonstrated the <span class="bold">Python</span> code snippet for <span class="bold">Recipe 6</span>.</p>
+      <p>We have successfully demonstrated the <span class="bold">Python</span> code snippet for <span class="bold">Recipe 7</span>.</p>
     </div>
     <br/>
     <div id="step-div">
-      <p>Recipe 7 : Image Processing using Multi Model</p>
+      <p>Recipe 8 : Q&A on a CSV file content using the ReAct Framework</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For this recipe, we will create a CSV file called <span class="bold">gpu_specs.csv</span> that will contain the GPU card
+        specs for a handful of popular GPU cards. The following list the contents of the CSV file:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>manufacturer,productName,memorySize,memoryClock,gpuChip
+NVIDIA,GeForce RTX 4060,12,5888,AD104
+NVIDIA,GeForce RTX 4070,12,7680,AD104
+NVIDIA,GeForce RTX 4080,16,9728,AD103
+NVIDIA,GeForce RTX 4090,24,17408,AD102
+AMD,Radeon RX 6950 XT,16,5120,Navi 21
+AMD,Radeon RX 7700 XT,8, 4096,Navi 33
+AMD,Radeon RX 7800 XT,12,8192,Navi 32
+AMD,Radeon RX 7900 XT,16,12288,Navi 31
+NVIDIA,GeForce RTX 3060 Ti,8,4864,GA103S
+NVIDIA,GeForce RTX 3070 Ti,8,5632,GA104
+NVIDIA,GeForce RTX 3080,12,8960,GA102
+NVIDIA,GeForce RTX 3090 Ti,24,10752,GA102
+AMD,Radeon RX 6400,4,768,Navi 24
+AMD,Radeon RX 6500 XT,4,1024,Navi 24
+AMD,Radeon RX 6650 XT,8,2048,Navi 23
+AMD,Radeon RX 6750 XT,12,2560,Navi 22
+AMD,Radeon RX 6850M XT,12,2560,Navi 22
+Intel,Arc A770,16,4096,DG2-512
+Intel,Arc A780,16,4096,DG2-512</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following code snippet creates a CSV file loader, loads the rows from the file as documents into an in-memory vector
+        store using the embedding class, creates a custom tool for retrieving documents relevant to the user query from the vector
+        store, creates a prompt template, creates an agent, and invokes the virtual agent to get specific answer to the questions
+        from the LLM model:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langchain.agents import create_agent
+from langchain_core.documents import Document
+from langchain_core.vectorstores import InMemoryVectorStore
+from langchain_classic.document_loaders import CSVLoader
+from langchain_classic.chains import RetrievalQA
+from langchain.tools import tool
+
+loader = CSVLoader(gpu_dataset, encoding='utf-8')
+
+encoding = '\ufeff'
+newline = '\n'
+comma_space = ', '
+
+ollama_embedding: Embeddings = OllamaEmbeddings(base_url=ollama_base_url, model=ollama_tools_model[ollama_tools_model.index(':')+1:])
+
+documents = [Document(metadata=doc.metadata, page_content=doc.page_content.lstrip(encoding)
+                      .replace(newline, comma_space)) for doc in loader.load()]
+
+vector_store = InMemoryVectorStore(ollama_embedding)
+
+vector_store.add_documents(documents)
+
+@tool(response_format="content_and_artifact")
+def retrieve_context(query: str) -> tuple[str, list[Document]]:
+  """Tool to retrieve information to help answer a query.
+  Arg:
+    query (str): User query to answer
+  Returns:
+    tuple: Output of the retrieved documents with the documents metadata
+  """
+  n_top = 2
+  retrieved_docs = vector_store.similarity_search(query, k=n_top)
+  serialized = "\n\n".join(
+    (f'Source: {doc.metadata}\nContent: {doc.page_content}')
+    for doc in retrieved_docs
+  )
+  return serialized, retrieved_docs
+
+tools = [retrieve_context]
+
+prompt = '''
+You are a helpful assistant. Be concise and accurate.
+You have access to the following tools:
+{tools}
+Use these tools to retrieves the context and answer the user's question.
+Only respond with the output of the command execution.
+'''
+
+agent = create_agent(ollama_tools_llm,
+                     tools,
+                     system_prompt=prompt)
+
+query = 'memory size of RTX 3070 Ti'
+
+result = agent.invoke(
+  {'messages': [
+    {
+      'role': 'user',
+      'content': query
+    }
+  ]}
+)
+result['messages'][-1].pretty_print()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code snippet generates the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>================================== Ai Message ==================================
+
+The memory size of the RTX 3070 Ti is not listed in the provided data. The closest match for an AMD Radeon RX card shows a memory size of 16 GB, while the NVIDIA GeForce RTX 3090 Ti has 24 GB. However, there's no specific entry for the RTX 3070 Ti in the dataset.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We have successfully demonstrated the <span class="bold">Python</span> code snippet for <span class="bold">Recipe 8</span>.</p>
+    </div>
+    <br/>
+    <div id="step-div">
+      <p>Recipe 9 : Image Processing using Multi Model</p>
     </div>
     <br/>
     <div id="para-div">
@@ -659,11 +917,10 @@ print(agent_executor.invoke({'input': question_3}))</pre>
     <br/>
     <div id="src-outer-div-1">
       <div class="gen-src-body">
-<pre>from langchain_core.messages import HumanMessage
+<pre>import base64
 from io import BytesIO
+from langchain_core.messages import HumanMessage
 from PIL import Image
-
-import base64
 
 def jpg_to_base64(image):
   jpg_buffer = BytesIO()
@@ -689,14 +946,10 @@ def create_chat_prompt(data):
 
   return [HumanMessage(content=content_parts)]
 
-ollama_chat_vlm = ChatOllama(base_url=ollama_base_url, model=ollama_vl_model, temperature=llm_temperature)
+chain = create_chat_prompt | ollama_image_llm
 
-vl_chain = create_chat_prompt | ollama_chat_vlm
-
-result10 = vl_chain.invoke({'text': 'Itemize all the transactions from the receipt image in detail', 
-                            'image': jpg_to_base64(receipt_image)})
-
-print(result10.content)</pre>
+result = chain.invoke({'text': 'Itemize all the transactions from the receipt image in detail', 'image': jpg_to_base64(receipt_image)})
+print(result.content)</pre>
       </div>
     </div>
     <br/>
@@ -705,31 +958,272 @@ print(result10.content)</pre>
     </div>
     <br/>
     <div id="out-div">
-      <h4>Output.7</h4>
+      <h4>Output.9</h4>
       <pre>Okay, here's a detailed breakdown of all the transactions from the receipt image:
 
-**Darth Vader #1234: Transactions**
+**REY SKYWALKER #9876: Total Transactions**
 
-*   Feb 17: AMAZON MKTPL*N606Z9AF3Amzn.com/billWA - $9.87
-*   Feb 17: AMAZON MKTPL*L89WB2J13Amzn.com/billWA - $29.99
-*   Feb 20: AMAZON RETA*C14EN8XC3WWW.AMAZON.COWA - $74.63
+*   **Feb 15**
+    *   Wegmans #93PRINCTONNJ - $17.79
+    *   Trader Joe's #607PRINCTONNJ - $2.69
+    *   Shoprite LAWRNCVILLE S1LAWRENCVILLE - $30.16
+    *   Wegmans #93PRINCTONNJ - $19.35
+    *   Halo Farm LAWRENCVILLE - $13.96
+*   **Feb 17**
+    *   TJ MAX #0224LAWRENCVILLE - $21.31
+    *   Patel Brothers East Windsorn - $77.75
+    *   TJ MAX #828EAST WINDSORN - $90.58
+    *   Wholefoods PRN 1018PRINCTONNJ - $6.48
+*   **Feb 19**
+    *   Amazon MKTPL*N606Z9FA3MZN.COM/BILLWA - $29.99
+    *   Amazon MKTPL*L89WB21L3MZN.COM/BILLWA - $74.63
 
-**Rey Skywalker #9876: Transactions**
-
-*   Feb 17: TJMAX*0224LREYNCEVILLENJ - $21.31
-*   Feb 17: WEGMANS*93PRINCETONNJ - $17.79
-*   Feb 17: PATEL BROTHERS EAST WINDSORNJ - $77.75
-*   Feb 17: TJ MAX*82BEAST WINDSORNJ - $90.58
-*   Feb 17: TRADER JOE S*607PRINCETONNJ - $2.69
-*   Feb 16: SHOPRITE LAWRNCEVILLE S1LAWRENCENVILLENJ - $30.16
-*   Feb 18: WEGMANS*93PRINCETONNJ - $19.35
-*   Feb 18: HALO FARMLAWRENCENVILLENJ - $13.96
+**Total: $258.76**
 
 Let me know if you'd like me to perform any calculations or have any other questions about the receipt!</pre>
     </div>
     <br/>
     <div id="para-div">
-      <p>We have successfully demonstrated the <span class="bold">Python</span> code snippet for <span class="bold">Recipe 7</span>.</p>
+      <p>We have successfully demonstrated the <span class="bold">Python</span> code snippet for <span class="bold">Recipe 9</span>.</p>
+    </div>
+    <br/>
+    <div id="step-div">
+      <p>Recipe 10 : SQL Database Query Agent</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For this recipe, we will levarage the <span class="hi-yellow">Auto MPG</span> dataset saved as a <span class="bold">SQLite
+        </span> database, which can be downloaded from <a href="https://polarsparc.github.io/data/auto_mpg.db" target="_blank"><span
+        class="bold">HERE</span></a> !!!</p>
+    </div>
+    <div id="para-div">
+      <p>The following code snippet creates an instance of the <span class="bold">SQLite</span> database using the provided dataset,
+        creates a custom tool for executing SQL queries, creates a prompt template, creates an agent, and invokes the virtual agent
+        to get specific answer to the SQL queries from the LLM model:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from dataclasses import dataclass
+from langchain.agents import create_agent
+from langgraph.checkpoint.memory import InMemorySaver
+from langchain_community.utilities import SQLDatabase
+from langgraph.runtime import get_runtime
+from langchain.tools import tool
+
+mpg_db = SQLDatabase.from_uri(mpg_sqlite_url)
+
+@dataclass
+class RuntimeDbContext:
+  db: SQLDatabase
+
+@tool
+def execute_sql(query: str) -> str:
+  """
+  Execute SQL query and return results.
+  Arg:
+    query (str): SQL query to execute
+  Returns:
+    Query results as a string
+  """
+  runtime = get_runtime(RuntimeDbContext)
+  db = runtime.context.db
+  try:
+    return db.run(query)
+  except Exception as e:
+    return f'Error: {str(e)}'
+
+db_prompt = '''
+You are a helpful SQLite assistant. You are able to answer questions about the Auto MPG database.
+Rules:
+- Think step-by-step
+- When you need data, call the tool execute_sql with ONLY one SQL query as input
+- DO NOT use INSERT, UPDATE, DELETE, or DROP statements
+- Limit up to 5 rows of output
+- If the tool returns an 'Error:', revise the SQL query and try again
+'''
+
+agent = create_agent(
+  ollama_tools_llm,
+  tools=[execute_sql],
+  system_prompt=db_prompt,
+  context_schema=RuntimeDbContext,
+  checkpointer=InMemorySaver()
+)
+
+config = {'configurable': {'thread_id': 'thr-1'}}
+
+question = 'what are the names of all the tables and their columns in the Auto MPG database?'
+
+for step in agent.stream(
+  {'messages': question},
+  context=RuntimeDbContext(db=mpg_db),
+  config=config,
+  stream_mode='values',
+):
+  step['messages'][-1].pretty_print()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code snippet generates the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>================================ Human Message =================================
+
+what are the names of all the tables and their columns in the Auto MPG database?
+================================== Ai Message ==================================
+Tool Calls:
+  execute_sql (20dfbb60-fa8c-4a2c-bb81-55bc7ded1980)
+ Call ID: 20dfbb60-fa8c-4a2c-bb81-55bc7ded1980
+  Args:
+    query: SELECT name FROM sqlite_master WHERE type='table';
+================================= Tool Message =================================
+Name: execute_sql
+
+[('Origins',), ('Vehicles',)]
+================================== Ai Message ==================================
+Tool Calls:
+  execute_sql (84985976-936b-4395-9219-e07fd717a859)
+ Call ID: 84985976-936b-4395-9219-e07fd717a859
+  Args:
+    query: PRAGMA table_info(Origins);
+================================= Tool Message =================================
+Name: execute_sql
+
+[(0, 'origin_id', 'BIGINT', 0, None, 1), (1, 'origin', 'TEXT', 0, None, 0)]
+================================== Ai Message ==================================
+Tool Calls:
+  execute_sql (e85ed25c-18e3-49e6-971c-9500703e7663)
+ Call ID: e85ed25c-18e3-49e6-971c-9500703e7663
+  Args:
+    query: PRAGMA table_info(Vehicles);
+================================= Tool Message =================================
+Name: execute_sql
+
+[(0, 'vehicle_id', 'BIGINT', 0, None, 1), (1, 'mpg', 'FLOAT', 0, None, 0), (2, 'cylinders', 'BIGINT', 0, None, 0), (3, 'displacement', 'FLOAT', 0, None, 0), (4, 'horsepower', 'FLOAT', 0, None, 0), (5, 'weight', 'FLOAT', 0, None, 0), (6, 'acceleration', 'FLOAT', 0, None, 0), (7, 'model_year', 'BIGINT', 0, None, 0), (8, 'origin', 'BIGINT', 0, None, 0), (9, 'car_name', 'TEXT', 0, None, 0)]
+================================== Ai Message ==================================
+
+The Auto MPG database contains two tables:
+
+1. **Origins**
+   - Columns:
+     - `origin_id` (INTEGER)
+     - `origin` (TEXT)
+
+2. **Vehicles**  
+   - Columns:
+     - `vehicle_id` (INTEGER)
+     - `mpg` (REAL)
+     - `cylinders` (INTEGER)
+     - `displacement` (REAL)
+     - `horsepower` (REAL)
+     - `weight` (REAL)
+     - `acceleration` (REAL)
+     - `model_year` (INTEGER)
+     - `origin` (INTEGER)
+     - `car_name` (TEXT)</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We have successfully demonstrated the <span class="bold">Python</span> code snippet for <span class="bold">Recipe 10</span>.</p>
+    </div>
+    <br/>
+    <div id="step-div">
+      <p>Recipe 11 : Human in the Loop Agent</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For this recipe, we will levarage the <span class="hi-yellow">Auto MPG</span> dataset saved as a <span class="bold">SQLite
+        </span> database, which can be downloaded from <a href="https://polarsparc.github.io/data/auto_mpg.db" target="_blank"><span
+        class="bold">HERE</span></a> !!!</p>
+    </div>
+    <div id="para-div">
+      <p>The following code snippet creates a fictitious custom tool for updating a database, creates a prompt template, creates an
+        agent with a middleware, and invokes the virtual agent, which waits for an approval from a human to proceed:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langchain.agents import create_agent
+from langchain.agents.middleware import HumanInTheLoopMiddleware
+from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.types import Command
+from langchain.tools import tool
+
+@tool
+def update_database(query: str) -> str:
+  '''
+  Tool to perform database update operations
+  :param query: update query
+  :return: result of the update operation
+  '''
+  print(f'Updating database using {query} ...')
+  return 'success'
+
+db_prompt = '''
+You are a helpful database assistant. You are able to perform various database update operations.
+'''
+
+agent = create_agent(
+  ollama_tools_llm,
+  tools=[update_database],
+  system_prompt=db_prompt,
+  middleware=[HumanInTheLoopMiddleware(
+    interrupt_on={
+      "update_database": {'allowed_decisions': ['approve', 'reject']}
+    },
+    description_prefix='Tool execution pending approval'
+  )],
+  checkpointer=InMemorySaver()
+)
+
+config = {'configurable': {'thread_id': 'thr-1'}}
+
+for step in agent.stream(
+  {'messages': [
+    {
+      'role': 'user',
+      'content': 'update the database with the following query: DROP TABLE Vehicles;'
+    }
+  ]},
+  config=config,
+  stream_mode='values',
+):
+  if step.get('__interrupt__'):
+    print(step['__interrupt__'][-1])
+
+print('-------------------------')
+
+for step in agent.stream(
+  Command(
+    resume={'decisions': [{'type': 'reject', 'message': 'Sorry, not approving this update!'}]}
+  ),
+  config=config,
+  stream_mode='values',
+):
+  if step.get('messages'):
+    print(step['messages'][-1])</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code snippet generates the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>Interrupt(value={'action_requests': [{'name': 'update_database', 'args': {'query': 'DROP TABLE Vehicles;'}, 'description': "Tool execution pending approval\n\nTool: update_database\nArgs: {'query': 'DROP TABLE Vehicles;'}"}], 'review_configs': [{'action_name': 'update_database', 'allowed_decisions': ['approve', 'reject']}]}, id='90e6023ab469209ff1a7d388880ac98b')
+-------------------------
+content='' additional_kwargs={} response_metadata={'model': 'granite4:micro', 'created_at': '2025-11-11T21:00:52.627077781Z', 'done': True, 'done_reason': 'stop', 'total_duration': 394903755, 'load_duration': 101198792, 'prompt_eval_count': 209, 'prompt_eval_duration': 35285144, 'eval_count': 23, 'eval_duration': 240206013, 'model_name': 'granite4:micro', 'model_provider': 'ollama'} id='lc_run--cf371675-1181-47a9-aadd-c6f27df6b0fb-0' tool_calls=[{'name': 'update_database', 'args': {'query': 'DROP TABLE Vehicles;'}, 'id': 'f72d2c07-5ed4-4b20-86ce-a1e8844588d5', 'type': 'tool_call'}] usage_metadata={'input_tokens': 209, 'output_tokens': 23, 'total_tokens': 232}
+content='Sorry, not approving this update!' name='update_database' id='30f3f4a8-5e4d-4d25-8429-67a98ae07809' tool_call_id='f72d2c07-5ed4-4b20-86ce-a1e8844588d5' status='error'
+content='The database update operation was not approved. Please check the permissions or try again later.' additional_kwargs={} response_metadata={'model': 'granite4:micro', 'created_at': '2025-11-11T21:01:07.638316348Z', 'done': True, 'done_reason': 'stop', 'total_duration': 336427979, 'load_duration': 93138311, 'prompt_eval_count': 251, 'prompt_eval_duration': 17295260, 'eval_count': 18, 'eval_duration': 206266072, 'model_name': 'granite4:micro', 'model_provider': 'ollama'} id='lc_run--6bb9e3d3-4452-48b9-8547-bb75a5a97fa7-0' usage_metadata={'input_tokens': 251, 'output_tokens': 18, 'total_tokens': 269}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We have successfully demonstrated the <span class="bold">Python</span> code snippet for <span class="bold">Recipe 11</span>.</p>
     </div>
     <br/>
     <div id="section-div">
