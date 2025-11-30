@@ -1,0 +1,528 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Apache Spark 4.x Quick Notes :: Part - 3">
+    <meta name="subject" content="Apache Spark 4.x Quick Notes :: Part - 3">
+    <meta name="keywords" content="big data, python, spark">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Apache Spark 4.x Quick Notes :: Part - 3</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Apache Spark 4.x Quick Notes :: Part - 3</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">11/30/2025</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In any large Enterprise, a lot of time is spent in gathering and preparing data for any meaningful business analysis.</p>
+      <p>In other words, <span class="hi-yellow">Data Preparation</span> is a critical and time-consuming first phase for any data
+        driven, business insights initiative. One typically spends about <span class="underbold">80%</span> of their total time in
+        this phase. In this article, we are using the term <span class="underbold">Data Preparation</span> to cover the following
+        critical tasks:</p>
+      <ol id="blue-ol">
+        <li><p><span class="hi-vanila">Data Domain Knowledge</span> - This task involves acquiring the data domain knowledege and
+          having a good understanding about the various features (data attributes)</p></li>
+        <li><p><span class="hi-vanila">Exploratory Data Analysis</span> - <span class="hi-grey">EDA</span> for short, this task
+          involves loading the raw data set for the data domain, performing initial analysis to gather insights from the loaded
+          data set, understanding the various features and their types (discrete, continuous, categorical), identifying features
+          with missing values, infering statistical information about the features (summary statistics, outliers, distibution),
+          infering the relationships between the features, etc</p></li>
+        <li><p><span class="hi-vanila">Feature Engineering</span> - This task involves using the information gathered from the EDA
+          phase to encode the values of some of the categorical features to numerical, address missing values for some of the
+          features, normalizing and scaling the feature values, adding additional features (derived features), etc</p></li>
+      </ol>
+    </div>
+    <div id="para-div">
+      <p>In this part of the Apache Spark series, we will demonstrate how one could leverage PySpark as a data pipeline for data
+        cleansing and feature engineering.</p>
+    </div>
+    <div id="para-div">
+      <p>For the hands-on demonstration, we will use the raw and uncleansed Palmer Penguins dataset (provided as a CSV file), which
+        can be downloaded from <a href="https://polarsparc.github.io/data/raw_penguins.csv" target="_blank"><span class="bold">HERE
+        </span></a> !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on Data Preparation PySpark (Local Mode)</p>
+    </div>
+    <div id="para-div">
+      <p>As indicated in <a href="https://polarsparc.github.io/Distributed/Spark-2.html" target="_blank"><span class="bold">Part-2
+        </span></a> of this series, RDDs are in maintenance mode and the direction is to move towards the use of Dataframes.</p>
+    </div>
+    <div id="para-div">
+      <p>For the hands-on demonstration, we will rely on Dataframes for all processing.</p>
+    </div>
+    <div id="para-div">
+      <p>Before proceeding, ensure that <span class="bold">Java JDK 21</span> is installed and setup on the desktop.</p>
+      <p>Also, download and store the uncleansed Palmer Penguins dataset in the <span class="bold">/tmp</span> directory.</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the required environment variables, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>import os
+
+os.environ['JAVA_HOME'] = '/usr/lib/jvm/jdk-21.0.9-oracle-x64'
+os.environ['JDK_JAVA_OPTIONS'] = '--enable-native-access=ALL-UNNAMED'</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the a SparkSession in the local mode, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from pyspark import SparkConf
+from pyspark.sql import SparkSession
+
+conf = (SparkConf()
+        .setAppName('Spark Data Prep Local')
+        .setMaster('local[1]')
+)
+
+spark = (SparkSession
+         .builder
+         .config(conf=conf)
+         .getOrCreate()
+)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To load the uncleansed Palmer Penguins CSV file and create a pyspark dataframe named <span class="bold">penguins_df</span>,
+        execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df = spark.read.format('csv').load('/tmp/raw_penguins.csv', nullValue='NA', header=True)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To check the count of rows in the <span class="bold">penguins_df</span> dataframe, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df.count()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>344</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the top 20 rows of the <span class="bold">penguins_df</span> dataframe, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates a typical output as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img alt="Dataframe Show" class="img-cls" src="./images/spark-08.png" />
+      <div class="img-cap">Output.2</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the schema of the <span class="bold">penguins_df</span> dataframe, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df.printSchema()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates a typical output as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img alt="Dataframe Schema" class="img-cls" src="./images/spark-09.png" />
+      <div class="img-cap">Output.3</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>As is evident from the above schema output, all the columns have been detected as type <span class="bold">string</span>,
+        which is not correct and needs to be fixed.</p>
+    </div>
+    <div id="para-div">
+      <p>To fix the data types of some of the columns in the <span class="bold">penguins_df</span> dataframe, execute the following
+        code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from pyspark.sql.types import FloatType, IntegerType
+
+penguins_df = penguins_df.withColumn('index', penguins_df.index.cast(IntegerType()))
+penguins_df = penguins_df.withColumn('bill_length_mm', penguins_df.bill_length_mm.cast(FloatType()))
+penguins_df = penguins_df.withColumn('bill_depth_mm', penguins_df.bill_depth_mm.cast(FloatType()))
+penguins_df = penguins_df.withColumn('flipper_length_mm', penguins_df.flipper_length_mm.cast(IntegerType()))
+penguins_df = penguins_df.withColumn('body_mass_g', penguins_df.body_mass_g.cast(IntegerType()))
+penguins_df = penguins_df.withColumn('year', penguins_df.year.cast(IntegerType()))</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, to display the corrected schema of the <span class="bold">penguins_df</span> dataframe, execute the following
+        code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df.printSchema()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates a typical output as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img alt="Dataframe Schema Correct" class="img-cls" src="./images/spark-10.png" />
+      <div class="img-cap">Output.4</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display all the rows with null values in the <span class="bold">penguins_df</span> dataframe, execute the following code
+        snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df.where(col('sex').isNull()).show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates a typical output as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img alt="Dataframe NULLs" class="img-cls" src="./images/spark-11.png" />
+      <div class="img-cap">Output.5</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The rows with index <span class="bold">4</span> and index <span class="bold">272</span> are not useful and need to be out.</p>
+    </div>
+    <div id="para-div">
+      <p>To drop rows with null values in the numerical columns of the <span class="bold">penguins_df</span> dataframe, execute the
+        following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df = penguins_df.dropna(subset=['bill_length_mm', 'bill_depth_mm', 'flipper_length_mm', 'body_mass_g'])</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, to display the count of rows in the <span class="bold">penguins_df</span> dataframe, execute the following code
+        snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df.count()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>342</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We should now segregate the rows with null values from the rows without any missing values into two different dataframes.</p>
+    </div>
+    <div id="para-div">
+      <p>To create a new dataframe called <span class="bold">penguins_df_na</span> with rows from the <span class="bold">penguins_df
+        </span> dataframe containing null values, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df_na = penguins_df_new.where(col('sex').isNull())</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the rows of the <span class="bold">penguins_df_na</span> dataframe, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df_na.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates a typical output as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img alt="Dataframe Nulls" class="img-cls" src="./images/spark-12.png" />
+      <div class="img-cap">Output.7</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>It is evident from the above <span class="bold">Output.7</span> we are missing values for the column <span class="bold">sex
+        </span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To create a new dataframe called <span class="bold">penguins_df_filtered</span> containing rows with no missing values from
+        the <span class="bold">penguins_df</span> dataframe, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df_filtered = penguins_df_new.where(col('sex').isNotNull())</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To fill the missing values for the column <span class="bold">sex</span> in the <span class="bold">penguins_df_na</span>
+        dataframe, one can look at each of the numerical column values and compare them to the minimum and maximum values of the
+        corresponding columns from the <span class="bold">penguins_df_filtered</span> dataframe to determine if it is a <span class
+        ="bold">female</span> or <span class="bold">male</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To create a new dataframe called <span class="bold">penguins_df_min</span> with minimum values for all penguin species and
+        island from the <span class="bold">penguins_df_filtered</span> dataframe, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df_min = penguins_df_filtered.groupby('species', 'island', 'sex').min().orderBy('species', 'island', 'sex')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the rows of the <span class="bold">penguins_df_min</span> dataframe, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df_min.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates a typical output as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img alt="Dataframe Minimum" class="img-cls" src="./images/spark-13.png" />
+      <div class="img-cap">Output.8</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Similarly, to create a new dataframe called <span class="bold">penguins_df_max</span> with maximum values for all penguin
+        species and island from the <span class="bold">penguins_df_filtered</span> dataframe, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df_max = penguins_df_filtered.groupby('species', 'island', 'sex').max().orderBy('species', 'island', 'sex')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the rows of the <span class="bold">penguins_df_max</span> dataframe, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df_max.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates a typical output as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img alt="Dataframe Maximum" class="img-cls" src="./images/spark-14.png" />
+      <div class="img-cap">Output.9</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will now implement a Python function, which will take the 3 dataframes - <span class="bold">penguins_df_na</span>,
+        <span class="bold">penguins_df_min</span>, and <span class="bold">penguins_df_min</span> respectively as input and correct
+        the missing values in the dataframe <span class="bold">penguins_df_na</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Similarly, to create a new dataframe called <span class="bold">penguins_df_max</span> with maximum values for all penguin
+        species and island from the <span class="bold">penguins_df_filtered</span> dataframe, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from pyspark.sql.functions import when
+
+def fix_missing_values(df_na, df_min, df_max):
+  df_na_rows = df_na.collect()
+  for row in df_na_rows:
+    index = row['index']
+    species = row['species']
+    island = row['island']
+    b_len = row['bill_length_mm']
+    b_dep = row['bill_depth_mm']
+    f_len = row['flipper_length_mm']
+    b_mas = row['body_mass_g']
+    # print(f'{index}, {b_len:.1f}, {b_dep:.1f}, {f_len}, {b_mas}')
+    # Find the minimum values for a female of the specific species and island
+    f_min = df_min.where((df_min.species == species) & (df_min.island == island) & (df_min.sex == 'female'))
+    f_min = f_min.collect()[0]
+    min_b_len = f_min['min(bill_length_mm)']
+    min_b_dep = f_min['min(bill_depth_mm)']
+    min_f_len = f_min['min(flipper_length_mm)']
+    min_b_mas = f_min['min(body_mass_g)']
+    # Find the maximum values for a female of the specific species and island
+    f_max = df_max.where((df_max.species == species) & (df_max.island == island) & (df_max.sex == 'female'))
+    f_max = f_max.collect()[0]
+    max_b_len = f_max['max(bill_length_mm)']
+    max_b_dep = f_max['max(bill_depth_mm)']
+    max_f_len = f_max['max(flipper_length_mm)']
+    max_b_mas = f_max['max(body_mass_g)']
+    # If the features are within the range of the minimum and maximum values, then it is a female. Else, it is a male.
+    if (b_len &gt;= min_b_len) and (b_len &lt;= max_b_len) \
+      and (b_dep &gt;= min_b_dep) and (b_dep &lt;= max_b_dep) \
+      and (f_len &gt;= min_f_len) and (f_len &lt;= max_f_len) \
+      and (b_mas &gt;= min_b_mas) and (b_mas &lt;= max_b_mas):
+      # print(f'{index}, {species}, {island}, {b_len:.1f}, {b_dep:.1f}, {f_len}, {b_mas} is a female')
+      df_na = df_na.withColumn('sex', when(df_na['index'] == index, 'female').otherwise(df_na['sex']))
+    else:
+      # print(f'{index}, {species}, {island}, {b_len:.1f}, {b_dep:.1f}, {f_len}, {b_mas} is a male')
+      df_na = df_na.withColumn('sex', when(df_na['index'] == index, 'male').otherwise(df_na['sex']))
+  return df_na
+
+penguins_df_na = fix_missing_values(penguins_df_na, penguins_df_min, penguins_df_max)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the rows of the fixed <span class="bold">penguins_df_na</span> dataframe, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df_na.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates a typical output as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img alt="Dataframe Fixed" class="img-cls" src="./images/spark-15.png" />
+      <div class="img-cap">Output.10</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The next step is to create a new dataframe called <span class="bold">penguins_df_clean</span> by merging all the rows from
+        the fixed <span class="bold">penguins_df_na</span> dataframe with the rows from the <span class="bold">penguins_df_filtered
+        </span> dataframe.</p>
+    </div>
+    <div id="para-div">
+      <p>To create the new merged dataframe called <span class="bold">penguins_df_clean</span> with clean rows, execute the following
+        code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df_clean = penguins_df_filtered.union(penguins_df_na)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>With this, we conclude the demonstration on how one can leverage pyspark for data preparation tasks !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/Distributed/Spark-2.html" target="_blank"><span class="bold">Apache Spark 4.x Quick Notes :: Part - 2</span></a></p>
+      <p><a href="https://polarsparc.github.io/Distributed/Spark-2.html" target="_blank"><span class="bold">Apache Spark 4.x Quick Notes :: Part - 1</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
