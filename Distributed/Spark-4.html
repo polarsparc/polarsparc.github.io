@@ -1,0 +1,449 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Apache Spark 4.x Quick Notes :: Part - 4">
+    <meta name="subject" content="Apache Spark 4.x Quick Notes :: Part - 4">
+    <meta name="keywords" content="big data, python, spark">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Apache Spark 4.x Quick Notes :: Part - 4</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Apache Spark 4.x Quick Notes :: Part - 4</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">12/06/2025</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/Distributed/Spark-3.html" target="_blank"><span class="bold">Part-3</span></a> of
+        this series, we covered the topic on <span class="bold">Data Preparation</span> and provided a hands-on demonstration using
+        the <span class="bold">Palmer Penguin</span> dataset.</p>
+      <p>In this part of the series, we will make use of the cleaned <span class="bold">Palmer Penguin</span> dataset, which can be
+        downloaded from <a href="https://polarsparc.github.io/data/penguins.csv" target="_blank"><span class="bold">HERE</span></a>
+        for building a Machine Learning Classification model.</p>
+      <p>The Machine Learning Classification model will involve <span class="hi-vanila">Feature Engineering</span>, which comprises
+        additional tasks, such as, encoding categorical features to numerical, normalizing and scaling the feature value(s), adding
+        derived features (aggregates), etc.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on Machine Learning Classification using PySpark (Local Mode)</p>
+    </div>
+    <div id="para-div">
+      <p>Before proceeding, ensure that <span class="bold">Java JDK 21</span> is installed and setup on the desktop.</p>
+      <p>Also, download and store the cleansed Palmer Penguins dataset in the <span class="bold">/tmp</span> directory.</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the required environment variables, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>import os
+
+os.environ['JAVA_HOME'] = '/usr/lib/jvm/jdk-21.0.9-oracle-x64'
+os.environ['JDK_JAVA_OPTIONS'] = '--enable-native-access=ALL-UNNAMED'</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To setup the a SparkSession in the local mode, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from pyspark import SparkConf
+from pyspark.sql import SparkSession
+
+conf = (SparkConf()
+        .setAppName('Spark ML Classification Local')
+        .setMaster('local[1]')
+)
+
+spark = (SparkSession
+         .builder
+         .config(conf=conf)
+         .getOrCreate()
+)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To load the cleansed Palmer Penguins CSV file and create a pyspark dataframe named <span class="bold">penguins_df</span>,
+        execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df = spark.read.format('csv').load('/tmp/penguins.csv', header=True)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To check the count of rows in the <span class="bold">penguins_df</span> dataframe, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df.count()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>342</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the top 10 rows of the <span class="bold">penguins_df</span> dataframe, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df.show(10)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates a typical output as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img alt="Dataframe Show" class="img-cls" src="./images/spark-16.png" />
+      <div class="img-cap">Output.2</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the schema of the <span class="bold">penguins_df</span> dataframe, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df.printSchema()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates a typical output as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img alt="Dataframe Schema" class="img-cls" src="./images/spark-17.png" />
+      <div class="img-cap">Output.3</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>As is evident from the above schema output, all the columns have been detected as type <span class="bold">string</span>,
+        which is not correct and needs to be fixed.</p>
+    </div>
+    <div id="para-div">
+      <p>To fix the data types of some of the columns in the <span class="bold">penguins_df</span> dataframe, execute the following
+        code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from pyspark.sql.types import FloatType, IntegerType
+
+penguins_df = penguins_df.withColumn('bill_length_mm', penguins_df.bill_length_mm.cast(FloatType()))
+penguins_df = penguins_df.withColumn('bill_depth_mm', penguins_df.bill_depth_mm.cast(FloatType()))
+penguins_df = penguins_df.withColumn('flipper_length_mm', penguins_df.flipper_length_mm.cast(IntegerType()))
+penguins_df = penguins_df.withColumn('body_mass_g', penguins_df.body_mass_g.cast(IntegerType()))</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, to display the corrected schema of the <span class="bold">penguins_df</span> dataframe, execute the following
+        code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df.printSchema()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates a typical output as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img alt="Dataframe Schema Correct" class="img-cls" src="./images/spark-18.png" />
+      <div class="img-cap">Output.4</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that the Machine Learning models only work with numerical values. So, we will need to convert the Categorical values
+        in the columns <span class="bold">species</span>, <span class="bold">island</span>, and <span class="bold">sex</span>.</p>
+      <p>The <span class="hi-vanila">StringIndexer</span> class in PySpark allows one to convert string values to numerical index
+        values.</p>
+      <p>To convert the above mentioned 3 categorical columns in the <span class="bold">penguins_df</span> dataframe to numerical
+        values, drop the 3 mentioned categorical columns plus the <span class="bold">year</span> column, and create a new dataframe
+        called <span class="bold">penguins_df_indexed</span>, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from pyspark.ml.feature import StringIndexer
+
+indexer = StringIndexer(
+  inputCols=['species', 'island', 'sex'],
+  outputCols=['species_index', 'island_index', 'label']
+)
+
+penguins_df_indexed = (
+  indexer
+    .fit(penguins_df)
+    .transform(penguins_df)
+    .drop(*['species', 'island', 'sex', 'year'])
+)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the top 10 rows from the <span class="bold">penguins_df_indexed</span> dataframe, execute the following code
+        snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df_indexed.show(10)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates a typical output as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img alt="Dataframe Numerical" class="img-cls" src="./images/spark-19.png" />
+      <div class="img-cap">Output.5</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>All the PySpark machine learning models (in the Spark <span class="hi-vanila">MLlib</span> module) expect all the features
+        in a PySpark dataframe to be represented as a numerical <span class="bold">vector</span> in a single column called <span
+        class="hi-red">features</span>, along with a single target column called <span class="hi-green">label</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The <span class="hi-vanila">VectorAssembler</span> class in PySpark allows one to convert a set of numerical columns into
+        a single numerical vector column.</p>
+    </div>
+    <div id="para-div">
+      <p>To convert all the numerical columns (except the <span class="bold">label</span> column) from the above <span class="bold">
+        penguins_df_indexed</span> dataframe to a numerical vector column, drop all the numerical columns (except the <span class=
+        "bold">label</span> column), and create a new dataframe called <span class="bold">penguins_df_vectorized</span>, execute the
+        following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from pyspark.ml.feature import VectorAssembler
+
+assembler = VectorAssembler(
+  inputCols=['species_index', 'island_index', 'bill_length_mm', 'bill_depth_mm', 'flipper_length_mm', 'body_mass_g'],
+  outputCol='features'
+)
+
+penguins_df_vectorized = (
+  assembler
+    .transform(penguins_df_indexed)
+    .drop(*['species_index', 'island_index', 'bill_length_mm', 'bill_depth_mm', 'flipper_length_mm', 'body_mass_g'])
+)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the top 10 rows from the <span class="bold">penguins_df_vectorized</span> dataframe, execute the following code
+        snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>penguins_df_vectorized.show(10)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates a typical output as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img alt="Dataframe Vector" class="img-cls" src="./images/spark-20.png" />
+      <div class="img-cap">Output.6</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In any machine learning model training exercise, the dataset is split into a training set and a test set, which is typically
+        a <span class="hi-yellow">80/20</span> split respectively.</p>
+    </div>
+    <div id="para-div">
+      <p>To create the training set and the test set from the <span class="bold">penguins_df_vectorized</span> dataframe, execute the
+        following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>train_set, test_set = penguins_df_vectorized.randomSplit([0.8, 0.2], seed=5)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>For machine learning classification tasks, one can leverage the <span class="hi-vanila">Logistic Regression</span> model.</div>
+    <div id="para-div">
+      <p>To create and traing a Logistic Regression classification model on the <span class="bold">train_set</span> dataframe, execute
+        the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from pyspark.ml.classification import LogisticRegression
+
+lr = LogisticRegression(featuresCol='features', labelCol='label', regParam=1.0)
+
+lr_model = lr.fit(train_set)
+</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To display the values of model intercept and coefficients post the model training, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>print(lr_model.interceptVector, lr_model.coefficients)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>[-4.411943437211087] [-0.04629729980664915,0.011743344552874214,0.020733246617217146,0.08602615735837658,0.005847646527103863,0.00020128119817813892]</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To use the trained Logistic Regression model to predict the outcome using the <span class="bold">test_set</span> dataframe,
+        execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>prediction_df = lr_model.transform(test_set)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates the following typical output:</p>
+    </div>
+    <div id="para-div">
+      <p>To display the top 20 default rows from the <span class="bold">prediction_df</span> dataframe, execute the following code
+        snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>prediction_df.show()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates a typical output as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img alt="Dataframe Prediction" class="img-cls" src="./images/spark-21.png" />
+      <div class="img-cap">Output.8</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To evaluate the accuracy of trained Logistic Regression model using the <span class="bold">prediction_df</span> dataframe,
+        execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from pyspark.ml.evaluation import MulticlassClassificationEvaluator
+
+evaluator = MulticlassClassificationEvaluator(metricName='accuracy')
+
+print(f'Accuracy: {evaluator.evaluate(prediction_df)}')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>Accuracy: 0.9245283018867925</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>With this, we conclude the demonstration on how one can leverage pyspark for Machine Learning Classification tasks !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/Distributed/Spark-3.html" target="_blank"><span class="bold">Apache Spark 4.x Quick Notes :: Part - 3</span></a></p>
+      <p><a href="https://polarsparc.github.io/Distributed/Spark-2.html" target="_blank"><span class="bold">Apache Spark 4.x Quick Notes :: Part - 2</span></a></p>
+      <p><a href="https://polarsparc.github.io/Distributed/Spark-1.html" target="_blank"><span class="bold">Apache Spark 4.x Quick Notes :: Part - 1</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
