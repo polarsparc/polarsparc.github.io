@@ -1,0 +1,764 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Hands-on with Garage">
+    <meta name="subject" content="Hands-on with Garage">
+    <meta name="keywords" content="cloud, garage, s3">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Hands-on with Garage</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Hands-on with Garage</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">12/07/2025</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>The distributed object storage <span class="hi-yellow">Simple Storage Service</span> (or <span class="hi-yellow">S3</span>
+        for short) was made popular by Amazon in the late 2000s in their cloud offering. Ever since, it has gained traction even in
+        the private cloud environments of the Enterprises.</p>
+      <p>The idea of the distributed object store S3 is to provide highly available, durable, scable, and performant object storage,
+        where objects (documents, images, videos, etc) are stored into containers called <span class="hi-yellow">Buckets</span>.</p>
+      <p>Ever wondered if one can have such a storage setup in one's home lab ???</p>
+      <p>The answer is a resounding <span class="bold">YES</span> and this is where the open source distributed object store <a href
+        ="https://garagehq.deuxfleurs.fr/" target="_blank"><span class="hi-yellow">Garage</span></a> comes to the rescue !!!</p>
+    </div>
+    <div id="para-div">
+      <p>In other words, Garage is a highly performant, open source distributed object storage solution, which is compatible to the
+        S3 offering from Amazon, with support for all the core features of S3.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Installation and Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The installation is on a <span class="bold">Ubuntu 24.04 LTS</span> based Linux desktop.</p>
+      <p>Ensure that <span class="bold">Docker</span> is installed and setup on the Linux desktop. Else, refer to the article <a href
+        ="http://polarsparc.github.io/Docker/Docker.html" target="_blank"><span class="bold">HERE</span></a> for help.</p>
+    </div>
+    <div id="para-div">
+      <p>Assuming that we are logged in as <span class="bold">alice</span> and the current working directory is the home directory
+        <span class="bold">/home/alice</span>, we will setup a directory structure by executing the following command in a terminal
+        window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ mkdir -p /home/alice/garage{/meta,/data}</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To pull and download the docker image for Garage (which includes the server and client), execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker pull dxflrs/garage:v2.1.0</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>v2.1.0: Pulling from dxflrs/garage
+bdaa3b9908c7: Pull complete 
+Digest: sha256:4c9b34c113e61358466e83fd6e7d66e6d18657ede14b776eb78a93ee8da7cf6a
+Status: Downloaded newer image for dxflrs/garage:v2.1.0
+docker.io/dxflrs/garage:v2.1.0</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To install the <span class="bold">AWS</span> cli, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ pip install awscli</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a shared secret token for the node(s) in the cluster to communicate with each other via RPC, execute the following
+        command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ openssl rand -hex 32</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>950db9bdc218ecff796a7e90337a3b3bd61e8a711d05ef1583277bfeac05a7d8</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a secret token for the administrative access, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ openssl rand -base64 32</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>eDjTaNDrzt316shbYST2uevZJ+i7PR6QQpb17EaIVZQ=</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To check everything is ok with the docker image for Garage, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name ps-garage dxflrs/garage:v2.1.0 /garage help</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>garage v2.1.0 [features: k2v, lmdb, sqlite, consul-discovery, kubernetes-discovery, metrics, telemetry-otlp, bundled-libs]
+Structure for secret values or paths that are passed as CLI arguments or environment variables, instead of in the config
+file
+
+USAGE:
+  garage [OPTIONS] &lt;SUBCOMMAND&gt;
+
+FLAGS:
+      --help       Prints help information
+  -V, --version    Prints version information
+
+OPTIONS:
+      --admin-token &lt;admin-token&gt;
+          Admin API authentication token, replaces admin.admin_token in config.toml when running the Garage daemon
+          [env: GARAGE_ADMIN_TOKEN=]
+      --admin-token-file &lt;admin-token-file&gt;
+          Admin API authentication token file path, replaces admin.admin_token in config.toml and admin-token when
+          running the Garage daemon [env: GARAGE_ADMIN_TOKEN_FILE=]
+      --allow-world-readable-secrets &lt;allow-world-readable-secrets&gt;
+          Skip permission check on files containing secrets [env: GARAGE_ALLOW_WORLD_READABLE_SECRETS=]
+
+  -c, --config &lt;config-file&gt;
+          Path to configuration file [env: GARAGE_CONFIG_FILE=]  [default: /etc/garage.toml]
+
+      --metrics-token &lt;metrics-token&gt;
+          Metrics API authentication token, replaces admin.metrics_token in config.toml when running the Garage daemon
+          [env: GARAGE_METRICS_TOKEN=]
+      --metrics-token-file &lt;metrics-token-file&gt;
+          Metrics API authentication token file path, replaces admin.metrics_token in config.toml and metrics-token
+          when running the Garage daemon [env: GARAGE_METRICS_TOKEN_FILE=]
+  -h, --rpc-host &lt;rpc-host&gt;
+          Host to connect to for admin operations, in the format: &lt;full-node-id&gt;@&lt;ip&gt;:&lt;port&gt; [env: GARAGE_RPC_HOST=]
+
+  -s, --rpc-secret &lt;rpc-secret&gt;
+          RPC secret network key, used to replace rpc_secret in config.toml when running the daemon or doing admin
+          operations [env: GARAGE_RPC_SECRET=]
+      --rpc-secret-file &lt;rpc-secret-file&gt;
+          RPC secret network key, used to replace rpc_secret in config.toml and rpc-secret when running the daemon or
+          doing admin operations [env: GARAGE_RPC_SECRET_FILE=]
+
+SUBCOMMANDS:
+  admin-token       Operations on admin API tokens
+  block             Low-level node-local debug operations on data blocks
+  bucket            Operations on buckets
+  convert-db        Convert metadata db between database engine formats
+  help              Prints this message or the help of the given subcommand(s)
+  json-api          Directly invoke the admin API using a JSON payload. The result is printed to `stdout` in JSON
+                    format
+  key               Operations on S3 access keys
+  layout            Operations on the assignment of node roles in the cluster layout
+  meta              Operations on the metadata db
+  node              Operations on individual Garage nodes
+  offline-repair    Offline reparation of node data (these repairs must be run offline directly on the server
+                    node)
+  repair            Start repair of node data on remote node
+  server            Run Garage server
+  stats             Gather node statistics
+  status            Get network status
+  worker            Manage background workers</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Let us assume that IP address of the Linux desktop is <span class="bold">192.168.1.25</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the configuration file (in TOML format) located under <span class="bold">/home/alice/garage</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">garage.toml</div>
+      <div class="src-body-1">
+<pre>#
+### Garage TOML
+#
+
+replication_factor = 1
+
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+
+rpc_bind_addr = "192.168.1.25:3901"
+rpc_public_addr = "192.168.1.25:3901"
+rpc_secret = "950db9bdc218ecff796a7e90337a3b3bd61e8a711d05ef1583277bfeac05a7d8"
+
+[s3_api]
+s3_region = "garage"
+api_bind_addr = "192.168.1.25:3900"
+
+[s3_web]
+bind_addr = "192.168.1.25:3902"
+root_domain = ".localhost"
+
+[admin]
+api_bind_addr = "192.168.1.25:3903"
+admin_token = "eDjTaNDrzt316shbYST2uevZJ+i7PR6QQpb17EaIVZQ="</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This completes the installation and setup for the Garage hands-on demonstration.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on with Garage</p>
+    </div>
+    <div id="para-div">
+      <p>For the hands-on demonstration, we will use Garage in a <span class="underbold">Single Node</span> mode (versus deploying
+        in a multi node cluster mode).</p>
+    </div>
+    <div id="para-div">
+      <p>To run the Garage object storage service, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name ps-garage --network host -u $(id -u $USER):$(id -g $USER) -v /home/alice/garage/garage.toml:/etc/garage.toml -v /home/alice/garage/meta:/var/lib/garage/meta -v /home/alice/garage/data:/var/lib/garage/data dxflrs/garage:v2.1.0</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>2025-12-07T17:04:42.731339Z  INFO garage::server: Loading configuration...
+2025-12-07T17:04:42.731577Z  INFO garage::server: Initializing Garage main data store...
+2025-12-07T17:04:42.731604Z  INFO garage_model::garage: Opening database...
+2025-12-07T17:04:42.731620Z  INFO garage_db::lmdb_adapter: Opening LMDB database at: /var/lib/garage/meta/db.lmdb
+2025-12-07T17:04:42.731865Z  INFO garage_model::garage: Initializing RPC...
+2025-12-07T17:04:42.731881Z  INFO garage_model::garage: Initialize background variable system...
+2025-12-07T17:04:42.731883Z  INFO garage_model::garage: Initialize membership management system...
+2025-12-07T17:04:42.731891Z  INFO garage_rpc::system: Generating new node key pair.
+2025-12-07T17:04:42.731970Z  INFO garage_rpc::system: Node ID of this node: 57cea5a6f9b6b453
+2025-12-07T17:04:42.731985Z  INFO garage_rpc::layout::manager: No valid previous cluster layout stored (IO error: No such file or directory (os error 2)), starting fresh.
+2025-12-07T17:04:42.732023Z  INFO garage_rpc::layout::helper: ack_until updated to 0
+2025-12-07T17:04:42.732110Z  INFO garage_model::garage: Initialize block manager...
+2025-12-07T17:04:42.732440Z  INFO garage_model::garage: Initialize admin_token_table...
+2025-12-07T17:04:42.732630Z  INFO garage_model::garage: Initialize bucket_table...
+2025-12-07T17:04:42.732808Z  INFO garage_model::garage: Initialize bucket_alias_table...
+2025-12-07T17:04:42.732992Z  INFO garage_model::garage: Initialize key_table_table...
+2025-12-07T17:04:42.733235Z  INFO garage_model::garage: Initialize block_ref_table...
+2025-12-07T17:04:42.733439Z  INFO garage_model::garage: Initialize version_table...
+2025-12-07T17:04:42.733633Z  INFO garage_model::garage: Initialize multipart upload counter table...
+2025-12-07T17:04:42.733833Z  INFO garage_model::garage: Initialize multipart upload table...
+2025-12-07T17:04:42.734017Z  INFO garage_model::garage: Initialize object counter table...
+2025-12-07T17:04:42.734233Z  INFO garage_model::garage: Initialize object_table...
+2025-12-07T17:04:42.734443Z  INFO garage_model::garage: Load lifecycle worker state...
+2025-12-07T17:04:42.734459Z  INFO garage_model::garage: Initialize K2V counter table...
+2025-12-07T17:04:42.734689Z  INFO garage_model::garage: Initialize K2V subscription manager...
+2025-12-07T17:04:42.734694Z  INFO garage_model::garage: Initialize K2V item table...
+2025-12-07T17:04:42.734897Z  INFO garage_model::garage: Initialize K2V RPC handler...
+2025-12-07T17:04:42.734944Z  INFO garage::server: Initializing background runner...
+2025-12-07T17:04:42.734951Z  INFO garage::server: Spawning Garage workers...
+2025-12-07T17:04:42.734999Z  INFO garage_model::s3::lifecycle_worker: Starting lifecycle worker for 2025-12-07
+2025-12-07T17:04:42.735004Z  INFO garage::server: Initialize Admin API server and metrics collector...
+2025-12-07T17:04:42.735327Z  INFO garage_model::s3::lifecycle_worker: Lifecycle worker finished for 2025-12-07, objects expired: 0, mpu aborted: 0
+2025-12-07T17:04:42.766245Z  INFO garage::server: Launching internal Garage cluster communications...
+2025-12-07T17:04:42.766268Z  INFO garage::server: Initializing S3 API server...
+2025-12-07T17:04:42.766272Z  INFO garage::server: Initializing web server...
+2025-12-07T17:04:42.766290Z  INFO garage::server: Launching Admin API server...
+2025-12-07T17:04:42.766322Z  INFO garage_api_common::generic_server: S3 API server listening on http://192.168.1.25:3900
+2025-12-07T17:04:42.766328Z  INFO garage_web::web_server: Web server listening on http://192.168.1.25:3902
+2025-12-07T17:04:42.766377Z  INFO garage_api_common::generic_server: Admin API server listening on http://192.168.1.25:3903
+2025-12-07T17:04:42.766376Z  INFO garage_net::netapp: Listening on 192.168.1.25:3901</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To set an alias for the Garage client command(s), execute the following command in a new terminal window (will refer to it
+        as T2):</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ alias garage="docker exec -ti ps-garage /garage"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above command generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To check the status of the Garage node(s), execute the following command in the terminal window T2:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ garage status</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>2025-12-07T17:05:39.299606Z  INFO garage_net::netapp: Connected to 192.168.1.25:3901, negotiating handshake...    
+2025-12-07T17:05:39.340869Z  INFO garage_net::netapp: Connection established to 57cea5a6f9b6b453    
+==== HEALTHY NODES ====
+ID                Hostname  Address            Tags  Zone  Capacity          DataAvail  Version
+57cea5a6f9b6b453  vader     192.168.1.25:3901              NO ROLE ASSIGNED             v2.1.0</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Before one can use Garage to create S3 bucket(s) or store object(s) in a bucket, one needs to first assign and then apply
+        a Garage node's rack layout (what capacity, what datacenter zone, etc).</p>
+    </div>
+    <div id="para-div">
+      <p>To initialize the layout of a specific node (using the node ID) with <span class="bold">1 GB</span> of storage with a zone
+        of <span class="bold">dc1</span>, execute the following command in the terminal window T2:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ garage layout assign -z dc1 -c 1G 57cea5a6f9b6b453</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>2025-12-07T17:18:26.763097Z  INFO garage_net::netapp: Connected to 192.168.1.25:3901, negotiating handshake...    
+2025-12-07T17:18:26.803850Z  INFO garage_net::netapp: Connection established to 57cea5a6f9b6b453    
+Role changes are staged but not yet committed.
+Use `garage layout show` to view staged role changes,
+and `garage layout apply` to enact staged changes.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To apply the layout as a specific version, execute the following command in the terminal window T2:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ garage layout apply --version 1</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>2025-12-07T17:19:55.519133Z  INFO garage_net::netapp: Connected to 192.168.1.25:3901, negotiating handshake...    
+2025-12-07T17:19:55.559867Z  INFO garage_net::netapp: Connection established to 57cea5a6f9b6b453    
+==== COMPUTATION OF A NEW PARTITION ASSIGNATION ====
+
+Partitions are replicated 1 times on at least 1 distinct zones.
+
+Optimal partition size:                     3.9 MB
+Usable capacity / total cluster capacity:   1000.0 MB / 1000.0 MB (100.0 %)
+Effective capacity (replication factor 1):  1000.0 MB
+
+dc1                 Tags  Partitions        Capacity   Usable capacity
+  57cea5a6f9b6b453  []    256 (256 new)     1000.0 MB  1000.0 MB (100.0%)
+  TOTAL                   256 (256 unique)  1000.0 MB  1000.0 MB (100.0%)
+
+New cluster layout with updated role assignment has been applied in cluster.
+Data will now be moved around between nodes accordingly.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display information about the current layout of the single Garage node, execute the following command in the  terminal
+        window T2:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ garage layout show</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>2025-12-07T17:22:11.748539Z  INFO garage_net::netapp: Connected to 192.168.1.25:3901, negotiating handshake...    
+2025-12-07T17:22:11.789824Z  INFO garage_net::netapp: Connection established to 57cea5a6f9b6b453    
+==== CURRENT CLUSTER LAYOUT ====
+ID                Tags  Zone  Capacity   Usable capacity
+57cea5a6f9b6b453  []    dc1   1000.0 MB  1000.0 MB (100.0%)
+
+Zone redundancy: maximum
+
+Current cluster layout version: 1</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a S3 bucket called <span class="bold">spark-datasets</span>, execute the following command in the terminal window
+        T2:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ garage bucket create spark-datasets</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>2025-12-07T17:23:20.090566Z  INFO garage_net::netapp: Connected to 192.168.1.25:3901, negotiating handshake...    
+2025-12-07T17:23:20.131847Z  INFO garage_net::netapp: Connection established to 57cea5a6f9b6b453    
+==== BUCKET INFORMATION ====
+Bucket:          d9d5f73f64cf820732ebaccff0fd07b726f1e89a981ac669532e231fc1bf2525
+Created:         2025-12-07 17:23:20.132 +00:00
+
+Size:            0 B (0 B)
+Objects:         0
+
+Website access:  false
+
+Global alias:    spark-datasets
+
+==== KEYS FOR THIS BUCKET ====
+Permissions  Access key    Local aliases</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To list all the S3 bucket(s) in the single Garage node, execute the following command in the terminal window T2:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ garage bucket list</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>2025-12-07T17:23:59.942798Z  INFO garage_net::netapp: Connected to 192.168.1.25:3901, negotiating handshake...    
+2025-12-07T17:23:59.983833Z  INFO garage_net::netapp: Connection established to 57cea5a6f9b6b453    
+ID                Created     Global aliases  Local aliases
+d9d5f73f64cf8207  2025-12-07  spark-datasets</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display information about the S3 bucket <span class="bold">spark-datasets</span>, execute the following command in the
+        terminal window T2:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ garage bucket info spark-datasets</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>2025-12-07T17:25:22.659976Z  INFO garage_net::netapp: Connected to 192.168.1.25:3901, negotiating handshake...    
+2025-12-07T17:25:22.700841Z  INFO garage_net::netapp: Connection established to 57cea5a6f9b6b453    
+==== BUCKET INFORMATION ====
+Bucket:          d9d5f73f64cf820732ebaccff0fd07b726f1e89a981ac669532e231fc1bf2525
+Created:         2025-12-07 17:23:20.132 +00:00
+
+Size:            0 B (0 B)
+Objects:         0
+
+Website access:  false
+
+Global alias:    spark-datasets
+
+==== KEYS FOR THIS BUCKET ====
+Permissions  Access key    Local aliases</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Before one can perform any operation on any S3 bucket, one needs to have an access key.</p>
+    </div>
+    <div id="para-div">
+      <p>To create an access key called <span class="bold">spark-datasets-key</span>, execute the following command in the terminal
+        window T2:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ garage key create spark-datasets-key</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>2025-12-07T17:26:56.562798Z  INFO garage_net::netapp: Connected to 192.168.1.25:3901, negotiating handshake...    
+2025-12-07T17:26:56.603968Z  INFO garage_net::netapp: Connection established to 57cea5a6f9b6b453    
+==== ACCESS KEY INFORMATION ====
+Key ID:              GK0cda775ac76876cd4317d737
+Key name:            spark-datasets-key
+Secret key:          ae9c072c1edbb4b9018dc7c3f5fa63de1e9bd1526c26292cfb6a2b86f66f3e1a
+Created:             2025-12-07 17:26:56.604 +00:00
+Validity:            valid
+Expiration:          never
+
+Can create buckets:  false
+
+==== BUCKETS FOR THIS KEY ====
+Permissions  ID  Global aliases  Local aliases</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Make a note of the <span class="bold">Key ID</span> (<span class="hi-green">GK0cda775ac76876cd4317d737</span>) and the
+        <span class="bold">Secret key</span> (<span class="hi-red">ae9c072c1edbb4b9018dc7c3f5fa63de1e9bd1526c26292cfb6a2b86f66f3e1a</span>).</p>
+    </div>
+    <div id="para-div">
+      <p>To display information about the access key <span class="bold">spark-datasets-key</span>, execute the following command in
+        the terminal window T2:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ garage key info spark-datasets-key</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>2025-12-07T17:28:36.693999Z  INFO garage_net::netapp: Connected to 192.168.1.25:3901, negotiating handshake...    
+2025-12-07T17:28:36.734839Z  INFO garage_net::netapp: Connection established to 57cea5a6f9b6b453    
+==== ACCESS KEY INFORMATION ====
+Key ID:              GK0cda775ac76876cd4317d737
+Key name:            spark-datasets-key
+Secret key:          (redacted)
+Created:             2025-12-07 17:26:56.604 +00:00
+Validity:            valid
+Expiration:          never
+
+Can create buckets:  false
+
+==== BUCKETS FOR THIS KEY ====
+Permissions  ID  Global aliases  Local aliases</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To allow specific operations (read, write, etc) on using the access key called <span class="bold">spark-datasets-key</span>,
+        execute the following command in the terminal window T2:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ garage bucket allow --read --write --owner spark-datasets --key spark-datasets-key</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>2025-12-07T17:32:23.995073Z  INFO garage_net::netapp: Connected to 192.168.1.25:3901, negotiating handshake...    
+2025-12-07T17:32:24.035835Z  INFO garage_net::netapp: Connection established to 57cea5a6f9b6b453    
+==== BUCKET INFORMATION ====
+Bucket:          d9d5f73f64cf820732ebaccff0fd07b726f1e89a981ac669532e231fc1bf2525
+Created:         2025-12-07 17:23:20.132 +00:00
+
+Size:            0 B (0 B)
+Objects:         0
+
+Website access:  false
+
+Global alias:    spark-datasets
+
+==== KEYS FOR THIS BUCKET ====
+Permissions  Access key                                      Local aliases
+RWO          GK0cda775ac76876cd4317d737  spark-datasets-key</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Once again, to display information about the access key <span class="bold">spark-datasets-key</span>, execute the following
+        command in the terminal window T2:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ garage key info spark-datasets-key</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>2025-12-07T17:32:48.546789Z  INFO garage_net::netapp: Connected to 192.168.1.25:3901, negotiating handshake...    
+2025-12-07T17:32:48.587860Z  INFO garage_net::netapp: Connection established to 57cea5a6f9b6b453    
+==== ACCESS KEY INFORMATION ====
+Key ID:              GK0cda775ac76876cd4317d737
+Key name:            spark-datasets-key
+Secret key:          (redacted)
+Created:             2025-12-07 17:26:56.604 +00:00
+Validity:            valid
+Expiration:          never
+
+Can create buckets:  false
+
+==== BUCKETS FOR THIS KEY ====
+Permissions  ID                Global aliases  Local aliases
+RWO          d9d5f73f64cf8207  spark-datasets</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will now proceed to configure the AWS cli to use the appropriate access key details. Once AWS cli is configured, we will
+        notice two files in the directory <span class="bold">/home/alice/.aws</span> - one called <span class="bold">config</span>
+        and the other called <span class="bold">credentials</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To configure the AWS cli, execute the following command in the terminal window T2:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ aws configure</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following shows the interaction with the user and the details entered:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.17</h4>
+      <pre>AWS Access Key ID [None]: GK0cda775ac76876cd4317d737
+AWS Secret Access Key [None]: ae9c072c1edbb4b9018dc7c3f5fa63de1e9bd1526c26292cfb6a2b86f66f3e1a
+Default region name [None]: garage
+Default output format [None]: json</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To list all the S3 buckets using the AWS cli, execute the following command in the terminal window T2:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ aws s3 ls --endpoint-url http://192.168.1.25:3900</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.18</h4>
+      <pre>2025-12-07 12:23:20 spark-datasets</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To copy a file called <span class="bold">/tmp/iris.parquet</span> the S3 bucket <span class="bold">spark-datasets</span>
+        using the AWS cli, execute the following command in the terminal window T2:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ aws s3 cp /tmp/iris.parquet s3://spark-datasets --endpoint-url http://192.168.1.25:3900</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.19</h4>
+      <pre>upload: /tmp/iris.parquet to s3://spark-datasets/iris.parquet</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To list all object(s) in the S3 bucket <span class="bold">spark-datasets</span> using the AWS cli, execute the following
+        command in the terminal window T2:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ aws s3 ls s3://spark-datasets --endpoint-url http://192.168.1.25:3900</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.20</h4>
+      <pre>2025-12-07 13:32:07       2446 iris.parquet</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a new S3 bucket called <span class="bold">test-bucket</span> using the AWS cli, execute the following command in
+        the terminal window T2:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ aws s3 mb s3://test-bucket --endpoint-url http://192.168.1.25:3900</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.21</h4>
+      <pre>make_bucket failed: s3://test-bucket An error occurred (AccessDenied) when calling the CreateBucket operation: Forbidden: Access key GK0cda775ac76876cd4317d737 is not allowed to create buckets</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>With this, we conclude the hands-on demonstration of how one can leverage Garage as an S3 object storage !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://hub.docker.com/r/dxflrs/garage/" target="_blank"><span class="bold">Docker Image for Garage</span></a></p>
+      <p><a href="https://garagehq.deuxfleurs.fr/documentation/quick-start/" target="_blank"><span class="bold">Garage Quick Start</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
