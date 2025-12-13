@@ -1,0 +1,409 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Apache Spark 4.x Quick Notes :: Part - 5">
+    <meta name="subject" content="Apache Spark 4.x Quick Notes :: Part - 5">
+    <meta name="keywords" content="big data, python, spark">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Apache Spark 4.x Quick Notes :: Part - 5</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Apache Spark 4.x Quick Notes :: Part - 5</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">12/12/2025</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In a typical Enterprise, the most important asset (the data) is spread across various data stores. Nowadays, more and more
+        of those important data asset(s) end up in an <span class="hi-yellow">S3 Object Store</span>.</p>
+      <p>In the article <a href="https://polarsparc.github.io/Cloud/Garage.html" target="_blank"><span class="bold">Hands-on with
+        Garage</span></a>, we introduced how one can setup and use an <span class="bold">S3 Object Store</span> on a single node.</p>
+    </div>
+    <div id="para-div">
+      <p>In this part of the series, we will demonstrate how one can access and use the <span class="bold">Iris</span> dataset (in
+        parquet format) from an S3 bucket. The <span class="bold">Iris</span> dataset (in parquet format) can be downloaded from
+        <a href="https://polarsparc.github.io/data/iris.parquet" target="_blank"><span class="bold">HERE</span></a> to store in S3.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on PySpark using S3 (Local Mode)</p>
+    </div>
+    <div id="para-div">
+      <p>Before proceeding, ensure Garage is setup and running. In addition, ensure that the iris parquet file <span class="bold">
+        iris.parquet</span> is stored in the S3 bucket named <span class="bold">spark-datasets</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To launch the pyspark shell, execute the following docker command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>docker run --rm --name pyspark-local --network host -u $(id -u $USER):$(id -g $USER) -v $HOME/spark/conf:/opt/spark/conf -v $HOME/spark/data:/opt/spark/data -it ps-spark:v4.0.1 /opt/spark/bin/pyspark --master local[1]</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>Python 3.10.12 (main, Aug 15 2025, 14:32:43) [GCC 11.4.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+WARNING: Using incubator modules: jdk.incubator.vector
+Using Spark's default log4j profile: org/apache/spark/log4j2-defaults.properties
+Setting default log level to "WARN".
+To adjust logging level use sc.setLogLevel(newLevel). For SparkR, use setLogLevel(newLevel).
+25/12/09 01:25:58 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Setting Spark log level to "INFO".
+Welcome to
+      ____              __
+     / __/__  ___ _____/ /__
+    _\ \/ _ \/ _ `/ __/  '_/
+   /__ / .__/\_,_/_/ /_/\_\   version 4.0.1
+      /_/
+
+Using Python version 3.10.12 (main, Aug 15 2025 14:32:43)
+Spark context Web UI available at http://kailash:4040
+Spark context available as 'sc' (master = local[1], app id = local-1765243559026).
+SparkSession available as 'spark'.
+&gt;&gt;&gt;</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To load the iris dataset from the S3 bucket and create a pyspark dataframe named <span class="bold">iris_df</span>, execute
+        the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>iris_df = spark.read.parquet('s3://spark-datasets/iris.parquet')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code would generate the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>25/12/13 00:09:02 WARN FileStreamSink: Assume no metadata directory. Error while looking for metadata directory in the path: s3://spark-datasets/iris.parquet.
+org.apache.hadoop.fs.UnsupportedFileSystemException: No FileSystem for scheme "s3"</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">OOPs</span> - what happened here ???</p>
+    </div>
+    <div id="para-div">
+      <p>Digging into the Hadoop AWS documentation <a href="https://hadoop.apache.org/docs/stable/hadoop-aws/tools/hadoop-aws/index.html"
+        target="_blank"><span class="bold">HERE</span></a>, we learn that we need to use the scheme <span class="hi-green">s3a</span>
+        to access any S3 resource.</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, to load the iris dataset from the S3 bucket and create a pyspark dataframe named <span class="bold">iris_df</span>,
+        execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>iris_df = spark.read.parquet('s3a://spark-datasets/iris.parquet')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code would generate the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>25/12/13 00:09:59 WARN FileStreamSink: Assume no metadata directory. Error while looking for metadata directory in the path: s3a://spark-datasets/iris.parquet.
+java.lang.RuntimeException: java.lang.ClassNotFoundException: Class org.apache.hadoop.fs.s3a.S3AFileSystem not found</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">Hmm</span> - looks like we are missing some jar(s) ???</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, from the Hadoop AWS documentation, we learn that we need the jar(s) <span class="hi-vanila">hadoop-aws</span>
+        and the <span class="hi-vanila">AWS V2 SDK</span> bundle.</p>
+    </div>
+    <div id="para-div">
+      <p>Before we proceed further, we need to determine the version of the hadoop client jar(s) in the docker base image.</p>
+    </div>
+    <div id="para-div">
+      <p>To find the hadoop version, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>docker run --rm --name temp -it spark:4.0.1-scala2.13-java21-python3-ubuntu ls /opt/spark/jars/ | grep hadoop-client</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>hadoop-client-api-3.4.1.jar
+hadoop-client-runtime-3.4.1.jar</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>From the <span class="bold">Output.4</span> above, it is clear that the desired hadoop version is <span class="hi-grey">
+        3.4.1</span>.</p>
+      <p>Also, googling around in the web, we find that the compatible AWS V2 SDK version is <span class="hi-grey">2.29.52</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To add the missing jar(s), we will have to modify the contents of the <span class="bold">dockerfile</span> that we created
+        in <a href="https://polarsparc.github.io/Distributed/Spark-1.html" target="_blank"><span class="bold">Part-1</span></a> with
+        the following contents:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">dockerfile</div>
+      <div class="gen-src-body">
+<pre>FROM spark:4.0.1-scala2.13-java21-python3-ubuntu
+
+### Complete the necessary installation as root
+
+USER root
+
+ARG user=alice
+ARG group=alice
+ARG uid=1000
+ARG gid=1000
+
+RUN groupadd -g ${gid} ${group}
+RUN useradd -u ${uid} -g ${gid} -M -s /sbin/nologin ${user}
+
+RUN usermod -a -G spark ${user}
+RUN usermod -a -G ${user} spark
+
+### Setup S3 as root
+
+ENV HADOOP_AWS_VERSION=3.4.1
+ENV AWS_JAVA_SDK_VERSION=2.29.52
+
+RUN curl https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/${HADOOP_AWS_VERSION}/hadoop-aws-${HADOOP_AWS_VERSION}.jar -Lo /opt/spark/jars/hadoop-aws-${HADOOP_AWS_VERSION}.jar
+RUN curl https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/${AWS_JAVA_SDK_VERSION}/bundle-${AWS_JAVA_SDK_VERSION}.jar -Lo /opt/spark/jars/bundle-${AWS_JAVA_SDK_VERSION}.jar
+
+### Change user - has to be last
+
+USER ${user}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To build our custom docker image tagged <span class="hi-vanila">ps-spark-s3:v4.0.1</span>, execute the following command
+        in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>docker build -t 'ps-spark-s3:v4.0.1' .</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical trimmed output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>[+] Building 8.8s (11/11) FINISHED                                                                                   docker:default
+ => [internal] load build definition from dockerfile.2                                                                         0.0s
+ => => transferring dockerfile: 922B                                                                                           0.0s
+ => [internal] load metadata for docker.io/library/spark:4.0.1-scala2.13-java21-python3-ubuntu                                 0.0s
+ => [internal] load .dockerignore                                                                                              0.0s
+ => => transferring context: 2B                                                                                                0.0s
+ => [1/7] FROM docker.io/library/spark:4.0.1-scala2.13-java21-python3-ubuntu                                                   0.0s
+ => CACHED [2/7] RUN groupadd -g 1000 alice                                                                                    0.0s
+ => CACHED [3/7] RUN useradd -u 1000 -g 1000 -M -s /sbin/nologin alice                                                         0.0s
+ => CACHED [4/7] RUN usermod -a -G spark alice                                                                                 0.0s
+ => CACHED [5/7] RUN usermod -a -G alice spark                                                                                 0.0s
+ => [6/7] RUN curl https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.1/hadoop-aws-3.4.1.jar -Lo /opt/spark/jars  0.3s
+ => [7/7] RUN curl https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.29.52/bundle-2.29.52.jar -Lo /opt/spark/jar  7.5s
+ => exporting to image                                                                                                         1.0s 
+ => => exporting layers                                                                                                        1.0s 
+ => => writing image sha256:cfff0540f92a56fba3f37da87629ac5d7f0fa241383b472b9a817a3cc46e58e5                                   0.0s 
+ => => naming to docker.io/library/ps-spark-s3:v4.0.1                                                                          0.0s</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Once again, to launch the pyspark shell using the new docker image, execute the following docker command in the terminal
+        window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>docker run --rm --name pyspark-local --network host -u $(id -u $USER):$(id -g $USER) -v $HOME/spark/conf:/opt/spark/conf -v $HOME/spark/data:/opt/spark/data -it ps-spark-3:v4.0.1 /opt/spark/bin/pyspark --master local[1]</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The output will be similar to that of <span class="bold">Output.1</span> from above.</p>
+    </div>
+    <div id="para-div">
+      <p>To load the iris dataset from the S3 bucket and create a pyspark dataframe named <span class="bold">iris_df</span>, execute
+        the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>iris_df = spark.read.parquet('s3a://spark-datasets/iris.parquet')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code would generate the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>25/12/13 00:21:22 WARN FileStreamSink: Assume no metadata directory. Error while looking for metadata directory in the path: s3a://spark-datasets/iris.parquet.
+java.nio.file.AccessDeniedException: s3a://spark-datasets/iris.parquet: org.apache.hadoop.fs.s3a.auth.NoAuthWithAWSException: No AWS Credentials provided by TemporaryAWSCredentialsProvider SimpleAWSCredentialsProvider EnvironmentVariableCredentialsProvider IAMInstanceCredentialsProvider : software.amazon.awssdk.core.exception.SdkClientException: Unable to load credentials from system settings. Access key must be specified either via environment variable (AWS_ACCESS_KEY_ID) or system property (aws.accessKeyId).</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">Aargh</span> - what happened here ???</p>
+    </div>
+    <div id="para-div">
+      <p>We need to provide the <span class="bold">S3 Object Server</span> details to our running Garage instance.</p>
+    </div>
+    <div id="para-div">
+      <p>To add the desired configuration parameters, we will have to modify the contents of  <span class="bold">spark-defaults.conf
+        </span> that we created in <a href="https://polarsparc.github.io/Distributed/Spark-2.html" target="_blank"><span class="bold">
+        Part-2</span></a> with the following contents:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">spark-defaults.conf</div>
+      <div class="gen-src-body">
+<pre># This is useful for setting default environmental settings.
+
+spark.log.level                                 INFO
+
+# Enable S3 via s3a://..
+
+spark.hadoop.fs.s3a.impl                        org.apache.hadoop.fs.s3a.S3AFileSystem
+spark.hadoop.fs.s3a.access.key                  GK0cda775ac76876cd4317d737
+spark.hadoop.fs.s3a.secret.key                  ae9c072c1edbb4b9018dc7c3f5fa63de1e9bd1526c26292cfb6a2b86f66f3e1a
+spark.hadoop.fs.s3a.endpoint                    http://192.168.1.25:3900
+spark.hadoop.fs.s3a.endpoint.region             garage
+spark.hadoop.fs.s3a.ssl.enabled                 false
+spark.hadoop.fs.s3a.path.style.access           true
+spark.hadoop.fs.s3a.aws.credentials.provider    org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Once again, to load the iris dataset from the S3 bucket and create a pyspark dataframe named <span class="bold">iris_df</span>,
+        execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>iris_df = spark.read.parquet('s3a://spark-datasets/iris.parquet')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To check the count of rows in the <span class="bold">iris_df</span> dataframe, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>iris_df.count()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>150</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To display the top 10 rows of the <span class="bold">iris_df</span> dataframe, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>iris_df.show(10)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code generates the following typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>+------------+-----------+------------+-----------+-------+
+|sepal.length|sepal.width|petal.length|petal.width|variety|
++------------+-----------+------------+-----------+-------+
+|         5.1|        3.5|         1.4|        0.2| Setosa|
+|         4.9|        3.0|         1.4|        0.2| Setosa|
+|         4.7|        3.2|         1.3|        0.2| Setosa|
+|         4.6|        3.1|         1.5|        0.2| Setosa|
+|         5.0|        3.6|         1.4|        0.2| Setosa|
+|         5.4|        3.9|         1.7|        0.4| Setosa|
+|         4.6|        3.4|         1.4|        0.3| Setosa|
+|         5.0|        3.4|         1.5|        0.2| Setosa|
+|         4.4|        2.9|         1.4|        0.2| Setosa|
+|         4.9|        3.1|         1.5|        0.1| Setosa|
++------------+-----------+------------+-----------+-------+
+only showing top 10 rows</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">BAM</span> - we are in business now as everything seems to be working as expected !!!</p>
+    </div>
+    <div id="para-div">
+      <p>With this, we conclude the demonstration on how one can leverage pyspark for accessing dataset(s) in S3 !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/Cloud/Garage.html" target="_blank"><span class="bold">Hands-on with Garage</span></a></p>
+      <p><a href="https://hadoop.apache.org/docs/stable/hadoop-aws/tools/hadoop-aws/index.html" target="_blank"><span class="bold">Hadoop AWS Module</span></a></p>
+      <p><a href="https://polarsparc.github.io/Distributed/Spark-4.html" target="_blank"><span class="bold">Apache Spark 4.x Quick Notes :: Part - 4</span></a></p>
+      <p><a href="https://polarsparc.github.io/Distributed/Spark-3.html" target="_blank"><span class="bold">Apache Spark 4.x Quick Notes :: Part - 3</span></a></p>
+      <p><a href="https://polarsparc.github.io/Distributed/Spark-2.html" target="_blank"><span class="bold">Apache Spark 4.x Quick Notes :: Part - 2</span></a></p>
+      <p><a href="https://polarsparc.github.io/Distributed/Spark-1.html" target="_blank"><span class="bold">Apache Spark 4.x Quick Notes :: Part - 1</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
