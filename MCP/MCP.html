@@ -28,7 +28,7 @@
       <tbody>
         <tr>
           <td class="author-td">Bhaskar S</td>
-          <td class="date-td"><span class="hi-yellow">*UPDATED*</span>08/16/2025</td>
+          <td class="date-td"><span class="hi-yellow">*UPDATED*</span>12/26/2025</td>
         </tr>
       </tbody>
     </table>
@@ -84,14 +84,14 @@
     </div>
     <br/>
     <div id="para-div">
-      <p>For the LLM model, we will be using the recently released <span class="hi-purple">IBM Granite-3.3 2B</span> model.</p>
+      <p>For the LLM model, we will be using the recently released <span class="hi-purple">IBM Granite 4 Micro</span> model.</p>
     </div>
     <div id="para-div">
       <p>Open a new terminal window and execute the following <span class="bold">docker</span> command to download the LLM model:</p>
     </div>
     <br/>
     <div id="cmd-div">
-      <p>$ docker exec -it ollama ollama run granite3.3:2b</p>
+      <p>$ docker exec -it ollama ollama run granite4:micro</p>
     </div>
     <br/>
     <div id="para-div">
@@ -122,9 +122,9 @@
       <div class="src-cap-1">.env</div>
       <div class="gen-src-body">
 <pre>LLM_TEMPERATURE=0.2
-OLLAMA_MODEL='granite3.3:2b'
+OLLAMA_MODEL='ollama:granite4:micro'
 OLLAMA_BASE_URL='http://192.168.1.25:11434'
-PY_PROJECT_DIR='/projects/python/MCP/'
+PY_PROJECT_DIR='/MyProjects/Python/MCP/'
 MCP_BASE_URL='http://192.168.1.25:8000/mcp'
 JWT_SECRET_KEY='0xB0R3D2CR3AT3AV3RYG00DS3CUR3K3Y'
 JWT_ALGORITHM='HS256'
@@ -142,7 +142,7 @@ JWT_EXPIRATION_SECS=60</pre>
 <pre>#
 # @Author: Bhaskar S
 # @Blog:   https://polarsparc.github.io
-# @Date:   16 August 2025
+# @Date:   26 December 2025
 #
 
 import asyncio
@@ -150,9 +150,9 @@ import logging
 import os
 
 from dotenv import load_dotenv, find_dotenv
-from langchain_core.tools import tool
-from langchain_ollama import ChatOllama
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
+from langchain.chat_models import init_chat_model
+from langchain.tools import tool
 
 logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s',
                     level=logging.INFO)
@@ -165,20 +165,23 @@ llm_temperature = float(os.getenv('LLM_TEMPERATURE'))
 ollama_model = os.getenv('OLLAMA_MODEL')
 ollama_base_url = os.getenv('OLLAMA_BASE_URL')
 
-ollama_chat_llm = ChatOllama(base_url=ollama_base_url,
-                             model=ollama_model,
-                             temperature=llm_temperature)
+ollama_chat_llm = init_chat_model(model=ollama_model,
+                                  base_url=ollama_base_url,
+                                  temperature=llm_temperature)
 
 @tool
 def dummy():
-    """This is a dummy tool"""
-    return None
+  """This is a dummy tool"""
+  return None
 
 async def main():
+  prompt = 'You are a helpful assistant!'
   tools = [dummy]
 
   # Initialize a ReACT agent
-  agent = create_react_agent(ollama_chat_llm, tools)
+  agent = create_agent(ollama_chat_llm,
+                        tools,
+                        system_prompt=prompt)
 
   # Case - 1 : Simple interest definition
   agent_response_1 = await agent.ainvoke(
@@ -214,12 +217,14 @@ if __name__ == '__main__':
     <br/>
     <div id="out-div">
       <h4>Output.1</h4>
-      <pre>INFO 2025-08-16 19:20:21,603 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 19:20:21,605 - [AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-16T23:20:21.602914444Z', 'done': True, 'done_reason': 'stop', 'total_duration': 1457132498, 'load_duration': 1253303039, 'prompt_eval_count': 152, 'prompt_eval_duration': 123422099, 'eval_count': 7, 'eval_duration': 79538283, 'model_name': 'granite3.3:2b'}, id='run--4aeb6ca9-4428-4ca9-ae63-f1791813136d-0', usage_metadata={'input_tokens': 152, 'output_tokens': 7, 'total_tokens': 159}), HumanMessage(content='what is the simple interest ?', additional_kwargs={}, response_metadata={}, id='1535ce50-1f86-4447-92a2-baa59086439d')]
-INFO 2025-08-16 19:20:21,673 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 19:20:21,674 - [AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-16T23:20:21.67256802Z', 'done': True, 'done_reason': 'stop', 'total_duration': 65829682, 'load_duration': 11137243, 'prompt_eval_count': 167, 'prompt_eval_duration': 18703442, 'eval_count': 3, 'eval_duration': 35560119, 'model_name': 'granite3.3:2b'}, id='run--3dbe5edf-0cb0-4f97-827b-5510ad82bc39-0', usage_metadata={'input_tokens': 167, 'output_tokens': 3, 'total_tokens': 170}), HumanMessage(content='compute the simple interest for a principal of 1000 at rate 3.75 ?', additional_kwargs={}, response_metadata={}, id='ae20e0dc-deaf-4c07-b857-85174440f526')]
-INFO 2025-08-16 19:20:21,725 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 19:20:21,726 - [AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-16T23:20:21.725018008Z', 'done': True, 'done_reason': 'stop', 'total_duration': 49124052, 'load_duration': 8228915, 'prompt_eval_count': 167, 'prompt_eval_duration': 7458129, 'eval_count': 3, 'eval_duration': 32951641, 'model_name': 'granite3.3:2b'}, id='run--b6d78f51-61a6-4a4f-b61a-62bd793685d9-0', usage_metadata={'input_tokens': 167, 'output_tokens': 3, 'total_tokens': 170}), HumanMessage(content='compute the compound interest for a principal of 1000 at rate 4.25 ?', additional_kwargs={}, response_metadata={}, id='aaa1cc18-8a25-4bec-b75a-2e46f901b42a')]</pre>
+      <pre>INFO 2025-12-26 17:21:55,297 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 17:21:56,293 - [AIMessage(content='The formula for calculating simple interest is:\n\nSimple Interest = (Principal Amount * Rate of Interest * Time) / 100\n\nWhere:\n- Principal Amount: The initial amount of money borrowed or invested.\n- Rate of Interest: The percentage charged on the principal amount per time period.\n- Time: The duration for which the money is borrowed or invested, usually in years.\n\nSo, to calculate simple interest, you need to multiply the principal amount by the rate of interest and then divide it by 100.', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-26T22:21:56.291151584Z', 'done': True, 'done_reason': 'stop', 'total_duration': 3151401784, 'load_duration': 2117218792, 'prompt_eval_count': 166, 'prompt_eval_duration': 35628330, 'eval_count': 102, 'eval_duration': 955092168, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--20737c70-f905-47aa-a6b8-1b4a9a65c433-0', usage_metadata={'input_tokens': 166, 'output_tokens': 102, 'total_tokens': 268}), HumanMessage(content='what is the simple interest ?', additional_kwargs={}, response_metadata={}, id='b76b229c-3bf0-48f3-a77f-031f0251fb38')]
+INFO 2025-12-26 17:21:56,566 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 17:22:01,226 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 17:22:01,745 - [AIMessage(content='The simple interest for a principal of $1000 at a rate of 3.75% is calculated as follows: \n\nInterest = Principal * Rate\n\nInterest = $1000 * (3.75/100)\n\nInterest = **$37.50**', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-26T22:22:01.743608612Z', 'done': True, 'done_reason': 'stop', 'total_duration': 5149938619, 'load_duration': 91988474, 'prompt_eval_count': 208, 'prompt_eval_duration': 4535157424, 'eval_count': 53, 'eval_duration': 495113844, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--a60a1462-985a-4456-ab17-a29a4ba627af-0', usage_metadata={'input_tokens': 208, 'output_tokens': 53, 'total_tokens': 261}), ToolMessage(content='null', name='dummy', id='32fb7acc-f6f4-43b9-b905-85af96c00d1b', tool_call_id='467f3bfa-4d5b-4ab4-8aa2-0ff382217b10'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-26T22:21:56.586893117Z', 'done': True, 'done_reason': 'stop', 'total_duration': 289416434, 'load_duration': 97658720, 'prompt_eval_count': 178, 'prompt_eval_duration': 41477515, 'eval_count': 15, 'eval_duration': 136030555, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--358a5f62-6c02-43c2-a8d6-90ad603999bc-0', tool_calls=[{'name': 'dummy', 'args': {}, 'id': '467f3bfa-4d5b-4ab4-8aa2-0ff382217b10', 'type': 'tool_call'}], usage_metadata={'input_tokens': 178, 'output_tokens': 15, 'total_tokens': 193}), HumanMessage(content='compute the simple interest for a principal of 1000 at rate 3.75 ?', additional_kwargs={}, response_metadata={}, id='1101f6f7-aafd-4bb2-8d80-bc5543c9ed6d')]
+INFO 2025-12-26 17:22:01,983 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 17:22:02,120 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 17:22:04,036 - [AIMessage(content="The provided tools do not have functionality to compute compound interest directly. However, the formula for compound interest is A = P(1 + r/n)^(nt), where: \n- A is the amount of money accumulated after n years, including interest.\n- P is the principal amount (the initial amount of money).\n- r is the annual interest rate (in decimal form).\n- n is the number of times that interest is compounded per year.\n- t is the time the money is invested for in years.\n\nFor your case: \n- Principal (P) = 1000\n- Rate (r) = 4.25% or 0.0425\n- Assuming it's compounded annually, n = 1\n- Time (t) = 1 year\n\nSo, the compound interest would be A = 1000(1 + 0.0425/1)^(1*1) = 1042.5", additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-26T22:22:04.035183078Z', 'done': True, 'done_reason': 'stop', 'total_duration': 2023742497, 'load_duration': 89584937, 'prompt_eval_count': 208, 'prompt_eval_duration': 14347663, 'eval_count': 193, 'eval_duration': 1825144971, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--1b31d105-3146-4a06-8b92-5e79a5db0c62-0', usage_metadata={'input_tokens': 208, 'output_tokens': 193, 'total_tokens': 401}), ToolMessage(content='null', name='dummy', id='9d044a58-61d4-44bf-8a5b-9dbb8e86d677', tool_call_id='062f58f5-397f-4a1b-a0b7-e52cd6ccef43'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-26T22:22:02.00524118Z', 'done': True, 'done_reason': 'stop', 'total_duration': 256522346, 'load_duration': 92653687, 'prompt_eval_count': 178, 'prompt_eval_duration': 14422033, 'eval_count': 15, 'eval_duration': 136022344, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--7206d417-9059-44ba-b2bf-1227e09746a7-0', tool_calls=[{'name': 'dummy', 'args': {}, 'id': '062f58f5-397f-4a1b-a0b7-e52cd6ccef43', 'type': 'tool_call'}], usage_metadata={'input_tokens': 178, 'output_tokens': 15, 'total_tokens': 193}), HumanMessage(content='compute the compound interest for a principal of 1000 at rate 4.25 ?', additional_kwargs={}, response_metadata={}, id='8a1c10c8-2865-49a8-a714-49bcf6988273')]</pre>
     </div>
     <br/>
     <div id="para-div">
@@ -240,7 +245,7 @@ INFO 2025-08-16 19:20:21,726 - [AIMessage(content='', additional_kwargs={}, resp
 <pre>#
 # @Author: Bhaskar S
 # @Blog:   https://polarsparc.github.io
-# @Date:   16 August 2025
+# @Date:   26 December 2025
 #
 
 from mcp.server.fastmcp import FastMCP
@@ -296,19 +301,19 @@ if __name__ == '__main__':
 <pre>#
 # @Author: Bhaskar S
 # @Blog:   https://polarsparc.github.io
-# @Date:   16 August 2025
+# @Date:   26 December 2025
 #
-
-from dotenv import load_dotenv, find_dotenv
-from langchain_ollama import ChatOllama
-from langchain_mcp_adapters.tools import load_mcp_tools
-from langgraph.prebuilt import create_react_agent
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
 
 import asyncio
 import logging
 import os
+
+from dotenv import load_dotenv, find_dotenv
+from langchain.agents import create_agent
+from langchain.chat_models import init_chat_model
+from langchain_mcp_adapters.tools import load_mcp_tools
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 
 logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s',
                     level=logging.INFO)
@@ -329,9 +334,9 @@ server_params = StdioServerParameters(
   args=[home_dir + py_project_dir + 'interest_mcp_server.py'],
 )
 
-ollama_chat_llm = ChatOllama(base_url=ollama_base_url,
-                             model=ollama_model,
-                             temperature=llm_temperature)
+ollama_chat_llm = init_chat_model(model=ollama_model,
+                                  base_url=ollama_base_url,
+                                  temperature=llm_temperature)
 
 async def main():
   # Will launch the MCP server and communicate via stdio
@@ -348,7 +353,10 @@ async def main():
         logger.info(f'\tMCP Tool: {tool.name}')
 
       # Initialize a ReACT agent
-      agent = create_react_agent(ollama_chat_llm, tools)
+      prompt = 'You are a helpful assistant!'
+      agent = create_agent(ollama_chat_llm,
+                           tools,
+                           system_prompt=prompt)
 
       # Case - 1 : Simple interest definition
       agent_response_1 = await agent.ainvoke(
@@ -384,23 +392,23 @@ if __name__ == '__main__':
     <br/>
     <div id="out-div">
       <h4>Output.2</h4>
-      <pre>INFO 2025-08-16 19:30:04,594 - Starting the interest MCP server...
-INFO 2025-08-16 19:30:04,600 - Processing request of type ListToolsRequest
-INFO 2025-08-16 19:30:04,601 - List of MCP Tools:
-INFO 2025-08-16 19:30:04,601 - 	MCP Tool: yearly_simple_interest
-INFO 2025-08-16 19:30:04,601 - 	MCP Tool: yearly_compound_interest
-INFO 2025-08-16 19:30:06,078 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 19:30:06,080 - [AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-16T23:30:06.078158752Z', 'done': True, 'done_reason': 'stop', 'total_duration': 1468597747, 'load_duration': 1258247094, 'prompt_eval_count': 247, 'prompt_eval_duration': 149575775, 'eval_count': 3, 'eval_duration': 60005999, 'model_name': 'granite3.3:2b'}, id='run--dfa7b142-9d96-4445-aa2d-2ae4e5f37265-0', usage_metadata={'input_tokens': 247, 'output_tokens': 3, 'total_tokens': 250}), HumanMessage(content='explain the definition of simple interest ?', additional_kwargs={}, response_metadata={}, id='30b83317-6474-4b1f-9806-fb9a07b38f3d')]
-INFO 2025-08-16 19:30:06,412 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 19:30:06,425 - Processing request of type CallToolRequest
-INFO 2025-08-16 19:30:06,425 - Simple interest -> Principal: 1000.0, Rate: 3.75
-INFO 2025-08-16 19:30:06,480 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 19:30:06,751 - [AIMessage(content='The simple interest for a principal of 1000 at rate 3.75% per annum is 37.5.', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-16T23:30:06.75021703Z', 'done': True, 'done_reason': 'stop', 'total_duration': 320796391, 'load_duration': 12294680, 'prompt_eval_count': 307, 'prompt_eval_duration': 21977964, 'eval_count': 31, 'eval_duration': 283575064, 'model_name': 'granite3.3:2b'}, id='run--30bb979e-ce23-48bf-ba9e-3350a8b73565-0', usage_metadata={'input_tokens': 307, 'output_tokens': 31, 'total_tokens': 338}), ToolMessage(content='37.5', name='yearly_simple_interest', id='bef3a7d5-c225-4867-b299-06ba8b242bd6', tool_call_id='8e64a163-07fc-4e4a-928e-9276fde276d0'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-16T23:30:06.421882999Z', 'done': True, 'done_reason': 'stop', 'total_duration': 340008665, 'load_duration': 13866878, 'prompt_eval_count': 261, 'prompt_eval_duration': 18568800, 'eval_count': 34, 'eval_duration': 307096796, 'model_name': 'granite3.3:2b'}, id='run--a6741564-ca2d-4a50-8f31-824aa0674e9f-0', tool_calls=[{'name': 'yearly_simple_interest', 'args': {'principal': 1000, 'rate': 3.75}, 'id': '8e64a163-07fc-4e4a-928e-9276fde276d0', 'type': 'tool_call'}], usage_metadata={'input_tokens': 261, 'output_tokens': 34, 'total_tokens': 295}), HumanMessage(content='compute the simple interest for a principal of 1000 at rate 3.75 ?', additional_kwargs={}, response_metadata={}, id='c3e14a51-bca4-413b-91fb-625652ef0904')]
-INFO 2025-08-16 19:30:07,082 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 19:30:07,096 - Processing request of type CallToolRequest
-INFO 2025-08-16 19:30:07,096 - Compound interest -> Principal: 1000.0, Rate: 4.25
-INFO 2025-08-16 19:30:07,139 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 19:30:07,452 - [AIMessage(content='The compound interest for a principal of 1000 at rate 4.25% per annum over one year is $1042.5.', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-16T23:30:07.451543833Z', 'done': True, 'done_reason': 'stop', 'total_duration': 350104650, 'load_duration': 11884457, 'prompt_eval_count': 309, 'prompt_eval_duration': 8644166, 'eval_count': 36, 'eval_duration': 325965191, 'model_name': 'granite3.3:2b'}, id='run--3e43847f-7495-4c98-8baa-2fccd8609e50-0', usage_metadata={'input_tokens': 309, 'output_tokens': 36, 'total_tokens': 345}), ToolMessage(content='1042.5', name='yearly_compound_interest', id='2a2a115e-c1cb-4ba1-a362-d669facb8848', tool_call_id='73f1c8ee-26c8-4582-a00f-e70f5c48db22'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-16T23:30:07.092730309Z', 'done': True, 'done_reason': 'stop', 'total_duration': 339616505, 'load_duration': 10269221, 'prompt_eval_count': 261, 'prompt_eval_duration': 21752244, 'eval_count': 34, 'eval_duration': 307149258, 'model_name': 'granite3.3:2b'}, id='run--783ad955-5051-49f9-8180-b506d4a48ce4-0', tool_calls=[{'name': 'yearly_compound_interest', 'args': {'principal': 1000, 'rate': 4.25}, 'id': '73f1c8ee-26c8-4582-a00f-e70f5c48db22', 'type': 'tool_call'}], usage_metadata={'input_tokens': 261, 'output_tokens': 34, 'total_tokens': 295}), HumanMessage(content='compute the compound interest for a principal of 1000 at rate 4.25 ?', additional_kwargs={}, response_metadata={}, id='46734154-fe65-478e-86b5-3c0849c51e0c')]</pre>
+      <pre>INFO 2025-12-26 17:29:57,778 - Starting the interest MCP server...
+INFO 2025-12-26 17:29:57,783 - Processing request of type ListToolsRequest
+INFO 2025-12-26 17:29:57,784 - List of MCP Tools:
+INFO 2025-12-26 17:29:57,784 - 	MCP Tool: yearly_simple_interest
+INFO 2025-12-26 17:29:57,784 - 	MCP Tool: yearly_compound_interest
+INFO 2025-12-26 17:29:59,648 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 17:30:04,990 - [AIMessage(content='**Simple Interest Explained**\n\nSimple interest is a way of calculating how much money an investment or loan earns (or costs) over time when only the original amount - called the *principal* - is earning (or paying) interest, and no additional interest accumulates on top of that principal.\n\n### Core Formula\n\n\\[\n\\text{Simple Interest} = P \\times r\n\\]\n\nWhere:\n\n| Symbol | Meaning |\n|--------|---------|\n| **\\(P\\)** | Principal - the initial amount of money invested or borrowed. |\n| **\\(r\\)** | Annual interest rate (expressed as a decimal). For example, 5\u202f% becomes 0.05. |\n\n### How It Works\n\n1. **Annual Rate** - The percentage you earn per year.\n2. **Principal Only** - Interest is calculated only on the original principal each period (usually once per year).\n3. **No Compounding** - Unlike compound interest, simple interest does not add interest to itself; it stays flat.\n\n### Example\n\n- **Principal (\\(P\\))**: \\$10,000  \n- **Annual Rate (\\(r\\))**: 6\u202f% → 0.06  \n\n\\[\n\\text{Simple Interest per year} = 10{,}000 \\times 0.06 = \\$600\n\\]\n\nIf you invest the money for 3 years:\n\n\\[\n\\text{Total interest over 3 years} = 600 \\times 3 = \\$1,800\n\\]\n\nThe total amount after 3 years would be **\\$11,800** (principal + interest).\n\n### Key Points\n\n- **Linear Growth**: The interest earned each period is the same because it’s based solely on the original principal.\n- **Short‑Term Focus**: Simple interest works well for short‑term loans or investments where compounding over multiple periods isn’t significant.\n- **Easy Calculation**: Because there are no extra terms (like monthly compounding), you only need to multiply the principal by the rate.\n\n### When You Might Use It\n\n- **Simple Savings Accounts** that pay a flat annual interest rate.\n- **Short‑term loans** like payday loans, where interest is calculated on the original amount without additional fees.\n- **Educational examples** of basic financial concepts before moving to more complex models (compound interest).\n\n---\n\n**In summary**, simple interest gives you the straightforward calculation of earning or paying only the interest that corresponds to the initial principal at a given annual rate. It’s easy to compute and understand, making it useful for quick estimates in many everyday financial scenarios.', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-26T22:30:04.987634009Z', 'done': True, 'done_reason': 'stop', 'total_duration': 7196433997, 'load_duration': 1811294254, 'prompt_eval_count': 246, 'prompt_eval_duration': 41953398, 'eval_count': 532, 'eval_duration': 5078331261, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--a5823eb2-715b-49b2-bb47-fdaf9c044374-0', usage_metadata={'input_tokens': 246, 'output_tokens': 532, 'total_tokens': 778}), HumanMessage(content='explain the definition of simple interest ?', additional_kwargs={}, response_metadata={}, id='528c2e35-e2be-4442-a0d4-c2b5d9c36d24')]
+INFO 2025-12-26 17:30:05,421 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 17:30:05,447 - Processing request of type CallToolRequest
+INFO 2025-12-26 17:30:05,447 - Simple interest -> Principal: 1000.0, Rate: 3.75
+INFO 2025-12-26 17:30:05,535 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 17:30:05,897 - [AIMessage(content='The simple interest for a principal of **$1,000** at an annual rate of **3.75%** over one year is **$37.50**.', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-26T22:30:05.896101999Z', 'done': True, 'done_reason': 'stop', 'total_duration': 445334280, 'load_duration': 61987045, 'prompt_eval_count': 302, 'prompt_eval_duration': 15589550, 'eval_count': 36, 'eval_duration': 338398611, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--871edd78-0f3d-419c-b013-da416cc8260d-0', usage_metadata={'input_tokens': 302, 'output_tokens': 36, 'total_tokens': 338}), ToolMessage(content='37.5', name='yearly_simple_interest', id='772f7718-f7ff-47bf-813f-50eaada5d7b2', tool_call_id='a0189b61-4dbb-4167-a5aa-1c3b419b4171'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-26T22:30:05.442765975Z', 'done': True, 'done_reason': 'stop', 'total_duration': 450194253, 'load_duration': 96915551, 'prompt_eval_count': 257, 'prompt_eval_duration': 41134556, 'eval_count': 31, 'eval_duration': 290225177, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--30373aea-e69b-4db7-be73-9e6e128dccc0-0', tool_calls=[{'name': 'yearly_simple_interest', 'args': {'principal': 1000, 'rate': 3.75}, 'id': 'a0189b61-4dbb-4167-a5aa-1c3b419b4171', 'type': 'tool_call'}], usage_metadata={'input_tokens': 257, 'output_tokens': 31, 'total_tokens': 288}), HumanMessage(content='compute the simple interest for a principal of 1000 at rate 3.75 ?', additional_kwargs={}, response_metadata={}, id='0b73adde-80cf-4e13-9330-8900fafcddce')]
+INFO 2025-12-26 17:30:06,384 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 17:30:06,409 - Processing request of type CallToolRequest
+INFO 2025-12-26 17:30:06,409 - Compound interest -> Principal: 1000.0, Rate: 4.25
+INFO 2025-12-26 17:30:06,521 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 17:30:07,055 - [AIMessage(content='The compound interest for a principal of 1000 at an annual rate of 4.25% over one year is **$1,042.50**. This includes the original $1,000 plus $42.50 in interest earned through compounding.', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-26T22:30:07.054564852Z', 'done': True, 'done_reason': 'stop', 'total_duration': 641590898, 'load_duration': 86147584, 'prompt_eval_count': 304, 'prompt_eval_duration': 15183014, 'eval_count': 54, 'eval_duration': 508865166, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--bda55b80-2b0c-4612-862a-1cc0ec19ba5c-0', usage_metadata={'input_tokens': 304, 'output_tokens': 54, 'total_tokens': 358}), ToolMessage(content='1042.5', name='yearly_compound_interest', id='e7aecc3f-2fcf-4e5e-979b-501c59d004b7', tool_call_id='6192ce83-a203-4a58-ab66-e0be459c908f'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-26T22:30:06.406174999Z', 'done': True, 'done_reason': 'stop', 'total_duration': 506258846, 'load_duration': 92461163, 'prompt_eval_count': 257, 'prompt_eval_duration': 14347632, 'eval_count': 40, 'eval_duration': 375624706, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--e4d42c82-30f2-4916-9012-172650e89084-0', tool_calls=[{'name': 'yearly_compound_interest', 'args': {'principal': 1000, 'rate': 4.25}, 'id': '6192ce83-a203-4a58-ab66-e0be459c908f', 'type': 'tool_call'}], usage_metadata={'input_tokens': 257, 'output_tokens': 40, 'total_tokens': 297}), HumanMessage(content='compute the compound interest for a principal of 1000 at rate 4.25 ?', additional_kwargs={}, response_metadata={}, id='664716ba-f84f-446b-8a83-29a4ea3a8c2b')]</pre>
     </div>
     <br/>
     <div id="para-div">
@@ -422,14 +430,13 @@ INFO 2025-08-16 19:30:07,452 - [AIMessage(content='The compound interest for a p
 <pre>#
 # @Author: Bhaskar S
 # @Blog:   https://polarsparc.github.io
-# @Date:   16 August 2025
+# @Date:   26 December 2025
 #
-
-import subprocess
 
 from mcp.server.fastmcp import FastMCP
 
 import logging
+import subprocess
 
 logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s',
                     level=logging.INFO)
@@ -472,13 +479,13 @@ if __name__ == '__main__':
 <pre>#
 # @Author: Bhaskar S
 # @Blog:   https://polarsparc.github.io
-# @Date:   16 August 2025
+# @Date:   26 December 2025
 #
 
 from dotenv import load_dotenv, find_dotenv
-from langchain_ollama import ChatOllama
+from langchain.agents import create_agent
+from langchain.chat_models import init_chat_model
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langgraph.prebuilt import create_react_agent
 
 import asyncio
 import logging
@@ -510,9 +517,9 @@ config = {
   }
 }
 
-ollama_chat_llm = ChatOllama(base_url=ollama_base_url,
-                             model=ollama_model,
-                             temperature=llm_temperature)
+ollama_chat_llm = init_chat_model(model=ollama_model,
+                                  base_url=ollama_base_url,
+                                  temperature=llm_temperature)
 
 async def main():
   # Initialize MCP client to connect to multiple MCP server(s)
@@ -524,7 +531,10 @@ async def main():
   logger.info(f'Loaded Multiple MCP Tools -> {tools}')
 
   # Initialize a ReACT agent with multiple tools
-  agent = create_react_agent(ollama_chat_llm, tools)
+  prompt = 'You are a helpful assistant!'
+  agent = create_agent(ollama_chat_llm,
+                       tools,
+                       system_prompt=prompt)
 
   # Case - 1 : Compound interest definition
   agent_response_1 = await agent.ainvoke(
@@ -560,27 +570,26 @@ if __name__ == '__main__':
     <br/>
     <div id="out-div">
       <h4>Output.3</h4>
-      <pre>INFO 2025-08-16 20:15:50,960 - Starting the shell executor MCP server...
-INFO 2025-08-16 20:15:50,962 - Starting the interest MCP server...
-INFO 2025-08-16 20:15:50,966 - Processing request of type ListToolsRequest
-INFO 2025-08-16 20:15:50,967 - Processing request of type ListToolsRequest
-INFO 2025-08-16 20:15:51,026 - Loaded Multiple MCP Tools -> [StructuredTool(name='yearly_simple_interest', description='Tool to compute simple interest rate for a year.', args_schema={'properties': {'principal': {'title': 'Principal', 'type': 'number'}, 'rate': {'title': 'Rate', 'type': 'number'}}, 'required': ['principal', 'rate'], 'title': 'yearly_simple_interestArguments', 'type': 'object'}, response_format='content_and_artifact', coroutine=<function convert_mcp_tool_to_langchain_tool.<locals>.call_tool at 0x772fbbeb23e0>), StructuredTool(name='yearly_compound_interest', description='Tool to compute compound interest rate for a year.', args_schema={'properties': {'principal': {'title': 'Principal', 'type': 'number'}, 'rate': {'title': 'Rate', 'type': 'number'}}, 'required': ['principal', 'rate'], 'title': 'yearly_compound_interestArguments', 'type': 'object'}, response_format='content_and_artifact', coroutine=<function convert_mcp_tool_to_langchain_tool.<locals>.call_tool at 0x772fb849bf60>), StructuredTool(name='execute_shell_command', description='Tool to execute shell commands', args_schema={'properties': {'command': {'title': 'Command', 'type': 'string'}}, 'required': ['command'], 'title': 'execute_shell_commandArguments', 'type': 'object'}, response_format='content_and_artifact', coroutine=<function convert_mcp_tool_to_langchain_tool.<locals>.call_tool at 0x772fb842a3e0>)]
-INFO 2025-08-16 20:15:52,557 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:15:52,559 - [AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T00:15:52.556710556Z', 'done': True, 'done_reason': 'stop', 'total_duration': 1516538055, 'load_duration': 1292170364, 'prompt_eval_count': 293, 'prompt_eval_duration': 153175502, 'eval_count': 3, 'eval_duration': 69927371, 'model_name': 'granite3.3:2b'}, id='run--ad78af28-b589-411f-a616-bf131edb64bd-0', usage_metadata={'input_tokens': 293, 'output_tokens': 3, 'total_tokens': 296}), HumanMessage(content='explain the definition of compound interest', additional_kwargs={}, response_metadata={}, id='030f9ae7-1f32-41c7-8106-241cea65b8a9')]
-INFO 2025-08-16 20:15:52,894 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:15:53,242 - Starting the interest MCP server...
-INFO 2025-08-16 20:15:53,247 - Processing request of type CallToolRequest
-INFO 2025-08-16 20:15:53,247 - Compound interest -> Principal: 1000.0, Rate: 3.75
-INFO 2025-08-16 20:15:53,249 - Processing request of type ListToolsRequest
-INFO 2025-08-16 20:15:53,338 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:15:53,651 - [AIMessage(content='The compound interest for a principal of 1000 at rate 3.75 per annum over one year is $1037.5.', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T00:15:53.649863658Z', 'done': True, 'done_reason': 'stop', 'total_duration': 356813613, 'load_duration': 12707879, 'prompt_eval_count': 357, 'prompt_eval_duration': 14963906, 'eval_count': 35, 'eval_duration': 325611202, 'model_name': 'granite3.3:2b'}, id='run--fa46748f-d168-43dc-906d-b060f3d9e827-0', usage_metadata={'input_tokens': 357, 'output_tokens': 35, 'total_tokens': 392}), ToolMessage(content='1037.5', name='yearly_compound_interest', id='c1351145-5695-4356-a44d-cb11765a13df', tool_call_id='b7f7baed-c156-4c40-886e-15facc5d28be'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T00:15:52.903395557Z', 'done': True, 'done_reason': 'stop', 'total_duration': 341595430, 'load_duration': 15583401, 'prompt_eval_count': 309, 'prompt_eval_duration': 22799791, 'eval_count': 33, 'eval_duration': 302662023, 'model_name': 'granite3.3:2b'}, id='run--22c4ff5c-c646-44df-96dc-6675fee50b76-0', tool_calls=[{'name': 'yearly_compound_interest', 'args': {'principal': 1000, 'rate': 3.75}, 'id': 'b7f7baed-c156-4c40-886e-15facc5d28be', 'type': 'tool_call'}], usage_metadata={'input_tokens': 309, 'output_tokens': 33, 'total_tokens': 342}), HumanMessage(content='what is the compound interest for a principal of 1000 at rate 3.75 ?', additional_kwargs={}, response_metadata={}, id='b9b33197-7b8c-45c6-9c24-0156667342ad')]
-INFO 2025-08-16 20:15:53,871 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:15:54,216 - Starting the shell executor MCP server...
-INFO 2025-08-16 20:15:54,221 - Processing request of type CallToolRequest
-INFO 2025-08-16 20:15:54,222 - Executing shell command: free -h
-INFO 2025-08-16 20:15:54,226 - Processing request of type ListToolsRequest
-INFO 2025-08-16 20:15:54,324 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:15:55,037 - [AIMessage(content="The system has a total of 62 Gi memory, with 7.9 Gi currently in use and 31 Gi available for processes. Additionally, there's 153Mi shared memory and 24Gi buff/cache used for caching purposes. The swap space is empty at the moment, with 14Gi allocated but no data stored on it.", additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T00:15:55.036437772Z', 'done': True, 'done_reason': 'stop', 'total_duration': 764703272, 'load_duration': 13539071, 'prompt_eval_count': 389, 'prompt_eval_duration': 15281894, 'eval_count': 80, 'eval_duration': 731655968, 'model_name': 'granite3.3:2b'}, id='run--11d5288d-e1e0-44aa-9bed-221bd811f304-0', usage_metadata={'input_tokens': 389, 'output_tokens': 80, 'total_tokens': 469}), ToolMessage(content='               total        used        free      shared  buff/cache   available\nMem:            62Gi       7.9Gi        31Gi       153Mi        24Gi        54Gi\nSwap:           14Gi          0B        14Gi\n', name='execute_shell_command', id='c587933f-bd49-4340-8774-23c4978aa3b1', tool_call_id='81fb04e9-f23c-4db7-8e7f-f680d9ee2800'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T00:15:53.881588538Z', 'done': True, 'done_reason': 'stop', 'total_duration': 228487971, 'load_duration': 14330482, 'prompt_eval_count': 298, 'prompt_eval_duration': 6625396, 'eval_count': 23, 'eval_duration': 206990208, 'model_name': 'granite3.3:2b'}, id='run--487db455-b95a-445c-9caf-943e265d0a6e-0', tool_calls=[{'name': 'execute_shell_command', 'args': {'command': 'free -h'}, 'id': '81fb04e9-f23c-4db7-8e7f-f680d9ee2800', 'type': 'tool_call'}], usage_metadata={'input_tokens': 298, 'output_tokens': 23, 'total_tokens': 321}), HumanMessage(content='Execute the free shell command to find how much system memory', additional_kwargs={}, response_metadata={}, id='a698e400-a4e5-4708-9948-fff7615bfa3d')]</pre>
+      <pre>INFO 2025-12-26 19:13:56,983 - Processing request of type ListToolsRequest
+INFO 2025-12-26 19:13:56,985 - Starting the interest MCP server...
+INFO 2025-12-26 19:13:56,990 - Processing request of type ListToolsRequest
+INFO 2025-12-26 19:13:57,191 - Loaded Multiple MCP Tools -> [StructuredTool(name='yearly_simple_interest', description='Tool to compute simple interest rate for a year.', args_schema={'properties': {'principal': {'title': 'Principal', 'type': 'number'}, 'rate': {'title': 'Rate', 'type': 'number'}}, 'required': ['principal', 'rate'], 'title': 'yearly_simple_interestArguments', 'type': 'object'}, response_format='content_and_artifact', coroutine=<function convert_mcp_tool_to_langchain_tool.<locals>.call_tool at 0x79caf7e3fd80>), StructuredTool(name='yearly_compound_interest', description='Tool to compute compound interest rate for a year.', args_schema={'properties': {'principal': {'title': 'Principal', 'type': 'number'}, 'rate': {'title': 'Rate', 'type': 'number'}}, 'required': ['principal', 'rate'], 'title': 'yearly_compound_interestArguments', 'type': 'object'}, response_format='content_and_artifact', coroutine=<function convert_mcp_tool_to_langchain_tool.&lt;locals&gt;.call_tool at 0x79caf7e3f920>), StructuredTool(name='execute_shell_command', description='Tool to execute shell commands', args_schema={'properties': {'command': {'title': 'Command', 'type': 'string'}}, 'required': ['command'], 'title': 'execute_shell_commandArguments', 'type': 'object'}, response_format='content_and_artifact', coroutine=<function convert_mcp_tool_to_langchain_tool.&lt;locals&gt;.call_tool at 0x79caf7f90720>)]
+INFO 2025-12-26 19:13:57,306 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:14:05,155 - [AIMessage(content='**Compound Interest Explained**\n\nCompound interest is the process by which an investment or loan grows because the interest earned (or charged) over each period is added back to the principal, so that in subsequent periods you earn (or pay) interest on a larger base amount. In other words, instead of just calculating interest on the original principal, the calculation also includes all previously accumulated interest.\n\n### Key Features\n\n| Feature | Description |\n|---------|-------------|\n| **Principal** | The initial amount of money invested or borrowed. |\n| **Interest Rate (r)** | Usually expressed as an annual percentage (APR/APY). It can be a simple rate, but when compounded it's applied to the growing balance each period. |\n| **Compounding Frequency** | How often interest is added back to the principal in a year (e.g., annually, semi-annually, quarterly, monthly, daily). More frequent compounding leads to faster growth. |\n| **Growth Formula** | For one year: <br> \\[ A = P(1 + r)^n \\] where \\(A\\) is the amount after \\(n\\) periods (here \\(n=1\\)). <br> For multiple years, you repeat this multiplication for each period. |\n\n### How It Works\n\n1. **Initial Balance** - Start with a principal \\(P\\).  \n2. **Interest Earned** - Compute interest for the period: \\(I = P \\times r\\) (if \\(r\\) is expressed as a decimal).  \n3. **Add to Principal** - Add that interest back to the balance, making the new principal \\(P_{new} = P + I\\).  \n4. **Repeat** - The next period's interest is calculated on this larger base, and so on.\n\n### Example\n\n- **Principal**: \\$1,000  \n- **Annual Rate**: 5% (0.05)  \n- **Compounded Annually for 3 Years**\n\n| Year | Calculation                | Amount |\n|------|----------------------------|--------|\n| 1    | \\(1000 \\times (1 + 0.05)\\) | \\$1,050 |\n| 2    | \\(1050 \\times (1 + 0.05)\\) | \\$1,102.50 |\n| 3    | \\(1102.50 \\times (1 + 0.05)\\) | \\$1,157.63 |\n\nIf the rate were compounded monthly instead of annually, you’d divide the annual rate by 12 and multiply for each month:\n\n\\[\nA = P \\left(1 + \\frac{r}{12}\\right)^{12}\n\\]\n\n### Why It Matters\n\n- **Accelerated Growth**: The more frequently interest is added, the faster the balance grows.  \n- **Financial Products**: Savings accounts, certificates of deposit (CDs), mortgages, auto loans, and retirement funds often use compound interest to boost returns or costs over time.  \n- **Impact on Debt**: Loans with compound interest can become significantly larger than the original borrowed amount if payments are delayed.\n\n### Practical Tips\n\n1. **Check Compounding Frequency** – Some accounts compound daily, others monthly; this affects your effective rate.  \n2. **Use the Formula** – For quick calculations: \\(A = P(1 + r)^n\\).  \n3. **Compare Offers** – A higher nominal interest rate isn’t enough if it’s compounded less often than another option.\n\n### Bottom Line\n\nCompound interest is a powerful financial concept because it turns a modest initial investment into larger sums over time by repeatedly applying interest to an ever‑growing balance. Understanding how and when compounding occurs helps you choose the best savings or borrowing strategies, and also explains why small differences in rates (e.g., annually vs. monthly) can lead to big differences in outcomes.', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-27T00:14:05.153669223Z', 'done': True, 'done_reason': 'stop', 'total_duration': 7951936086, 'load_duration': 79890341, 'prompt_eval_count': 286, 'prompt_eval_duration': 20114184, 'eval_count': 788, 'eval_duration': 7558285148, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--bb438ec4-e6aa-4e3f-a323-2f5e6790b2b0-0', usage_metadata={'input_tokens': 286, 'output_tokens': 788, 'total_tokens': 1074}), HumanMessage(content='explain the definition of compound interest', additional_kwargs={}, response_metadata={}, id='71a65fb0-b4bc-4662-9226-ec588c2c1977')]
+INFO 2025-12-26 19:14:05,614 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:14:06,820 - Starting the interest MCP server...
+INFO 2025-12-26 19:14:06,825 - Processing request of type CallToolRequest
+INFO 2025-12-26 19:14:06,825 - Compound interest -> Principal: 1000.0, Rate: 3.75
+INFO 2025-12-26 19:14:06,827 - Processing request of type ListToolsRequest
+INFO 2025-12-26 19:14:07,068 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:14:07,569 - [AIMessage(content='The compound interest for a principal of\u202f$1,000 at an annual rate of\u202f3.75% is **$37.50** (i.e., the amount after one year would be $1,037.50).', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-27T00:14:07.56826159Z', 'done': True, 'done_reason': 'stop', 'total_duration': 599594431, 'load_duration': 77998009, 'prompt_eval_count': 346, 'prompt_eval_duration': 15235892, 'eval_count': 50, 'eval_duration': 471480015, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--d9f67321-680d-4018-b6da-21b4ea8fdfdf-0', usage_metadata={'input_tokens': 346, 'output_tokens': 50, 'total_tokens': 396}), ToolMessage(content='1037.5', name='yearly_compound_interest', id='6358f2b8-8b04-447e-ad2f-4bcb1a8f6a21', tool_call_id='6662c5a7-2704-44d6-ab66-701298d6b1c1'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-27T00:14:05.636213296Z', 'done': True, 'done_reason': 'stop', 'total_duration': 479076377, 'load_duration': 67092196, 'prompt_eval_count': 299, 'prompt_eval_duration': 15067083, 'eval_count': 40, 'eval_duration': 375474158, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--7a612e42-0ebe-4ad2-a410-4af372140e95-0', tool_calls=[{'name': 'yearly_compound_interest', 'args': {'principal': 1000, 'rate': 3.75}, 'id': '6662c5a7-2704-44d6-ab66-701298d6b1c1', 'type': 'tool_call'}], usage_metadata={'input_tokens': 299, 'output_tokens': 40, 'total_tokens': 339}), HumanMessage(content='what is the compound interest for a principal of 1000 at rate 3.75 ?', additional_kwargs={}, response_metadata={}, id='74a2d9ac-407c-4129-8206-e554708322ca')]
+INFO 2025-12-26 19:14:07,954 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:14:09,147 - Starting the shell executor MCP server...
+INFO 2025-12-26 19:14:09,152 - Processing request of type CallToolRequest
+INFO 2025-12-26 19:14:09,152 - Executing shell command: free -h
+INFO 2025-12-26 19:14:09,156 - Processing request of type ListToolsRequest
+INFO 2025-12-26 19:14:09,405 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:14:10,512 - [AIMessage(content='The system memory is currently reported as:\n\n- **Total Memory:** 62\u202fGB  \n- **Used:** 8.3\u202fGB (≈13%)  \n- **Free:** 28\u202fGB (≈45%)  \n- **Shared:** 269\u202fMiB  \n- **Cached/Buffered:** 27\u202fGB  \n- **Swap Total:** 14\u202fGB (0\u202fB used)\n\nThis output from `free -h` shows the overall memory usage and available capacity on your system.', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-27T00:14:10.510652009Z', 'done': True, 'done_reason': 'stop', 'total_duration': 1216875190, 'load_duration': 82275337, 'prompt_eval_count': 384, 'prompt_eval_duration': 20822657, 'eval_count': 113, 'eval_duration': 1065585376, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--b0d2a0db-75a7-4bf8-a5b0-7ab99a639c3f-0', usage_metadata={'input_tokens': 384, 'output_tokens': 113, 'total_tokens': 497}), ToolMessage(content='               total        used        free      shared  buff/cache   available\nMem:            62Gi       8.3Gi        28Gi       269Mi        27Gi        54Gi\nSwap:           14Gi          0B        14Gi\n', name='execute_shell_command', id='2dac8e4f-8c00-4687-b677-5555d9a4dd6a', tool_call_id='e3c03a70-35e3-45b2-8e9e-cbc2404c14cb'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-27T00:14:07.975890384Z', 'done': True, 'done_reason': 'stop', 'total_duration': 404266297, 'load_duration': 89697345, 'prompt_eval_count': 291, 'prompt_eval_duration': 14526619, 'eval_count': 30, 'eval_duration': 280057239, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--677aa755-ccdb-4740-a381-d9023b18e510-0', tool_calls=[{'name': 'execute_shell_command', 'args': {'command': 'free -h'}, 'id': 'e3c03a70-35e3-45b2-8e9e-cbc2404c14cb', 'type': 'tool_call'}], usage_metadata={'input_tokens': 291, 'output_tokens': 30, 'total_tokens': 321}), HumanMessage(content='Execute the free shell command to find how much system memory', additional_kwargs={}, response_metadata={}, id='867a6e29-8a35-4fa4-b211-9b0018741347')]</pre>
     </div>
     <br/>
     <div id="para-div">
@@ -603,12 +612,12 @@ INFO 2025-08-16 20:15:55,037 - [AIMessage(content="The system has a total of 62 
 <pre>#
 # @Author: Bhaskar S
 # @Blog:   https://polarsparc.github.io
-# @Date:   16 August 2025
+# @Date:   26 December 2025
 #
 
-import logging
-
 from mcp.server.fastmcp import FastMCP
+
+import logging
 
 logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s',
                     level=logging.INFO)
@@ -649,10 +658,10 @@ if __name__ == "__main__":
     <br/>
     <div id="out-div">
       <h4>Output.4</h4>
-      <pre>INFO 2025-08-16 20:23:28,319 - Starting the interest calculator MCP server using HTTP ...
+      <pre>INFO 2025-12-26 19:16:28,319 - Starting the interest calculator MCP server using HTTP ...
 INFO:     Started server process [100394]
 INFO:     Waiting for application startup.
-INFO 2025-08-16 20:23:28,331 - StreamableHTTP session manager started
+INFO 2025-12-26 19:16:28,331 - StreamableHTTP session manager started
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://192.168.1.25:8000 (Press CTRL+C to quit)</pre>
     </div>
@@ -668,13 +677,13 @@ INFO:     Uvicorn running on http://192.168.1.25:8000 (Press CTRL+C to quit)</pr
 <pre>#
 # @Author: Bhaskar S
 # @Blog:   https://polarsparc.github.io
-# @Date:   16 August 2025
+# @Date:   26 December 2025
 #
 
 from dotenv import load_dotenv, find_dotenv
-from langchain_ollama import ChatOllama
+from langchain.agents import create_agent
+from langchain.chat_models import init_chat_model
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langgraph.prebuilt import create_react_agent
 
 import asyncio
 import logging
@@ -706,9 +715,9 @@ config = {
   }
 }
 
-ollama_chat_llm = ChatOllama(base_url=ollama_base_url,
-                             model=ollama_model,
-                             temperature=llm_temperature)
+ollama_chat_llm = init_chat_model(model=ollama_model,
+                                  base_url=ollama_base_url,
+                                  temperature=llm_temperature)
 
 async def main():
   # Initialize MCP client to connect to multiple MCP server(s)
@@ -720,7 +729,10 @@ async def main():
   logger.info(f'Loaded Multiple MCP Tools -> {tools}')
 
   # Initialize a ReACT agent with multiple tools
-  agent = create_react_agent(ollama_chat_llm, tools)
+  prompt = 'You are a helpful assistant!'
+  agent = create_agent(ollama_chat_llm,
+                       tools,
+                       system_prompt=prompt)
 
   # Case - 1 : Compound interest definition
   agent_response_1 = await agent.ainvoke(
@@ -756,36 +768,36 @@ if __name__ == '__main__':
     <br/>
     <div id="out-div">
       <h4>Output.5</h4>
-      <pre>INFO 2025-08-16 20:25:14,780 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:25:14,780 - Received session ID: d38659ff7d0d45ffa0c3499573054c7b
-INFO 2025-08-16 20:25:14,781 - Negotiated protocol version: 2025-06-18
-INFO 2025-08-16 20:25:14,783 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 202 Accepted"
-INFO 2025-08-16 20:25:14,784 - HTTP Request: GET http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:25:14,784 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:25:14,786 - HTTP Request: DELETE http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:25:15,107 - Starting the shell executor MCP server...
-INFO 2025-08-16 20:25:15,112 - Processing request of type ListToolsRequest
-INFO 2025-08-16 20:25:15,157 - Loaded Multiple MCP Tools -> [StructuredTool(name='yearly_simple_interest', description='Tool to compute simple interest rate for a year.', args_schema={'properties': {'principal': {'title': 'Principal', 'type': 'number'}, 'rate': {'title': 'Rate', 'type': 'number'}}, 'required': ['principal', 'rate'], 'title': 'yearly_simple_interestArguments', 'type': 'object'}, response_format='content_and_artifact', coroutine=<function convert_mcp_tool_to_langchain_tool.<locals>.call_tool at 0x75a7f7b602c0>), StructuredTool(name='yearly_compound_interest', description='Tool to compute compound interest rate for a year.', args_schema={'properties': {'principal': {'title': 'Principal', 'type': 'number'}, 'rate': {'title': 'Rate', 'type': 'number'}}, 'required': ['principal', 'rate'], 'title': 'yearly_compound_interestArguments', 'type': 'object'}, response_format='content_and_artifact', coroutine=<function convert_mcp_tool_to_langchain_tool.<locals>.call_tool at 0x75a7f7b61080>), StructuredTool(name='execute_shell_command', description='Tool to execute shell commands', args_schema={'properties': {'command': {'title': 'Command', 'type': 'string'}}, 'required': ['command'], 'title': 'execute_shell_commandArguments', 'type': 'object'}, response_format='content_and_artifact', coroutine=<function convert_mcp_tool_to_langchain_tool.<locals>.call_tool at 0x75a7fb5b63e0>)]
-INFO 2025-08-16 20:25:16,665 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:25:16,667 - [AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T00:25:16.664859411Z', 'done': True, 'done_reason': 'stop', 'total_duration': 1493443858, 'load_duration': 1289038640, 'prompt_eval_count': 293, 'prompt_eval_duration': 133439701, 'eval_count': 3, 'eval_duration': 70118457, 'model_name': 'granite3.3:2b'}, id='run--c34fc3f1-2805-4ce8-8bce-8ad7e010cdac-0', usage_metadata={'input_tokens': 293, 'output_tokens': 3, 'total_tokens': 296}), HumanMessage(content='explain the definition of compound interest', additional_kwargs={}, response_metadata={}, id='0ce5b6ad-d447-497d-b19f-9215a2036dd0')]
-INFO 2025-08-16 20:25:17,002 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:25:17,041 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:25:17,041 - Received session ID: 5630a1021ee64545a0b30800ea023c99
-INFO 2025-08-16 20:25:17,042 - Negotiated protocol version: 2025-06-18
-INFO 2025-08-16 20:25:17,045 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 202 Accepted"
-INFO 2025-08-16 20:25:17,045 - HTTP Request: GET http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:25:17,047 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:25:17,051 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:25:17,054 - HTTP Request: DELETE http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:25:17,097 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:25:17,424 - [AIMessage(content='The compound interest for a principal of 1000 at rate 3.75% per annum over one year is $1037.50.', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T00:25:17.42283919Z', 'done': True, 'done_reason': 'stop', 'total_duration': 365561612, 'load_duration': 14554440, 'prompt_eval_count': 357, 'prompt_eval_duration': 8626905, 'eval_count': 37, 'eval_duration': 339212193, 'model_name': 'granite3.3:2b'}, id='run--55d5923d-d964-4eba-8fea-fb1a40f809bc-0', usage_metadata={'input_tokens': 357, 'output_tokens': 37, 'total_tokens': 394}), ToolMessage(content='1037.5', name='yearly_compound_interest', id='99aed036-9995-4bcc-8899-97be74ba1ca6', tool_call_id='8e3b2fcf-2907-4416-bb14-a7144e120df8'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T00:25:17.012344803Z', 'done': True, 'done_reason': 'stop', 'total_duration': 342865193, 'load_duration': 11765171, 'prompt_eval_count': 309, 'prompt_eval_duration': 22520911, 'eval_count': 33, 'eval_duration': 308035357, 'model_name': 'granite3.3:2b'}, id='run--9b17e405-9891-4217-aa36-3ebeda317df4-0', tool_calls=[{'name': 'yearly_compound_interest', 'args': {'principal': 1000, 'rate': 3.75}, 'id': '8e3b2fcf-2907-4416-bb14-a7144e120df8', 'type': 'tool_call'}], usage_metadata={'input_tokens': 309, 'output_tokens': 33, 'total_tokens': 342}), HumanMessage(content='what is the compound interest for a principal of 1000 at rate 3.75 ?', additional_kwargs={}, response_metadata={}, id='4c1a0d37-ae19-4a28-8e95-dfce3c740320')]
-INFO 2025-08-16 20:25:17,653 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:25:17,999 - Starting the shell executor MCP server...
-INFO 2025-08-16 20:25:18,004 - Processing request of type CallToolRequest
-INFO 2025-08-16 20:25:18,005 - Executing shell command: free -h
-INFO 2025-08-16 20:25:18,009 - Processing request of type ListToolsRequest
-INFO 2025-08-16 20:25:18,118 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-16 20:25:18,771 - [AIMessage(content="The system has a total of 62 Gi memory, with 8.0 Gi currently in use and 31 Gi available for processes. Additionally, there's 153Mi of shared memory and 24Gi of buffered/cached memory. The swap space is empty at the moment, with 14Gi available.", additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T00:25:18.769959306Z', 'done': True, 'done_reason': 'stop', 'total_duration': 712721106, 'load_duration': 11893199, 'prompt_eval_count': 389, 'prompt_eval_duration': 25637608, 'eval_count': 73, 'eval_duration': 670447412, 'model_name': 'granite3.3:2b'}, id='run--4b0b4741-dd0a-4592-9597-f71bea38edd2-0', usage_metadata={'input_tokens': 389, 'output_tokens': 73, 'total_tokens': 462}), ToolMessage(content='               total        used        free      shared  buff/cache   available\nMem:            62Gi       8.0Gi        31Gi       153Mi        24Gi        54Gi\nSwap:           14Gi          0B        14Gi\n', name='execute_shell_command', id='c1c9ba95-8800-4100-9f73-a7acc5436cdc', tool_call_id='05b5f439-8724-447e-99ae-3120830b3976'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T00:25:17.664049762Z', 'done': True, 'done_reason': 'stop', 'total_duration': 236810650, 'load_duration': 14083194, 'prompt_eval_count': 298, 'prompt_eval_duration': 8979711, 'eval_count': 23, 'eval_duration': 213207601, 'model_name': 'granite3.3:2b'}, id='run--ebd2d568-b83f-497e-a97b-60fbf3b134ff-0', tool_calls=[{'name': 'execute_shell_command', 'args': {'command': 'free -h'}, 'id': '05b5f439-8724-447e-99ae-3120830b3976', 'type': 'tool_call'}], usage_metadata={'input_tokens': 298, 'output_tokens': 23, 'total_tokens': 321}), HumanMessage(content='Execute the free shell command to find how much system memory', additional_kwargs={}, response_metadata={}, id='545a8fb3-4bcc-4e76-be76-fa9f171a5201')]</pre>
+      <pre>INFO 2025-12-26 19:17:59,196 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:17:59,196 - Received session ID: 271c4b6a217f4d448e7d99dadc866a77
+INFO 2025-12-26 19:17:59,197 - Negotiated protocol version: 2025-06-18
+INFO 2025-12-26 19:17:59,199 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 202 Accepted"
+INFO 2025-12-26 19:17:59,200 - HTTP Request: GET http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:17:59,201 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:17:59,203 - HTTP Request: DELETE http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:18:00,349 - Starting the shell executor MCP server...
+INFO 2025-12-26 19:18:00,355 - Processing request of type ListToolsRequest
+INFO 2025-12-26 19:18:00,491 - Loaded Multiple MCP Tools -> [StructuredTool(name='yearly_simple_interest', description='Tool to compute simple interest rate for a year.', args_schema={'properties': {'principal': {'title': 'Principal', 'type': 'number'}, 'rate': {'title': 'Rate', 'type': 'number'}}, 'required': ['principal', 'rate'], 'title': 'yearly_simple_interestArguments', 'type': 'object'}, response_format='content_and_artifact', coroutine=<function convert_mcp_tool_to_langchain_tool.<locals>.call_tool at 0x7e8d060ee520>), StructuredTool(name='yearly_compound_interest', description='Tool to compute compound interest rate for a year.', args_schema={'properties': {'principal': {'title': 'Principal', 'type': 'number'}, 'rate': {'title': 'Rate', 'type': 'number'}}, 'required': ['principal', 'rate'], 'title': 'yearly_compound_interestArguments', 'type': 'object'}, response_format='content_and_artifact', coroutine=<function convert_mcp_tool_to_langchain_tool.<locals>.call_tool at 0x7e8d060eeb60>), StructuredTool(name='execute_shell_command', description='Tool to execute shell commands', args_schema={'properties': {'command': {'title': 'Command', 'type': 'string'}}, 'required': ['command'], 'title': 'execute_shell_commandArguments', 'type': 'object'}, response_format='content_and_artifact', coroutine=<function convert_mcp_tool_to_langchain_tool.<locals>.call_tool at 0x7e8d06390720>)]
+INFO 2025-12-26 19:18:00,627 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:18:09,313 - [AIMessage(content='**Compound Interest Defined**\n\nCompound interest is the process by which an investment or loan grows because the interest earned (or charged) on a principal amount is periodically added back to that principal, and future interest calculations are then based on the larger, updated balance. In other words, each period’s interest is calculated not just from the original principal but also from all of the accumulated interest from previous periods.\n\n### Key Characteristics\n\n| Characteristic | Explanation |\n|----------------|-------------|\n| **Principal** | The initial amount of money invested or borrowed. |\n| **Interest Rate** | Usually expressed as an annual percentage (APR/APY). It can be applied to any compounding period—daily, monthly, quarterly, annually, etc. |\n| **Compounding Frequency** | How often the interest is added back to the principal (e.g., daily, weekly, monthly, yearly). More frequent compounding leads to faster growth. |\n| **Growth Over Time** | Because each new interest payment is calculated on a larger base, the total amount of interest earned (or paid) increases over time. |\n\n### How It Works\n\n1. **Initial Balance**: Start with the principal \\(P\\).\n2. **Interest Calculation for Each Period**:  \n   \\[\n   I_{\\text{period}} = P \\times r\n   \\]\n   where \\(r\\) is the periodic interest rate (annual rate divided by the number of compounding periods per year).  \n3. **Add Interest to Principal**: The amount of interest earned in that period is added back to the principal, giving a new balance:\n   \\[\n   P_{\\text{new}} = P + I_{\\text{period}}\n   \\]\n4. **Repeat**: For each subsequent compounding period, you calculate interest on \\(P_{\\text{new}}\\) and add it again.\n\n### Formula for Compound Interest\n\nFor an initial principal \\(P\\), annual nominal rate \\(r_{\\text{annual}}\\), compounded \\(n\\) times per year over \\(t\\) years:\n\n\\[\nA = P \\left(1 + \\frac{r_{\\text{annual}}}{n}\\right)^{n t}\n\\]\n\n- **\\(A\\)**: the amount of money accumulated after \\(t\\) years, including interest.\n- **\\(P\\)**: principal amount (initial investment or loan).\n- **\\(r_{\\text{annual}}\\)**: annual interest rate in decimal form (\\(0.05\\) for 5%).\n- **\\(n\\)**: number of times compounding occurs per year.\n\n### Example\n\nSuppose you invest \\$1,000 at an annual interest rate of 6%, compounded monthly (12 times a year) for 3 years.\n\n- \\(P = \\$1,000\\)  \n- \\(r_{\\text{annual}} = 0.06\\)  \n- \\(n = 12\\)  \n- \\(t = 3\\)\n\nPlug into the formula:\n\n\\[\nA = 1000 \\left(1 + \\frac{0.06}{12}\\right)^{12 \\times 3}\n   = 1000 \\left(1 + 0.005\\right)^{36}\n   = 1000 \\times (1.005)^{36}\n   \\approx \\$1,196\n\\]\n\nAfter three years, the investment grows to about **\\$1,196** because each month’s interest is added back to the principal, causing subsequent months’ interest calculations to be larger.\n\n### Why It Matters\n\n- **Accelerated Growth**: Compared with simple interest (where interest is only calculated on the original principal), compound interest can lead to significantly higher returns over time.\n- **Debt Amplification**: If you owe money and interest compounds, the total amount owed grows faster than if it were just accruing simple interest.\n\n### Practical Uses\n\n- **Savings Accounts**  \n- **Retirement Portfolios** (e.g., 401(k), IRA)  \n- **Loans with Amortizing Terms** (mortgages, car loans)  \n\nUnderstanding compound interest helps you see why small differences in the compounding frequency or rate can lead to large variations in outcomes over long periods.', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-27T00:18:09.311945194Z', 'done': True, 'done_reason': 'stop', 'total_duration': 8810138550, 'load_duration': 89243735, 'prompt_eval_count': 286, 'prompt_eval_duration': 30766908, 'eval_count': 866, 'eval_duration': 8333424444, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--df31f6f8-0101-4067-903d-bb9c441d0cd5-0', usage_metadata={'input_tokens': 286, 'output_tokens': 866, 'total_tokens': 1152}), HumanMessage(content='explain the definition of compound interest', additional_kwargs={}, response_metadata={}, id='47dda7f0-9e20-409a-8328-c9305bcf346c')]
+INFO 2025-12-26 19:18:09,768 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:18:09,823 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:18:09,823 - Received session ID: 51f7d23ecad84cf2a11ae5c085cf940b
+INFO 2025-12-26 19:18:09,824 - Negotiated protocol version: 2025-06-18
+INFO 2025-12-26 19:18:09,828 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 202 Accepted"
+INFO 2025-12-26 19:18:09,829 - HTTP Request: GET http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:18:09,831 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:18:09,836 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:18:09,840 - HTTP Request: DELETE http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:18:09,955 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:18:10,453 - [AIMessage(content='The compound interest for a principal of\u202f$1,000 at an annual rate of\u202f3.75% is **$37.50** (i.e., the amount after one year would be $1,037.50).', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-27T00:18:10.451909964Z', 'done': True, 'done_reason': 'stop', 'total_duration': 607879186, 'load_duration': 90082466, 'prompt_eval_count': 346, 'prompt_eval_duration': 15452253, 'eval_count': 50, 'eval_duration': 472134333, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--3568ab13-191c-4181-b34b-d7b06fa1a5df-0', usage_metadata={'input_tokens': 346, 'output_tokens': 50, 'total_tokens': 396}), ToolMessage(content='1037.5', name='yearly_compound_interest', id='e4955464-0b6d-4f6b-9163-65069f0c90f2', tool_call_id='59f13ff3-41e2-45f7-aa26-65343a7ab54b'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-27T00:18:09.790212449Z', 'done': True, 'done_reason': 'stop', 'total_duration': 474577210, 'load_duration': 65033703, 'prompt_eval_count': 299, 'prompt_eval_duration': 14625561, 'eval_count': 40, 'eval_duration': 375152895, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--8189a4f7-dede-4cf1-8128-7e3a9ffe355f-0', tool_calls=[{'name': 'yearly_compound_interest', 'args': {'principal': 1000, 'rate': 3.75}, 'id': '59f13ff3-41e2-45f7-aa26-65343a7ab54b', 'type': 'tool_call'}], usage_metadata={'input_tokens': 299, 'output_tokens': 40, 'total_tokens': 339}), HumanMessage(content='what is the compound interest for a principal of 1000 at rate 3.75 ?', additional_kwargs={}, response_metadata={}, id='1585841a-8175-4630-afe6-3a30a0ddc91c')]
+INFO 2025-12-26 19:18:10,763 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:18:11,942 - Starting the shell executor MCP server...
+INFO 2025-12-26 19:18:11,947 - Processing request of type CallToolRequest
+INFO 2025-12-26 19:18:11,947 - Executing shell command: free
+INFO 2025-12-26 19:18:11,951 - Processing request of type ListToolsRequest
+INFO 2025-12-26 19:18:12,204 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:18:14,068 - [AIMessage(content='The system memory is reported as follows:\n\n- **Total Memory:** 65,763,232\u202fbytes (≈\u202f65.8\u202fGB)  \n- **Used Memory:** 8,639,304\u202fbytes (≈\u202f8.6\u202fGB)  \n- **Free Memory:** 29,505,384\u202fbytes (≈\u202f29.5\u202fGB)  \n- **Shared Memory:** 263,996\u202fbytes  \n- **Cached/Buffered Memory:** 28,606,540\u202fbytes (≈\u202f28.6\u202fGB)  \n- **Available Memory** (the amount free plus cached): 57,123,928\u202fbytes (≈\u202f57.1\u202fGB)\n\nThese values come from the output of `free`, which shows the current memory usage breakdown on this system.', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-27T00:18:14.067718174Z', 'done': True, 'done_reason': 'stop', 'total_duration': 1974292146, 'load_duration': 79499566, 'prompt_eval_count': 386, 'prompt_eval_duration': 22581926, 'eval_count': 187, 'eval_duration': 1780297733, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--7bf42cca-dc58-4c12-8681-fa26608b077c-0', usage_metadata={'input_tokens': 386, 'output_tokens': 187, 'total_tokens': 573}), ToolMessage(content='               total        used        free      shared  buff/cache   available\nMem:        65763232     8639304    29505384      263996    28606540    57123928\nSwap:       15624188           0    15624188\n', name='execute_shell_command', id='2cd8645d-9e09-4fa2-9117-45dd6c2cbfd4', tool_call_id='feb073ce-fc74-4e70-a9de-bc16c3bbcaf0'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-27T00:18:10.784381182Z', 'done': True, 'done_reason': 'stop', 'total_duration': 328317497, 'load_duration': 94484494, 'prompt_eval_count': 291, 'prompt_eval_duration': 14392703, 'eval_count': 22, 'eval_duration': 204149865, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--d84f0237-7b63-4ef9-a50b-5c4c179b9223-0', tool_calls=[{'name': 'execute_shell_command', 'args': {'command': 'free'}, 'id': 'feb073ce-fc74-4e70-a9de-bc16c3bbcaf0', 'type': 'tool_call'}], usage_metadata={'input_tokens': 291, 'output_tokens': 22, 'total_tokens': 313}), HumanMessage(content='Execute the free shell command to find how much system memory', additional_kwargs={}, response_metadata={}, id='c8855a85-eac6-412d-a1cf-5e3ddbd431bb')]</pre>
     </div>
     <br/>
     <div id="para-div">
@@ -807,7 +819,7 @@ INFO 2025-08-16 20:25:18,771 - [AIMessage(content="The system has a total of 62 
 <pre>#
 # @Author: Bhaskar S
 # @Blog:   https://polarsparc.github.io
-# @Date:   16 August 2025
+# @Date:   26 December 2025
 #
 
 from authlib.jose import JoseError, JsonWebToken
@@ -877,7 +889,7 @@ class JWTManager(object):
 <pre>#
 # @Author: Bhaskar S
 # @Blog:   https://polarsparc.github.io
-# @Date:   16 August 2025
+# @Date:   26 December 2025
 #
 
 from fastapi import FastAPI, Request
@@ -976,7 +988,7 @@ INFO:     Uvicorn running on http://192.168.1.25:8080 (Press CTRL+C to quit)</pr
 <pre>#
 # @Author: Bhaskar S
 # @Blog:   https://polarsparc.github.io
-# @Date:   16 August 2025
+# @Date:   26 December 2025
 #
 
 from mcp.server.auth.provider import AccessToken, TokenVerifier
@@ -1043,18 +1055,18 @@ if __name__ == "__main__":
     </div>
     <br/>
     <div id="src-outer-div-1">
-      <div class="src-cap-1">multi_mcp_client3.py</div>
+      <div class="src-cap-1">interest_mcp_client3.py</div>
       <div class="gen-src-body">
 <pre>#
 # @Author: Bhaskar S
 # @Blog:   https://polarsparc.github.io
-# @Date:   16 August 2025
+# @Date:   26 December 2025
 #
 
 from dotenv import load_dotenv, find_dotenv
-from langchain_ollama import ChatOllama
+from langchain.agents import create_agent
+from langchain.chat_models import init_chat_model
 from langchain_mcp_adapters.tools import load_mcp_tools
-from langgraph.prebuilt import create_react_agent
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 
@@ -1075,9 +1087,9 @@ ollama_model = os.getenv('OLLAMA_MODEL')
 ollama_base_url = os.getenv('OLLAMA_BASE_URL')
 mcp_base_url = os.getenv('MCP_BASE_URL')
 
-ollama_chat_llm = ChatOllama(base_url=ollama_base_url,
-                             model=ollama_model,
-                             temperature=llm_temperature)
+ollama_chat_llm = init_chat_model(model=ollama_model,
+                                  base_url=ollama_base_url,
+                                  temperature=llm_temperature)
 
 async def main():
   valid = bool(os.getenv('VALID'))
@@ -1101,7 +1113,10 @@ async def main():
         logger.info(f'\tMCP Tool: {tool.name}')
 
       # Initialize a ReACT agent
-      agent = create_react_agent(ollama_chat_llm, tools)
+      prompt = 'You are a helpful assistant!'
+      agent = create_agent(ollama_chat_llm,
+                           tools,
+                           system_prompt=prompt)
 
       # Case - 1 : Simple interest definition
       agent_response_1 = await agent.ainvoke(
@@ -1140,8 +1155,8 @@ if __name__ == '__main__':
     <br/>
     <div id="out-div">
       <h4>Output.7</h4>
-      <pre>INFO 2025-08-17 08:19:50,874 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 401 Unauthorized"
-ERROR 2025-08-17 08:19:51,102 - unhandled errors in a TaskGroup (1 sub-exception)</pre>
+      <pre>INFO 2025-12-26 19:26:42,645 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 401 Unauthorized"
+ERROR 2025-12-26 19:26:42,646 - unhandled errors in a TaskGroup (1 sub-exception)</pre>
     </div>
     <br/>
     <div id="para-div">
@@ -1158,27 +1173,27 @@ ERROR 2025-08-17 08:19:51,102 - unhandled errors in a TaskGroup (1 sub-exception
     <br/>
     <div id="out-div">
       <h4>Output.8</h4>
-      <pre>INFO 2025-08-17 08:20:17,536 - HTTP Request: POST http://192.168.1.25:8080/api/generate "HTTP/1.1 200 OK"
-INFO 2025-08-17 08:20:17,558 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
-INFO 2025-08-17 08:20:17,558 - Received session ID: e868e7ea574b4a6780a7c9acc849b88c
-INFO 2025-08-17 08:20:17,558 - Negotiated protocol version: 2025-06-18
-INFO 2025-08-17 08:20:17,561 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 202 Accepted"
-INFO 2025-08-17 08:20:17,561 - HTTP Request: GET http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
-INFO 2025-08-17 08:20:17,562 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
-INFO 2025-08-17 08:20:17,563 - List of MCP Tools:
-INFO 2025-08-17 08:20:17,563 - 	MCP Tool: yearly_simple_interest
-INFO 2025-08-17 08:20:17,563 - 	MCP Tool: yearly_compound_interest
-INFO 2025-08-17 08:20:17,637 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-17 08:20:18,229 - [AIMessage(content="Simple interest is calculated on the initial principal amount only. It's determined by multiplying the principal, rate, and time (in years) using the formula: Simple Interest = Principal x Rate x Time. The rate is typically expressed as a yearly percentage and does not change over the life of the loan or investment.", additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T12:20:18.227718947Z', 'done': True, 'done_reason': 'stop', 'total_duration': 656390282, 'load_duration': 12340150, 'prompt_eval_count': 247, 'prompt_eval_duration': 41217018, 'eval_count': 66, 'eval_duration': 602321947, 'model_name': 'granite3.3:2b'}, id='run--48ec0bce-20bf-4324-894e-24ebaa273668-0', usage_metadata={'input_tokens': 247, 'output_tokens': 66, 'total_tokens': 313}), HumanMessage(content='explain the definition of simple interest ?', additional_kwargs={}, response_metadata={}, id='73e4a4f1-33d3-4ec1-9d9f-444d0c0fd5f7')]
-INFO 2025-08-17 08:20:18,545 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-17 08:20:18,559 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
-INFO 2025-08-17 08:20:18,601 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-17 08:20:18,881 - [AIMessage(content='The simple interest for a principal of 1000 at rate 3.75% per annum is 37.5.', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T12:20:18.880227187Z', 'done': True, 'done_reason': 'stop', 'total_duration': 317195121, 'load_duration': 11934293, 'prompt_eval_count': 307, 'prompt_eval_duration': 8634267, 'eval_count': 31, 'eval_duration': 293748873, 'model_name': 'granite3.3:2b'}, id='run--46152029-0d6f-4851-96f7-763a56953ef3-0', usage_metadata={'input_tokens': 307, 'output_tokens': 31, 'total_tokens': 338}), ToolMessage(content='37.5', name='yearly_simple_interest', id='de4ed659-6a55-4b2e-bddb-05238641c496', tool_call_id='4f9e33dd-fe74-42d1-94f9-247b9896e67d'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T12:20:18.554593738Z', 'done': True, 'done_reason': 'stop', 'total_duration': 323198128, 'load_duration': 12281900, 'prompt_eval_count': 261, 'prompt_eval_duration': 8379429, 'eval_count': 33, 'eval_duration': 302083542, 'model_name': 'granite3.3:2b'}, id='run--34c77dda-77fb-4d10-9dd6-5b2e0ff2d974-0', tool_calls=[{'name': 'yearly_simple_interest', 'args': {'principal': 1000, 'rate': 3.75}, 'id': '4f9e33dd-fe74-42d1-94f9-247b9896e67d', 'type': 'tool_call'}], usage_metadata={'input_tokens': 261, 'output_tokens': 33, 'total_tokens': 294}), HumanMessage(content='compute the simple interest for a principal of 1000 at rate 3.75 ?', additional_kwargs={}, response_metadata={}, id='b63ec687-747d-4c22-bbac-b14c4ae3c1f3')]
-INFO 2025-08-17 08:20:19,200 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-17 08:20:19,215 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
-INFO 2025-08-17 08:20:19,262 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
-INFO 2025-08-17 08:20:19,583 - [AIMessage(content='The compound interest for a principal of 1000 at rate 4.25% per annum over one year is $1042.5.', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T12:20:19.582794272Z', 'done': True, 'done_reason': 'stop', 'total_duration': 363018637, 'load_duration': 14603073, 'prompt_eval_count': 309, 'prompt_eval_duration': 10043967, 'eval_count': 36, 'eval_duration': 334569664, 'model_name': 'granite3.3:2b'}, id='run--77078b25-a80d-4a66-9d41-6f0a229c5a93-0', usage_metadata={'input_tokens': 309, 'output_tokens': 36, 'total_tokens': 345}), ToolMessage(content='1042.5', name='yearly_compound_interest', id='65b2d670-3867-4c0a-be61-4a9a3cf64dc1', tool_call_id='3bcd368b-d9fb-4497-a087-385ab6240536'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite3.3:2b', 'created_at': '2025-08-17T12:20:19.211207428Z', 'done': True, 'done_reason': 'stop', 'total_duration': 327466317, 'load_duration': 11437887, 'prompt_eval_count': 261, 'prompt_eval_duration': 6376604, 'eval_count': 34, 'eval_duration': 309202350, 'model_name': 'granite3.3:2b'}, id='run--68cea6ef-4657-43ee-906c-4998c0a369e3-0', tool_calls=[{'name': 'yearly_compound_interest', 'args': {'principal': 1000, 'rate': 4.25}, 'id': '3bcd368b-d9fb-4497-a087-385ab6240536', 'type': 'tool_call'}], usage_metadata={'input_tokens': 261, 'output_tokens': 34, 'total_tokens': 295}), HumanMessage(content='compute the compound interest for a principal of 1000 at rate 4.25 ?', additional_kwargs={}, response_metadata={}, id='fa2f3d6a-438b-4b10-841c-ad8118123611')]
-INFO 2025-08-17 08:20:19,585 - HTTP Request: DELETE http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"</pre>
+      <pre>INFO 2025-12-26 19:27:16,822 - HTTP Request: POST http://192.168.1.25:8080/api/generate "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:27:16,844 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:27:16,844 - Received session ID: 488a8fa3ce7244369fa41bec9b306ca6
+INFO 2025-12-26 19:27:16,845 - Negotiated protocol version: 2025-06-18
+INFO 2025-12-26 19:27:16,847 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 202 Accepted"
+INFO 2025-12-26 19:27:16,848 - HTTP Request: GET http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:27:16,849 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:27:16,849 - List of MCP Tools:
+INFO 2025-12-26 19:27:16,849 - 	MCP Tool: yearly_simple_interest
+INFO 2025-12-26 19:27:16,849 - 	MCP Tool: yearly_compound_interest
+INFO 2025-12-26 19:27:18,994 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:27:24,300 - [AIMessage(content='**Simple Interest Explained**\n\nSimple interest is a way of calculating how much money an investment (or loan) earns or costs over time when only the original amount—called the *principal*—is considered, and no additional interest accumulates on accumulated interest. In other words, each period you earn interest **only on what you started with**, not on any interest that has already been added.\n\n### Core Formula\n\nFor a single year (or for any one‑year period), the formula is:\n\n\\[\n\\text{Simple Interest} = P \\times r\n\\]\n\nWhere:\n- \\(P\\) = principal amount (the initial sum of money)\n- \\(r\\) = annual interest rate expressed as a decimal (e.g., 5\u202f% → 0.05)\n\n### How It Works\n\n1. **Identify the Principal** – The starting balance you have or borrow.\n2. **Determine the Rate** – The yearly percentage charged or earned, converted to a decimal.\n3. **Multiply** – Multiply the principal by the rate.\n\nThe result is the amount of interest earned (or paid) for that one‑year period.\n\n### Example\n\n- **Principal**: \\$1,000  \n- **Annual Rate**: 6\u202f% → \\(0.06\\)  \n\n\\[\n\\text{Simple Interest} = 1000 \\times 0.06 = \\$60\n\\]\n\nSo you earn (or pay) \\$60 in interest for that year.\n\n### Key Characteristics\n\n| Feature | Description |\n|---------|-------------|\n| **No Compounding** | Interest is not added to the principal; each period’s calculation starts from the original amount only. |\n| **Linear Growth** | The total value grows linearly over time (principal + interest). |\n| **Short‑Term Focus** | Typically used for short‑term loans or investments where the term is one year or less, unless you explicitly compound it annually. |\n| **Simplicity** | Easier to understand and calculate than compound interest because there’s no “interest on interest.” |\n\n### When Simple Interest Is Common\n\n- Short‑term credit agreements (e.g., payday loans, short‑term car rentals).\n- Some bonds that pay a fixed coupon rate.\n- Certain savings accounts where the interest is credited only once per year.\n\n---\n\n**Bottom line:** Simple interest gives you the straightforward product of the principal and the annual rate without any extra layers of compounding. It’s ideal for quick calculations when you need to know exactly how much money will be earned or charged over a single year based solely on the original amount.', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-27T00:27:24.298482697Z', 'done': True, 'done_reason': 'stop', 'total_duration': 7442590120, 'load_duration': 2087951388, 'prompt_eval_count': 246, 'prompt_eval_duration': 44419672, 'eval_count': 532, 'eval_duration': 5083893233, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--208d7632-7499-40ba-ac29-f96b50f60741-0', usage_metadata={'input_tokens': 246, 'output_tokens': 532, 'total_tokens': 778}), HumanMessage(content='explain the definition of simple interest ?', additional_kwargs={}, response_metadata={}, id='ef7b6c83-cf2a-486c-bbf8-83e0164d5526')]
+INFO 2025-12-26 19:27:24,707 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:27:24,734 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:27:24,846 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:27:25,130 - [AIMessage(content='The simple interest for a principal of 1000 at an annual rate of 3.75% is **$37.50**.', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-27T00:27:25.129700676Z', 'done': True, 'done_reason': 'stop', 'total_duration': 389905272, 'load_duration': 83582374, 'prompt_eval_count': 302, 'prompt_eval_duration': 15506950, 'eval_count': 29, 'eval_duration': 271127184, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--8bb671cb-c891-4ca6-9cec-c98412938848-0', usage_metadata={'input_tokens': 302, 'output_tokens': 29, 'total_tokens': 331}), ToolMessage(content='37.5', name='yearly_simple_interest', id='6ff82953-8f77-4906-bc1c-50d41d42e33b', tool_call_id='197b1819-3b33-4569-b71a-e7e02b7d8efb'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-27T00:27:24.728942658Z', 'done': True, 'done_reason': 'stop', 'total_duration': 426693737, 'load_duration': 88260269, 'prompt_eval_count': 257, 'prompt_eval_duration': 34077762, 'eval_count': 31, 'eval_duration': 289054856, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--c03f1753-aaf6-4a1b-b47b-e62014941d9d-0', tool_calls=[{'name': 'yearly_simple_interest', 'args': {'principal': 1000, 'rate': 3.75}, 'id': '197b1819-3b33-4569-b71a-e7e02b7d8efb', 'type': 'tool_call'}], usage_metadata={'input_tokens': 257, 'output_tokens': 31, 'total_tokens': 288}), HumanMessage(content='compute the simple interest for a principal of 1000 at rate 3.75 ?', additional_kwargs={}, response_metadata={}, id='e1345288-5555-4d78-a18e-f4d02e62908b')]
+INFO 2025-12-26 19:27:25,622 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:27:25,648 - HTTP Request: POST http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:27:25,761 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2025-12-26 19:27:26,271 - [AIMessage(content='The compound interest for a principal of 1000 at an annual rate of 4.25% over one year is **$1,042.50**. This includes the original $1,000 plus $42.50 in interest earned.', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-27T00:27:26.270076494Z', 'done': True, 'done_reason': 'stop', 'total_duration': 616630606, 'load_duration': 87519226, 'prompt_eval_count': 304, 'prompt_eval_duration': 15250743, 'eval_count': 51, 'eval_duration': 481805770, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--24303431-da3b-4cfc-b4f7-eaf73d63c997-0', usage_metadata={'input_tokens': 304, 'output_tokens': 51, 'total_tokens': 355}), ToolMessage(content='1042.5', name='yearly_compound_interest', id='67d585e8-dfe4-44be-82f5-8ddd2b3a7f2f', tool_call_id='8019d8b0-0470-4735-b9f1-ae80b9884f41'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'granite4:micro', 'created_at': '2025-12-27T00:27:25.643537023Z', 'done': True, 'done_reason': 'stop', 'total_duration': 510316701, 'load_duration': 91054452, 'prompt_eval_count': 257, 'prompt_eval_duration': 14546010, 'eval_count': 40, 'eval_duration': 376367163, 'model_name': 'granite4:micro', 'model_provider': 'ollama'}, id='lc_run--cddd73ae-0143-482d-9be1-5204ca5d6aa1-0', tool_calls=[{'name': 'yearly_compound_interest', 'args': {'principal': 1000, 'rate': 4.25}, 'id': '8019d8b0-0470-4735-b9f1-ae80b9884f41', 'type': 'tool_call'}], usage_metadata={'input_tokens': 257, 'output_tokens': 40, 'total_tokens': 297}), HumanMessage(content='compute the compound interest for a principal of 1000 at rate 4.25 ?', additional_kwargs={}, response_metadata={}, id='54704cde-5576-4267-8547-478b77fd3431')]
+INFO 2025-12-26 19:27:26,274 - HTTP Request: DELETE http://192.168.1.25:8000/mcp "HTTP/1.1 200 OK"</pre>
     </div>
     <br/>
     <div id="para-div">
