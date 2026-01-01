@@ -1,0 +1,1383 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Hands-on LangChain4J">
+    <meta name="subject" content="Hands-on LangChain4J">
+    <meta name="keywords" content="java, ollama, langchain4j, llm, rag, vector_store, agentic">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Hands-on LangChain4J</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Hands-on LangChain4J</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">01/01/2026</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://docs.langchain4j.dev" target="_blank"><span class="hi-yellow">LangChain4J</span></a> is an open-source Java
+        framework designed to simplify the integration of the <span class="bold">Large Language</span> models (or <span class="bold">
+        LLM</span>s for short) as well as <span class="bold">Embedding Vector Stores</span> into Java applications by abstracting away
+        the complexities of working with the different providers and exposing standardized interfaces for building and deploying AI
+        applications in Java.</p>
+      <p>The following are the list of some of the important features of <span class="bold">LangChain4J</span>:</p>
+      <ul id="blue-sqr-ul">
+        <li><p>Integration with various LLM Providers</p></li>
+        <li><p>Integration with various Embedding Vector Stores</p></li>
+        <li><p>Support for Prompt Templates</p></li>
+        <li><p>Support for Chat Memory</p></li>
+        <li><p>Support for Function Calling via Tools</p></li>
+        <li><p>Support for Retrieval Augmented Generation (RAG for short)</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The intent of this article is <span class="underbold">NOT</span> to be exhaustive, but a primer to get started quickly.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Installation and Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The installation and setup will be on a <span class="bold">Ubuntu 24.04 LTS</span> based Linux desktop. Ensure that <span
+        class="bold">Ollama</span> is installed and setup on the desktop (see <a href="http://polarsparc.github.io/GenAI/Ollama.html"
+        target="_blank"><span class="bold">instructions</span></a>).</p>
+    </div>
+    <div id="para-div">
+      <p>Further, ensure at least <span class="bold">Java 21</span> or above is installed and setup. In addition, ensure <a href=
+        "http://maven.apache.org/" target="_blank"><span class="hi-yellow">Apache Maven</span></a> is installed and setup.</p>
+      <p>We will use <span class="bold">LangChain4J</span></a> along with <span class="bold">Spring Boot</span> for all the hands-on
+        demonstrations in this article.</p>
+    </div>
+    <div id="para-div">
+      <p>Assuming that the ip address on the Linux desktop is <span class="hi-grey">192.168.1.25</span>, start the <span class="bold">
+        Ollama</span> platform by executing the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name ollama -p 192.168.1.25:11434:11434 -v $HOME/.ollama:/root/.ollama ollama/ollama:0.12.9</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>If the linux desktop has <span class="hi-green">Nvidia GPU</span> with decent amount of VRAM (at least 16 GB) and has been
+        enabled for use with <span class="bold">docker</span> (see <a href="https://polarsparc.github.io/Docker/DockerNVidia.html"
+        target="_blank"><span class="bold">instructions</span></a>), then execute the following command instead to start <span class
+        ="bold">Ollama</span>:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name ollama --gpus=all -p 192.168.1.25:11434:11434 -v $HOME/.ollama:/root/.ollama ollama/ollama:0.12.9</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the LLM models, we will be using the <span class="hi-purple">Microsoft Phi-4 Mini</span> for the chat interactions and
+        the <span class="hi-purple">IBM Granite 4 Micro</span> model for the tools execution.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a new terminal window and execute the following <span class="bold">docker</span> command to download the IBM Granite 4
+        Micro model:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker exec -it ollama ollama run granite4:micro</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>After the model download, to exit the user input, execute the following user prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>&gt;&gt;&gt; /bye</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Next, in the opened terminal window and execute the following <span class="bold">docker</span> command to download the
+        Microsoft Phi-4 Mini model:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker exec -it ollama ollama run phi4-mini</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>After the model download, to exit the user input, execute the following user prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>&gt;&gt;&gt; /bye</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Let us assume the root directory for this project is <span class="bold">$HOME/java/LangChain4J</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Maven</span> project file <span class="hi-green">pom.xml</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">pom.xml</div>
+      <div class="src-body-1">
+<pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd"&gt;
+    &lt;modelVersion&gt;4.0.0&lt;/modelVersion&gt;
+
+    &lt;name&gt;LangChain4J&lt;/name&gt;
+    &lt;description&gt;LangChain4J&lt;/description&gt;
+    &lt;groupId&gt;com.polarsparc&lt;/groupId&gt;
+    &lt;artifactId&gt;LangChain4J&lt;/artifactId&gt;
+    &lt;version&gt;1.0&lt;/version&gt;
+
+    &lt;parent&gt;
+        &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+        &lt;artifactId&gt;spring-boot-starter-parent&lt;/artifactId&gt;
+        &lt;version&gt;3.5.9&lt;/version&gt;
+        &lt;relativePath/&gt; &lt;!-- lookup parent from repository --&gt;
+    &lt;/parent&gt;
+
+    &lt;properties&gt;
+        &lt;java.version&gt;21&lt;/java.version&gt;
+        &lt;langchain4j.version&gt;1.10.0&lt;/langchain4j.version&gt;
+        &lt;langchain4j.other.version&gt;1.10.0-beta18&lt;/langchain4j.other.version&gt;
+        &lt;jackson.version&gt;2.20.1&lt;/jackson.version&gt;
+    &lt;/properties&gt;
+
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-boot-starter&lt;/artifactId&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-boot-starter-web&lt;/artifactId&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+            &lt;artifactId&gt;spring-boot-starter-test&lt;/artifactId&gt;
+            &lt;scope&gt;test&lt;/scope&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;dev.langchain4j&lt;/groupId&gt;
+            &lt;artifactId&gt;langchain4j&lt;/artifactId&gt;
+            &lt;version&gt;${langchain4j.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;dev.langchain4j&lt;/groupId&gt;
+            &lt;artifactId&gt;langchain4j-core&lt;/artifactId&gt;
+            &lt;version&gt;${langchain4j.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;dev.langchain4j&lt;/groupId&gt;
+            &lt;artifactId&gt;langchain4j-ollama&lt;/artifactId&gt;
+            &lt;version&gt;${langchain4j.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;dev.langchain4j&lt;/groupId&gt;
+            &lt;artifactId&gt;langchain4j-chroma&lt;/artifactId&gt;
+            &lt;version&gt;${langchain4j.other.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;dev.langchain4j&lt;/groupId&gt;
+            &lt;artifactId&gt;langchain4j-embeddings&lt;/artifactId&gt;
+            &lt;version&gt;${langchain4j.other.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;dev.langchain4j&lt;/groupId&gt;
+            &lt;artifactId&gt;langchain4j-spring-boot-starter&lt;/artifactId&gt;
+            &lt;version&gt;${langchain4j.other.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;com.fasterxml.jackson.core&lt;/groupId&gt;
+            &lt;artifactId&gt;jackson-databind&lt;/artifactId&gt;
+            &lt;version&gt;${jackson.version}&lt;/version&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+
+    &lt;build&gt;
+        &lt;plugins&gt;
+            &lt;plugin&gt;
+                &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+                &lt;artifactId&gt;spring-boot-maven-plugin&lt;/artifactId&gt;
+            &lt;/plugin&gt;
+        &lt;/plugins&gt;
+    &lt;/build&gt;
+&lt;/project&gt;</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the logger properties file <span class="hi-green">simplelogger.properties</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">simplelogger.properties</div>
+      <div class="src-body-1">
+<pre>#
+### SLF4J Simple Logger properties
+#
+org.slf4j.simpleLogger.defaultLogLevel=info
+org.slf4j.simpleLogger.showDateTime=true
+org.slf4j.simpleLogger.dateTimeFormat=yyyy-MM-dd HH:mm:ss:SSS
+org.slf4j.simpleLogger.showThreadName=true</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the listing for the <span class="bold">Spring Boot</span> application properties file <span class="hi-green">
+        application.properties</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">application.properties</div>
+      <div class="src-body-1">
+<pre>spring.main.banner-mode=off
+spring.application.name=LangChain4J
+ollama.baseURL=http://192.168.1.25:11434
+ollama.chatModel=phi4-mini:latest
+ollama.toolsModel=granite4:micro
+ollama.temperature=0.2</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This completes all the system installation and setup for the <span class="bold">LangChain4J</span> hands-on demonstration.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on with LangChain4J</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the main <span class="bold">Spring Boot</span> application to test all of the <span class="bold">LangChain4J
+        </span> capabilities:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.1</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   LangChain4JApplication
+ * Author: Bhaskar S
+ * Date:   12/30/2025
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.langchain4j;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class LangChain4JApplication {
+  public static void main(String[] args) {
+    SpringApplication.run(LangChain4JApplication.class, args);
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Spring Boot configuration class that defines the <span class="bold">Ollama</span> specific bean:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.2</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   OllamaConfig
+ * Author: Bhaskar S
+ * Date:   12/30/2025
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.langchain4j.config;
+
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.ollama.OllamaChatModel;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class OllamaConfig {
+  @Value("${ollama.baseURL}")
+  private String baseUrl;
+
+  @Value("${ollama.chatModel}")
+  private String chatModel;
+
+  @Value("${ollama.toolsModel}")
+  private String toolsModel;
+
+  @Value("${ollama.temperature}")
+  private double temperature;
+
+  @Bean(name="ollamaChatModel")
+  public ChatModel ollamaChatModel() {
+    return OllamaChatModel.builder()
+            .baseUrl(baseUrl)
+            .modelName(chatModel)
+            .temperature(temperature)
+            .build();
+  }
+
+  @Bean(name="ollamaEmbeddingModel")
+  public EmbeddingModel ollamaEmbeddingModel() {
+    return OllamaEmbeddingModel.builder()
+            .baseUrl(baseUrl)
+            .modelName(chatModel)
+            .build();
+  }
+
+  @Bean(name="ollamaToolsModel")
+  public ChatModel ollamaToolsModel() {
+    return OllamaChatModel.builder()
+            .baseUrl(baseUrl)
+            .modelName(toolsModel)
+            .temperature(temperature)
+            .build();
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the first use-case, we will have the Java AI application send a user prompt request to the Microsoft Phi-4 model running
+        on the <span class="bold">Ollama</span> platform.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Spring Boot service class that exposes a method to interact with the LLM model running on the <span
+        class="bold">Ollama</span> platform:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.3</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   SimpleChatService
+ * Author: Bhaskar S
+ * Date:   12/30/2025
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.langchain4j.service;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+public class SimpleChatService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(SimpleChatService.class);
+
+  private final ChatModel chatModel;
+
+  public SimpleChatService(@Qualifier("ollamaChatModel") ChatModel chatModel) {
+    this.chatModel = chatModel;
+  }
+
+  public String simpleChat(String userMessage) {
+    LOGGER.info("Processing chat request with -> user prompt: {}", userMessage);
+
+    List&lt;ChatMessage&gt; messages = new ArrayList&lt;&gt;();
+    messages.add(SystemMessage.from("You are a helpful assistant."));
+    messages.add(UserMessage.from(userMessage));
+
+    ChatResponse response = chatModel.chat(messages);
+    AiMessage aiMessage = response.aiMessage();
+
+    LOGGER.info("Chat response generated successfully -> {}", aiMessage.text());
+
+    return aiMessage.text();
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Spring Boot controller class that exposes a REST endpoint <span class="bold">/api/v1/simplechat</span>
+        to invoke the service method:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.4</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   SimpleChatController
+ * Author: Bhaskar S
+ * Date:   12/30/2025
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.langchain4j.controller;
+
+import com.polarsparc.langchain4j.service.SimpleChatService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/v1")
+public class SimpleChatController {
+  private final SimpleChatService simpleChatService;
+
+  public SimpleChatController(SimpleChatService simpleChatService) {
+    this.simpleChatService = simpleChatService;
+  }
+
+  @PostMapping("/simplechat")
+  public ResponseEntity&lt;String&gt; simpleChat(@RequestBody String message) {
+    String response = simpleChatService.simpleChat(message);
+    return ResponseEntity.ok(response);
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To start the code from <span class="bold">Listing.1</span>, open a terminal window and run the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd $HOME/java/LangChain4J</p>
+      <p>$ mvn spring-boot:run</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To send a user message as input to the <span class="bold">Ollama</span> chat model, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s -X POST http://localhost:8080/api/v1/simplechat -d "What is the current time in Tokyo if the current time in New York is 9 pm EST?"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>To determine the current time in Tokyo when it is 9 PM EST (Eastern Standard Time) on New York, you need to account for the difference between these two locations. 
+
+Tokyo is generally ahead of Eastern Standard Time by approximately 14 hours.
+
+Therefore:
+
+- If it's currently 9:00 PM EST in New York,
+- Add 14 hours = 23:00 + 2 hours (which wraps around midnight) 
+= 1:00 AM on the next day, Tokyo time
+
+So it would be **1:00 AM** tomorrow morning in Tokyo.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We can now stop the running Java AI application.</p>
+    </div>
+    <div id="para-div">
+      <p>For the second use-case, we will have the Java AI application generate and display a structured output response.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Spring Boot service class that exposes a method to interact with the LLM model running on the <span
+        class="bold">Ollama</span> platform to generate a structured response:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.5</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   StructuredChatService
+ * Author: Bhaskar S
+ * Date:   12/30/2025
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.langchain4j.service;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+
+import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+
+@Service
+public class StructuredChatService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(StructuredChatService.class);
+
+  private final ChatModel chatModel;
+
+  public StructuredChatService(@Qualifier("ollamaChatModel") ChatModel chatModel) {
+    this.chatModel = chatModel;
+  }
+
+  public String structuredChat(String userMessage) {
+    LOGGER.info("Processing chat request with -> user prompt: {}", userMessage);
+
+    ResponseFormat format = responseFormat();
+
+    ChatRequest chatRequest = ChatRequest.builder()
+            .responseFormat(format)
+            .messages(UserMessage.from(userMessage))
+            .build();
+
+    ChatResponse response = chatModel.chat(chatRequest);
+    AiMessage aiMessage = response.aiMessage();
+
+    LOGGER.info("Chat response generated successfully -> {}", aiMessage.text());
+
+    return aiMessage.text();
+  }
+
+  private ResponseFormat responseFormat() {
+    return ResponseFormat.builder()
+        .type(JSON)
+        .jsonSchema(JsonSchema.builder()
+            .name("GpuSpecs")
+            .rootElement(JsonObjectSchema.builder()
+                .addStringProperty("name")
+                .addStringProperty("bus")
+                .addIntegerProperty("memory")
+                .addIntegerProperty("clock")
+                .addIntegerProperty("cores")
+                .required("name", "bus", "memory", "clock", "cores")
+                .build())
+            .build())
+        .build();
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Spring Boot controller class that exposes a REST endpoint <span class="bold">/api/v1/structchat</span>
+        to invoke the service method:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.6</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   StructuredChatController
+ * Author: Bhaskar S
+ * Date:   12/30/2025
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.langchain4j.controller;
+
+import com.polarsparc.langchain4j.service.StructuredChatService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/v1")
+public class StructuredChatController {
+  private final StructuredChatService structuredChatService;
+
+  public StructuredChatController(StructuredChatService structuredChatService) {
+    this.structuredChatService = structuredChatService;
+  }
+
+  @PostMapping("/structchat")
+  public ResponseEntity&lt;String&gt; structuredChat(@RequestBody String message) {
+    String response = structuredChatService.structuredChat(message);
+    return ResponseEntity.ok(response);
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Once again, to start the main Java application from <span class="bold">Listing.1</span>, run the following command in the
+        open terminal:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ mvn spring-boot:run</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To send a message as input to the <span class="bold">Ollama</span> chat model for structured output, execute the following
+        command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s -X POST http://localhost:8080/api/v1/structchat -d "Get the GPU specifications for NVidia RTX 3090 Ti" | jq</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>{
+  "name": "nvidea rtx 3090 ti",
+  "bus": "*",
+  "memory": 32000,
+  "clock": 1445,
+  "cores": 28
+}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Once again, we will stop the running Java AI application.</p>
+    </div>
+    <div id="para-div">
+      <p>For the third use-case, we will have the Java AI application leverage a vector store to demonstrate the similarity search
+        capability.</p>
+    </div>
+    <div id="para-div">
+      <p>For this demonstration, we will leverage an in-memory vector store. Also, we will handcraft a small dataset containing data
+        on some popular leadership books.</p>
+    </div>
+    <div id="para-div">
+      <p>The following illustration depicts the truncated contents of the small leadership books dataset:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/langchain-1.png" alt="Books Dataset" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The pipe-separated leadership books dataset can be downloaded from <a href="https://polarsparc.github.io/data/leadership_books.csv"
+        target="_blank"><span class="bold">HERE</span></a> !!!</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the java POJO class that represents a leadership book from the above dataset:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.7</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   Book
+ * Author: Bhaskar S
+ * Date:   12/30/2025
+ * Blog:   https://polarsparc.github.io
+ */
+package com.polarsparc.langchain4j.model;
+
+public record Book(String title, String author) {}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Spring Boot service class that loads each of the leadership books as a document (with metadata) into
+        an in-memory vector store (as embeddings) using the LLM model running on the <span class="bold">Ollama</span> platform and
+        exposes a method to interact with the vector store for similarity search:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.8</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   VectorEmbeddingService
+ * Author: Bhaskar S
+ * Date:   12/30/2025
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.langchain4j.service;
+
+import com.polarsparc.langchain4j.model.Book;
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.store.embedding.EmbeddingMatch;
+import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
+import dev.langchain4j.store.embedding.EmbeddingSearchResult;
+import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+import org.springframework.util.ResourceUtils;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.util.ArrayList;
+import java.util.List;
+
+@Service
+public class VectorSearchService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(VectorSearchService.class);
+
+  private final EmbeddingModel embeddingModel;
+  private final InMemoryEmbeddingStore&lt;TextSegment&gt; embeddingStore;
+
+  public VectorSearchService(@Qualifier("ollamaEmbeddingModel") EmbeddingModel embeddingModel) {
+    this.embeddingModel = embeddingModel;
+    this.embeddingStore = new InMemoryEmbeddingStore&lt;&gt;();
+    loadBooksDataset();
+  }
+
+  public List&lt;Book&gt; similaritySearch(String query, int topK) {
+    LOGGER.info("Performing similarity search for query: {}", query);
+
+    Embedding queryEmbedding = embeddingModel.embed(query).content();
+
+    EmbeddingSearchRequest request = EmbeddingSearchRequest.builder()
+            .queryEmbedding(queryEmbedding)
+            .maxResults(topK)
+            .build();
+
+    EmbeddingSearchResult&lt;TextSegment&gt; result = embeddingStore.search(request);
+
+    List&lt;Book&gt; documents = new ArrayList&lt;&gt;();
+    for (EmbeddingMatch&lt;TextSegment&gt; match : result.matches()) {
+      TextSegment segment = match.embedded();
+      documents.add(new Book(segment.metadata().getString("title"), segment.metadata().getString("author")));
+    }
+
+    return documents;
+  }
+
+  private void loadBooksDataset() {
+    String booksDataset = "data/leadership_books.csv";
+
+    LOGGER.info("Loading books dataset from: {}", booksDataset);
+
+    try (BufferedReader reader = new BufferedReader(new FileReader(ResourceUtils.getFile("classpath:"+booksDataset)))) {
+      String line;
+      boolean isHeader = true;
+      while ((line = reader.readLine()) != null) {
+        if (isHeader) {
+          isHeader = false;
+          continue;
+        }
+        String[] parts = line.split("\\|");
+        if (parts.length >= 3) {
+          String title = parts[0].trim();
+          String author = parts[1].trim();
+          String summary = parts[2].trim();
+
+          TextSegment segment = TextSegment.from(
+            summary,
+            Metadata.from("title", title).put("author", author)
+          );
+
+          Embedding embedding = embeddingModel.embed(segment).content();
+          embeddingStore.add(embedding, segment);
+        }
+      }
+
+      LOGGER.info("Books dataset loaded successfully");
+    } catch (Exception ex) {
+      LOGGER.error("Failed to load books dataset", ex);
+    }
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Spring Boot controller class that exposes a REST endpoint <span class="bold">/api/v1/vectorsearch</span>
+        to invoke the service method:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.9</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   VectorEmbeddingController
+ * Author: Bhaskar S
+ * Date:   12/30/2025
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.langchain4j.controller;
+
+import com.polarsparc.langchain4j.model.Book;
+import com.polarsparc.langchain4j.service.VectorSearchService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/v1")
+public class VectorSearchController {
+  private static final Logger LOGGER = LoggerFactory.getLogger(VectorSearchController.class);
+
+  private final ObjectMapper objectMapper;
+  private final VectorSearchService vectorSearchService;
+
+  public VectorSearchController(VectorSearchService vectorSearchService) {
+    this.objectMapper = new ObjectMapper();
+    this.vectorSearchService = vectorSearchService;
+  }
+
+  @PostMapping("/vectorsearch")
+  public ResponseEntity&lt;String&gt; similaritySearch(@RequestBody String message) {
+    List&lt;Book&gt; documents = vectorSearchService.similaritySearch(message, 2);
+
+    String json = "[]";
+    try {
+      json = objectMapper.writeValueAsString(documents);
+    } catch (Exception ex) {
+      LOGGER.error("Failed to serialize documents", ex);
+    }
+
+    return ResponseEntity.ok(json);
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Again, to start the main Java AI application from <span class="bold">Listing.1</span>, run the following command in the
+        open terminal:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ mvn spring-boot:run</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To send a message as input to the <span class="bold">Ollama</span> chat model for similarity search, execute the following
+        command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s -X POST http://localhost:8080/api/v1/vectorsearch -d "guide to managing teams" | jq</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>[
+  {
+    "title": "The Five Dysfunctions of a Team",
+    "author": "Patrick Lencioni"
+  },
+  {
+    "title": "Start with Why",
+    "author": "Simon Sinek"
+  }
+]</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Again, we will stop the running Java AI application.</p>
+    </div>
+    <div id="para-div">
+      <p>Moving on to the fourth use-case on keeping a history of all the conversations so that the chat model remembers the context
+        of the interactions.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Spring Boot service class that exposes a method to interact with the LLM model running on the <span
+        class="bold">Ollama</span> platform which preserves response(s) from the previous interaction(s) in an in-memory store:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.10</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   ChatHistoryService
+ * Author: Bhaskar S
+ * Date:   12/31/2025
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.langchain4j.service;
+
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+
+@Service
+public class ChatHistoryService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ChatHistoryService.class);
+
+  private final ChatModel chatModel;
+  private final ChatAssistant chatAssistant;
+
+  public ChatHistoryService(@Qualifier("ollamaChatModel") ChatModel chatModel) {
+    this.chatModel = chatModel;
+    this.chatAssistant = setUpChatAssistantWithMemory();
+  }
+
+  public String chatWithHistory(String userMessage) {
+    LOGGER.info("Processing chat request with -> user prompt: {}", userMessage);
+
+    ChatResponse response = chatAssistant.chat(userMessage);
+    AiMessage aiMessage = response.aiMessage();
+
+    LOGGER.info("Chat response generated successfully -> {}", aiMessage.text());
+
+    return aiMessage.text();
+  }
+
+  private ChatAssistant setUpChatAssistantWithMemory() {
+    ChatMemoryStore chatMemoryStore = new InMemoryChatMemoryStore();
+
+    ChatMemory chatMemory = MessageWindowChatMemory.builder()
+        .id("uid-1")
+        .maxMessages(10)
+        .chatMemoryStore(chatMemoryStore)
+        .build();
+
+    return AiServices.builder(ChatAssistant.class)
+        .chatModel(chatModel)
+        .chatMemory(chatMemory)
+        .build();
+  }
+
+  interface ChatAssistant {
+    @SystemMessage("You are a helpful assistant.")
+    ChatResponse chat(@UserMessage String userMessage);
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Spring Boot controller class that exposes a REST endpoint <span class="bold">/api/v1/chathistory</span>
+        to invoke the service method:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.11</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   ChatHistoryController
+ * Author: Bhaskar S
+ * Date:   12/31/2025
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.langchain4j.controller;
+
+import com.polarsparc.langchain4j.service.ChatHistoryService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/v1")
+public class ChatHistoryController {
+  private final ChatHistoryService chatHistoryService;
+
+  public ChatHistoryController(ChatHistoryService chatHistoryService) {
+    this.chatHistoryService = chatHistoryService;
+  }
+
+  @PostMapping("/chathistory")
+  public ResponseEntity&lt;String&gt; simpleChat(@RequestBody String message) {
+    String response = chatHistoryService.chatWithHistory(message);
+    return ResponseEntity.ok(response);
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>One more time, to start the main Java AI application from <span class="bold">Listing.1</span>, run the following command
+        in the open terminal:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ mvn spring-boot:run</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To send a message as input to the <span class="bold">Ollama</span> chat model (with memory), execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s -X POST http://localhost:8080/api/v1/chathistory -d "Suggest the most popular top 3 leadership quotes"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>```json
+{
+  "aiMessage": {
+    "text": "Sure! Here are the top three leadership quotes:\n1. 'Leadership is not about being in charge; it's about taking care of those in your charge.' - Simon Sinek\n2. 'The greatest leader isn't head of a company, but rather someone who can inspire others to achieve greatness beyond themselves.' - Tony Robbins\n3. 'Leaders are one step ahead because they see the future before it happens and act on that vision now.' - Peter Drucker",
+    "thinking": "",
+    "toolExecutionRequests": [],
+    "attributes": {}
+  },
+  "metadata": {
+    "id": "1a2b3c4d5e6f7g8h9i0jklmnopqrstuvwxzyz012345678901234567890123456789012",
+    "modelName": "ChatGPT",
+    "tokenUsage": {
+      "inputTokenCount": 150,
+      "outputTokenCount": 300,
+      "totalTokenCount": 450
+    },
+    "finishReason": "CONTENT_FILTER"
+  }
+}
+```</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To check if the chat model remembers the previous context, send another message as input to the chat model by executing the
+        following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s -X POST http://localhost:8080/api/v1/chathistory -d "Quotes too long and are not that inspiring. Can you try again?"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>```json
+{
+  "aiMessage": {
+    "text": "Apologies for the previous response. Here are three concise and inspiring leadership quotes:\n1. 'Leadership is a journey, not a destination.' - Steve Jobs\n2. 'A leader fails when he stops leading; success happens only with continued effort in guiding others to their goals.' - Tony Robbins\n3. 'The best way to predict the future is to create it.' - Peter Drucker",
+    "thinking": "",
+    "toolExecutionRequests": [],
+    "attributes": {}
+  },
+  "metadata": {
+    "id": "1a2b3c4d5e6f7g8h9i0jklmnopqrstuvwxzyz012345678901234567890123456789012",
+    "modelName": "ChatGPT",
+    "tokenUsage": {
+      "inputTokenCount": 120,
+      "outputTokenCount": 240,
+      "totalTokenCount": 360
+    },
+    "finishReason": "CONTENT_FILTER"
+  }
+}
+```</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>One more time, we will stop the running Java AI application.</p>
+    </div>
+    <div id="para-div">
+      <p>For the fifth use-case we will move on to the topic of leveraging <span class="bold">LangChain4J</span> for building agents
+        that can perform specific tasks using provided external tool(s). For this use-case, we will use the IBM Granite 4 model.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the java class that represents an external tool to execute a shell command:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.12</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   ShellCommandTool
+ * Author: Bhaskar S
+ * Date:   12/31/2025
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.langchain4j.util;
+
+import dev.langchain4j.agent.tool.Tool;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.concurrent.TimeUnit;
+
+@Component
+public class ShellCommandTool {
+  private static final Logger LOGGER = LoggerFactory.getLogger(ShellCommandTool.class);
+
+  @Tool("Execute shell commands on the system. Use this to to execute any system command, etc.")
+  public String executeShellCommand(String command) {
+    LOGGER.info("Executing shell command: {}", command);
+
+    try {
+      ProcessBuilder processBuilder = new ProcessBuilder();
+      processBuilder.command("bash", "-c", command);
+      processBuilder.redirectErrorStream(true);
+
+      Process process = processBuilder.start();
+
+      StringBuilder output = new StringBuilder();
+      try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          output.append(line).append("\n");
+        }
+      }
+
+      boolean finished = process.waitFor(30, TimeUnit.SECONDS);
+      if (!finished) {
+        process.destroyForcibly();
+        return "Error: Command timed out after 30 seconds";
+      }
+
+      int exitCode = process.exitValue();
+      if (exitCode != 0) {
+        return "Error executing command. Exit code: " + exitCode + "\nOutput: " + output;
+      }
+
+      return output.toString().trim();
+    } catch (Exception ex) {
+      LOGGER.error("Error executing shell command", ex);
+      return "Error: " + ex.getMessage();
+    }
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Spring Boot service class that exposes a method to interact with the LLM model running on the <span
+        class="bold">Ollama</span> platform with access to the supplied external tool:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.13</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   ToolsAgentService
+ * Author: Bhaskar S
+ * Date:   12/31/2025
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.langchain4j.service;
+
+import com.polarsparc.langchain4j.util.ShellCommandTool;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
+
+@Service
+public class ToolsAgentService {
+  private static final String SYSTEM_PROMPT = """
+          You are a helpful assistant. Be concise and accurate.
+          You have access to tools that you can use to execute shell commands.
+          Use these tools to answer the user's question.
+          Only respond with the relevant information from the command execution.
+          """;
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(ToolsAgentService.class);
+
+  private final ChatModel chatModel;
+  private final ChatAssistant chatAssistant;
+
+  public ToolsAgentService(@Qualifier("ollamaToolsModel") ChatModel chatModel) {
+    this.chatModel = chatModel;
+    this.chatAssistant = setUpToolAgentWithMemory();
+  }
+
+  public String agentChat(String userMessage) {
+    LOGGER.info("Processing chat request with -> user prompt: {}", userMessage);
+
+    ChatResponse response = chatAssistant.chat(userMessage);
+    AiMessage aiMessage = response.aiMessage();
+
+    LOGGER.info("Chat response generated successfully -> {}", aiMessage.text());
+
+    return aiMessage.text();
+  }
+
+  private ChatAssistant setUpToolAgentWithMemory() {
+    ChatMemoryStore chatMemoryStore = new InMemoryChatMemoryStore();
+
+    ChatMemory chatMemory = MessageWindowChatMemory.builder()
+            .id("agent-1")
+            .maxMessages(10)
+            .chatMemoryStore(chatMemoryStore)
+            .build();
+
+    return AiServices.builder(ChatAssistant.class)
+            .chatModel(chatModel)
+            .chatMemory(chatMemory)
+            .tools(new ShellCommandTool())
+            .build();
+  }
+
+  interface ChatAssistant {
+    @SystemMessage(SYSTEM_PROMPT)
+    ChatResponse chat(@UserMessage String userMessage);
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Spring Boot controller class that exposes a REST endpoint <span class="bold">/api/v1/agentchat</span>
+        to invoke the service method:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">Listing.14</div>
+      <div class="src-body-1">
+<pre>/*
+ * Name:   ToolsAgentController
+ * Author: Bhaskar S
+ * Date:   12/31/2025
+ * Blog:   https://polarsparc.github.io
+ */
+
+package com.polarsparc.langchain4j.controller;
+
+import com.polarsparc.langchain4j.service.ToolsAgentService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/v1")
+public class ToolsAgentController {
+  private final ToolsAgentService toolsAgentService;
+
+  public ToolsAgentController(ToolsAgentService toolsAgentService) {
+    this.toolsAgentService = toolsAgentService;
+  }
+
+  @PostMapping("/agentchat")
+  public ResponseEntity&lt;String&gt; agentChat(@RequestBody String message) {
+    String response = toolsAgentService.agentChat(message);
+    return ResponseEntity.ok(response);
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Again, to start the main Java AI application from <span class="bold">Listing.1</span>, run the following command in the
+        open terminal:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ mvn spring-boot:run</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To send a message as input to the <span class="bold">Ollama</span> chat model (with access to an external tool), execute
+        the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s -X POST http://localhost:8080/api/v1/agentchat -d "Can you identify all the network interfaces on this system?"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>The network interfaces on this system are: `docker0`, `enp42s0`, `lo`, `vetha9f8360`, and `wlo1`.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To send another message to the chat model (with tool access), execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s -X POST http://localhost:8080/api/v1/agentchat -d "What is the primary Ethernet interface on this system?"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>The primary Ethernet interface on this system is `enp42s0`.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>With this, we conclude the hands-on demonstration of using the various <span class="bold">LangChain4J</span> features !!!</p>
+    </div>
+    <div id="para-div">
+      <p>The code repository for this article can be found <a href="https://github.com/bhaskars-repo/LangChain4J" target="_blank">
+        <span class="bold">HERE</span></a> !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://docs.langchain4j.dev/intro" target="_blank"><span class="bold">LangChain4J</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
