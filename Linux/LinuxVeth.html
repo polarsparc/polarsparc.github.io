@@ -1,0 +1,328 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Hands-on Linux Virtual Ethernet (Veth)">
+    <meta name="subject" content="Hands-on Linux Virtual Ethernet (Veth)">
+    <meta name="keywords" content="linux, veth">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Hands-on Linux Virtual Ethernet (Veth)</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Hands-on Linux Virtual Ethernet (Veth)</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">01/24/2026</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="gen-step-div">
+      <p>Overview</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Most of us are familiar how networking works with physical machine(s) connected via a router. Ever wondered how networking
+        works with <span class="bold">container</span>(s) ???</p>
+      <p>This is <span class="bold">Virtual Networking</span> in action !!!</p>
+    </div>
+    <div id="para-div">
+      <p>In order to better understand virtual networking, one needs to first understand some important concepts in Linux.</p>
+    </div>
+    <div id="para-div">
+      <p>A network <span class="hi-yellow">namespace</span> in Linux provides isolation of network resources, such as, interfaces,
+        routing tables, firewall rules, network ports, etc., thereby enabling multiple container(s) or vm(s) to co-exist on a host
+        system with their own isolated and private network environment.</p>
+    </div>
+    <div id="para-div">
+      <p>A <span class="hi-yellow">virtual ethernet</span> device (or <span class="hi-vanila">veth</span> for short) in Linux are
+        pairs of virtual network interfaces that are used for connecting two network namespaces in order to facilitate full duplex
+        communication between them. Think of them as virtual ethernet cables connecting two network namespaces.</p>
+    </div>
+    <div id="para-div">
+      <p>A <span class="hi-yellow">bridge</span> in Linux network operates at <span class="bold">Layer 2</span> (<span class="bold">
+        Data Link</span> layer) of the OSI network model and acts like a virtual network switch, which enables two or more virtual
+        interfaces communicate with one other as a single network segment.</p>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>Hands-on Virtual Ethernet (Veth)</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>All the commands will be executed on a <span class="bold">Ubuntu 24.04 LTS</span> based Linux desktop.</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the network namespaces in the system, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ ip netns show</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output as we have not defined any network namespaces yet !</p>
+    </div>
+    <div id="para-div">
+      <p>For the hands-on demonstration, we will setup the virtual network topology as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img src="./images/linux-veth.png" class="img-cls" alt="Virtual Network 1" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create the two network namespaces named <span class="hi-red">ns1</span> and <span class="hi-red">ns2</span>, execute the
+        following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo ip netns add ns1</p>
+      <p>$ sudo ip netns add ns2</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the network namespaces in the system, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ ip netns show</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>ns2
+ns1</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To list all the veth interfaces in the system, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ ip link show type veth</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output as we have not defined any veth interfaces yet !</p>
+    </div>
+    <div id="para-div">
+      <p>To create the two veth pairs starting with names <span class="hi-green">vth1_x</span> and <span class="hi-green">vth2_x</span>,
+        execute the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo ip link add name vth1_1 type veth peer vth1_2</p>
+      <p>$ sudo ip link add name vth2_1 type veth peer vth2_2</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the veth interfaces in the system, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ ip link show type veth</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>5: vth1_2@vth1_1: &lt;BROADCAST,MULTICAST,M-DOWN&gt; mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether 02:a8:b9:15:82:da brd ff:ff:ff:ff:ff:ff
+6: vth1_1@vth1_2: &lt;BROADCAST,MULTICAST,M-DOWN&gt; mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether 72:6f:16:6e:7c:3d brd ff:ff:ff:ff:ff:ff
+7: vth2_2@vth2_1: &lt;BROADCAST,MULTICAST,M-DOWN&gt; mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether 16:33:db:0d:8f:80 brd ff:ff:ff:ff:ff:ff
+8: vth2_1@vth2_2: &lt;BROADCAST,MULTICAST,M-DOWN&gt; mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether ca:2e:57:3a:3e:e2 brd ff:ff:ff:ff:ff:ff</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To connect one of the pairs of each veth interface to the respective network namespaces, execute the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo ip link set dev vth1_1 netns ns1</p>
+      <p>$ sudo ip link set dev vth2_1 netns ns2</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To bring up each of the connected end of the veth interface, execute the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo ip -n ns1 link set dev vth1_1 up</p>
+      <p>$ sudo ip -n ns2 link set dev vth2_1 up</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To assign ip address to each of the connected end of the veth interface, execute the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo ip -n ns1 address add 192.168.5.1/24 dev vth1_1</p>
+      <p>$ sudo ip -n ns2 address add 192.168.5.2/24 dev vth2_1</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, to create a bridge named <span class="hi-purple">br0</span>, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo ip link add name br0 type bridge</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the bridges in the system, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ ip link show type bridge</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>9: br0: &lt;BROADCAST,MULTICAST&gt; mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 1000
+    link/ether ea:10:9c:12:36:e1 brd ff:ff:ff:ff:ff:ff</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To connect the other end of each of the veth interface to the bridge, execute the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo ip link set dev vth1_2 master br0</p>
+      <p>$ sudo ip link set dev vth2_2 master br0</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To bring up each of the just connected end of the veth interface to the bridge, execute the following commands:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo ip link set dev vth1_2 up</p>
+      <p>$ sudo ip link set dev vth2_2 up</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>Finally, to bring up the bridge, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo ip link set dev br0 up</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the interfaces including the bridges on the host, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ ip link show</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>5: vth1_2@if6: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue master br0 state UP mode DEFAULT group default qlen 1000
+    link/ether 02:a8:b9:15:82:da brd ff:ff:ff:ff:ff:ff link-netns ns1
+7: vth2_2@if8: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue master br0 state UP mode DEFAULT group default qlen 1000
+    link/ether 16:33:db:0d:8f:80 brd ff:ff:ff:ff:ff:ff link-netns ns2
+9: br0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue state UP mode DEFAULT group default qlen 1000
+    link/ether ea:10:9c:12:36:e1 brd ff:ff:ff:ff:ff:ff</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>As is evident from the <span class="bold">Output.4</span> above, all the interfaces and the bridge are UP !</p>
+    </div>
+    <div id="para-div">
+      <p>To check if one can the ip address 192.168.5.2 (which is in namespace ns2) from namespace ns1, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo ip netns exec ns1 ping -c 3 192.168.5.2</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>PING 192.168.5.2 (192.168.5.2) 56(84) bytes of data.
+64 bytes from 192.168.5.2: icmp_seq=1 ttl=64 time=0.068 ms
+64 bytes from 192.168.5.2: icmp_seq=2 ttl=64 time=0.109 ms
+64 bytes from 192.168.5.2: icmp_seq=3 ttl=64 time=0.121 ms
+
+--- 192.168.5.2 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2072ms
+rtt min/avg/max/mdev = 0.068/0.099/0.121/0.022 ms</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Thats it - this concludes the hands-on demonstration of Linux virtual ethernet (veth) !!!</p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
