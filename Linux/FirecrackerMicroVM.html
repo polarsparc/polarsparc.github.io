@@ -1,0 +1,622 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Hands-on Firecracker MicroVM">
+    <meta name="subject" content="Hands-on Firecracker MicroVM">
+    <meta name="keywords" content="firecracker, linux">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Hands-on Firecracker MicroVM</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Hands-on Firecracker MicroVM</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">01/31/2026</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="gen-step-div">
+      <p>Overview</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Ever wondered what type of virtualization Amazon AWS uses when spinning up services with their <span class="bold">Lambda
+        </span> serverless or their <span class="bold">ECS Fargate</span> instances ???</p>
+      <p>Well - Amazon AWS leverages <span class="hi-yellow">Firecracker</span> microVM under-the-hood !!!</p>
+    </div>
+    <div id="para-div">
+      <p>Before getting started, one needs to first understand some important concepts in Linux.</p>
+    </div>
+    <div id="para-div">
+      <p>In virtualization, <span class="bold">container</span>(s) share the same host kernel, but achieve isolation via <span class
+        ="bold">namespaces</span> and <span class="bold">cgroups</span> at a process level. On the other hand, <span class="bold">
+        microVM</span>(s) are lightweight virtual machines with their own minimal kernel, that are isolated from the host kernel.</p>
+    </div>
+    <div id="para-div">
+      <p>A network <span class="hi-yellow">tap</span> is a virtual network interface in Linux that operates at <span class="bold">
+        Layer 2</span> (<span class="bold">Data Link</span> layer) of the OSI network model. It has a MAC address, handles Ethernet,
+        and is used for full Ethernet emulation in virtual machines.</p>
+    </div>
+    <div id="para-div">
+      <p>A <span class="hi-yellow">bridge</span> in Linux network operates at <span class="bold">Layer 2</span> (<span class="bold">
+        Data Link</span> layer) of the OSI network model and acts like a virtual network switch, which enables two or more virtual
+        interfaces communicate with one other as a single network segment.</p>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>Hands-on Firecracker MicroVM</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>All the commands will be executed on a <span class="bold">Ubuntu 24.04 LTS</span> based Linux desktop.</p>
+    </div>
+    <div id="para-div">
+      <p>Firecracker relies on the <span class="bold">kvm</span> virtualization stack. To check if <span class="bold">kvm</span> is
+        enabled, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ lsmod | grep "^kvm"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>kvm_intel             487424  0
+kvm                  1409024  1 kvm_intel</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>If one does *<span class="underbold">NOT</span>* see any output, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo modprobe kvm</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To fetch the architecture of the host system, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ uname -m</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>x86_64</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Let us refer to this value as <span class="hi-green">ARCH</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To check the current stable version of Firecracker, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ URL="https://github.com/firecracker-microvm/firecracker/releases"; VERSION=$(basename $(curl -fsSLI -o /dev/null -w  %{url_effective} ${URL}/latest)); echo ${VERSION}</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>At the time of this article, the following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>v1.14.1</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Let us refer to this value as <span class="hi-green">VERSION</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To download and install the Firecracker executable called <span class="hi-yellow">firecracker</span>, execute the following
+        commands in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd /tmp</p>
+      <p>$ curl -LOJ https://github.com/firecracker-microvm/firecracker/releases/download/${VERSION}/firecracker-${VERSION}-${ARCH}.tgz</p>
+      <p>$ tar -xvzf firecracker-${VERSION}-${ARCH}.tgz</p>
+      <p>$ sudo mv release-${VERSION}-${ARCH}/firecracker-${VERSION}-${ARCH} /usr/local/bin/firecracker</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To ensure the Firecracker executable was properly installed, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ firecracker --version</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>Firecracker v1.14.1
+
+2026-01-30T22:25:21.478790809 [anonymous-instance:main] Firecracker exiting successfully. exit_code=0</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To ensure the logged in user has appropriate system privileges, execute the following commands in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo usermod -aG kvm ${USER}</p>
+      <p>$ sudo shutdown -r now</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Once the host system reboots, log back in !</p>
+    </div>
+    <div id="para-div">
+      <p>One needs a kernel image and a root filesystem (root fs) for the Firecracker MicroVM to boot and startup.</p>
+      <p>For the hands-on demonstration, we will download a pre-built kernel image and an <span class="bold">ubuntu</span> root fs.</p>
+    </div>
+    <div id="para-div">
+      <p>To fetch the current stable base version of Firecracker, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ CI_VERSION=${VERSION%.*}; echo ${CI_VERSION}</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>At the time of this article, the following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>v1.14</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Let us refer to this value as <span class="hi-green">CI_VERSION</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To fetch the current kernel image key for Firecracker, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ KERNEL_KEY=$(curl -s "http://spec.ccfc.min.s3.amazonaws.com/?prefix=firecracker-ci/${CI_VERSION}/${ARCH}/vmlinux-&list-type=2" | grep -oP "(?&lt;=&lt;Key&gt;)(firecracker-ci/${CI_VERSION}/${ARCH}/vmlinux-[0-9]+\.[0-9]+\.[0-9]{1,3})(?=</Key>)" | sort -V | tail -1); echo ${KERNEL_KEY}</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>At the time of this article, the following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>firecracker-ci/v1.14/x86_64/vmlinux-6.1.155</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Let us refer to this value as <span class="hi-green">KERNEL_KEY</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To download the kernel image for Firecracker to boot off, execute the following commands in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>cd /tmp</p>
+      <p>$ wget "https://s3.amazonaws.com/spec.ccfc.min/${KERNEL_KEY}"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>--2026-01-30 22:28:15--  https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/v1.14/x86_64/vmlinux-6.1.155
+Resolving s3.amazonaws.com (s3.amazonaws.com)... 16.182.104.104, 16.15.223.14, 16.15.179.49, ...
+Connecting to s3.amazonaws.com (s3.amazonaws.com)|16.182.104.104|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 44278288 (42M) [binary/octet-stream]
+Saving to: 'vmlinux-6.1.155'
+
+vmlinux-6.1.155                  100%[==========================================================>]  42.23M  11.1MB/s    in 5.3s    
+
+2026-01-30 22:28:20 (8.03 MB/s) - 'vmlinux-6.1.155' saved [44278288/44278288]</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To fetch the current ubuntu root fs key for Firecracker, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ UBUNTU_KEY=$(curl -s "http://spec.ccfc.min.s3.amazonaws.com/?prefix=firecracker-ci/${CI_VERSION}/${ARCH}/ubuntu-&list-type=2" | grep -oP "(?&lt;=&lt;Key&gt;)(firecracker-ci/${CI_VERSION}/${ARCH}/ubuntu-[0-9]+\.[0-9]+\.squashfs)(?=</Key>)" | sort -V | tail -1); echo ${UBUNTU_KEY}</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>At the time of this article, the following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>firecracker-ci/v1.14/x86_64/ubuntu-24.04.squashfs</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Let us refer to this value as <span class="hi-green">UBUNTU_KEY</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To download the ubuntu root fs for Firecracker to use, execute the following commands in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd /tmp</p>
+      <p>$ wget -O ubuntu-${UBUNTU_KEY}.squashfs.upstream "https://s3.amazonaws.com/spec.ccfc.min/firecracker-ci/${CI_VERSION}/${ARCH}/ubuntu-${UBUNTU_KEY}.squashfs"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>Resolving s3.amazonaws.com (s3.amazonaws.com)... 16.15.183.181, 52.217.170.128, 16.15.187.208, ...
+Connecting to s3.amazonaws.com (s3.amazonaws.com)|16.15.183.181|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 107810816 (103M) [binary/octet-stream]
+Saving to: 'ubuntu-24.04.squashfs.upstream'
+
+ubuntu-24.04.squashfs.upstream   100%[==========================================================>] 102.82M  74.4MB/s    in 1.4s    
+
+2026-01-30 22:32:16 (74.4 MB/s) - 'ubuntu-24.04.squashfs.upstream' saved [107810816/107810816]</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The downloaded ubuntu root fs does not have any <span class="bold">ssh</span> key embedded and has to be patched with one.
+        To patch the ubuntu root fs with an ssh key and create a custom ubuntu root fs, execute the following commands in a terminal
+        window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd /tmp</p>
+      <p>$ unsquashfs ubuntu-24.04.squashfs.upstream</p>
+      <p>$ ssh-keygen -f id_rsa -N ""</p>
+      <p>$ cp -v id_rsa.pub squashfs-root/root/.ssh/authorized_keys</p>
+      <p>$ mv -v id_rsa ./ubuntu-24.04.id_rsa</p>
+      <p>$ sudo chown -R root:root squashfs-root</p>
+      <p>$ truncate -s 1G ubuntu-24.04.ext4</p>
+      <p>$ sudo mkfs.ext4 -d squashfs-root -F ubuntu-24.04.ext4</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>With this we will have the ubuntu root fs as <span class="bold">ubuntu-24.04.ext4</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>To list all the network interfaces in the host, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ ip -br link show</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>lo               UNKNOWN        00:00:00:00:00:00 &lt;LOOPBACK,UP,LOWER_UP&gt; 
+enp1s0           UP             aa:1d:aa:2e:aa:08 &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; 
+wlp2s0           DOWN           bb:75:bb:66:bb:2f &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt;</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a virtual network tap interface called <span class="hi-yellow">tap0</span>, execute the following command in the
+        terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo ip tuntap add dev tap0 mode tap</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To create a network bridge called <span class="hi-yellow">br0</span>, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo ip link add name br0 type bridge</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, to list all the network interfaces on the host, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ ip -br link show</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>lo               UNKNOWN        00:00:00:00:00:00 &lt;LOOPBACK,UP,LOWER_UP&gt; 
+enp1s0           UP             aa:1d:aa:2e:aa:08 &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; 
+wlp2s0           DOWN           bb:75:bb:66:bb:2f &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; 
+tap0             DOWN           ba:2d:f4:54:2e:24 &lt;BROADCAST,MULTICAST&gt; 
+br0              DOWN           ea:10:9c:12:36:e1 &lt;BROADCAST,MULTICAST&gt;</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To disable IPv6 on the host, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo sysctl -w net.ipv6.conf.tap0.disable_ipv6=1</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>net.ipv6.conf.tap0.disable_ipv6 = 1</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To enable IP packet forwarding on the host, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo sysctl -w net.ipv4.ip_forward=1</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>net.ipv4.ip_forward = 1</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To connect the network tap interface to the bridge, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo ip link set tap0 master br0</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To bring up network tap interface, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo ip link set tap0 up</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To bring up the bridge, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo ip link set br0 up</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>To set the ip address/mask of the bridge to <span class="hi-yellow">192.168.5.1/24</span>, execute the following command in
+        the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo ip addr add 192.168.5.1/24 dev br0</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>There will be no output.</p>
+    </div>
+    <div id="para-div">
+      <p>The following are the contents of the file <span class="hi-yellow">/tmp/vm_config.json</span> that will be used to configure
+        the Firecracker MicroVM instance:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">/tmp/vm_config.json</div>
+      <div class="src-body-1">
+<pre>{
+  "boot-source": {
+    "kernel_image_path": "./vmlinux-6.1.155",
+    "boot_args": "keep_bootcon console=ttyS0 reboot=k panic=1 systemd.hostname=fc-vm ip=192.168.5.3::192.168.5.1:255.255.255.0::eth0"
+  },
+  "drives": [
+    {
+      "drive_id": "rootfs",
+      "path_on_host": "./ubuntu-24.04.ext4",
+      "is_root_device": true,
+      "is_read_only": false
+    }
+  ],
+  "network-interfaces": [
+      {
+          "iface_id": "eth0",
+          "guest_mac": "ba:2d:f4:54:2e:24",
+          "host_dev_name": "tap0"
+      }
+  ],
+  "machine-config": {
+    "vcpu_count": 1,
+    "mem_size_mib": 1024
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice that we are assigning a hostname of <span class="hi-yellow">fc-vm</span> and an the ip address/mask of <span class=
+        "hi-yellow">192.168.5.3/24</span> to the Firecracker MicroVM instance.</p>
+    </div>
+    <div id="para-div">
+      <p>Now for the moment of truth - to start a Firecracker MicroVM instance, execute the following commands in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cd /tmp</p>
+      <p>$ firecracker --no-api --config-file ./vm_config.json</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The Firecracker MicroVM starts up in under 3 seconds and the following would be a typical trimmed output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>... [ TRIM ]...
+         Starting systemd-update-utmp-runle…- Record Runlevel Change in UTMP...
+[  OK  ] Finished systemd-update-utmp-runle…e - Record Runlevel Change in UTMP.
+[  OK  ] Finished fcnet.service.
+
+Ubuntu 24.04.3 LTS fc-vm ttyS0
+
+fc-vm-1 login: root (automatic login)
+
+Password: 
+Login timed out 
+Ubuntu 24.04.3 LTS fc-vm-1 ttyS0
+
+fc-vm login: root (automatic login)
+
+Password:</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Enter the password <span class="hi-yellow">root</span> and we are logged in !!!</p>
+    </div>
+    <div id="para-div">
+      <p>To check the ip adress on the Firecracker MicroVM instance, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p># ip -br addr show</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>lo               UNKNOWN        127.0.0.1/8 ::1/128 
+eth0             UP             192.168.5.3/24 fe80::b82d:f4ff:fe54:2e24/64</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To check if one can reach the ip address 192.168.5.1 (of the bridge) from Firecracker MicroVM instance, execute the following
+        command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p># ping -c 3 192.168.5.1</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>PING 192.168.5.1 (192.168.5.1) 56(84) bytes of data.
+64 bytes from 192.168.5.1: icmp_seq=1 ttl=64 time=1.37 ms
+64 bytes from 192.168.5.1: icmp_seq=2 ttl=64 time=0.659 ms
+64 bytes from 192.168.5.1: icmp_seq=3 ttl=64 time=0.593 ms
+
+--- 192.168.5.1 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2003ms
+rtt min/avg/max/mdev = 0.593/0.873/1.367/0.350 ms</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To check if one can reach the ip address 192.168.1.174 (of the host) from Firecracker MicroVM instance, execute the following
+        command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p># ping -c 3 192.168.1.174</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>PING 192.168.1.174 (192.168.1.174) 56(84) bytes of data.
+64 bytes from 192.168.1.174: icmp_seq=1 ttl=64 time=1.69 ms
+64 bytes from 192.168.1.174: icmp_seq=2 ttl=64 time=0.600 ms
+64 bytes from 192.168.1.174: icmp_seq=3 ttl=64 time=0.838 ms
+
+--- 192.168.1.174 ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2003ms
+rtt min/avg/max/mdev = 0.600/1.043/1.692/0.468 ms</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">BOOM</span> - with this we conclude the hands-on demonstration of Firecracker MicroVM !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://firecracker-microvm.github.io/" target="_blank"><span class="bold">Firecracker</span></a></p>
+      <p><a href="https://github.com/firecracker-microvm/firecracker/blob/main/docs/getting-started.md" target="_blank"><span class="bold">Getting Started with Firecracker</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
