@@ -1,0 +1,413 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Claude Code Adventures - Part 5">
+    <meta name="subject" content="Claude Code Adventures - Part 5">
+    <meta name="keywords" content="agentic, claude, llm">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Claude Code Adventures - Part 5</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Claude Code Adventures - Part 5</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">04/03/2026</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/Claude/Claude-Adventures-4.html" target="_blank"><span class="bold">Part 4</span>
+        </a> of this series, we covered the topic on Claude Skills, which are reusable instruction(s) that extend the capability of
+        Claude for a specific domain, such that Claude can automatically handle task(s) or workflow(s) in that specifc domain, in a
+        repeatable way.</p>
+      <p>In this part, we will cover the topic on Claude <span class="hi-yellow">Hooks</span> !!!</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Hooks</span> in Claude are user-defined commands (event handlers) that are automatically executed at
+        specific points in Claude code's lifecycle. They provide deterministic control over Claude's behavior, ensuring certain
+        actions always happen rather than relying on the LLM to choose to run them.</p>
+    </div>
+    <div id="para-div">
+      <p>Hooks in Claude can be used in the following scenarios (not exhaustive):</p>
+      <ul id="blue-sqr-ul">
+        <li><p>Validating and logging a prompt before processing it</p></li>
+        <li><p>Checking and blocking risky tool(s) execution</p></li>
+        <li><p>Formatting the text after code file edits</p></li>
+        <li><p>Automatically running test(s) after code enhancements</p></li>
+        <li><p>Sending custom alert after some action</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>When an event fires and there is a corresponding hook registered to handle that event, Claude Code will pass a JSON context
+        about the event to the registered hook handler command. Note that the JSON input will arrive via stdin to the command handler.
+        For HTTP based hook handler, the JSON input will arrive in the POST request body. The hook handler can then inspect the JSON
+        input and make decisions to take the appropriate action. Note that some events will fire once per session, while others fire
+        repeatedly inside the agentic loop.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on with Claude</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a hook, one needs to add a <span class="hi-grey">hooks</span> block in the configuration settings file that is
+        defined as a JSON file called <span class="hi-yellow">settings.json</span>.</p>
+      <p>The settings file located at <span class="bold">$HOME/.claude/settings.json</span> applies to all the projects for the user,
+        while the settings file located within a specific project at <span class="bold">.claude/settings.json</span> applies just to
+        that project.</p>
+    </div>
+    <div id="para-div">
+      <p>If the command that handles a specifc hook trigger is located at <span class="hi-yellow">$HOME/.claude/hooks/</span>, then
+        it applies to all the projects for the user. On the other hand, if the command that handles a specifc hook trigger is located
+        in a specific project folder <span class="hi-yellow">./.claude/hooks/</span>, it applies just to that specific project.</p>
+    </div>
+    <div id="para-div">
+      <p>For the demonstration, we will create a project <span class="bold">Project-4</span> specific hook(s) that will be located
+        at <span class="bold">$HOME/Claude/Project-4/.claude/hooks/</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>At the Claude prompt, let us make a request to create the new project folder, create an empty settings.json file, and make
+        that folder the working directory by executing the following request:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>&gt; mkdir -p Project-4/.claude/hooks/ && echo "{}" > Project-4/.claude/settings.json && cd Project-4</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The request will cause Claude Code to seek our permission and once we confirm <span class="bold">Yes</span>, Claude Code
+        will proceed with our request and respond as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/claude-44.png" alt="Claude Project 4 Setup" />
+      <div class="img-cap">Figure.1</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>One of the hooks is the <span class="hi-purple">UserPromptSubmit</span> event, which is triggered when the user submits a
+        prompt, before Claude processes it.</p>
+    </div>
+    <div id="para-div">
+      <p>The JSON input for a <span class="bold">UserPromptSubmit</span> hook event will have the following fields (in addition to
+        others):</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="bold">session_id</span> :: captures the current Claude conversation ID</p></li>
+        <li><p><span class="bold">cwd</span> :: captures the current working directory</p></li>
+        <li><p><span class="bold">hook_event_name</span> :: this will be set to <span class="bold">UserPromptSubmit</span></p></li>
+        <li><p><span class="bold">prompt</span> :: captures the user prompt</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>We will implement a hook command for this event using bash, which will log the prompt for audit purposes at <span class=
+        "hi-yellow">/tmp/claude-prompts.log</span>.</p>
+      <p>Let us go ahead and create the hook command as a bash script in the folder <span class="hi-yellow">.claude/hooks</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the bash script to process the user prompt before Claude processes it:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">log-prompt.sh</div>
+      <div class="gen-src-body">
+<pre>#!/usr/bin/env bash
+
+# stdin: JSON with .session_id and .prompt
+DATE=`date`
+SESSION_PROMPT=`jq -r '"\(.session_id) :: \(.prompt)"'`
+
+echo "${DATE} -> ${SESSION_PROMPT}" >> /tmp/claude-prompts.log</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We need to register the just created hook command as the handler for the UserPromptSubmit hook event in the settings.json
+         file. The following should be the modified contents of the settings.json file as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">.claude/settings.json</div>
+      <div class="gen-src-body">
+<pre>{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/log-prompt.sh"
+          }
+        ]
+      }
+    ]
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the end, the folder structure along with the files for our first hook for <span class="bold">UserPromptSubmit</span> is
+        as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/claude-45.png" alt="Hooks Folder Structure" />
+      <div class="img-cap">Figure.2</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>At the Claude prompt, type the following command and press the ENTER key:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>&gt; /hooks</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The Claude menu options appear as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/claude-46.png" alt="Claude Hook Options" />
+      <div class="img-cap">Figure.3</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice the highlighted menu option - it is our first hook for <span class="bold">UserPromptSubmit</span> !!!</p>
+    </div>
+    <div id="para-div">
+      <p>Press the ESC key to exit our custom skill actions menu options.</p>
+    </div>
+    <div id="para-div">
+      <p>At the Claude prompt, type the following prompt and press the ENTER key:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>&gt; what hooks are enabled for this project</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Claude Code will proceed to ask the user for permission as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/claude-47.png" alt="Claude User Permission" />
+      <div class="img-cap">Figure.4</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Open a separate terminal window and execute the following shell command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ cat /tmp/claude-prompts.log</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output</h4>
+      <pre>Sun Mar 29 07:23:48 PM EDT 2026 -> 8aa6b37a-6b6c-4633-840b-d55e6efb0b1e :: what hooks are enabled for this project</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>By confirming <span class="bold">Yes</span>, Claude will execute the prompt and display results as shown in the illustration
+        below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/claude-48.png" alt="Claude Prompt Result" />
+      <div class="img-cap">Figure.5</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">BOOM</span> - we have successfully implemented our first Claude hook !!!</p>
+    </div>
+    <div id="para-div">
+      <p>Now, let us shift gears to implement another hook handler - this one for the <span class="hi-purple">PreToolUse</span> event,
+        which is triggered before Claude executes any tool. Note that this hook handler can be used to block the tool execution by
+        Claude code.</p>
+    </div>
+    <div id="para-div">
+      <p>The JSON input for a <span class="bold">PreToolUse</span> hook event will have the following fields (in addition to others):</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="bold">session_id</span> :: captures the current Claude conversation ID</p></li>
+        <li><p><span class="bold">cwd</span> :: captures the current working directory</p></li>
+        <li><p><span class="bold">hook_event_name</span> :: this will be set to <span class="bold">UserPromptSubmit</span></p></li>
+        <li><p><span class="bold">tool_name</span> :: captures the name of the Claude tool to be executed, such as the <span class=
+          "bold">Bash</span> tool</p></li>
+        <li><p><span class="bold">tool_input</span> :: captures the tool command as JSON in the form '{"command": "..."}'</p></li>
+        <li><p><span class="bold">file_path</span> :: captures the absolute path to the file when the Claude tool is one of these
+          - <span class="bold">Edit</span>, <span class="bold">Read</span>, or <span class="bold">Write</span></p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The following is the Python code to intercept and process the tool execution before Claude executes it:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">tool-intercept.py</div>
+      <div class="gen-src-body">
+<pre>#!/usr/bin/env python3
+
+import json
+import sys
+
+DENY_COMMANDS = ['rm -rf', 'unlink']
+
+def tool_intercept():
+    # Read JSON data from stdin
+    input_data = json.load(sys.stdin)   
+    
+    # Extract fields - tool_name, tool_input 
+    tool_name = input_data.get('tool_name', 'NONE')
+    tool_input = input_data.get('tool_input', {})
+
+    if tool_name == 'Bash':
+        # Extract command
+        command = tool_input.get('command', 'NONE')
+
+        # Check command the deny list
+        for cmd in DENY_COMMANDS:
+            if cmd in command.lower():
+                print(f'BLOCKED: Denying the execution of the command -> {command}', file=sys.stderr)
+                sys.exit(2) # prevent Claude from executing
+    
+    sys.exit(0) # allow Claude to proceed
+
+if __name__ == '__main__':
+    tool_intercept()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We need to register the just created hook command as the handler for the PreToolUse hook event in the settings.json file.
+        The following should be the modified contents of the settings.json file as shown below:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">.claude/settings.json</div>
+      <div class="gen-src-body">
+<pre>{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/tool-intercept.py"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/log-prompt.sh"
+          }
+        ]
+      }
+    ]
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the end, the folder structure along with the files for our first hook for <span class="bold">PreToolUse</span> is as
+        shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/claude-49.png" alt="Hooks Folder Structure 2" />
+      <div class="img-cap">Figure.6</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>At the Claude prompt, type the following command and press the ENTER key:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>&gt; /hooks</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The Claude menu options appear as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/claude-50.png" alt="Claude Hook Options 2" />
+      <div class="img-cap">Figure.7</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice the highlighted menu options - we have our two hooks - one for <span class="bold">PreToolUse</span> and the other
+        for <span class="bold">UserPromptSubmit</span> !!!</p>
+    </div>
+    <div id="para-div">
+      <p>Press the ESC key to exit our custom skill actions menu options.</p>
+    </div>
+    <div id="para-div">
+      <p>At the Claude prompt, type the following prompt and press the ENTER key:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>&gt; need to clean up so execute the command unlink /tmp/test</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Claude Code will proceed to process the request and will be blocked as shown in the illustration below:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/claude-51.png" alt="Claude Request Blocked" />
+      <div class="img-cap">Figure.8</div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">BINGO</span> - with this, we conclude the <span class="bold">Part 5</span> of the Claude adventure series
+        !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/Claude/Claude-Adventures-4.html" target="_blank"><span class="bold">Claude Code Adventures
+        - Part 4</span></a></p>
+      <p><a href="https://polarsparc.github.io/Claude/Claude-Adventures-3.html" target="_blank"><span class="bold">Claude Code Adventures
+        - Part 3</span></a></p>
+      <p><a href="https://polarsparc.github.io/Claude/Claude-Adventures-2.html" target="_blank"><span class="bold">Claude Code Adventures
+        - Part 2</span></a></p>
+      <p><a href="https://polarsparc.github.io/Claude/Claude-Adventures-1.html" target="_blank"><span class="bold">Claude Code Adventures
+        - Part 1</span></a></p>
+      <p><a href="https://code.claude.com/docs/en/hooks" target="_blank"><span class="bold">Claude Hooks Documentation</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
