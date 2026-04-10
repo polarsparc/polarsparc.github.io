@@ -1,0 +1,784 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Evaluation :: LLM Thinking & Tooling using Google Gemma 4">
+    <meta name="subject" content="Evaluation :: LLM Thinking & Tooling using Google Gemma 4">
+    <meta name="keywords" content="llm, glm-4.7-flash">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Evaluation :: LLM Thinking & Tooling using Google Gemma 4</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Evaluation :: LLM Thinking & Tooling using Google Gemma 4</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">04/10/2026</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="step-div">
+      <p>Overview</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the following sections, we will evaluate the LLM model <span class="hi-purple">Google Gemma 4</span> on its <span class=
+        "bold">Thinking</span> and <span class="bold">Tooling</span> capabilities using a set of test use-cases.</p>
+    </div>
+    <div id="para-div">
+      <p>The evaluation will be on a <span class="bold">Ubuntu 24.04 LTS</span> based Linux desktop with a decent <span class="bold"
+        >8-core/16-thread</span> CPU, <span class="bold">64 GB</span> of system memory, and an <span class="bold">NVidia</span> GPU
+        with <span class="bold">16 GB</span> of video memory.</p>
+      <p>Before proceeding further, ensure that <span class="bold">Ollama</span> is installed and setup on the desktop (see <a href
+        ="http://polarsparc.github.io/GenAI/Ollama.html" target="_blank"><span class="bold">instructions</span></a>).</p>
+      <p>In addition, ensure that the <span class="bold">Python 3.1x</span> programming language as well as the <span class="bold">
+        Jupyter Notebook</span> package is installed and setup on the desktop.</p>
+    </div>
+    <div id="para-div">
+      <p>Assuming the ip address of the Linux desktop is <span class="hi-grey">192.168.1.25</span>, start the <span class="bold">
+        Ollama</span> platform by executing the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name ollama --gpus=all -p 192.168.1.25:11434:11434 -v $HOME/.ollama:/root/.ollama ollama/ollama:0.20.2</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Open a new terminal window and execute the following <span class="bold">docker</span> command to download the Google Gemma 4
+        model:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker exec -it ollama ollama run gemma4:e4b</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Once the model is downloaded successfully, to exit the user input, execute the following user prompt:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>&gt;&gt;&gt; /bye</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the following sections, we will evaluate the model on each of the test cases.</p>
+    </div>
+    <br/>
+    <div id="step-div">
+      <p>Initialization & Setup</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Install the following necessary <span class="bold">Python</span> modules by executing the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ pip install dotenv langchain langchain-core langchain-ollama ollama</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Create a file called <span class="hi-yellow">llm-evals.env</span> with the following environment variables defined:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>LLM_TEMPERATURE=1.0
+LLM_TIMEOUT=600
+LLM_TOP_P=0.95
+LLM_TOP_K=64
+OLLAMA_MODEL='ollama:gemma4:e4b'
+OLLAMA_BASE_URL='http://192.168.1.25:11434'</pre>
+      </div>
+    </div>
+    <br/>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>Google Gemma4 recommends <span class="underbold">temperature=1.0</span>, <span class="underbold">top_p=0.95</span>, and <span class="underbold">top_k=64</span> for optimal performance !!!</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To load the environment variables and assign them to <span class="bold">Python</span> variable, execute the following code
+        snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from dotenv import dotenv_values
+
+config = dotenv_values('llm-vals.env')
+
+llm_temperature = float(config.get('LLM_TEMPERATURE'))
+llm_timeout = int(config.get('LLM_TIMEOUT'))
+llm_top_p = float(config.get('LLM_TOP_P'))
+llm_top_k = float(config.get('LLM_TOP_K'))
+ollama_model = config.get('OLLAMA_MODEL')
+ollama_base_url = config.get('OLLAMA_BASE_URL')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To initialize a client instance of <span class="bold">Ollama</span> running the desired LLM model <span class="hi-purple">
+        gemma4:e4b</span>, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langchain.agents import create_agent
+from langchain.chat_models import init_chat_model
+from langchain_core.runnables import RunnableConfig
+
+ollama_chat_llm = init_chat_model(ollama_model,
+                                  base_url=ollama_base_url,
+                                  temperature=llm_temperature,
+                                  top_p=llm_top_p,
+                                  top_k=llm_top_k)
+
+system_prompt = 'You are a helpful virtual assistant.'
+
+tools_agent = (create_agent(ollama_chat_llm,
+                           system_prompt=system_prompt)
+               .with_config(RunnableConfig(recursion_limit=3)))</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Notice the use of the model provider prefix <span class="hi-yellow">'ollama:'</span> along with the model name. This prefix
+        loads and initializes the desired model provider (<span class="bold">Ollama</span> in this case).</p>
+    </div>
+    <br/>
+    <div id="step-div">
+      <p>Test Case - 1 :: Solve a Valid Logical Puzzle</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In this test case, we will evaluate the <span class="bold">thinking</span> and <span class="bold">reasoning</span> ability
+        of the selected LLM model by prompting a valid logical puzzle.</p>
+    </div>
+    <div id="para-div">
+      <p>Execute the following <span class="bold">Python</span> code snippet for the result:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langchain_core.messages import AIMessage
+
+question = """
+Four people have to cross a bridge at night and they will use a torchlight. The batteries in the torchlight only lasts 15 minutes. Alice can cross in one minute, Ben in two minutes, Cindy in five minutes, and Don in eight minutes. At any point in time, only two people can cross the bridge. However, when two people cross the bridge, they have to go at the slower person’s pace. How do they all get across the bridge in 15 minutes? Attempt to solve in no more than 5 iterations. Else, say The problem is not solvable!
+"""
+
+result = tools_agent.invoke(
+  {'messages': [
+    {
+      'role': 'user',
+      'content': question
+    }
+  ]},
+  config={
+    'recursion_limit': 3,
+    'timeout': llm_timeout
+  }
+)
+
+agent_messages = [msg for msg in result['messages'] if isinstance(msg, AIMessage)]
+if agent_messages:
+    print(agent_messages[-1].content)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following was the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>This problem is solvable in exactly 5 steps, using the entire 15-minute battery life.
+
+Here is the solution:
+
+**Initial State:** A, B, C, D at Start (Torch) | End (0 minutes)
+**Time Limit:** 15 minutes
+
+**Step 1: Alice and Ben cross.**
+*   Time taken: $\text{Max}(1, 2) = 2$ minutes.
+*   State: A, B at End (Torch) | C, D at Start
+*   **Total Time Elapsed: 2 minutes.**
+
+**Step 2: Alice returns with the torch.**
+*   Time taken: $1$ minute.
+*   State: A, C, D at Start (Torch) | B at End
+*   **Total Time Elapsed: $2 + 1 = 3$ minutes.**
+
+**Step 3: Cindy and Don cross.**
+*   Time taken: $\text{Max}(5, 8) = 8$ minutes.
+*   State: A at Start | B, C, D at End (Torch)
+*   **Total Time Elapsed: $3 + 8 = 11$ minutes.**
+
+**Step 4: Ben returns with the torch.**
+*   Time taken: $2$ minutes.
+*   State: A, B at Start (Torch) | C, D at End
+*   **Total Time Elapsed: $11 + 2 = 13$ minutes.**
+
+**Step 5: Alice and Ben cross.**
+*   Time taken: $\text{Max}(1, 2) = 2$ minutes.
+*   State: A, B, C, D at End (Torch) | None at Start
+*   **Total Time Elapsed: $13 + 2 = 15$ minutes.**
+
+They all get across the bridge in exactly 15 minutes.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Well Done - the LLM model was able to solve the logical puzzle successfully !!!</p>
+      <p><span class="underbold">NOTE</span> :: it took about 50 secs on my Linux desktop to complete this task.</p>
+    </div>
+    <br/>
+    <div id="step-div">
+      <p>Test Case - 2 :: Solve an Invalid Logical Puzzle</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In this test case, we will evaluate the <span class="bold">thinking</span> and <span class="bold">reasoning</span> ability
+        of the selected LLM model by prompting an invalid logical puzzle.</p>
+    </div>
+    <div id="para-div">
+      <p>Execute the following <span class="bold">Python</span> code snippet for the result:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langchain_core.messages import AIMessage
+
+question = """
+Four people have to cross a bridge at night and they will use a torchlight. The batteries in the torchlight only lasts 15 minutes. Alice can cross in two minutes, Ben in three minutes, Cindy in five minutes, and Don in eight minutes. At any point in time, only two people can cross the bridge. However, when two people cross the bridge, they have to go at the slower person’s pace. How do they all get across the bridge in 15 minutes? Attempt to solve in no more than 5 iterations. Else, say The problem is not solvable!
+"""
+
+result = tools_agent.invoke(
+  {'messages': [
+    {
+      'role': 'user',
+      'content': question
+    }
+  ]},
+  config={
+    'recursion_limit': 3,
+    'timeout': llm_timeout
+  }
+)
+
+agent_messages = [msg for msg in result['messages'] if isinstance(msg, AIMessage)]
+if agent_messages:
+    print(agent_messages[-1].content)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following was the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>The problem is not solvable!
+
+(The minimum time required for all four people to cross the bridge, using the optimal method of pairing the two slowest people together, is 16 minutes, which exceeds the 15-minute limit.)
+
+***
+
+*For reference, here is the optimal 16-minute solution:*
+
+1. **Alice and Ben cross.** (Time: 3 minutes. $A \to B$)
+2. **Alice returns.** (Time: 2 minutes. $B \leftarrow A$)
+    * *Cumulative Time: 5 minutes.*
+3. **Cindy and Don cross.** (Time: 8 minutes. $A \to B, C \to D$)
+4. **Ben returns.** (Time: 3 minutes. $B \leftarrow A$)
+    * *Cumulative Time: 16 minutes.*
+
+*(All four are now across, but this takes 16 minutes.)*</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Awesome - the LLM model was able to successfully indicated the logical puzzle is not solvable !!!</p>
+      <p><span class="underbold">NOTE</span> :: it took about 40 secs on my Linux desktop to complete this task.</p>
+    </div>
+    <br/>
+    <div id="step-div">
+      <p>Test Case - 3 :: Solve a Mathematical Problem</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In this test case, we will evaluate the Mathematical <span class="bold">problem solving</span> ability of the selected LLM
+        model by prompting a math problem.</p>
+    </div>
+    <div id="para-div">
+      <p>Execute the following <span class="bold">Python</span> code snippet for the result:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langchain_core.messages import AIMessage
+
+question = """
+If 3x - y = 12, what is the value of (8^x/2^y)?
+"""
+
+result = tools_agent.invoke(
+  {'messages': [
+    {
+      'role': 'user',
+      'content': question
+    }
+  ]},
+  config={
+    'recursion_limit': 3,
+    'timeout': llm_timeout
+  }
+)
+
+agent_messages = [msg for msg in result['messages'] if isinstance(msg, AIMessage)]
+if agent_messages:
+    print(agent_messages[-1].content)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following was the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>This is a problem that requires using exponent rules and substitution based on the given linear equation.
+
+Here is the step-by-step solution:
+
+### 1. Analyze the Expression and Simplify the Bases
+
+We need to find the value of:
+$$\frac{8^x}{2^y}$$
+
+The key to solving this is to express all numbers in the numerator and denominator as powers of the same base, which is **2**.
+
+*   Rewrite $8^x$: Since $8 = 2^3$, we have $8^x = (2^3)^x = 2^{3x}$.
+*   The denominator is already in base 2: $2^y$.
+
+Substitute these back into the expression:
+$$\frac{2^{3x}}{2^y}$$
+
+### 2. Apply Exponent Rules
+
+When dividing powers with the same base, you subtract the exponents:
+$$\frac{2^{3x}}{2^y} = 2^{3x - y}$$
+
+### 3. Use the Given Equation
+
+We are given the equation:
+$$3x - y = 12$$
+
+Notice that the exponent of our simplified expression ($3x - y$) is exactly the expression we were given equals 12.
+
+### 4. Solve for the Value
+
+Substitute the value 12 into the simplified expression:
+$$2^{3x - y} = 2^{12}$$
+
+Now, calculate $2^{12}$:
+$$2^{10} = 1024$$
+$$2^{11} = 2048$$
+$$2^{12} = 4096$$
+
+---
+The value of $\frac{8^x}{2^y}$ is **4096**.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Fantastic - the LLM model was able to successfully solve the math problem !!!</p>
+      <p><span class="underbold">NOTE</span> :: it took about 20 secs on my Linux desktop to complete this task.</p>
+    </div>
+    <br/>
+    <div id="step-div">
+      <p>Test Case - 4 :: Generate Python Code</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In this test case, we will evaluate the <span class="bold">code generation</span> capability of the selected LLM model by
+        prompting for generation of a Python code that exposes two REST based endpoints with the second endpoint being protected by
+        an api token.</p>
+    </div>
+    <div id="para-div">
+      <p>Execute the following <span class="bold">Python</span> code snippet for the result:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langchain_core.messages import AIMessage
+
+question = """
+Generate Python code that exposes two REST based endpoints - /hello and /secure-hello. The second endpoint /secure-hello must be protected by an api token. Also, create a standalone Python utility for generating api tokens. Do not make it complicated - keep it clean and simple.
+"""
+
+result = tools_agent.invoke(
+  {'messages': [
+    {
+      'role': 'user',
+      'content': question
+    }
+  ]},
+  config={
+    'recursion_limit': 3,
+    'timeout': llm_timeout
+  }
+)
+
+agent_messages = [msg for msg in result['messages'] if isinstance(msg, AIMessage)]
+if agent_messages:
+    print(agent_messages[-1].content)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following was the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>This solution uses **Flask** for the API endpoints, as it is the most straightforward framework for creating simple REST services.
+
+We will create two files:
+1.  `app.py`: Contains the Flask application with the two endpoints.
+2.  `token_generator.py`: A standalone utility to generate secure API tokens.
+
+### 1. API Application (`app.py`)
+
+This file sets up the web server, handles the routing, and validates the token for the secure endpoint.
+
+```python
+# app.py
+from flask import Flask, request, jsonify
+import os
+
+app = Flask(__name__)
+
+# --- Configuration ---
+# NOTE: In a real application, this token should be loaded from environment variables or a secure vault.
+# For this simple example, we are reading it from an environment variable.
+# You must set this before running the app: export API_TOKEN="your_secret_token"
+API_TOKEN = os.environ.get("API_TOKEN")
+
+if not API_TOKEN:
+    print("***********************************************************")
+    print("WARNING: API_TOKEN environment variable is not set.")
+    print("The /secure-hello endpoint will reject all requests.")
+    print("Set it using: export API_TOKEN='&lt;your_generated_token&gt;'")
+    print("***********************************************************")
+
+
+@app.route('/hello', methods=['GET'])
+def hello_world():
+    """
+    Exposes a simple, public 'hello' endpoint.
+    """
+    return jsonify({
+        "message": "Welcome to the public service!",
+        "endpoint": "/hello",
+        "status": "success"
+    })
+
+@app.route('/secure-hello', methods=['GET'])
+def secure_hello():
+    """
+    Exposes a secure endpoint requiring a valid API Token in the Authorization header.
+    """
+    # 1. Get the token from the request header
+    auth_header = request.headers.get('Authorization')
+    
+    if not auth_header:
+        return jsonify({"error": "Authorization header missing. Please provide a token."}), 401
+    
+    # 2. Expect format: "Bearer &lt;token&gt;"
+    try:
+        scheme, provided_token = auth_header.split(' ', 1)
+        if scheme.lower() != 'bearer':
+             return jsonify({"error": "Invalid authorization scheme. Use 'Bearer <token>'."}), 401
+    except ValueError:
+        return jsonify({"error": "Authorization header must be in the format 'Bearer <token>'."}), 401
+
+    # 3. Validate the token against the configured secret token
+    if provided_token == API_TOKEN:
+        return jsonify({
+            "message": "Success! This is a secure endpoint.",
+            "endpoint": "/secure-hello",
+            "status": "authenticated"
+        })
+    else:
+        # Token mismatch or missing
+        return jsonify({"error": "Invalid API Token provided."}), 403
+
+if __name__ == '__main__':
+    print("\n=========================================")
+    print("         API Service Started          ")
+    print("=========================================")
+    print(f"Public Endpoint: http://127.0.0.1:5000/hello")
+    print(f"Secure Endpoint: http://127.0.0.1:5000/secure-hello")
+    print("-----------------------------------------")
+    print("IMPORTANT: Set API_TOKEN environment variable to activate security.")
+    app.run(debug=True)
+```
+
+### 2. Token Generator Utility (`token_generator.py`)
+
+This standalone script uses Python's `secrets` module for cryptographically secure token generation.
+
+```python
+# token_generator.py
+import secrets
+import string
+
+def generate_api_token(length: int = 32) -> str:
+    """
+    Generates a cryptographically secure random string suitable for an API token.
+    
+    Args:
+        length: The desired length of the token in characters. Defaults to 32.
+        
+    Returns:
+        The generated token string.
+    """
+    # Define characters to use in the token (alphanumeric + special chars)
+    alphabet = string.ascii_letters + string.digits + string.punctuation
+    
+    # Use secrets module for secure randomness
+    token = ''.join(secrets.choice(alphabet) for _ in range(length))
+    return token
+
+if __name__ == "__main__":
+    print("--- API Token Generator ---")
+    
+    # 1. Generate a token
+    new_token = generate_api_token()
+    
+    print(f"\n Successfully generated a new API Token.")
+    print(f" Your Secret Token: {new_token}")
+    print("-" * 40)
+    print("\n Next Steps:")
+    print("1. Copy the token displayed above.")
+    print("2. In your terminal, set it as an environment variable:")
+    print(f"   export API_TOKEN='{new_token}'")
+    print("3. Run the API server: python app.py")
+
+```
+
+---
+
+### How to Run the Code
+
+Follow these steps in your terminal:
+
+**Step 1: Setup Environment**
+You need Flask installed:
+```bash
+pip install Flask
+```
+
+**Step 2: Generate the Token (Crucial First Step)**
+Run the token generator script to get your secret key. **Copy this output!**
+```bash
+python token_generator.py
+```
+*(Example output shows the token you must use.)*
+
+**Step 3: Set the Environment Variable**
+Replace `&lt;PASTE_YOUR_SECRET_TOKEN_HERE&gt;` with the token copied in Step 2.
+
+*   **Linux/macOS:**
+    ```bash
+    export API_TOKEN='&lt;PASTE_YOUR_SECRET_TOKEN_HERE&gt;'
+    ```
+*   **Windows (Command Prompt):**
+    ```bash
+    set API_TOKEN=&lt;PASTE_YOUR_SECRET_TOKEN_HERE&gt;
+    ```
+*   **Windows (PowerShell):**
+    ```bash
+    $env:API_TOKEN="&lt;PASTE_YOUR_SECRET_TOKEN_HERE&gt;"
+    ```
+
+**Step 4: Run the API Server**
+Now, run the main application file:
+```bash
+python app.py
+```
+
+### Testing the Endpoints
+
+You can test these endpoints using a tool like `curl` or Postman.
+
+**1. Test Public Endpoint (`/hello`)**
+This requires no token.
+```bash
+curl http://127.0.0.1:5000/hello
+# Expected Output: {"message": "Welcome to the public service!", ...}
+```
+
+**2. Test Secure Endpoint (FAIL - No Token)**
+The server should return a 401 Unauthorized error.
+```bash
+curl http://127.0.0.1:5000/secure-hello
+# Expected Output: {"error": "Authorization header missing. Please provide a token."}
+```
+
+**3. Test Secure Endpoint (FAIL - Wrong Token)**
+The server should return a 403 Forbidden error.
+```bash
+curl -H "Authorization: Bearer wrong_token" http://127.0.0.1:5000/secure-hello
+# Expected Output: {"error": "Invalid API Token provided."}
+```
+
+**4. Test Secure Endpoint (SUCCESS - Correct Token)**
+Use the token you set in Step 3.
+```bash
+curl -H "Authorization: Bearer &lt;PASTE_YOUR_SECRET_TOKEN_HERE&gt;" http://127.0.0.1:5000/secure-hello
+# Expected Output: {"message": "Success! This is a secure endpoint.", ...}
+```</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Excellent - the LLM model was able to successfully generate the Python code for the given task along with user steps !!!</p>
+      <p><span class="underbold">NOTE</span> :: it took about 50 secs on my Linux desktop to complete this task.</p>
+    </div>
+    <br/>
+    <div id="step-div">
+      <p>Test Case - 5 :: Invoke User Supplied Tool</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In this test case, we will evaluate the <span class="bold">tool calling</span> ability of the selected LLM model by prompting
+        to find and display specific host system information.</p>
+    </div>
+    <div id="para-div">
+      <p>Execute the following <span class="bold">Python</span> code snippet for the result:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langchain_core.messages import ToolMessage
+from langchain.tools import tool
+
+@tool
+def execute_shell_command(command: str) -> str:
+    """Tool to execute shell commands
+    Arg:
+        command (str): Shell command to execute
+    Returns:
+        str: Output of the command execution
+    """
+    print(f'Executing shell command: {command}')
+    try:
+        output = subprocess.run(command, shell=True, check=True, text=True, capture_output=True)
+        if output.returncode != 0:
+            return f'Error executing shell command - {command}'
+        return output.stdout
+    except subprocess.CalledProcessError as e:
+        print(e)
+        return f'Error executing shell command - {command}'
+
+tools =[execute_shell_command]
+
+question = """
+Find the ip address(es) of the primary network interface on this Linux system!
+You have access to the following tools:
+{tools}
+You can use these provided tools to answer the question, if necessary.
+Only display the primary network interface and its ip address in the output - nothing more.
+"""
+
+tools_agent = create_agent(ollama_chat_llm,
+                           tools,
+                           system_prompt=system_prompt)
+
+result = tools_agent.invoke(
+  {'messages': [
+    {
+      'role': 'user',
+      'content': question
+    }
+  ]},
+  config={
+    'recursion_limit': 5,
+    'timeout': llm_timeout
+  }
+)
+
+tool_messages = [msg for msg in result['messages'] if isinstance(msg, ToolMessage)]
+if tool_messages:
+    print(tool_messages[-1].content)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following was the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host noprefixroute 
+       valid_lft forever preferred_lft forever
+2: enp42s0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether aa:7c:aa:17:aa:5a brd ff:ff:ff:ff:ff:ff
+    inet 192.168.1.25/24 brd 192.168.1.255 scope global noprefixroute enp42s0
+       valid_lft forever preferred_lft forever
+    inet6 aaaa::a85e:aaaa:5db3:2919/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+3: wlo1: &lt;NO-CARRIER,BROADCAST,MULTICAST,UP&gt; mtu 1500 qdisc noqueue state DOWN group default qlen 1000
+    link/ether bb:c2:bb:ee:bb:73 brd ff:ff:ff:ff:ff:ff
+    altname wlp41s0
+4: docker0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue state UP group default 
+    link/ether a6:69:1b:90:41:60 brd ff:ff:ff:ff:ff:ff
+    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::a469:1bff:fe90:4160/64 scope link 
+       valid_lft forever preferred_lft forever
+9: vethdc87142@if2: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc noqueue master docker0 state UP group default 
+    link/ether 56:c1:27:50:7e:1b brd ff:ff:ff:ff:ff:ff link-netnsid 0
+    inet6 fe80::bc8a:d6ff:fe04:d9d6/64 scope link 
+       valid_lft forever preferred_lft forever</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Not Quite - the LLM model was <span class="underbold">NOT</span> able to follow the specific instructions !!!</p>
+      <p><span class="underbold">NOTE</span> :: it took about 30 secs on my Linux desktop to complete this task.</p>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>On an average (for the given host system specs), the response from the model will take anywhere between <span class="underbold">20 to 50</span> seconds !!!</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Overall, the <span class="hi-purple">Gemma 4 4B</span> model has performed extremely well !!!</p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
