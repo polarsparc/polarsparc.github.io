@@ -681,6 +681,61 @@ response.content</pre>
     </div>
     <br/>
     <div id="para-div">
+      <p>Moving on to the next task, we will provide the LLM model with access to a custom tool, so that the model to leverage it
+        appropriately. To receive a LLM model response for the tool processing user prompt from the <span class="bold">llama.cpp</span>
+        platform, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from langchain.agents import create_agent
+from langchain_core.messages import AIMessage
+from langchain_core.tools import tool
+
+@tool
+def execute_shell_command(command: str) -> str:
+  """Tool to execute shell commands
+  Arg:
+    command (str): Shell command to execute
+  Returns:
+    str: Output of the command execution
+  """
+  print(f'Executing shell command: {command}')
+  try:
+    output = subprocess.run(command, shell=True, check=True, text=True, capture_output=True)
+    if output.returncode != 0:
+      return f'Error executing shell command - {command}'
+    return output.stdout
+  except subprocess.CalledProcessError as e:
+    print(e)
+    return f'Error executing shell command - {command}'
+
+agent_openai = create_agent(llm_openai, [execute_shell_command])
+
+request = {
+  'role': 'user',
+  'content': 'Find the ip address(es) for the primary network interface on this Linux system! Only display the name and ip address(es) of the primary network interface'
+}
+
+response = agent_openai.invoke({'messages': [request]})
+
+tool_messages = [msg for msg in response['messages'] if isinstance(msg, AIMessage)]
+if tool_messages:
+  print(tool_messages[-1].content)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>**Interface Name:** enp42s0
+**IP Address(es):** 192.168.1.25/24</pre>
+    </div>
+    <br/>
+    <div id="para-div">
       <p>With this, we conclude the various demonstrations on using the <span class="bold">llama.cpp</span> platform for running
         and working with the pre-trained LLM model locally !!!</p>
     </div>
