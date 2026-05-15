@@ -1,0 +1,203 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Quick Test :: Using Z-Image-Turbo on a Local Machine">
+    <meta name="subject" content="Quick Test :: Using Z-Image-Turbo on a Local Machine">
+    <meta name="keywords" content="diffusion, z-image-turbo">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Quick Test :: Using Z-Image-Turbo on a Local Machine</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Quick Test :: Using Z-Image-Turbo on a Local Machine</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">05/15/2026</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="section-div">
+      <p>Using Z-Image-Turbo for Image Generation</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the following section, we will demonstrate how one can use the <span class="hi-purple">Z-Image-Turbo</span> text-to-image
+        <span class="hi-yellow">Diffusion</span> model on a decent <span class="bold">8-core</span> desktop with <span class="bold">
+        64GB</span> system memory and <span class="bold">16GB</span> video memory <span class="bold">Nvidia</span> GPU.</p>
+    </div>
+    <div id="para-div">
+      <p>Ensure that <span class="bold">Python 3.1x</span> programming language is installed and setup on the desktop.</p>
+    </div>
+    <div id="para-div">
+      <p>In addition, install the following necessary <span class="bold">Python</span> modules by executing the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ pip install accelerate diffusers huggingface_hub pillow torch</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The first step is to download the <span class="bold">Z-Image-Turbo</span> model from the <span class="bold">HuggingFace</span>
+        repository to the default <span class="bold">HuggingFace</span> directory <span class="bold">$HOME/.cache/huggingface</span>
+        on the desktop.</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from huggingface_hub import snapshot_download
+
+image_repo_id = 'Tongyi-MAI/Z-Image-Turbo'
+
+snapshot_download(repo_id=image_repo_id)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The above code execution will take a few minutes to complete as the model needs to be downloaded to the desktop over the
+        Internet.</p>
+    </div>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>With a 1 Gbps internet speed, the 'snapshot_download' command will take between <span class="underbold">5 to 10</span> minutes to download the model !!!</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Create a directory called <span class="bold">/tmp/images</span> where the model generated image would be stored.</p>
+    </div>
+    <div id="para-div">
+      <p>Execute the following <span class="bold">Python</span> code snippet to run the text-to-image diffusion model:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from diffusers import ZImagePipeline
+import torch
+
+image_dir = '/tmp/images'
+num_inference_steps = 12
+device = 'cpu'
+torch_bfloat16 = torch.bfloat16
+
+c_pipe = ZImagePipeline.from_pretrained(image_repo_id,
+                                        torch_dtype=torch_bfloat16,
+                                        low_cpu_mem_usage=False,)
+c_pipe = c_pipe.to(device)
+c_pipe.enable_sequential_cpu_offload()
+
+aspect_ratios = {
+  '1:1': (1328, 1328),
+  '16:9': (1664, 928),
+  '9:16': (928, 1664),
+  '4:3': (1472, 1104),
+  '3:4': (1104, 1472),
+  '3:2': (1584, 1056),
+  '2:3': (1056, 1584),
+}
+
+width, height = aspect_ratios['4:3']
+
+prompt = '''
+A digital art of a robot walking together with a snow leopard family, through a small snow filled pathway,
+with trees on both sizes covered with snow, with broken twigs along the pathway covered in snow, in a dense
+forest filled with snow, with snow covered mountain ranges in the background clearly visible from the pathway
+'''
+
+image = c_pipe(
+  prompt=prompt,
+  height=height,
+  width=width,
+  output_type='pil',
+  num_inference_steps=num_inference_steps,
+  guidance_scale=guidance_scale,
+  generator=torch.Generator(device).manual_seed(7)
+).images[0]
+
+image.save('/tmp/images/z-robot-leopard.jpg')</pre>
+      </div>
+    </div>
+    <br/>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>It is <span class="underbold">VERY IMPORTANT</span> to use the float type of <span class="underbold">torch.bfloat16</span>. Else will encounter <span class="underbold">RUNTIME ERRORS</span> !!!</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>On the desktop with the specified specs, the model will leverage the CPU memory and typically run for about 2 mins before
+        generating the desired image !!!</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the image generated by the <span class="bold">Z-Image-Turbo</span> model for the specific prompt:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/z-robot-leopard.jpg" alt="Robot and Tiger" />
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Execute the following <span class="bold">Python</span> code snippet to run the text-to-image diffusion model:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>prompt = '''
+A cute baby panda performing a spectacular dance in the center of Rome colosseum, with people sitting around
+in the colosseum, clapping and showering flowers in the air. Render the image in van gogh style
+'''
+
+image = c_pipe(
+    prompt=prompt,
+    height=height,
+    width=width,
+    output_type='pil',
+    num_inference_steps=num_inference_steps,
+    guidance_scale=guidance_scale,
+    generator=torch.Generator(device).manual_seed(7)
+).images[0]
+
+image.save('/tmp/images/z-panda-dance.jpg')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the image generated by the <span class="bold">Z-Image-Turbo</span> model for the specific prompt:</p>
+    </div>
+    <br/>
+    <div id="img-outer-div"> <img class="img-cls" src="./images/z-panda-dance.jpg" alt="Panda Dance Rome" />
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The <span class="bold">Z-Image_turbo</span> model is indeed fast and very good in text to image generation !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://huggingface.co/Tongyi-MAI/Z-Image-Turbo" target="_blank"><span class="bold">HuggingFace Z-Image-Turbo</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
