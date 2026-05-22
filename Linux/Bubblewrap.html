@@ -1,0 +1,713 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Bubblewrap - Pop Goes the Privilege!">
+    <meta name="subject" content="Bubblewrap - Pop Goes the Privilege!">
+    <meta name="keywords" content="firecracker, linux">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Bubblewrap - Pop Goes the Privilege!</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Bubblewrap - Pop Goes the Privilege!</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">05/22/2026</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="gen-step-div">
+      <p>Overview</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>AI has dramatically accelerated the development and release of new tools - both beneficial and malicious - at an unprecedented
+        pace. How do we evaluate these promising new tools safely, within a controlled, sandboxed environment ???</p>
+      <p>Well - one of the answers is the <span class="hi-yellow">Bubblewrap</span> sandboxing tool in Linux !!!</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Bubblewrap</span> is a low-privileged sandboxing tool used in production by many projects in Linux. Unlike
+        heavy virtual machines or containers (Docker, Podman), <span class="bold">Bubblewrap</span> uses the following Linux kernel
+        primitives directly:</p>
+    </div>
+    <div id="para-div">
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="hi-vanila">User Namespaces</span> :: to map host UIDs/GIDs to sandboxed ones without root</p>
+        </li>
+        <li>
+          <p><span class="hi-vanila">Mount Namespaces</span> :: to build a private filesystem view</p>
+        </li>
+        <li>
+          <p><span class="hi-vanila">PID Namespaces</span> :: to isolate process trees</p>
+        </li>
+        <li>
+          <p><span class="hi-vanila">Network Namespaces</span> :: to cut off or reshape networking</p>
+        </li>
+        <li>
+          <p><span class="hi-vanila">IPC Namespaces</span> :: to isolate SysV IPC and POSIX primitives</p>
+        </li>
+        <li>
+          <p><span class="hi-vanila">UTS Namespaces</span> :: to set a private hostname</p>
+        </li>
+        <li>
+          <p><span class="hi-vanila">Seccomp Filters</span> :: to restrict which syscalls the sandboxed process may make</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Because <span class="bold">Bubblewrap</span> runs entirely in <span class="underbold">unprivileged user space</span>, it is
+        suitable for sandboxing untrusted code, AI agents, build systems, downloaded scripts, and developer tools that need internet
+        access but should not touch your home directory.</p>
+    </div>
+    <div id="para-div">
+      <p><span class="bold">Bubblewrap</span> works by:</p>
+    </div>
+    <div id="para-div">
+      <ul id="blue-sqr-ul">
+        <li>
+          <p><span class="bold">Forking</span> a child process</p>
+        </li>
+        <li>
+          <p>Setting up <span class="bold">Linux namespaces</span> (mount, PID, UTS, IPC, network, user, CGroup)</p>
+        </li>
+        <li>
+          <p>Re-mounting the<span class="bold">filesystem</span> according to your desired specifications</p>
+        </li>
+        <li>
+          <p>Executing the <span class="bold">target command</span> inside that isolated environment</p>
+        </li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The critical insight is that <span class="bold">Bubblewrap</span> starts with a <span class="bold">root filesystem</span>
+        (typically your current system root `/`) and then layers bind mounts on top. Everything <span class="underbold">NOT</span>
+        explicitly mounted or bound is invisible inside the sandbox.</p>
+    </div>
+    <br/>
+    <div id="gen-step-div">
+      <p>Hands-on Bubblewrap</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>All the commands will be executed on a <span class="bold">Ubuntu 24.04 LTS</span> based Linux desktop.</p>
+    </div>
+    <div id="para-div">
+      <p>To install <span class="bold">Bubblewrap</span>, execute the following command in a new terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ sudo apt update; sudo apt install bubblewrap</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Once the install succeeds, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ bwrap --version</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>At the time of this article, the following was the output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>bubblewrap 0.9.0</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To list all the avialable command-line options, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ bwrap --help</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>usage: bwrap [OPTIONS...] [--] COMMAND [ARGS...]
+
+  --help                       Print this help
+  --version                    Print version
+  --args FD                    Parse NUL-separated args from FD
+  --argv0 VALUE                Set argv[0] to the value VALUE before running the program
+  --unshare-all                Unshare every namespace we support by default
+  --share-net                  Retain the network namespace (can only combine with --unshare-all)
+  --unshare-user               Create new user namespace (may be automatically implied if not setuid)
+  --unshare-user-try           Create new user namespace if possible else continue by skipping it
+  --unshare-ipc                Create new ipc namespace
+  --unshare-pid                Create new pid namespace
+  --unshare-net                Create new network namespace
+  --unshare-uts                Create new uts namespace
+  --unshare-cgroup             Create new cgroup namespace
+  --unshare-cgroup-try         Create new cgroup namespace if possible else continue by skipping it
+  --userns FD                  Use this user namespace (cannot combine with --unshare-user)
+  --userns2 FD                 After setup switch to this user namespace, only useful with --userns
+  --disable-userns             Disable further use of user namespaces inside sandbox
+  --assert-userns-disabled     Fail unless further use of user namespace inside sandbox is disabled
+  --pidns FD                   Use this pid namespace (as parent namespace if using --unshare-pid)
+  --uid UID                    Custom uid in the sandbox (requires --unshare-user or --userns)
+  --gid GID                    Custom gid in the sandbox (requires --unshare-user or --userns)
+  --hostname NAME              Custom hostname in the sandbox (requires --unshare-uts)
+  --chdir DIR                  Change directory to DIR
+  --clearenv                   Unset all environment variables
+  --setenv VAR VALUE           Set an environment variable
+  --unsetenv VAR               Unset an environment variable
+  --lock-file DEST             Take a lock on DEST while sandbox is running
+  --sync-fd FD                 Keep this fd open while sandbox is running
+  --bind SRC DEST              Bind mount the host path SRC on DEST
+  --bind-try SRC DEST          Equal to --bind but ignores non-existent SRC
+  --dev-bind SRC DEST          Bind mount the host path SRC on DEST, allowing device access
+  --dev-bind-try SRC DEST      Equal to --dev-bind but ignores non-existent SRC
+  --ro-bind SRC DEST           Bind mount the host path SRC readonly on DEST
+  --ro-bind-try SRC DEST       Equal to --ro-bind but ignores non-existent SRC
+  --bind-fd FD DEST            Bind open directory or path fd on DEST
+  --ro-bind-fd FD DEST         Bind open directory or path fd read-only on DEST
+  --remount-ro DEST            Remount DEST as readonly; does not recursively remount
+  --exec-label LABEL           Exec label for the sandbox
+  --file-label LABEL           File label for temporary sandbox content
+  --proc DEST                  Mount new procfs on DEST
+  --dev DEST                   Mount new dev on DEST
+  --tmpfs DEST                 Mount new tmpfs on DEST
+  --mqueue DEST                Mount new mqueue on DEST
+  --dir DEST                   Create dir at DEST
+  --file FD DEST               Copy from FD to destination DEST
+  --bind-data FD DEST          Copy from FD to file which is bind-mounted on DEST
+  --ro-bind-data FD DEST       Copy from FD to file which is readonly bind-mounted on DEST
+  --symlink SRC DEST           Create symlink at DEST with target SRC
+  --seccomp FD                 Load and use seccomp rules from FD (not repeatable)
+  --add-seccomp-fd FD          Load and use seccomp rules from FD (repeatable)
+  --block-fd FD                Block on FD until some data to read is available
+  --userns-block-fd FD         Block on FD until the user namespace is ready
+  --info-fd FD                 Write information about the running container to FD
+  --json-status-fd FD          Write container status to FD as multiple JSON documents
+  --new-session                Create a new terminal session
+  --die-with-parent            Kills with SIGKILL child process (COMMAND) when bwrap or bwrap's parent dies.
+  --as-pid-1                   Do not install a reaper process with PID=1
+  --cap-add CAP                Add cap CAP when running as privileged user
+  --cap-drop CAP               Drop cap CAP when running as privileged user
+  --perms OCTAL                Set permissions of next argument (--bind-data, --file, etc.)
+  --size BYTES                 Set size of next argument (only for --tmpfs)
+  --chmod OCTAL PATH           Change permissions of PATH (must already exist)</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following are some of the most <span class="underbold">important</span> options for filesystem isolation:</p>
+    </div>
+    <br/>
+    <table id="col2-table">
+      <thead>
+        <tr>
+          <th>Option</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">--bind SRC DEST</span></td>
+          <td class="col2-c2-odd">Bind mount host path SRC to the sandbox path DEST in read-write mode</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">--ro-bind SRC DEST</span></td>
+          <td class="col2-c2-even">Bind mount host path SRC to the sandbox path DEST in read-only mode</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">--proc DEST</span></td>
+          <td class="col2-c2-odd">Mount a new proc filesystem to the sandbox path DEST</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">--dev DEST</span></td>
+          <td class="col2-c2-even">Mount a new dev filesystem to the sandbox path DEST</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">--tmpfs DEST</span></td>
+          <td class="col2-c2-odd">Mount a new tmp filesystem to the sandbox path DEST</td>
+        </tr>
+      </tbody>
+    </table>
+    <br/>
+    <div id="para-div">
+      <p>The following are some of the most <span class="underbold">important</span> options for managing the namespace isolation:</p>
+    </div>
+    <br/>
+    <table id="col2-table">
+      <thead>
+        <tr>
+          <th>Option</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">--unshare-all</span></td>
+          <td class="col2-c2-odd">Unshare all namespace types by default</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">--unshare-pid</span></td>
+          <td class="col2-c2-even">Create a new pid namespace</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">--unshare-uts</span></td>
+          <td class="col2-c2-odd">Create a new uts namespace (hostname)</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">--unshare-ipc</span></td>
+          <td class="col2-c2-even">Create a new ipc namespace</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">--unshare-net</span></td>
+          <td class="col2-c2-odd">Create a new network namespace</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">--unshare-user</span></td>
+          <td class="col2-c2-even">Create a new user namespace</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">--share-net</span></td>
+          <td class="col2-c2-odd">Retain the network namespace from the host</td>
+        </tr>
+      </tbody>
+    </table>
+    <br/>
+    <div id="para-div">
+      <p>The following are the other <span class="underbold">important</span> options for managing the sandbox isolation:</p>
+    </div>
+    <br/>
+    <table id="col2-table">
+      <thead>
+        <tr>
+          <th>Option</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">--die-with-parent</span></td>
+          <td class="col2-c2-odd">Child proces dies if parent process terminates</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">--dir DEST</span></td>
+          <td class="col2-c2-even">Create a dir at the sandbox path DEST</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">--chdir DEST</span></td>
+          <td class="col2-c2-odd">Change working directory inside the sandbox to the path DEST</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">--clearenv</span></td>
+          <td class="col2-c2-even">Unset all environment variables in the sandbox</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-odd"><span class="bold">--setenv VAR VALUE</span></td>
+          <td class="col2-c2-odd">Set the environment variable VAR to the VALUE</td>
+        </tr>
+        <tr>
+          <td class="col2-c1-even"><span class="bold">--hostname NAME</span></td>
+          <td class="col2-c2-even">Custom hostname NAME in the sandbox (requires --unshare-uts)</td>
+        </tr>
+      </tbody>
+    </table>
+    <br/>
+    <div id="para-div">
+      <p>Time to get our hands dirty with practical examples !!!</p>
+    </div>
+    <div id="para-div">
+      <p>To verify that a sandbox environment has no access to the home directory on the host, execute the following command in the
+        terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ bwrap --ro-bind /usr /usr --ro-bind /lib /lib --ro-bind /lib64 /lib64 --proc /proc --dev /dev --unshare-all --die-with-parent -- ls /home</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>ls: cannot access '/home': No such file or directory</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To verify that a sandbox environment has no access to the host password file (/etc/passwd), execute the following command
+        in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ bwrap --ro-bind /usr /usr --ro-bind /lib /lib --ro-bind /lib64 /lib64 --proc /proc --dev /dev --tmpfs /tmp --unshare-all --die-with-parent -- cat /etc/passwd</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>cat: /etc/passwd: No such file or directory</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a bare minimum sandbox environment, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ bwrap --ro-bind /usr /usr --ro-bind /lib /lib --ro-bind /lib64 /lib64 --ro-bind /bin /bin --proc /proc --dev /dev --tmpfs /tmp --tmpfs /run --uid 1000 --gid 1000 --dir /home/sandbox --chdir /home/sandbox --unshare-all --hostname sandbox --clearenv --setenv HOME /home/sandbox --setenv USER sandbox --die-with-parent -- bash --norc --noprofile</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>bash-5.2$ </pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The above is the prompt from the sandbox environment.</p>
+    </div>
+    <div id="para-div">
+      <p>To check if the sandbox envrionment has access to the home directory (/home/polarsparc) on the host, execute the following
+        command from the sandbox prompt in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>bash-5.2$ ls /home/polarsparc</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>ls: cannot access '/home/polarsparc': No such file or directory
+bash-5.2$ </pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To exit the sandbox envrionment, execute the following command from the sandbox prompt in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>bash-5.2$ exit</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a sandbox environment that has read-only access to the home directory (/home/polarsparc) on the host, execute the
+        following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ bwrap --ro-bind /usr /usr --ro-bind /lib /lib --ro-bind /lib64 /lib64 --ro-bind /bin /bin --ro-bind /home/polarsparc /home/polarsparc --proc /proc --dev /dev --tmpfs /tmp --tmpfs /run --dir /home/sandbox --chdir /home/sandbox --unshare-all --hostname sandbox --setenv HOME /home/sandbox --setenv USER sandbox --die-with-parent -- bash --norc --noprofile</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>bash-5.2$ </pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The above is the prompt from the sandbox environment.</p>
+    </div>
+    <div id="para-div">
+      <p>To list the contents of the home directory (/home/polarsparc) on the host, execute the following command from the sandbox
+        prompt in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>bash-5.2$ ls /home/polarsparc</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>Applications  Desktop  Documents  Downloads  Music  MyProjects  Pictures  Public  Templates  Videos
+bash-5.2$</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a test file (test.txt) in home directory (/home/polarsparc) on the host, execute the following command from the
+        sandbox prompt in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>bash-5.2$ echo 'text' &gt; /home/polarsparc/Downloads/test.txt</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>bash: /home/polarsparc/Downloads/test.txt: Read-only file system
+bash-5.2$</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To exit the sandbox envrionment, execute the following command from the sandbox prompt in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>bash-5.2$ exit</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To verify that a sandbox environment has no access to the network, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ bwrap --ro-bind /usr /usr --ro-bind /lib /lib --ro-bind /lib64 /lib64 --ro-bind /bin /bin --proc /proc --dev /dev --tmpfs /tmp --unshare-all --die-with-parent -- curl https://httpbin.org/get</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>curl: (6) Could not resolve host: httpbin.org</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a sandbox environment with network access, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ bwrap --ro-bind /usr /usr --ro-bind /etc/resolv.conf /etc/resolv.conf --ro-bind /etc/ssl /etc/ssl --ro-bind /lib /lib --ro-bind /lib64 /lib64 --ro-bind /bin /bin --proc /proc --dev /dev --tmpfs /tmp --unshare-all --share-net --die-with-parent -- curl https://httpbin.org/get</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>{
+  "args": {}, 
+  "headers": {
+    "Accept": "*/*", 
+    "Host": "httpbin.org", 
+    "User-Agent": "curl/8.5.0", 
+    "X-Amzn-Trace-Id": "Root=1-6a0e44a9-39ce695f4f8656734153dcc1"
+  }, 
+  "origin": "173.70.1.174", 
+  "url": "https://httpbin.org/get"
+}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute a python script in a sandbox environment, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ bwrap --ro-bind /usr /usr --ro-bind /lib /lib --ro-bind /lib64 /lib64 --ro-bind /bin /bin --proc /proc --dev /dev --tmpfs /tmp --unshare-all --die-with-parent -- python3 -c "print('hello from sandbox')"</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>hello from sandbox</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a sandbox environment with a persistent home directory (/home/sandbox), execute the following commands in the
+        terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/.local/share/sandbox</p>
+      <p>bwrap --ro-bind /usr /usr --ro-bind /lib /lib --ro-bind /lib64 /lib64 --ro-bind /bin /bin  --proc /proc --dev /dev --tmpfs /tmp --bind $HOME/.local/share/sandbox /home/sandbox --chdir /home/sandbox --unshare-all --hostname sandbox --setenv HOME /home/sandbox --setenv USER sandbox --die-with-parent -- bash</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>bash-5.2$ </pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a test file (test.txt) in the sandbox home directory (/home/sandbox), execute the following command from the
+        sandbox prompt in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>bash-5.2$ echo 'text' &gt; /home/sandbox/test.txt</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>bash-5.2$</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To verify if a sandbox environment has access to any nvidia gpu, execute the following command from the sandbox prompt in
+        the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>bash-5.2$ nvidia-smi</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.
+bash-5.2$</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To exit the sandbox envrionment, execute the following command from the sandbox prompt in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>bash-5.2$ exit</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To check if the test file (test.txt) is visible on the host, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ ls -l $HOME/.local/share/sandbox</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>total 4
+-rw-rw-r-- 1 polarsparc polarsparc 5 May 22 14:40 text.txt</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To create a sandbox environment with a persistent home directory (/home/sandbox) as well as access to the nvidia gpu, execute
+        the following commands in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/.local/share/sandbox</p>
+      <p>bwrap --ro-bind /usr /usr --ro-bind /lib /lib --ro-bind /lib64 /lib64 --ro-bind /bin /bin  --proc /proc --dev /dev --dev-bind /dev/nvidia0 /dev/nvidia0 --dev-bind /dev/nvidiactl /dev/nvidiactl --dev-bind /dev/nvidia-uvm /dev/nvidia-uvm --dev-bind /dev/nvidia-uvm-tools /dev/nvidia-uvm-tools --ro-bind /sys/bus/pci /sys/bus/pci --ro-bind /sys/class/drm /sys/class/drm --tmpfs /tmp --bind $HOME/.local/share/sandbox /home/sandbox --chdir /home/sandbox --unshare-all --hostname sandbox --setenv HOME /home/sandbox --setenv USER sandbox --die-with-parent -- bash</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.17</h4>
+      <pre>bash-5.2$ </pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To verify if a sandbox environment has access to any nvidia gpu, execute the following command from the sandbox prompt in
+        the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>bash-5.2$ nvidia-smi</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.18</h4>
+      <pre>Fri May 22 19:04:48 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 580.159.03             Driver Version: 580.159.03     CUDA Version: 13.0     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 4060 Ti     Off |   00000000:04:00.0  On |                  N/A |
+|  0%   45C    P8             11W /  165W |     911MiB /  16380MiB |     22%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+bash-5.2$</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To exit the sandbox envrionment, execute the following command from the sandbox prompt in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>bash-5.2$ exit</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">BOOM</span> - with this we conclude the hands-on demonstration of creating a sandbox environment using
+        Bubblewrap !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://github.com/containers/bubblewrap" target="_blank"><span class="bold">Bubblewrap</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
