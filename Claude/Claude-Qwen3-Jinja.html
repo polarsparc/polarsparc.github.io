@@ -1,0 +1,179 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Quick Tip :: Fix for Claude Code using Qwen 3.6">
+    <meta name="subject" content="Quick Tip :: Fix for Claude Code using Qwen 3.6">
+    <meta name="keywords" content="diffusion, flux-1">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Quick Tip :: Fix for Claude Code using Qwen 3.6</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Quick Tip :: Fix for Claude Code using Qwen 3.6</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">06/12/2026</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr" />
+    <br/>
+    <div id="para-div">
+      <p>As described in the article <a href="https://polarsparc.github.io/Claude/Local-Claude.html" target="_blank"><span class=
+        "bold">Claude Using Qwen 3.6</span></a>, one can configure <span class="bold">Claude Code</span> to use <span class="bold">
+        Qwen 3.6</span> local model via <span class="bold">llama.cpp</span> !</p>
+    </div>
+    <div id="para-div">
+      <p>However, if you recently upgraded <span class="bold">Claude Code</span> to the recent version, you will likely encounter
+        the following error:</p>
+    </div>
+    <br/>
+    <div id="error-div">
+      <h4>!!! ERROR !!!</h4>
+      <pre>* API Error: 400 Unable to generate parser for this template. Automatic parser generation failed: 
+  ------------
+  While executing CallExpression at line 85, column 32 in source:
+  ...first %}            {{- raise_exception('System message must be at the beginnin...
+                                             ^
+  Error: Jinja Exception: System message must be at the beginning.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This is because <span class="bold">Qwen 3.6</span> imposes a strict rule expecting to see the system messages before the
+        human messages in the input request (aka prompt).</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This quick tip is about providing a fix for this issue by following the following three steps:</p>
+      <ul id="blue-sqr-ul">
+        <li><p>Extracting the built-in prompt template from the <span class="bold">Qwen 3.6</span> gguf model file as a <span class=
+          "bold">Jinja</span> file</p></li>
+        <li><p>Modifying the extracted prompt template <span class="bold">Jinja</span> file to remove the strict rule</p></li>
+        <li><p>Using the modified prompt template  <span class="bold">Jinja</span> file as the chat template with <span class="bold">
+          llama.cpp</span></p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>Ensure that <span class="bold">Python 3.x</span> programming language is installed and setup on the desktop.</p>
+    </div>
+    <div id="para-div">
+      <p>In addition, install the following necessary <span class="bold">Python</span> module by executing the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ pip install gguf</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Assuming the <span class="bold">Qwen 3.6</span> gguf model file <span class="bold">Qwen3.6-35B-A3B-Q4_K_M.gguf</span> is at
+        <span class="bold">$HOME/.llama_cpp/models</span>.</p>
+      <p>Execute the following <span class="bold">Python</span> script to extract the prompt template as a <span class="bold">Jinja
+        </span> file in the <span class="bold">$HOME/Downloads</span> directory:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# @Description: Create Qwen3 Jinja Template from GGUF
+# @Author:      Bhaskar S
+# @Blog:        https://polarsparc.github.io
+# @Date:        12 June 2026
+#
+
+import gguf
+import os
+
+HOME = os.environ.get('HOME', '')
+
+GGUF_FILE = HOME + '/.llama_cpp/models/Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf'
+QWEN3_JINJA_FILE = HOME + '/Downloads/qwen-3.6.jinja'
+
+def main():
+  print(f'Reading GGUF file: {GGUF_FILE}')
+  gguf_reader = gguf.GGUFReader(GGUF_FILE)
+  for field in gguf_reader.fields.values():
+    if "chat_template" in field.name:
+      chat_template = field.parts[field.data[0]].tobytes().decode('utf-8')
+      print(f'Ready to dump chat template to {QWEN3_JINJA_FILE}')
+      with open(QWEN3_JINJA_FILE, 'w') as f:
+        f.write(chat_template)
+      print("Chat template dumped to Qwen3.jinja")
+      break
+
+if __name__ == "__main__":
+  main()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In the <span class="bold">Jinja</span> chat template file, identify the following lines:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>{%- if message.role == "system" %}
+  {%- if not loop.first %}
+    {{- raise_exception('System message must be at the beginning.')}}
+  {%- endif %}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Modify the lines to look as follows:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>{%- if message.role == "system" %}
+  {# %- if not loop.first % #}
+    {# {- raise_exception('System message must be at the beginning.')} #}
+  {# %- endif % #}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Copy the modified <span class="bold">Jinja</span> chat template file to <span class="bold">$HOME/.llama_cpp/models</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Serve the <span class="bold">Qwen 3.6</span> model by specifiying the modified chat template file via <span class="bold">
+        llama.cpp</span> by executing the following:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name llama_cpp --gpus all --network host -v $HOME/.llama_cpp/models:/models ghcr.io/ggml-org/llama.cpp:full-cuda-b9544 --server --model /models/Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf --alias qwen3.6-a3b --host 192.168.1.25 --port 8000 --device CUDA0 --temp 1.0 --top_k 64 --top_p 0.95 --no-mmap --threads 4 --ctx-size 65536 --flash-attn on -ctk q4_0 -ctv q4_0 --chat-template-file /models/qwen-3.6.jinja</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">Claude Code</span> will work without any exceptions now !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/Claude/Local-Claude.html" target="_blank"><span class="bold">Claude Code Using Local
+        Model</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
