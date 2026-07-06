@@ -1,0 +1,680 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=windows-1252">
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Primer on Open Policy Agent (OPA)">
+    <meta name="subject" content="Primer on Open Policy Agent (OPA)">
+    <meta name="keywords" content="open-policy-agent, opa, security">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Primer on Open Policy Agent (OPA)</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br>
+    <table borber="0">
+      <tbody><tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </tbody></table>
+    <br>
+    <div id="title-div">
+      <p>Primer on Open Policy Agent (OPA)</p>
+    </div>
+    <br>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">07/05/2026</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr">
+    <br>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p><span class="hi-yellow">Open Policy Agent</span> (or <span class="hi-vanila">OPA</span> for short) is a general-purpose
+        policy decision engine that unifies enterprise policy enforcements across the stack. OPA allows one to implement policies
+        in a high-level declarative language that lets one specify policies for a wide range of use cases, which can be enforced in
+        application proxies, API gateways, Kubernetes, CI/CD pipelines, and more.</p>
+      <p>In short, OPA is domain agnostic so that one can describe almost any kind of invariant in the OPA policies, such as the
+        following use-cases:</p>
+      <ul id="blue-sqr-ul">
+        <li><p>Which users can access which resources</p></li>
+        <li><p>Which subnets egress traffic is allowed to</p></li>
+        <li><p>Which clusters a workload can be deployed to</p></li>
+        <li><p>Which registries software binaries can be downloaded from</p></li>
+        <li><p>Which OS capabilities a container can execute</p></li>
+      </ul>
+      <p>OPA policies are expressed in a high-level declarative language called <span class="hi-yellow">Rego</span>. Rego is purpose
+        built for expressing policies over complex hierarchical data structures.</p>
+      <p>When a software component needs to enforce policy decisions, it makes a request to the OPA policy server, supplying input
+        as a structured data (JSON). Upon accepting an OPA request, the OPA policy server evaluates the policy file(s) and responds
+        with a decision.</p>
+    </div>
+    <div id="para-div">
+      <p>In this hands-on primer, we will introduce and demonstrate how one can implement enterprise policies using OPA Rego.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Installation and Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The installation will be on a <span class="bold">Ubuntu 24.04 LTS</span> based Linux desktop.</p>
+      <p>Ensure <span class="bold">Docker</span> is installed on the system. Else, follow the instructions provided in the article
+        <a href="https://polarsparc.github.io/Docker/Docker.html" target="_blank"><span class="bold">Introduction to Docker</span>
+        </a> to complete the installation.</p>
+    </div>
+    <div id="para-div">
+      <p>Check for the latest stable version of <a href="https://github.com/open-policy-agent/opa/releases" target="_blank"><span
+        class="bold">OPA</span></a> docker image. Version <span class="hi-yellow">v1.18.2</span> was the latest at the time of this
+        article.</p>
+      <p>To download the latest docker image for <span class="bold">OPA</span>, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker pull openpolicyagent/opa:1.18.2</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>1.18.2: Pulling from openpolicyagent/opa
+5c7f633cfc46: Pull complete 
+998036137dfb: Pull complete 
+9201e51fe8c1: Pull complete 
+be42b23d0328: Pull complete 
+bc7dfa40f5aa: Pull complete 
+d6687ecb78a1: Pull complete 
+Digest: sha256:cba27d3c6af2feba1e4d6e6b5e24df5b53db332420d4148a90acccd12efae6ed
+Status: Downloaded newer image for openpolicyagent/opa:1.18.2
+docker.io/openpolicyagent/opa:1.18.2</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will store the OPA policy files in the directory <span class="hi-yellow">$HOME/.opa</span> on the host.</p>
+      <p>To setup the required directories, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/.opa{/data,/policies}</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This completes all the necessary system installation and setup for the OPA hands-on demonstration.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on with OPA</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Before we get started, we need to determine all the available OPA command(s). To determine the supported command(s), execute
+        the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name opa openpolicyagent/opa:1.18.2 --help</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>An open source project to policy-enable your service.
+
+Usage:
+  opa [command]
+
+Available Commands:
+  bench        Benchmark a Rego query
+  build        Build an OPA bundle
+  capabilities Print the capabilities of OPA
+  check        Check Rego source files
+  completion   Generate the autocompletion script for the specified shell
+  deps         Analyze Rego query dependencies
+  eval         Evaluate a Rego query
+  exec         Execute against input files
+  fmt          Format Rego source files
+  help         Help about any command
+  inspect      Inspect OPA bundle(s)
+  parse        Parse Rego source file
+  run          Start OPA in interactive or server mode
+  sign         Generate an OPA bundle signature
+  test         Execute Rego test cases
+  version      Print the version of OPA
+
+Flags:
+  -h, --help   help for opa
+
+Use "opa [command] --help" for more information about a command.</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Let us start with a very simple OPA Rego policy file.</p>
+    </div>
+    <div id="para-div">
+      <p>Create a file called <span class="hi-yellow">$HOME/.opa/policies/simple.rego</span> with the following contents:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# Name:   simple.rego
+# Author: Bhaskar S
+# Date:   07/05/2026
+#
+
+package simple
+
+import rego.v1
+
+# Default is deny
+default allow := false
+
+# Dev environment
+env := "dev"
+
+# Only allow alice
+allow := true if input.name == "alice"</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The OPA rego policy defaults to a <span class="bold">DENY</span>, .i.e., <span class="hi-vanila">allow := false</span>.</p>
+      <p>The variables in rego (<span class="hi-grey">allow</span> and <span class="hi-grey">env</span>) can be assigned values
+        using the <span class="hi-blue">:=</span> operator.</p>
+      <p>All rules in rego have the following format:</p>
+      <pre>HEAD if {
+    BODY
+}</pre>
+      <p>The <span class="bold">HEAD</span> consists of variable and a value.</p>
+      <p>The <span class="bold">BODY</span> consists of one or more conditions which are all <span class="underbold">MUST</span> be
+        <span class="bold">true</span> (conditions are AND'd) for the <span class="bold">HEAD</span> to be true. In other words, a
+        rule is true only when all the conditions in the body are satistied.</p>
+      <p>Multiple rules with the same <span class="bold">HEAD</span> are OR'd.</p>
+      <p>Variables within a body have local scope.</p>
+    </div>
+    <div id="para-div">
+      <p>OPA accepts JSON structured data as input. Upon accepting an input request (as JSON), OPA binds data provided in the query
+        to a global variable called <span class="hi-vanila">input</span>. One can refer to specific parts of the input data using
+        the . (dot) notation.</p>
+      <p>When referring to a value that does not exist, OPA returns undefined.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, it is time to test the <span class="bold">simple.rego</span> policy !</p>
+    </div>
+    <div id="para-div">
+      <p>To make sure that the <span class="bold">simple.rego</span> policy file is valid, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name opa -v $HOME/.opa/policies:/policies openpolicyagent/opa:1.18.2 inspect /policies/simple.rego</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output if the rego policy file is valid:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>NAMESPACES:
++-------------------------------------+
+|  NAMESPACE  |         FILE          |
++-------------------------------------+
+| data.simple | /policies/simple.rego |
++-------------------------------------+</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To start the OPA policy decisioning server, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name opa --network host -v $HOME/.opa/data:/data -v $HOME/.opa/policies:/policies openpolicyagent/opa:1.18.2 run --addr 192.168.1.25:8181 --server /data /policies</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be a typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>{"addrs":["192.168.1.25:8181"],"diagnostic-addrs":[],"fields.time":"2026-07-05T16:41:54.159773451Z","level":"info","msg":"Initializing server.","time":"2026-07-05T16:41:54Z"}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that the package in the <span class="bold">simple.rego</span> policy is called <span class="hi-vanila">simple</span>.
+        The API endpoint for this policy package therefore can be accessed at <span class="hi-green">/v1/data/simple</span>.</p>
+      <p>To test the <span class="bold">simple.rego</span> policy via the API endpoint <span class="bold">/v1/data/simple</span>,
+        execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s -X POST http://192.168.1.25:8181/v1/data/simple -H "Content-Type: application/json" -d '{"input": {"name": "alice"}}' | jq</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>{
+  "result": {
+    "allow": true,
+    "env": "dev"
+  }
+}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To test the <span class="bold">simple.rego</span> policy for another case, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s -X POST http://192.168.1.25:8181/v1/data/simple -H "Content-Type: application/json" -d '{"input": {"name": "bob"}}' | jq</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>{
+  "result": {
+    "allow": false,
+    "env": "dev"
+  }
+}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Stop the OPA policy decisioning server.</p>
+      <p>Create the next policy file called <span class="hi-yellow">$HOME/.opa/policies/permissions.rego</span> with the following
+        contents:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# Name:   permissions.rego
+# Author: Bhaskar S
+# Date:   07/05/2026
+#
+
+package permissions
+
+import rego.v1
+
+# Default is deny
+default allow := false
+
+# Only allow alice
+allow if input.name == "alice"
+
+# Default permissions
+perms contains "read"
+
+# Only allow alice with execute permissions
+perms contains "execute" if input.name == "alice"
+
+# Only allow write permissions to alice with a role of admin
+perms contains "write" if {
+    input.name == "alice"
+    input.role == "admin"
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>In this example, we are returning a collection of values from the OPA decisioning server rather than atomic values.</p>
+    </div>
+    <div id="para-div">
+      <p>To make sure that the <span class="bold">permissions.rego</span> policy file is valid, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name opa -v $HOME/.opa/policies:/policies openpolicyagent/opa:1.18.2 inspect /policies/permissions.rego</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output if the rego policy file is valid:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>NAMESPACES:
++-----------------------------------------------+
+|    NAMESPACE     |            FILE            |
++-----------------------------------------------+
+| data.permissions | /policies/permissions.rego |
++-----------------------------------------------+</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Restart the OPA policy decisioning server by executing the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name opa --network host -v $HOME/.opa/data:/data -v $HOME/.opa/policies:/policies openpolicyagent/opa:1.18.2 run --addr 192.168.1.25:8181 --server /data /policies</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that the package in the <span class="bold">permissions.rego</span> policy is called <span class="hi-vanila">permissions</span>.
+        The API endpoint for this policy package therefore can be accessed at <span class="hi-green">/v1/data/permissions</span>.</p>
+      <p>To test the <span class="bold">permissions.rego</span> policy via the API endpoint <span class="bold">/v1/data/permissions
+        </span>, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s -X POST http://192.168.1.25:8181/v1/data/permissions -H "Content-Type: application/json" -d '{"input": {"name": "alice"}}' | jq</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>{
+  "result": {
+    "allow": true,
+    "perms": [
+      "execute",
+      "read"
+    ]
+  }
+}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To test the next case, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s -X POST http://192.168.1.25:8181/v1/data/permissions -H "Content-Type: application/json" -d '{"input": {"name": "bob"}}' | jq</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>{
+  "result": {
+    "allow": false,
+    "perms": [
+      "read"
+    ]
+  }
+}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To test another case, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s -X POST http://192.168.1.25:8181/v1/data/permissions -H "Content-Type: application/json" -d '{"input": {"name": "alice", "role": "admin"}}' | jq</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>{
+  "result": {
+    "allow": true,
+    "perms": [
+      "execute",
+      "read",
+      "write"
+    ]
+  }
+}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To test the final case, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s -X POST http://192.168.1.25:8181/v1/data/permissions -H "Content-Type: application/json" -d '{"input": {"name": "bob", "role": "admin"}}' | jq</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.11</h4>
+      <pre>{
+  "result": {
+    "allow": false,
+    "perms": [
+      "read"
+    ]
+  }
+}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Stop the OPA policy decisioning server to move on to the next example.</p>
+    </div>
+    <div id="para-div">
+      <p>Often times the OPA policy decisioning server needs to lookup external data from the policy file. The external static data
+        is usually stored in a data JSON file. The OPA policy decisioning server loads this file into memory and binds its contents
+        under the global variable referred to as <span class="hi-grey">data</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Create the JSON data file called <span class="hi-yellow">$HOME/.opa/data/data.json</span> with the following contents:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>{
+  "limits_by_roles": {
+    "employee": 500.00,
+    "manager": 1000.00,
+    "owner": 5000.00
+  },
+  
+  "user_roles": {
+    "alice": {"role": "owner", "active": true},
+    "bob": {"role": "manager", "active": true},
+    "charlie": {"role": "employee", "active": false},
+    "dave": {"role": "employee", "active": true}
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now, create the policy file called <span class="hi-yellow">$HOME/.opa/policies/limits.rego</span> with the following contents:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# Name:   limits.rego
+# Author: Bhaskar S
+# Date:   07/05/2026
+#
+
+package limits
+
+import rego.v1
+
+# Default is deny
+default allow := false
+
+# Default limit
+default limit := 0.00
+
+allow if data.user_roles[input.name].active == true
+
+# Identify role
+role := role if role := data.user_roles[input.name].role
+
+# Fetch user limits
+limit := data.limits_by_roles[role] if allow</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To make sure that the <span class="bold">limits.rego</span> policy file is valid, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name opa -v $HOME/.opa/data:/data -v $HOME/.opa/policies:/policies openpolicyagent/opa:1.18.2 inspect /policies/limits.rego</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output if the rego policy file is valid:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.12</h4>
+      <pre>NAMESPACES:
++-------------------------------------+
+|  NAMESPACE  |          FILE         |
++-------------------------------------+
+| data.limits | /policies/limits.rego |
++-------------------------------------+</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Restart the OPA policy decisioning server by executing the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name opa --network host -v $HOME/.opa/data:/data -v $HOME/.opa/policies:/policies openpolicyagent/opa:1.18.2 run --addr 192.168.1.25:8181 --server /data /policies</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that the package in the <span class="bold">limits.rego</span> policy is called <span class="hi-vanila">limits</span>.
+        The API endpoint for this policy package therefore can be accessed at <span class="hi-green">/v1/data/limits</span>.</p>
+      <p>To test the <span class="bold">limits.rego</span> policy via the API endpoint <span class="bold">/v1/data/limits</span>,
+        execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s -X POST http://192.168.1.25:8181/v1/data/limits -H "Content-Type: application/json" -d '{"input": {"name": "alice"}}' | jq</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.13</h4>
+      <pre>{
+  "result": {
+    "allow": true,
+    "limit": 5000.00,
+    "role": "owner"
+  }
+}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To test the next case, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s -X POST http://192.168.1.25:8181/v1/data/limits -H "Content-Type: application/json" -d '{"input": {"name": "bob"}}' | jq</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.14</h4>
+      <pre>{
+  "result": {
+    "allow": true,
+    "limit": 1000.00,
+    "role": "manager"
+  }
+}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To test another case, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s -X POST http://192.168.1.25:8181/v1/data/limits -H "Content-Type: application/json" -d '{"input": {"name": "charlie"}}' | jq</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.15</h4>
+      <pre>{
+  "result": {
+    "allow": false,
+    "limit": 0.00,
+    "role": "employee"
+  }
+}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To test the final case, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s -X POST http://192.168.1.25:8181/v1/data/limits -H "Content-Type: application/json" -d '{"input": {"name": "dave"}}' | jq</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.16</h4>
+      <pre>{
+  "result": {
+    "allow": true,
+    "limit": 500.00,
+    "role": "employee"
+  }
+}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>With this, we conclude our hands-on demonstration of using OPA to enforce enterprise policies !!!</p>
+    </div>
+    <br>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://www.openpolicyagent.org/" target="_blank"><span class="bold">Open Policy Agent</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
