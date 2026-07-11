@@ -1,0 +1,700 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="OPA with MCP">
+    <meta name="subject" content="OPA with MCP">
+    <meta name="keywords" content="langchain, llm, mcp, opa, python">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>OPA with MCP</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>OPA with MCP</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">07/11/2026</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In the article <a target="_blank" href="https://polarsparc.github.io/Security/PrimerOPA.html"><span class="bold">Primer on
+        Open Policy Agent (OPA)</span></a>, we demonstrated how one can make use of OPA as a general-purpose policy decision engine
+        to enforce enterprise policies across stacks. Enterprise tools exposed via <span class="bold">MCP</span> to agentic apps is
+        no exception !</p>
+      <p>In this article, we will demostrate how one could allow or deny execution of tools accessible via MCP using OPA. Note that
+        the setup for the demo will be minimalistic (without any authentication).</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Installation and Setup</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The installation and setup will be on a <span class="bold">Ubuntu 24.04 LTS</span> based Linux desktop.</p>
+      <p>In addition, ensure the following pre-requisites are met:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="bold">Python 3.1x</span> programming language is installed and setup</p></li>
+        <li><p><span class="bold">Docker</span> is installed and setup (see <a href="http://polarsparc.github.io/Docker/Docker.html"
+          target="_blank">instructions)</a></p></li>
+        <li><p><span class="bold">Ollama</span> is setup (see <a href="http://polarsparc.github.io/GenAI/Ollama.html" target="_blank">
+          <span class="bold">instructions</span></a>)</p></li>
+        <li><p><span class="bold">OPA</span> is setup (see <a href="https://polarsparc.github.io/Security/PrimerOPA.html" target=
+          "_blank"><span class="bold">instructions</span></a>)</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>To install the necessary <span class="bold">Python</span> modules for the hands-on demo, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ pip install dotenv fastmcp langchain lanchain-core langchain-ollama langchain-mcp-adapters mcp opa-python-client</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This completes all the installation and setup for the hands-on demonstration.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on Demo</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The OPA policy files will be stored in the directory <span class="hi-yellow">$HOME/.opa</span> on the Linux host.</p>
+      <p>To setup the required directories, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/.opa{/data,/policies/common,/policies/mcp}</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Create the JSON data file called <span class="hi-yellow">$HOME/.opa/data/mcp.json</span> with the following contents:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>{
+  "users": {
+    "alice": {
+      "role": "manager",
+      "active": true
+    },
+    "bob": {
+      "role": "engineer",
+      "active": true
+    },
+    "charlie": {
+      "role": "engineer",
+      "active": false
+    },
+    "dave": {
+      "role": "admin",
+      "active": true
+    }
+  },
+  
+  "tools_by_risk_level": {
+    "simple_interest": "low",
+    "compound_interest": "medium",
+    "execute_command": "high"
+  },
+  
+  "allowed_risk_by_role": {
+    "manager": ["low", "medium", "high"],
+    "engineer": ["low", "medium"],
+    "admin": ["low"]
+  }
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Next, create the common utility policy file called <span class="hi-yellow">$HOME/.opa/policies/common/utils.rego</span> with
+        the following contents:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# Name:   common/utils.rego
+# Author: Bhaskar
+# Date:   07/05/2026
+#
+
+package common.utils
+
+import rego.v1
+
+# Fetch only active user entry
+user_entry(name) := entry if {
+  entry := data.users[name]
+  entry.active == true
+}
+
+# Fetch user role
+user_role(name) := role if {
+  entry := user_entry(name)
+  role := entry.role
+}
+
+# Fetch allowed user risk levels
+allowed_user_risk(name) := levels if {
+  role := user_role(name)
+  levels := data.allowed_risk_by_role[role]
+}
+
+# Fetch allowed tools by user risk level
+allowed_tools(levels) := tools if {
+  tools := [tool | data.tools_by_risk_level[tool] in levels]
+}</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Finally, create the mcp tools policy file called <span class="hi-yellow">$HOME/.opa/policies/mcp/tools.rego</span> with
+        the following contents:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# Name:   mcp/tools.rego
+# Author: Bhaskar
+# Date:   07/05/2026
+#
+
+package mcp.tools
+
+import rego.v1
+import data.common.utils
+
+# Default is deny
+default allow := false
+
+# Default tools
+default tools := set()
+
+# Allow if valid user
+allow if {
+  utils.user_entry(input.name)
+}
+
+# Allowed tools based on user risk level
+risk := utils.allowed_user_risk(input.name)
+tools := utils.allowed_tools(risk)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To make sure that the <span class="bold">tools.rego</span> policy file is valid, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name opa -v $HOME/.opa/data:/data -v $HOME/.opa/policies:/policies openpolicyagent/opa:1.18.2 inspect /policies/mcp/tools.rego</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output if the rego policy file is valid:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>NAMESPACES:
++-------------------+--------------------------+
+|     NAMESPACE     |           FILE           |
++-------------------+--------------------------+
+| data.common.utils | /policies/mcp/tools.rego |
++-------------------+--------------------------+</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Assume the ip address on the Linux desktop is <span class="hi-grey">192.168.1.25</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a new terminal window and start the OPA policy decisioning server by executing the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name opa --network host -v $HOME/.opa/data:/data -v $HOME/.opa/policies:/policies openpolicyagent/opa:1.18.2 run --addr 192.168.1.25:8181 --server /data /policies</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Open a new terminal window and start the <span class="bold">Ollama</span> platform by executing the following command in
+        the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name ollama --network=host -p 192.168.1.25:11434:11434 -v $HOME/.ollama:/root/.ollama ollama/ollama:0.31.0</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the LLM model, we will be using the <span class="hi-purple">Gemma 4</span> model.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a new terminal window and execute the following command to download the LLM model:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker exec -it ollama ollama run gemma4:e4b</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Create a file called <span class="hi-yellow">.env</span> with the following environment variables defined:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">.env</div>
+      <div class="gen-src-body">
+<pre>LLM_TEMPERATURE=0.9
+OLLAMA_MODEL='gemma4:e4b'
+OLLAMA_BASE_URL='http://192.168.1.25:11434'
+OPA_HOST='192.168.1.25'
+OPA_PORT=8181
+INTEREST_MCP_URL='http://192.168.1.25:3001/mcp'
+COMMAND_MCP_URL='http://192.168.1.25:3002/mcp'</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is a simple <span class="bold">OPA</span> based policy decisioning engine client:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">opa_policy_engine.py</div>
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   10 July 2026
+#
+
+from opa_client.opa_async import AsyncOpaClient
+import asyncio
+import logging
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s',
+                    level=logging.INFO)
+
+logger = logging.getLogger('opa_policy_engine')
+
+class OpaDecisionEngine:
+  def __init__(self, host: str, port: int):
+    self.host = host
+    self.port = port
+
+  async def is_allowed(self, name: str, tool: str) -> bool:
+    logger.info(f'Getting OPA decision for {name}')
+    async with AsyncOpaClient(self.host, self.port) as client:
+      check = await client.check_connection()
+      if check:
+        logger.info(f'OPA connection successful')
+        request = {"name": name}
+        response = await client.query_rule(request, 'mcp', 'tools')
+        logger.info(f'OPA decision result: {response['result']}')
+        result = response['result']
+        tools = result.get('tools', [])
+        if not tool in tools:
+          logger.warning(f'DENY -> tool={tool}, name={name}')
+          return False
+        return True
+      else:
+        logger.error(f'OPA connection failed')
+        return False</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will need a policy enforcement point, which will intercept all calls to MCP tools. This comes in the form of a custom
+        MCP middleware that will intercept and enforce the desired policies.</p>
+      <p>The following is the Python code of the custom MCP middleware:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">opa_authz_middleware.py</div>
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   10 July 2026
+#
+
+from dotenv import load_dotenv, find_dotenv
+from fastmcp.server.dependencies import get_http_headers
+from fastmcp.exceptions import ToolError
+from fastmcp.server.middleware import Middleware, MiddlewareContext
+from opa_policy_engine import OpaDecisionEngine
+import logging
+import os
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s',
+                    level=logging.INFO)
+
+logger = logging.getLogger('opa_authz_middleware')
+
+load_dotenv(find_dotenv())
+
+opa_host = os.getenv('OPA_HOST')
+opa_port = int(os.getenv('OPA_PORT'))
+
+class OPAAuthzMiddleware(Middleware):
+  def __init__(self):
+    self.opa_decision_engine = OpaDecisionEngine(opa_host, opa_port)
+
+  async def on_call_tool(self, context: MiddlewareContext, call_next):
+    arguments = context.message.arguments or {}
+    headers = get_http_headers()  # dict with keys lowercased
+    user_id = headers.get('x-user-id')
+    tool = context.message.name
+
+    logger.info(f'user_id: {user_id}, tool: {tool}, arguments: {arguments}')
+    if not await self.opa_decision_engine.is_allowed(user_id, tool):
+      logger.warning(f'Execution denied: user_id {user_id}, tool {tool}')
+      raise ToolError("OPA authorization denied")
+
+    logger.warning(f'Execution allowed: user_id {user_id}, tool {tool}')
+
+    return await call_next(context)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Python code for streamable HTTP based <span class="bold">MCP Server</span> (with the policy enforcement
+        middleware) for computing both the simple interest (for a year) as well as the compound interest (for a year):</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">interest_mcp_server.py</div>
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   06 July 2026
+#
+
+from fastmcp import Context, FastMCP
+
+from opa_authz_middleware import OPAAuthzMiddleware
+import logging
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s',
+                    level=logging.INFO)
+
+logger = logging.getLogger('interest_mcp_server')
+
+mcp = FastMCP('InterestCalculator')
+mcp.add_middleware(OPAAuthzMiddleware())
+
+@mcp.tool()
+def simple_interest(ctx: Context, principal: float, rate:float) -> float:
+  """Tool to compute simple interest rate for a year."""
+  logger.info(f'Context: {ctx}')
+  logger.info(f'Simple interest -> Principal: {principal}, Rate: {rate}')
+  return principal * rate / 100.00
+
+@mcp.tool()
+def compound_interest(ctx: Context, principal: float, rate:float) -> float:
+  """Tool to compute compound interest rate for a year."""
+  logger.info(f'Context: {ctx}')
+  logger.info(f'Compound interest -> Principal: {principal}, Rate: {rate}')
+  return principal * (1 + rate / 100.0)
+
+if __name__ == '__main__':
+  logger.info(f'Starting the interest MCP server...')
+  mcp.run(transport='streamable-http', host='192.168.1.25', port=3001)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To start the above MCP server code, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python interest_mcp_server.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical trimmed output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>INFO 2026-07-11 11:48:28,929 - Starting the interest MCP server...
+INFO 2026-07-11 11:48:29,006 - HTTP Request: GET https://pypi.org/pypi/fastmcp/json "HTTP/1.1 200 OK"
+...[TRIM]...
+[07/11/26 11:48:29] INFO     Starting MCP server 'InterestCalculator' with transport 'streamable-http' on transport.py:330
+                             http://192.168.1.25:3001/mcp                                                                           
+INFO:     Started server process [85560]
+INFO:     Waiting for application startup.
+INFO 2026-07-11 11:48:29,035 - StreamableHTTP session manager started
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://192.168.1.25:3001 (Press CTRL+C to quit)</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following is the Python code for our second streamable HTTP based <span class="bold">MCP Server</span> (with the policy
+        enforcement middleware) for invoking shell commands:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">shell_mcp_server.py</div>
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   06 July 2026
+#
+
+from fastmcp import Context, FastMCP
+from opa_authz_middleware import OPAAuthzMiddleware
+import logging
+import subprocess
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s',
+                    level=logging.INFO)
+
+logger = logging.getLogger('shell_mcp_server')
+
+mcp = FastMCP('CommandExecutor')
+mcp.add_middleware(OPAAuthzMiddleware())
+
+# DISCLAIMER: This is purely for demonstration purposes and NOT to be used in production environment
+
+@mcp.tool()
+def execute_command(ctx: Context, command: str) -> str:
+  """Tool for executing shell commands"""
+  logger.info(f'Context: {ctx}')
+  logger.info(f'Executing shell command: {command}')
+  try:
+    result = subprocess.run(command,
+                            shell=True,
+                            check=True,
+                            text=True,
+                            capture_output=True)
+    if result.returncode != 0:
+      return f'Error executing shell command - {command}'
+    return result.stdout
+  except subprocess.CalledProcessError as e:
+    logger.error(e)
+
+if __name__ == '__main__':
+  logger.info(f'Starting the command executor MCP server...')
+  mcp.run(transport='streamable-http', host='192.168.1.25', port=3002)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To start the above MCP server code, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python interest_mcp_server.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical trimmed output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>INFO 2026-07-11 11:48:32,439 - Starting the command executor MCP server...
+...[TRIM]...
+[07/11/26 11:48:32] INFO     Starting MCP server 'CommandExecutor' with transport 'streamable-http' on              transport.py:330
+                             http://192.168.1.25:3002/mcp                                                                           
+INFO:     Started server process [85585]
+INFO:     Waiting for application startup.
+INFO 2026-07-11 11:48:32,455 - StreamableHTTP session manager started
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://192.168.1.25:3002 (Press CTRL+C to quit)</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now for the final piece of the puzzle - the following is the agentic MCP host (aka agentic LLM client) in Python that attempts
+        to access the tools exposed via MCP:
+      </p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="src-cap-1">mcp_client.py</div>
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   06 July 2026
+#
+
+from dotenv import load_dotenv, find_dotenv
+from fastmcp import Client
+from langchain.agents import create_agent
+from langchain_ollama import ChatOllama
+from langchain_mcp_adapters.tools import load_mcp_tools
+import asyncio
+import logging
+import os
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s',
+                    level=logging.INFO)
+
+logger = logging.getLogger('mcp_client')
+
+load_dotenv(find_dotenv())
+
+llm_temperature = float(os.getenv('LLM_TEMPERATURE', 0.0))
+ollama_model = os.getenv('OLLAMA_MODEL')
+ollama_base_url = os.getenv('OLLAMA_BASE_URL')
+interest_mcp_url = os.getenv('INTEREST_MCP_URL')
+command_mcp_url = os.getenv('COMMAND_MCP_URL')
+
+config = {
+  'mcpServers': {
+    'interest_calculators': {
+      'transport': 'http',
+      'url': interest_mcp_url,
+      'headers': {'X-User-Id': 'bob'},
+    },
+    'command_executor': {
+      'transport': 'http',
+      'url': command_mcp_url,
+      'headers': {'X-User-Id': 'bob'},
+    }
+  }
+}
+
+ollama_chat_llm = ChatOllama(base_url=ollama_base_url,
+                             model=ollama_model,
+                             temperature=llm_temperature)
+
+async def main():
+  # Will communicate with the MCP server via http
+  async with Client(config) as client:
+    # Get the list of all the registered tools
+    tools = await load_mcp_tools(client.session)
+
+    logger.info(f'List of MCP Tools -> {tools}')
+
+    # Initialize a ReACT agent with multiple tools
+    agent = create_agent(ollama_chat_llm,
+                          tools,
+                          system_prompt='You are a helpful assistant.')
+
+    # Case - 1: Simple interest calculation
+    agent_response_1 = await agent.ainvoke(
+        {'messages': 'compute the simple interest for a principal of 1000 at rate 3.75 ?'})
+    logger.info(agent_response_1['messages'][::-1])
+
+    # Case - 2: Compound interest calculation
+    agent_response_2 = await agent.ainvoke(
+        {'messages': 'what is the compound interest for a principal of 1000 at rate 3.75 ?'})
+    logger.info(agent_response_2['messages'][::-1])
+
+    # Case - 3: Execute a shell command
+    agent_response_3 = await agent.ainvoke(
+        {'messages': 'Find how much system memory is used'})
+    logger.info(agent_response_3['messages'][::-1])
+
+if __name__ == '__main__':
+  asyncio.run(main())</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To execute the above Python code as the user <span class="bold">bob</span>, execute the following command in a terminal
+        window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python mcp_client.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>INFO 2026-07-11 11:49:24,054 - HTTP Request: POST http://192.168.1.25:3001/mcp "HTTP/1.1 200 OK"
+INFO 2026-07-11 11:49:24,054 - Received session ID: 596a458cde07448eaf0e0de0b9aba575
+INFO 2026-07-11 11:49:24,055 - Negotiated protocol version: 2025-11-25
+[07/11/26 11:49:24] INFO     Proxy detected connected client -      proxy.py:837
+                             reusing existing session for all                   
+                             requests. This may cause context                   
+                             mixing in concurrent scenarios.                    
+INFO 2026-07-11 11:49:24,073 - HTTP Request: POST http://192.168.1.25:3001/mcp "HTTP/1.1 202 Accepted"
+INFO 2026-07-11 11:49:24,073 - HTTP Request: GET http://192.168.1.25:3001/mcp "HTTP/1.1 200 OK"
+INFO 2026-07-11 11:49:24,075 - HTTP Request: POST http://192.168.1.25:3002/mcp "HTTP/1.1 200 OK"
+INFO 2026-07-11 11:49:24,075 - Received session ID: f595960746d74854946bf879bfe6d9b6
+INFO 2026-07-11 11:49:24,075 - Negotiated protocol version: 2025-11-25
+                    INFO     Proxy detected connected client -      proxy.py:837
+                             reusing existing session for all                   
+                             requests. This may cause context                   
+                             mixing in concurrent scenarios.                    
+INFO 2026-07-11 11:49:24,079 - HTTP Request: POST http://192.168.1.25:3002/mcp "HTTP/1.1 202 Accepted"
+INFO 2026-07-11 11:49:24,079 - HTTP Request: GET http://192.168.1.25:3002/mcp "HTTP/1.1 200 OK"
+INFO 2026-07-11 11:49:24,080 - Processing request of type ListToolsRequest
+INFO 2026-07-11 11:49:24,082 - HTTP Request: POST http://192.168.1.25:3001/mcp "HTTP/1.1 200 OK"
+INFO 2026-07-11 11:49:24,082 - HTTP Request: POST http://192.168.1.25:3002/mcp "HTTP/1.1 200 OK"
+INFO 2026-07-11 11:49:24,087 - List of MCP Tools -> [StructuredTool(name='interest_calculators_simple_interest', description='Tool to compute simple interest rate for a year.', args_schema={'additionalProperties': False, 'properties': {'principal': {'type': 'number'}, 'rate': {'type': 'number'}}, 'required': ['principal', 'rate'], 'type': 'object'}, metadata={'_meta': {'fastmcp': {'tags': []}}}, handle_tool_error=<function _handle_mcp_tool_error at 0x725f1997d4e0>, response_format='content_and_artifact', coroutine=<function convert_mcp_tool_to_langchain_tool.<locals>.call_tool at 0x725f190e5580>), StructuredTool(name='interest_calculators_compound_interest', description='Tool to compute compound interest rate for a year.', args_schema={'additionalProperties': False, 'properties': {'principal': {'type': 'number'}, 'rate': {'type': 'number'}}, 'required': ['principal', 'rate'], 'type': 'object'}, metadata={'_meta': {'fastmcp': {'tags': []}}}, handle_tool_error=<function _handle_mcp_tool_error at 0x725f1997d4e0>, response_format='content_and_artifact', coroutine=<function convert_mcp_tool_to_langchain_tool.<locals>.call_tool at 0x725f18f44ae0>), StructuredTool(name='command_executor_execute_command', description='Tool for executing shell commands', args_schema={'additionalProperties': False, 'properties': {'command': {'type': 'string'}}, 'required': ['command'], 'type': 'object'}, metadata={'_meta': {'fastmcp': {'tags': []}}}, handle_tool_error=<function _handle_mcp_tool_error at 0x725f1997d4e0>, response_format='content_and_artifact', coroutine=<function convert_mcp_tool_to_langchain_tool.<locals>.call_tool at 0x725f18f45b20>)]
+INFO 2026-07-11 11:50:01,964 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2026-07-11 11:50:05,755 - Processing request of type CallToolRequest
+INFO 2026-07-11 11:50:05,763 - HTTP Request: POST http://192.168.1.25:3001/mcp "HTTP/1.1 200 OK"
+INFO 2026-07-11 11:50:06,266 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2026-07-11 11:50:06,792 - [AIMessage(content='The simple interest for a principal of 1000 at a rate of 3.75 is **37.5**.', additional_kwargs={}, response_metadata={'model': 'gemma4:e4b', 'created_at': '2026-07-11T15:50:06.790576829Z', 'done': True, 'done_reason': 'stop', 'total_duration': 1013292363, 'load_duration': 436495953, 'prompt_eval_count': 260, 'prompt_eval_duration': 50205000, 'eval_count': 29, 'eval_duration': 524251000, 'logprobs': None, 'model_name': 'gemma4:e4b', 'model_provider': 'ollama'}, id='lc_run--019f51df-22d0-7210-9886-acc61c644a9c-0', tool_calls=[], invalid_tool_calls=[], usage_metadata={'input_tokens': 260, 'output_tokens': 29, 'total_tokens': 289}), ToolMessage(content=[{'type': 'text', 'text': '37.5', 'id': 'lc_357a9ee4-d71f-4d6a-9503-603783d92a4b'}], name='interest_calculators_simple_interest', id='1b73a69f-9e34-475e-8915-be3c0e7c0dd8', tool_call_id='f0f852b7-eea3-41a7-b550-17aec9ea053c', artifact={'structured_content': {'result': 37.5}}), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'gemma4:e4b', 'created_at': '2026-07-11T15:50:05.752079074Z', 'done': True, 'done_reason': 'stop', 'total_duration': 41650570863, 'load_duration': 419022589, 'prompt_eval_count': 217, 'prompt_eval_duration': 37381447000, 'eval_count': 124, 'eval_duration': 3846638000, 'logprobs': None, 'model_name': 'gemma4:e4b', 'model_provider': 'ollama'}, id='lc_run--019f51de-8002-7e62-8a51-41f41a610e04-0', tool_calls=[{'name': 'interest_calculators_simple_interest', 'args': {'principal': 1000, 'rate': 3.75}, 'id': 'f0f852b7-eea3-41a7-b550-17aec9ea053c', 'type': 'tool_call'}], invalid_tool_calls=[], usage_metadata={'input_tokens': 217, 'output_tokens': 124, 'total_tokens': 341}), HumanMessage(content='compute the simple interest for a principal of 1000 at rate 3.75 ?', additional_kwargs={}, response_metadata={}, id='189091ed-33ee-4637-947b-d169d58c7668')]
+INFO 2026-07-11 11:50:07,399 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2026-07-11 11:50:10,249 - Processing request of type CallToolRequest
+INFO 2026-07-11 11:50:10,252 - HTTP Request: POST http://192.168.1.25:3001/mcp "HTTP/1.1 200 OK"
+INFO 2026-07-11 11:50:10,738 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2026-07-11 11:50:11,306 - [AIMessage(content='The compound interest for a principal of 1000 at a rate of 3.75 is 1037.5.', additional_kwargs={}, response_metadata={'model': 'gemma4:e4b', 'created_at': '2026-07-11T15:50:11.304190289Z', 'done': True, 'done_reason': 'stop', 'total_duration': 1042545393, 'load_duration': 425243776, 'prompt_eval_count': 263, 'prompt_eval_duration': 49303000, 'eval_count': 31, 'eval_duration': 565588000, 'logprobs': None, 'model_name': 'gemma4:e4b', 'model_provider': 'ollama'}, id='lc_run--019f51df-3454-79e3-a76b-8016b6526914-0', tool_calls=[], invalid_tool_calls=[], usage_metadata={'input_tokens': 263, 'output_tokens': 31, 'total_tokens': 294}), ToolMessage(content=[{'type': 'text', 'text': '1037.5', 'id': 'lc_521a67db-0368-47ec-bd89-9437c8a7927d'}], name='interest_calculators_compound_interest', id='f1dfdc95-b1ff-4264-bae7-54be587391b0', tool_call_id='8bbd0f03-bfee-49da-b86c-725ed2929851', artifact={'structured_content': {'result': 1037.5}}), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'gemma4:e4b', 'created_at': '2026-07-11T15:50:10.246798316Z', 'done': True, 'done_reason': 'stop', 'total_duration': 3449936174, 'load_duration': 454287100, 'prompt_eval_count': 218, 'prompt_eval_duration': 86395000, 'eval_count': 157, 'eval_duration': 2907017000, 'logprobs': None, 'model_name': 'gemma4:e4b', 'model_provider': 'ollama'}, id='lc_run--019f51df-26cb-7d92-b45d-a7f29d3a983a-0', tool_calls=[{'name': 'interest_calculators_compound_interest', 'args': {'principal': 1000, 'rate': 3.75}, 'id': '8bbd0f03-bfee-49da-b86c-725ed2929851', 'type': 'tool_call'}], invalid_tool_calls=[], usage_metadata={'input_tokens': 218, 'output_tokens': 157, 'total_tokens': 375}), HumanMessage(content='what is the compound interest for a principal of 1000 at rate 3.75 ?', additional_kwargs={}, response_metadata={}, id='0ab3e8cd-7452-4534-8204-9bd0e331c5e1')]
+INFO 2026-07-11 11:50:11,855 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2026-07-11 11:50:15,908 - Processing request of type CallToolRequest
+INFO 2026-07-11 11:50:15,911 - HTTP Request: POST http://192.168.1.25:3002/mcp "HTTP/1.1 200 OK"
+INFO 2026-07-11 11:50:16,463 - HTTP Request: POST http://192.168.1.25:11434/api/chat "HTTP/1.1 200 OK"
+INFO 2026-07-11 11:50:20,194 - [AIMessage(content='I am sorry, but I was unable to retrieve your system memory usage because my execution environment restricted access to system commands like `free -h`.\n\nIf you are running this command on a local machine or server, please execute it directly in your terminal for an accurate result.', additional_kwargs={}, response_metadata={'model': 'gemma4:e4b', 'created_at': '2026-07-11T15:50:20.191951636Z', 'done': True, 'done_reason': 'stop', 'total_duration': 4272379982, 'load_duration': 422880523, 'prompt_eval_count': 238, 'prompt_eval_duration': 48725000, 'eval_count': 202, 'eval_duration': 3790907000, 'logprobs': None, 'model_name': 'gemma4:e4b', 'model_provider': 'ollama'}, id='lc_run--019f51df-4a6e-7f23-91e8-32f863849bd5-0', tool_calls=[], invalid_tool_calls=[], usage_metadata={'input_tokens': 238, 'output_tokens': 202, 'total_tokens': 440}), ToolMessage(content=[{'type': 'text', 'text': 'OPA authorization denied', 'id': 'lc_5c47ab1a-d2a1-4671-9836-5418d243435e'}], name='command_executor_execute_command', id='de952798-38a9-445c-9fa7-5269d1bb682d', tool_call_id='44e95c1f-cf2c-486d-843f-6629a6b9760e', status='error'), AIMessage(content='', additional_kwargs={}, response_metadata={'model': 'gemma4:e4b', 'created_at': '2026-07-11T15:50:15.905764207Z', 'done': True, 'done_reason': 'stop', 'total_duration': 4596011679, 'load_duration': 397831209, 'prompt_eval_count': 203, 'prompt_eval_duration': 83535000, 'eval_count': 221, 'eval_duration': 4112300000, 'logprobs': None, 'model_name': 'gemma4:e4b', 'model_provider': 'ollama'}, id='lc_run--019f51df-386c-72c2-ba64-f70f89155ecc-0', tool_calls=[{'name': 'command_executor_execute_command', 'args': {'command': 'free -h'}, 'id': '44e95c1f-cf2c-486d-843f-6629a6b9760e', 'type': 'tool_call'}], invalid_tool_calls=[], usage_metadata={'input_tokens': 203, 'output_tokens': 221, 'total_tokens': 424}), HumanMessage(content='Find how much system memory is used', additional_kwargs={}, response_metadata={}, id='40b5583f-e6e6-4354-be86-0ed55d3dc169')]
+INFO 2026-07-11 11:50:20,197 - HTTP Request: DELETE http://192.168.1.25:3002/mcp "HTTP/1.1 200 OK"
+INFO 2026-07-11 11:50:20,199 - HTTP Request: DELETE http://192.168.1.25:3001/mcp "HTTP/1.1 200 OK"</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p><span class="bold">BOOM</span> - it is evident from the above <span class="bold">Output.4</span> that the agent LLM client
+        was <span class="underbold">ALLOWED</span> access to the interest caluclator tools, but was <span class="underbold">DENIED
+        </span> access to the command executor.</p>
+    </div>
+    <div id="para-div">
+      <p>With this, we conclude the hands-on demonstration of using OPA to enforce policies on access of tools via MCP !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a target="_blank" href="https://polarsparc.github.io/Security/PrimerOPA.html"><span class="bold">Primer on Open Policy
+        Agent (OPA)</span></a></p>
+      <p><a target="_blank" href="https://polarsparc.github.io/MCP/MCP.html"><span class="bold">Quick Primer on Model Context
+        Protocol (MCP)</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
