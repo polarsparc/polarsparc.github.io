@@ -1,0 +1,964 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Agentic CLI From Scratch - Part 1">
+    <meta name="subject" content="Agentic CLI From Scratch - Part 1">
+    <meta name="keywords" content="llama.cpp, llm, python">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Agentic CLI From Scratch - Part 1</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Agentic CLI From Scratch - Part 1</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">08/09/2026</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>Tools like <span class="bold">Claude Code</span>, <span class="bold">Codex</span>, or <span class="bold">Gemini CLI</span>
+        are often treated like some kind of a magical tool. There are <span class="underbold">NOT</span>. At the core is something
+        we have probably seen before: a <span class="bold">Reason & Act</span> (or <span class="bold">ReACT</span>) agent loop.</p>
+      <p>We give it a prompt, it reasons about what to do, calls a tool, observes the result, reasons again, calls another tool,
+        and repeats until the task is done. The <span class="bold">"tools"</span> are things we already know: cat, curl, grep, bash,
+        etc.</p>
+      <p>What makes these magical CLI useful is how well some of the functional pieces come together such as:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="bold">Tools</span> :: to read/write files, run shell commands, spawn subagents for parallel work</p></li>
+        <li><p><span class="bold">Context Management</span> :: when conversations get long, the agent summarizes and compresses the
+          context rather than blindly carrying every token in the context forward</p></li>
+        <li><p><span class="bold">Guardrails</span> :: seeking permission before destructive actions, scoped tool access, rules that
+          keep the agent from going off the rails</p></li>
+        <li><p><span class="bold">Skills</span> :: structured, reusable workflow templates the agent can invoke on command, such as
+          deploy steps, review checklists, repo-specific workflows, etc. They encode the institutional knowledge so the agent knows
+          what to do in specific workflows</p></li>
+      </ul>
+      <p>This is not an exhaustive list of capabilities, but to get the point across.</p>
+    </div>
+    <div id="para-div">
+      <p>In this 2-part series, we will demonstrate how one can build a local-only agentic CLI from scratch in Python. We will call
+        our agentic CLI <span class="hi-yellow">bcode</span> !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Installation and Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The installation and setup will can on a <span class="bold">Ubuntu 24.04 LTS</span> based Linux desktop. Ensure that <span
+        class="bold">Docker</span> is installed and setup on the desktop (see <a href="http://polarsparc.github.io/Docker/Docker.html"
+        target="_blank">INSTRUCTIONS</a>). Also, ensure the <span class="bold">Python 3.1x</span> programming language is installed
+        and setup on the desktop.</p>
+    </div>
+    <div id="para-div">
+      <p>For the hands-on demonstration, we will be using <span class="bold">llama.cpp</span> for serving the <span class="bold">Qwen
+        3.6 35B</span> LLM model.</p>
+    </div>
+    <div id="para-div">
+      <p>We will create the required models directory by executing the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/.llama_cpp/models</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>From the <span class="bold">llama.cpp</span> docker <a href="https://github.com/ggml-org/llama.cpp/pkgs/container/llama.cpp"
+        target="_blank">RESPOSITORY</a>, one can identify the current version of the docker image. At the time of this article, the
+        latest version of the docker image ended with the version <span class="hi-red">b10331</span>.</p>
+      <p>We require the docker image with the tag word <span class="underbold">full</span>. If the desktop has an Nvidia GPU, one can
+        look for the docker image with the tag words <span class="underbold">full-cuda</span>.</p>
+      <p>To pull and download the full docker image for <span class="bold">llama.cpp</span> with CUDA support, execute the following
+        command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker pull ghcr.io/ggml-org/llama.cpp:full-cuda-b10331</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>full-cuda-b10331: Pulling from ggml-org/llama.cpp
+5a7813e071bf: Pull complete 
+a102f36d092c: Pull complete 
+05ec76e31584: Pull complete 
+398182656c47: Pull complete 
+73389fbd088f: Pull complete 
+cbb9175a9bc5: Pull complete 
+3d6ab8c799cd: Pull complete 
+7209097bfb98: Pull complete 
+545a3ada5b6b: Pull complete 
+349f727c9bfb: Pull complete 
+c6870b6d216c: Pull complete 
+fd21419d784e: Pull complete 
+4f4fb700ef54: Pull complete 
+5879e9b6cb49: Pull complete 
+Digest: sha256:175523d32778c63efc3438e130da56693366a9902801785eb159b2b625e7bd89
+Status: Downloaded newer image for ghcr.io/ggml-org/llama.cpp:full-cuda-b10331
+ghcr.io/ggml-org/llama.cpp:full-cuda-b10331</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now, we will download the Qwen 3.6 LLM model from Huggingface - the <span class="hi-purple">bartowski/Qwen_Qwen3.6-35B-A3B-GGUF
+        </span> model.</p>
+    </div>
+    <div id="para-div">
+      <p>Download <a href="https://huggingface.co/bartowski/Qwen_Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf"
+        target="_blank">Qwen 3.6 35B A3B (4-bit)</a> model to the directory <span class="bold">$HOME/.llama_cpp/models</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>Next, to start the <span class="bold">llama.cpp</span> server for serving the <span class="bold">Qwen 3.6 35B A3B (4-bit)</span>
+        model, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name llama_cpp --gpus all --network host -v $HOME/.llama_cpp/models:/models ghcr.io/ggml-org/llama.cpp:full-cuda-b10331 --server --model /models/Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf --alias qwen3.6-a3b --host 192.168.1.25 --port 8000 --device CUDA0 --temp 1.0 --top_k 64 --top_p 0.95 --no-mmap --threads 4 --ctx-size 65536 --flash-attn on -ctk q4_0 -ctv q4_0</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>0.00.163.698 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.258.629 W srv  llama_server: -----------------
+0.00.258.632 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.258.632 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.258.632 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.258.632 W srv  llama_server: -----------------
+0.00.259.885 I srv    load_model: loading model '/models/Qwen_Qwen3.6-35B-A3B-Q4_K_M.gguf'
+0.13.047.558 I srv    load_model: initializing, n_slots = 4, n_ctx_slot = 65536, kv_unified = 'true'
+0.13.050.472 I srv          init: chat template supports preserving reasoning, consider enabling it via --reasoning-preserve
+0.13.050.506 I srv  llama_server: model loaded
+0.13.050.511 I srv  llama_server: listening on http://192.168.1.25:8000</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Finally, to install the necessary <span class="bold">Python</span> packages, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ pip install duckduckgo-search langchain langchain-core langchain-ollama langchain-openai pydantic rich tiktoken yaml</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This completes all the system installation and setup for the agentic CLI development from scratch.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Agentic CLI from Scratch</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The first version of the <span class="bold">bcode</span> agentic CLI will be basic supporting just the following 3 slash
+        commands:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="bold">/exit</span> :: to exit the agentic CLI</p></li>
+        <li><p><span class="bold">/clear</span> :: to clear the current context</p></li>
+        <li><p><span class="bold">/prompt &lt;msg&gt;</span> :: to process the user prompt &lt;msg&gt;</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The LLM configuration parameters such as the provider, the model to use, the temperature settings, etc., will come from a
+        YAML configuration file called <span class="hi-orange">settings.yaml</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the contents of the <span class="bold">settings.yaml</span> with the following environment variables defined:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   07 Aug 2026
+# @Ver:    1.0
+#
+
+agent:
+  provider: llama.cpp
+  model: qwen3.6-a3b
+  temperature: 0.9
+  top_p: 0.95
+  top_k: 64
+  base_url: http://192.168.1.25:8000</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To load the configuration parameters from the <span class="bold">settings.yaml</span>, we will need a Python class and the
+        necessary logic for loading the configuration.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Python script <span class="hi-vanila">config.py</span> which provides the desired functionality:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   07 Aug 2026
+# @Ver:    1.0
+#
+
+import logging
+import os
+import yaml
+from pydantic import BaseModel
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Default path to the settings file
+DEFAULT_SETTINGS_YAML = './settings.yaml'
+
+class LLMConfig(BaseModel):
+  """Holds the LLM parameters used to build the chat model"""
+  provider: str = 'ollama'
+  model: str = 'qwen-3.6'
+  temperature: float = 0.0
+  top_p: float = 0.5
+  top_k: int = 32
+  base_url: str = 'http://localhost:11434'
+
+def load_config(path: str = DEFAULT_SETTINGS_YAML) -> LLMConfig:
+  """Load LLMConfig from a YAML file, falling back to defaults"""
+  data = {}
+  logger.info(f'Config settings: {path}')
+  if os.path.exists(path):
+    with open(path, 'r') as settings:
+      data = yaml.safe_load(settings) or {}
+    logger.info(f'Loaded settings: {data}')
+  else:
+    logger.info(f'No settings file {path} not found, using defaults')
+
+  return LLMConfig(**data['agent'])
+
+if __name__ == '__main__':
+  config = load_config()
+  print(config)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Next, we will need some Python code to initialize the local LLM provider (either <span class="bold">llama.cpp</span> or <span
+        class="bold">ollama</span>) using the provided configuration.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Python script <span class="hi-vanila">llm.py</span> which provides the desired functionality:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   07 Aug 2026
+# @Ver:    1.0
+#
+
+import logging
+from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
+from config import LLMConfig
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def build_chat_model(config: LLMConfig):
+  """Return a chat model instance matching config.provider"""
+  if config.provider == 'ollama':
+    logger.info(f'Ollama server: base-url -> {config.base_url}, model -> {config.model}')
+    return ChatOllama(
+      model=config.model,
+      base_url=config.base_url,
+      temperature=config.temperature,
+      top_p=config.top_p,
+      top_k=config.top_k,
+    )
+
+  if config.provider == 'llama.cpp':
+    logger.info(f'Llama.cpp server: base-url -> {config.base_url}, model -> {config.model}')
+    # llama.cpp's server exposes an OpenAI-compatible HTTP API, so we use ChatOpenAI
+    return ChatOpenAI(
+      model=config.model,
+      base_url=config.base_url,
+      api_key='llama.cpp',
+      temperature=config.temperature,
+      top_p=config.top_p,
+      extra_body={'top_k': config.top_k},
+    )
+
+  raise ValueError(f'Unsupported provider -> {config.provider}')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Finally, we will need the Python code for the agentic CLI, which leverages the above indicated functionality to implement
+        the ReACT agentic loop.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Python script <span class="hi-vanila">bcode.py</span> which provides the agentic CLI functionality:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   07 Aug 2026
+# @Ver:    1.0
+#
+
+import logging
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, SystemMessage
+from langchain.agents import create_agent
+from rich.console import Console
+from rich.prompt import Prompt
+from config import load_config
+from llm import build_chat_model
+
+DEFAULT_SYSTEM_MESSAGE = SystemMessage(content='You are a helpful AI task assistant')
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+console = Console()
+
+def initial_history() -> list:
+    """Return a clean conversation history containing only the system message"""
+    return [DEFAULT_SYSTEM_MESSAGE]
+
+def handle_prompt(agent, history: list, message: str):
+    """Send the prompt message to the agent and return (response, new_history) the response as tokens arrive"""
+    history = history + [HumanMessage(content=message)]
+
+    response = ''
+    for chunk, _ in agent.stream({'messages': history}, stream_mode='messages'):
+        if isinstance(chunk, AIMessageChunk) and chunk.content:
+            console.print(chunk.content, end='')
+            response += chunk.content
+    console.print()
+
+    new_history = history + [AIMessage(content=response)]
+    return response, new_history
+
+def process_line(line: str, agent, history: list):
+    """Dispatch the user prompt and return (output_message, new_history, should_continue) tuple.
+    If /exit, exit the program"""
+    line = line.strip()
+
+    if line == '/exit':
+        logger.info("Exiting bcode!")
+        return None, history, False
+
+    if line == '/clear':
+        logger.info('Context clear command')
+        return 'Context Cleared', initial_history(), True
+
+    if line.startswith('/prompt'):
+        message = line[len('/prompt'):].strip()
+        if not message:
+            return 'Usage: /prompt &lt;message&gt;', history, True
+        try:
+            response, new_history = handle_prompt(agent, history, message)
+            return response, new_history, True
+        except Exception as exc:
+            logger.error(f'Error processing prompt: {exc}')
+            return f'Error: {exc}', history, True
+
+    return 'Unknown Command', history, True
+
+def run() -> None:
+    """Start the agent ReACT loop"""
+    logger.info('starting bcode agent CLI')
+
+    config = load_config()
+    llm = build_chat_model(config)
+    # No tools are registered in this version; the agent simply reasons and responds
+    agent = create_agent(llm, tools=[])
+    history = initial_history()
+
+    console.print('[bold magenta3]-----&gt; bcode v1.0 &lt;-----[/bold magenta3]')
+    while True:
+        try:
+            line = Prompt.ask('[bold dark_orange]bc[/bold dark_orange]', console=console, show_default=False)
+        except (EOFError, KeyboardInterrupt):
+            console.print()
+            break
+
+        if not line.strip():
+            continue
+
+        output, history, should_continue = process_line(line, agent, history)
+        if output is not None:
+            console.print(output)
+        if not should_continue:
+            break
+
+    logger.info('bcode agent stopped')
+
+if __name__ == "__main__":
+    run()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To test our agentic CLI <span class="bold">bcode</span>, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python bcode.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Once the agentic CLI is ready, the user is presented with the <span class="hi-yellow">bc:</span> command prompt.</p>
+    </div>
+    <div id="para-div">
+      <p>Execute the following <span class="bold">/prompt</span> command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>bc: /prompt how much memory does this system have</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical trimmed output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>INFO 2026-08-08 17:55:26,198 - HTTP Request: POST http://192.168.1.25:8000/chat/completions "HTTP/1.1 200 OK"
+I don't have direct access to your hardware or operating system, so I can't check your memory (RAM) myself. However, you can easily find it out:
+
+** Windows:**
+- Press `Ctrl + Shift + Esc` to open Task Manager
+- Click the **Performance** tab -&gt; select **Memory**
+- The top-right corner will show your total RAM (e.g., `16.0 GB`)
+
+** macOS:**
+- Click the Apple menu -&gt; **About This Mac**
+- Under the **Overview** tab, it will list **Memory** (e.g., `16 GB`)
+
+** Linux:**
+- Open a terminal and run: `free -h`
+- Or: `cat /proc/meminfo | grep MemTotal`
+
+Reply with your OS or paste the output, and I'll help you read it or advise whether it's sufficient for your use case!</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the following <span class="bold">/exit</span> command will exit the agentic CLI <span class="bold">bcode</span>
+        !</p>
+    </div>
+    <div id="para-div">
+      <p>From the <span class="bold">Output.3</span> above, it was clear that the agentic CLI had no access to tools and hence was
+        not able to accomplish the desired task.</p>
+    </div>
+    <div id="para-div">
+      <p>Let us iterate to the next version of <span class="bold">bcode</span> with support for tools !</p>
+    </div>
+    <div id="para-div">
+      <p>The second version of the <span class="bold">bcode</span> agentic CLI will support the following tools:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="bold">bash</span> :: execute a shell command or executable and return its output</p></li>
+        <li><p><span class="bold">edit</span> :: replace the first occurrence of a string with a new string in a file</p></li>
+        <li><p><span class="bold">grep</span> :: search for lines matching a regular expression pattern in a file or directory</p></li>
+        <li><p><span class="bold">read</span> :: read a file and and return its contents</p></li>
+        <li><p><span class="bold">websearch</span> :: search the web and return a short list of matching results</p></li>
+        <li><p><span class="bold">write</span> :: write contents to a file, overwriting it if it already exists</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>In addition, each tool can have one of the following permissions:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="bold">allow</span> :: allow the execution of the tool</p></li>
+        <li><p><span class="bold">ask</span> :: prompt the user for permission to proceed</p></li>
+        <li><p><span class="bold">deny</span> :: deny the execution of the tool</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The tool permissions will be set in the YAML configuration file called <span class="bold">settings.yaml</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the contents of the <span class="bold">settings.yaml</span> for the second version:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   07 Aug 2026
+# @Ver:    1.1
+#
+
+agent:
+  provider: llama.cpp
+  model: qwen3.6-a3b
+  temperature: 0.9
+  top_p: 0.95
+  top_k: 64
+  base_url: http://192.168.1.25:8000
+  tools: True
+
+tools:
+  bash: ask
+  edit: allow
+  grep: allow
+  read: allow
+  websearch: ask
+  write: allow</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following will be the second version of the Python script <span class="bold">config.py</span> which loads all the
+        configuration settings:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   07 Aug 2026
+# @Ver:    1.1
+#
+
+import logging
+import os
+import yaml
+from pydantic import BaseModel
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Default path to the settings file
+DEFAULT_SETTINGS_YAML = './settings.yaml'
+
+class LLMConfig(BaseModel):
+  """Holds the LLM parameters used to build the chat model"""
+  provider: str = 'ollama'
+  model: str = 'qwen-3.6'
+  temperature: float = 0.0
+  top_p: float = 0.5
+  top_k: int = 32
+  base_url: str = 'http://localhost:11434'
+  tools: bool = False
+
+class LLMTools(BaseModel):
+  """Holds the LLM tools along with their permissions used to build the chat model"""
+  tool_perm: dict[str, str] = {}
+
+def load_config(path: str = DEFAULT_SETTINGS_YAML) -> LLMConfig:
+  """Load LLMConfig from a YAML file, falling back to defaults"""
+  params = {}
+  logger.info(f'Config settings: {path}')
+  if os.path.exists(path):
+    with open(path, 'r') as settings:
+      params = yaml.safe_load(settings) or {}
+    logger.info(f'Loaded settings: {params}')
+  else:
+    logger.info(f'No settings file {path} not found, using defaults')
+
+  return LLMConfig(**params['agent']), LLMTools(tool_perm=params['tools'])
+
+if __name__ == '__main__':
+  config, tool_permissions = load_config()
+  logger.info(f'config: {config}, tools: {tool_permissions}')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will need some Python code to setup all the above mentioned tools. This is where the following Python script <span class
+        ="hi-vanila">tools.py</span> comes into the picture:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   08 Aug 2026
+# @Ver:    1.1
+#
+
+import logging
+import os
+import re
+import subprocess
+from ddgs import DDGS
+from langchain_core.tools import tool
+from rich.prompt import Confirm
+from config import LLMTools
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Any operation targeting /etc or anything under it must be blocked
+_ETC_PATH = os.path.realpath('/etc')
+
+def _guard_etc_path(path: str) -> None:
+  """Raise PermissionError if path resolves to /etc or anything under it"""
+  resolved = os.path.realpath(os.path.abspath(os.path.expanduser(path)))
+  if resolved == _ETC_PATH or resolved.startswith(_ETC_PATH + os.sep):
+    raise PermissionError(f'Access to system files under /etc is not permitted: {path}')
+
+def _guard_etc_in_command(command: str) -> None:
+  """Best-effort textual block of /etc references in a shell command"""
+  if '/etc' in command:
+    raise PermissionError('Shell commands referencing /etc are not permitted')
+
+@tool
+def bash(command: str) -> str:
+  """Execute a shell command or executable and return its output"""
+  try:
+    _guard_etc_in_command(command)
+    result = subprocess.run(
+      command, shell=True, capture_output=True, text=True, timeout=30
+    )
+    output = result.stdout + result.stderr
+    return f'(Exit code from bash {result.returncode})\n{output}'
+  except subprocess.TimeoutExpired:
+    return 'Bash Error: command timed out after 30 seconds'
+  except Exception as exc:
+    return f'Bash Error: {exc}'
+
+@tool
+def edit(path: str, old_string: str, new_string: str) -> str:
+  """Replace the first occurrence of old_string with new_string in a file"""
+  try:
+    _guard_etc_path(path)
+    with open(path, 'r') as f:
+      content = f.read()
+    if old_string not in content:
+      return f'Edit Error: old_string not found in {path}'
+    content = content.replace(old_string, new_string, 1)
+    with open(path, 'w') as f:
+      f.write(content)
+    return f'Edited {path}'
+  except Exception as exc:
+    return f'Edit Error: {exc}'
+
+@tool
+def grep(pattern: str, path: str = '.') -> str:
+  """Search for lines matching a regex pattern in a file or directory"""
+  try:
+    _guard_etc_path(path)
+
+    if os.path.isfile(path):
+      file_paths = [path]
+    else:
+      file_paths = []
+      for root, _, filenames in os.walk(path):
+        for filename in filenames:
+          file_paths.append(os.path.join(root, filename))
+
+    regex = re.compile(pattern)
+
+    matches = []
+    for file_path in file_paths:
+      try:
+        _guard_etc_path(file_path)
+        with open(file_path, 'r', errors='ignore') as f:
+          for line_number, line in enumerate(f, start=1):
+            if regex.search(line):
+              matches.append(f'{file_path}:{line_number}: {line.rstrip()}')
+      except (PermissionError, OSError):
+        continue
+
+    if not matches:
+      return "No matches found."
+
+    max_matches = 100
+    if len(matches) > max_matches:
+      matches = matches[:max_matches] + [f'... [truncated, {len(matches)} total matches]']
+    return '\n'.join(matches)
+  except Exception as exc:
+    return f'Grep Error: {exc}'
+
+@tool
+def read(path: str) -> str:
+  """Read and return the contents of a file"""
+  try:
+    _guard_etc_path(path)
+    with open(path, 'r') as f:
+      content = f.read()
+    max_chars = 1024 * 16
+    if len(content) > max_chars:
+      return content[:max_chars] + f'\n... [truncated, {len(content)} total characters]'
+    return content
+  except Exception as exc:
+    return f'Read Error: {exc}'
+
+@tool
+def websearch(query: str) -> str:
+  """Search the web and return a short list of matching results"""
+  try:
+    results = DDGS().text(query, max_results=5)
+    if not results:
+      return 'No web search results found'
+    lines = []
+    for r in results:
+      lines.append(f"{r.get('title', '')}\n{r.get('href', '')}\n{r.get('body', '')}")
+    return '\n\n'.join(lines)
+  except Exception as exc:
+    return f'Websearch Error: {exc}'
+
+@tool
+def write(path: str, content: str) -> str:
+  """Write content to a file, overwriting it if it already exists"""
+  try:
+    _guard_etc_path(path)
+    with open(path, 'w') as f:
+      f.write(content)
+    return f'Wrote {len(content)} characters to {path}'
+  except Exception as exc:
+    return f'Write Error: {exc}'
+
+TOOL_REGISTRY = {
+  "bash": bash,
+  "edit": edit,
+  "grep": grep,
+  "read": read,
+  "websearch": websearch,
+  "write": write,
+}
+
+def _is_tool_allowed(name: str, permissions: LLMTools) -> bool:
+  """Decide whether tool `name` is allowed"""
+  perm = permissions.tool_perm.get(name)
+  if perm == 'allow':
+    return True
+  if perm == 'ask':
+    return Confirm.ask(f'Allow tool [bold bright_red]{name}[/bold bright_red]?', default=False)
+  return False
+
+def _wrap_with_permission_check(name, tool_ref, permissions: LLMTools):
+  """Return a wrapper on a tool that checks _is_tool_allowed before each call"""
+  logger.info(f"Wrapping tool function {tool_ref.func} for '{name}' ")
+
+  original_func = tool_ref.func
+
+  def guarded_func(**kwargs):
+    if not _is_tool_allowed(name, permissions):
+      logger.info(f"Tool '{name}' call blocked")
+      raise PermissionError(f"Tool '{name}' call blocked")
+    return original_func(**kwargs)
+
+  return tool_ref.model_copy(update={'func': guarded_func})
+
+def get_tools(permissions: LLMTools):
+  """Return all tools from the registry, each wrapped by _wrap_with_permission_check"""
+  return [
+    _wrap_with_permission_check(name, tool_ref, permissions) for name, tool_ref in TOOL_REGISTRY.items()
+  ]
+
+if __name__ == '__main__':
+  logger.info(get_tools(LLMTools()))</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Finally, we will need to update Python code for the agentic CLI to use the tools. The following is the second version for
+        the Python script <span class="bold">bcode.py</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   08 Aug 2026
+# @Ver:    1.1
+#
+
+import logging
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, SystemMessage
+from langchain.agents import create_agent
+from rich.console import Console
+from rich.prompt import Prompt
+from config import load_config
+from llm import build_chat_model
+from tools import get_tools
+
+DEFAULT_SYSTEM_MESSAGE = SystemMessage(content='You are a helpful AI task assistant')
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+console = Console()
+
+def initial_history() -> list:
+  """Return a clean conversation history containing only the system message"""
+  return [DEFAULT_SYSTEM_MESSAGE]
+
+def handle_prompt(agent, history: list, message: str):
+  """Send the prompt message to the agent and return (response, new_history) the response as tokens arrive"""
+  history = history + [HumanMessage(content=message)]
+
+  response = ''
+  for chunk, _ in agent.stream({'messages': history}, stream_mode='messages'):
+    if isinstance(chunk, AIMessageChunk) and chunk.content:
+      console.print(chunk.content, end='')
+      response += chunk.content
+  console.print()
+
+  new_history = history + [AIMessage(content=response)]
+  return response, new_history
+
+def process_line(line: str, agent, history: list):
+  """Dispatch the user prompt and return (output_message, new_history, should_continue) tuple.
+  If /exit, exit the program"""
+  line = line.strip()
+
+  if line == '/exit':
+    logger.info("Exiting bcode!")
+    return None, history, False
+
+  if line == '/clear':
+    logger.info('Context clear command')
+    return 'Context Cleared', initial_history(), True
+
+  if line.startswith('/prompt'):
+    message = line[len('/prompt'):].strip()
+    if not message:
+      return 'Usage: /prompt &lt;message&gt;', history, True
+    try:
+      response, new_history = handle_prompt(agent, history, message)
+      return response, new_history, True
+    except Exception as exc:
+      logger.error(f'Error processing prompt: {exc}')
+      return f'Error: {exc}', history, True
+
+  return 'Unknown Command', history, True
+
+def run() -> None:
+  """Start the agent ReACT loop"""
+  logger.info('starting bcode agent CLI')
+
+  config, permissions = load_config()
+  llm = build_chat_model(config)
+
+  if config.tools:
+    tools = get_tools(permissions)
+  else:
+    tools = []
+
+  agent = create_agent(llm, tools=tools)
+  history = initial_history()
+
+  console.print('[bold magenta3]-----&gt; bcode v1.1 &lt;-----[/bold magenta3]')
+  while True:
+    try:
+      line = Prompt.ask('[bold dark_orange]bc[/bold dark_orange]', console=console, show_default=False)
+    except (EOFError, KeyboardInterrupt):
+      console.print()
+      break
+
+    if not line.strip():
+      continue
+
+    output, history, should_continue = process_line(line, agent, history)
+    if output is not None:
+      console.print(output)
+    if not should_continue:
+      break
+
+  logger.info('bcode agent stopped')
+
+if __name__ == "__main__":
+  run()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To test our agentic CLI <span class="bold">bcode</span>, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python bcode.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Once the agentic CLI is ready, the user is presented with the <span class="hi-yellow">bc:</span> command prompt.</p>
+    </div>
+    <div id="para-div">
+      <p>Execute the following <span class="bold">/prompt</span> command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>bc: /prompt how much memory does this system have</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical trimmed output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>INFO 2026-08-08 18:02:00,975 - HTTP Request: POST http://192.168.1.25:8000/chat/completions "HTTP/1.1 200 OK"
+Allow tool bash? [y/n] (n): y
+INFO 2026-08-08 18:02:06,931 - HTTP Request: POST http://192.168.1.25:8000/chat/completions "HTTP/1.1 200 OK"
+The system has **62 GiB** of total memory.
+
+Here is the current status:
+*   **Total Memory:** 62 GiB
+*   **Used:** 15 GiB
+*   **Available:** 47 GiB (including buffers and cache)
+*   **Swap Space:** 14 GiB
+The system has **62 GiB** of total memory.cat
+
+Here is the current status:
+*   **Total Memory:** 62 GiB
+*   **Used:** 15 GiB
+*   **Available:** 47 GiB (including buffers and cache)
+*   **Swap Space:** 14 GiB</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the following <span class="bold">/exit</span> command will exit the agentic CLI <span class="bold">bcode</span>
+        !</p>
+    </div>
+    <div id="para-div">
+      <p>Notice that <span class="bold">bcode</span> asks the user for permission before executing the tool <span class="bold">bash
+        </span>.</p>
+    </div>
+    <div id="para-div">
+      <p>With this, we conclude <span class="bold">Part 1</span> of the series on building an agentic CLI from scratch !!!</p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
