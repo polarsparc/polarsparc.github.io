@@ -1,0 +1,795 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Agentic CLI From Scratch - Part 2">
+    <meta name="subject" content="Agentic CLI From Scratch - Part 2">
+    <meta name="keywords" content="llama.cpp, llm, python">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Agentic CLI From Scratch - Part 2</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Agentic CLI From Scratch - Part 2</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">08/15/2026</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>In <a href="https://polarsparc.github.io/GenAI/AgentFromScratch-1.html" target="_blank"><span class="bold">Part 1</span></a>
+        of this series, we built the <span class="hi-yellow">bcode</span> agentic CLI from scratch with support for tools.</p>
+      <p>In this part, we will extend <span class="bold">bcode</span> with support for both conversational <span class="hi-vanila">
+        memory</span> and <span class="hi-vanila">skills</span>.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Agentic CLI from Scratch</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>When we exit and restart <span class="bold">bcode</span>, it would start with a clean slate, with no memory of the previous
+        conversation(s).</p>
+      <p>We will introduce the concept of a session and the ability to save a summary of the conversation on exit. This implies, we
+        will introduce a new slash command <span class="hi-green">/session &lt;uuid&gt;</span>, which will take a previous session
+        &lt;uuid&gt; to restore the conversational context.</p>
+    </div>
+    <div id="para-div">
+      <p>Before <span class="bold">bcode</span> exits, it compresses the conversation(s) into a summary and saves it in a memory file
+        in the <span class="hi-orange">./memory</span> folder.</p>
+      <p>Also, we will automatically summarize the conversation(s) once the number of tokens in the context exceeds a threshold value.</p>
+    </div>
+    <div id="para-div">
+      <p>The following would be the updated contents of the <span class="bold">settings.yaml</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   14 Aug 2026
+# @Ver:    1.2
+#
+
+agent:
+  provider: llama.cpp
+  model: qwen3.6-a3b
+  temperature: 0.9
+  top_p: 0.95
+  top_k: 64
+  base_url: http://192.168.1.25:8000
+  tools: True
+  context_size_threshold: 1024
+
+tools:
+  bash: ask
+  edit: allow
+  grep: allow
+  read: allow
+  websearch: ask
+  write: allow</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following will be the updated version of the Python script <span class="bold">config.py</span> which loads all the
+        configuration settings:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   14 Aug 2026
+# @Ver:    1.2
+#
+
+import logging
+import os
+import yaml
+from pydantic import BaseModel
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Default path to the settings file
+DEFAULT_SETTINGS_YAML = './settings.yaml'
+
+class LLMConfig(BaseModel):
+  """Holds the LLM parameters used to build the chat model"""
+  provider: str = 'ollama'
+  model: str = 'qwen-3.6'
+  temperature: float = 0.0
+  top_p: float = 0.5
+  top_k: int = 32
+  base_url: str = 'http://localhost:11434'
+  tools: bool = False
+  context_size_threshold: int = 1024
+
+class LLMTools(BaseModel):
+  """Holds the LLM tools along with their permissions used to build the chat model"""
+  tool_perm: dict[str, str] = {}
+
+def load_config(path: str = DEFAULT_SETTINGS_YAML) -> LLMConfig:
+  """Load LLMConfig from a YAML file, falling back to defaults"""
+  params = {}
+  logger.info(f'Config settings: {path}')
+  if os.path.exists(path):
+    with open(path, 'r') as settings:
+      params = yaml.safe_load(settings) or {}
+    logger.info(f'Loaded settings: {params}')
+  else:
+    logger.info(f'No settings file {path} not found, using defaults')
+
+  return LLMConfig(**params['agent']), LLMTools(tool_perm=params['tools'])
+
+if __name__ == '__main__':
+  config, tool_permissions = load_config()
+  logger.info(f'config: {config}, tools: {tool_permissions}')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Next, we will need some Python code for the management the memory - to determine the current context size and to help
+        summarize the current conversation(s).</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Python script <span class="hi-vanila">memory.py</span> which provides the desired functionality:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   14 Aug 2026
+# @Ver:    1.2
+#
+
+import logging
+import tiktoken
+from langchain_core.messages import HumanMessage
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+_ENCODING = tiktoken.get_encoding('cl100k_base')
+SUMMARY_INSTRUCTION = (
+  """Summarize the conversation so far in a concise paragraph, preserving important facts, decisions,
+  and any open questions. Respond with only the summary text, and nothing else."""
+)
+
+def get_context_size(history: list) -> int:
+  """Return the token count of the conversation history"""
+  text = '\n'.join(str(message.content) for message in history)
+  return len(_ENCODING.encode(text))
+
+def summarize_history(agent, history: list) -> str:
+  """Ask the agent to summarize the conversation so far as plain text"""
+  request = history + [HumanMessage(content=SUMMARY_INSTRUCTION)]
+  result = agent.invoke({'messages': request})
+  return result['messages'][-1].content</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Next, we will need some Python code for the session management - to create a new session id, saving conversational context
+        to memory, and to load the conversational context from a previous session.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Python script <span class="hi-vanila">session.py</span> which provides the required functionality:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   14 Aug 2026
+# @Ver:    1.2
+#
+
+import json
+import logging
+import os
+import uuid
+from memory import summarize_history
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+DEFAULT_MEMORY_DIR = './memory'
+
+def new_session_id() -> str:
+  """Return a fresh session id"""
+  return str(uuid.uuid4())
+
+def session_path(session_id: str, memory_dir: str = DEFAULT_MEMORY_DIR) -> str:
+  """Return the path to the session memory file for session_id"""
+  return os.path.join(memory_dir, f'mem-{session_id}.json')
+
+def save_session(agent, history: list, session_id: str, memory_dir: str = DEFAULT_MEMORY_DIR) -> str:
+  """Summarize history and write it to session_id's memory file"""
+  summary = summarize_history(agent, history)
+
+  os.makedirs(memory_dir, exist_ok=True)
+  path = session_path(session_id, memory_dir)
+  with open(path, 'w') as f:
+    json.dump({'session_id': session_id, 'summary': summary}, f, indent=2)
+
+  return path
+
+def load_session(session_id: str, memory_dir: str = DEFAULT_MEMORY_DIR) -> str:
+  """Return the saved summary for session_id"""
+  path = session_path(session_id, memory_dir)
+  if not os.path.isfile(path):
+    raise FileNotFoundError(f"Session '{session_id}' not found (expected {path})")
+  with open(path, 'r') as f:
+    data = json.load(f)
+  return data['summary']</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Finally, we will need to update the agentic CLI to support the conversational memory functionality.</p>
+    </div>
+    <div id="para-div">
+      <p>The following is the Python script <span class="bold">bcode.py</span> which provides the agentic CLI functionality:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   14 Aug 2026
+# @Ver:    1.2
+#
+
+import logging
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, SystemMessage
+from langchain.agents import create_agent
+from rich.console import Console
+from rich.prompt import Prompt
+from config import load_config
+from llm import build_chat_model
+from memory import get_context_size, summarize_history
+from session import load_session, new_session_id, save_session
+from tools import get_tools
+
+DEFAULT_SYSTEM_MESSAGE = SystemMessage(content='You are a helpful AI task assistant')
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+console = Console()
+
+def initial_history() -> list:
+  """Return a clean conversation history containing only the system message"""
+  return [DEFAULT_SYSTEM_MESSAGE]
+
+def handle_prompt(agent, history: list, message: str, threshold_size: int):
+  """Send the prompt message to the agent and return (response, new_history) the response as tokens
+  arrive. Summarize the context when the context size exceeds the threshold"""
+  history = history + [HumanMessage(content=message)]
+
+  response = ''
+  for chunk, _ in agent.stream({'messages': history}, stream_mode='messages'):
+    if isinstance(chunk, AIMessageChunk) and chunk.content:
+      console.print(chunk.content, end='')
+      response += chunk.content
+  console.print()
+
+  new_history = history + [AIMessage(content=response)]
+  context_size = get_context_size(new_history)
+  if context_size > threshold_size:
+    logger.info(f'Context size {context_size} exceeds threshold {threshold_size}, summarizing')
+    summary = summarize_history(agent, new_history)
+    new_history = [AIMessage(content=summary)]
+
+  return response, new_history
+
+def process_line(line: str, agent, history: list, threshold_size: int):
+  """Dispatch the user prompt and return (output_message, new_history, should_continue) tuple.
+  If /exit, exit the program"""
+  line = line.strip()
+
+  if line == '/exit':
+    logger.info("Exiting bcode!")
+    return None, history, False
+
+  if line == '/clear':
+    logger.info('Context clear command')
+    return 'Context Cleared', initial_history(), True
+
+  if line.startswith('/prompt'):
+    message = line[len('/prompt'):].strip()
+    if not message:
+      return 'Usage: /prompt &lt;message&gt;', history, True
+    try:
+      response, new_history = handle_prompt(agent, history, message, threshold_size)
+      return response, new_history, True
+    except Exception as exc:
+      logger.error(f'Error processing prompt: {exc}')
+      return f'Error: {exc}', history, True
+
+  if line.startswith('/session'):
+    session_id = line[len('/session'):].strip()
+    if not session_id:
+      return "Usage: /session &lt;uuid&gt;", history, True
+    try:
+      summary = load_session(session_id)
+    except FileNotFoundError:
+      return f"Session '{session_id}' not found", history, True
+
+    new_history = [
+      SystemMessage(content=DEFAULT_SYSTEM_MESSAGE),
+      SystemMessage(content=f'Conversation Summary:\n{summary}'),
+    ]
+    return f'Resumed session {session_id}', new_history, True
+
+  return 'Unknown Command', history, True
+
+def run() -> None:
+  """Start the agent ReACT loop"""
+  logger.info('starting bcode agent CLI')
+
+  config, permissions = load_config()
+  logger.info(f'Config: {config}')
+  logger.info(f'Permissions: {permissions}')
+
+  llm = build_chat_model(config)
+
+  if config.tools:
+    tools = get_tools(permissions)
+  else:
+    tools = []
+
+  agent = create_agent(llm, tools=tools)
+  history = initial_history()
+
+  session_id = new_session_id()
+  logger.info(f'Session id: {session_id}')
+
+  console.print('[bold magenta3]-----&gt; bcode v1.2 &lt;-----[/bold magenta3]')
+  while True:
+    try:
+      line = Prompt.ask('[bold dark_orange]bc[/bold dark_orange]', console=console, show_default=False)
+    except (EOFError, KeyboardInterrupt):
+      console.print()
+      break
+
+    if not line.strip():
+      continue
+
+    output, history, should_continue = process_line(line, agent, history, config.context_size_threshold)
+    if output is not None:
+      console.print(output)
+    if not should_continue:
+      break
+
+  path = save_session(agent, history, session_id)
+
+  logger.info(f'Session {session_id} saved to {path}')
+  logger.info('bcode agent stopped')
+
+if __name__ == "__main__":
+  run()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now, to test our agentic CLI <span class="bold">bcode</span>, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python bcode.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Once the agentic CLI is ready, the user is presented with the <span class="hi-yellow">bc:</span> command prompt.</p>
+    </div>
+    <div id="para-div">
+      <p>Execute the following <span class="bold">/prompt</span> command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>bc: /prompt what does the tool annotation in python langchain for</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The agentic CLI will process the prompt and stream the response.</p>
+    </div>
+    <div id="para-div">
+      <p>Once again, execute another <span class="bold">/prompt</span> command as follows:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>bc: /prompt can the same functionality be achieved using other methods</p>
+    </div>
+    <div id="para-div">
+      <p>The agentic CLI will process the prompt and stream the response. This time the context threshold is breached and <span class
+        ="bold">bcode</span> will trigger the summarization logic as shown in the following trimmed output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>INFO 2026-08-14 22:09:55,920 - Context size 1573 exceeds threshold 1024, summarizing
+INFO 2026-08-14 22:10:18,792 - HTTP Request: POST http://192.168.1.25:8000/chat/completions "HTTP/1.1 200 OK"</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now, execute the <span class="bold">/exit</span> command. The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>INFO 2026-08-14 22:11:17,346 - Exiting bcode!
+INFO 2026-08-14 22:11:40,921 - HTTP Request: POST http://192.168.1.25:8000/chat/completions "HTTP/1.1 200 OK"
+INFO 2026-08-14 22:11:40,922 - Session 383fc1d8-38a7-4178-bdc3-67c6603528c7 saved to ./memory/bcode-383fc1d8-38a7-4178-bdc3-67c6603528c7.json
+INFO 2026-08-14 22:11:40,922 - bcode agent stopped</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>From the <span class="bold">Output.2</span> above, it is evident that the agentic CLI has persisted the session state.</p>
+    </div>
+    <div id="para-div">
+      <p>In a terminal window, execute the following command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>ls -l memory</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following would be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>total 4
+-rw-rw-r-- 1 polarsparc polarsparc 668 Aug 14 22:11 bcode-383fc1d8-38a7-4178-bdc3-67c6603528c7.json</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now, let us iterate to the final version of <span class="bold">bcode</span> with support for skills !</p>
+      <p>Think of a skill as a packaged set of instructions, defined in a markdown file (<span class="hi-vanila">skill.md</span>),
+        which tells <span class="bold">bcode</span> how to do a specific task. The contents of <span class="bold">skill.md</span>
+        get loaded into the context of <span class="bold">bcode</span> for processing.</p>
+    </div>
+    <div id="para-div">
+      <p>Each skill will have a name and will be created as a folder with that name in the <span class="hi-orange">./skills</span>
+        folder. For example, a skill named <span class="hi-green">summarize</span> will have an associated <span class="bold">skill.md
+        </span> in the folder <span class="bold">./skills/summarize</span>.</p>
+    </div>
+    <div id="para-div">
+      <p>The following will be the contents of the skill <span class="hi-vanila">./skills/summarize/skill.md</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>---
+name: summarize
+description: Summarize the conversation so far into concise bullet points covering key facts, decisions, and open questions.
+---
+
+Summarize the conversation so far in three concise bullet points, highlighting the key facts, decisions, and any open questions.</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will need some Python code to load the instructions for a specific skill. This is where the following Python script <span
+        class="hi-vanila">skills.py</span> comes into the picture:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   14 Aug 2026
+# @Ver:    1.2
+#
+
+import frontmatter
+import logging
+import os
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+DEFAULT_SKILLS_DIR = './skills'
+SKILL_FILENAME = 'skill.md'
+
+class SkillError(Exception):
+  """Raised when a skill.md file is missing or malformed."""
+
+def _parse_skill_md(path: str, folder_name: str) -> tuple:
+  """Parse a skill.md file into three parts (name, description, body)"""
+  md = frontmatter.load(path)
+
+  name = md.get('name')
+  if not name:
+    raise SkillError(f"{path}: Frontmatter missing mandatory 'name' field")
+  if md.get('name') != folder_name:
+    raise SkillError(f"{path}: Frontmatter 'name' ({name!r}) must match skill folder ({folder_name!r})")
+
+  description = md.get('description')
+  if not description:
+    raise SkillError(f"{path}: Frontmatter missing mandatory 'description' field")
+
+  return name, description, md.content.strip()
+
+def load_skill(name: str, skills_dir: str = DEFAULT_SKILLS_DIR) -> str:
+  """Return the body of skills/<name>/skill.md (frontmatter stripped)"""
+  skill_path = os.path.join(skills_dir, name, SKILL_FILENAME)
+  if not os.path.isfile(skill_path):
+    raise FileNotFoundError(f"Skill '{name}' not found (expected {skill_path})")
+  _, _, body = _parse_skill_md(skill_path, name)
+  return body</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Finally, we will need to update Python code for the agentic CLI to use the tools. The following is the final version for
+        the Python script <span class="bold">bcode.py</span>:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>#
+# @Author: Bhaskar S
+# @Blog:   https://polarsparc.github.io
+# @Date:   14 Aug 2026
+# @Ver:    1.2
+#
+
+import logging
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, SystemMessage
+from langchain.agents import create_agent
+from rich.console import Console
+from rich.prompt import Prompt
+from config import load_config
+from llm import build_chat_model
+from memory import get_context_size, summarize_history
+from session import load_session, new_session_id, save_session
+from skills import load_skill, SkillError
+from tools import get_tools
+
+DEFAULT_SYSTEM_MESSAGE = SystemMessage(content='You are a helpful AI task assistant')
+
+logging.basicConfig(format='%(levelname)s %(asctime)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+console = Console()
+
+def initial_history() -> list:
+  """Return a clean conversation history containing only the system message"""
+  return [DEFAULT_SYSTEM_MESSAGE]
+
+def handle_prompt(agent, history: list, message: str, threshold_size: int):
+  """Send the prompt message to the agent and return (response, new_history) the response as tokens
+  arrive. Summarize the context when the context size exceeds the threshold"""
+  history = history + [HumanMessage(content=message)]
+
+  response = ''
+  for chunk, _ in agent.stream({'messages': history}, stream_mode='messages'):
+    if isinstance(chunk, AIMessageChunk) and chunk.content:
+      console.print(chunk.content, end='')
+      response += chunk.content
+  console.print()
+
+  new_history = history + [AIMessage(content=response)]
+  context_size = get_context_size(new_history)
+  if context_size > threshold_size:
+    logger.info(f'Context size {context_size} exceeds threshold {threshold_size}, summarizing')
+    summary = summarize_history(agent, new_history)
+    new_history = [AIMessage(content=summary)]
+
+  return response, new_history
+
+def process_line(line: str, agent, history: list, threshold_size: int):
+  """Dispatch the user prompt and return (output_message, new_history, should_continue) tuple.
+  If /exit, exit the program"""
+  line = line.strip()
+
+  if line == '/exit':
+    logger.info("Exiting bcode!")
+    return None, history, False
+
+  if line == '/clear':
+    logger.info('Context clear command')
+    return 'Context Cleared', initial_history(), True
+
+  if line.startswith('/prompt'):
+    message = line[len('/prompt'):].strip()
+    if not message:
+      return 'Usage: /prompt &lt;message&gt;', history, True
+    try:
+      response, new_history = handle_prompt(agent, history, message, threshold_size)
+      # We will return a None for response as the response has already been displayed
+      # on the console due to streaming chunks
+      return None, new_history, True
+    except Exception as exc:
+      logger.error(f'Error processing prompt: {exc}')
+      return f'Error: {exc}', history, True
+
+  if line.startswith('/skill'):
+    name = line[len('/skill'):].strip()
+    if not name:
+      return 'Usage: /skill &lt;name&gt;', history, True
+    try:
+      message_body = load_skill(name)
+      response, new_history = handle_prompt(agent, history, message_body, threshold_size)
+      # We will return a None for response as the response has already been displayed
+      # on the console due to streaming chunks
+      return None, new_history, True
+    except FileNotFoundError:
+      error_msg = f"Unknown skill '{name}'"
+      logger.error(error_msg)
+      return error_msg, history, True
+    except SkillError as exc:
+      error_msg = f"Error processing skill '{name}': {exc}"
+      logger.error(error_msg)
+      return error_msg, history, True
+
+  if line.startswith('/session'):
+    session_id = line[len('/session'):].strip()
+    if not session_id:
+      return "Usage: /session &lt;uuid&gt;", history, True
+    try:
+      summary = load_session(session_id)
+    except FileNotFoundError:
+      return f"Session '{session_id}' not found", history, True
+
+    new_history = [
+      SystemMessage(content=DEFAULT_SYSTEM_MESSAGE),
+      SystemMessage(content=f'Conversation Summary:\n{summary}'),
+    ]
+    return f'Resumed session {session_id}', new_history, True
+
+  return 'Unknown Command', history, True
+
+def run() -> None:
+  """Start the agent ReACT loop"""
+  logger.info('starting bcode agent CLI')
+
+  config, permissions = load_config()
+  logger.info(f'Config: {config}')
+  logger.info(f'Permissions: {permissions}')
+
+  llm = build_chat_model(config)
+
+  if config.tools:
+    tools = get_tools(permissions)
+  else:
+    tools = []
+
+  agent = create_agent(llm, tools=tools)
+  history = initial_history()
+
+  session_id = new_session_id()
+  logger.info(f'Session id: {session_id}')
+
+  console.print('[bold magenta3]-----&gt; bcode v1.3 &lt;-----[/bold magenta3]')
+  while True:
+    try:
+      line = Prompt.ask('[bold dark_orange]bc[/bold dark_orange]', console=console, show_default=False)
+    except (EOFError, KeyboardInterrupt):
+      console.print()
+      break
+
+    if not line.strip():
+      continue
+
+    output, history, should_continue = process_line(line, agent, history, config.context_size_threshold)
+    if output is not None:
+      console.print(output)
+    if not should_continue:
+      break
+
+  path = save_session(agent, history, session_id)
+
+  logger.info(f'Session {session_id} saved to {path}')
+  logger.info('bcode agent stopped')
+
+if __name__ == "__main__":
+  run()</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To test our agentic CLI <span class="bold">bcode</span>, execute the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ python bcode.py</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Once the agentic CLI is ready, the user is presented with the <span class="hi-yellow">bc:</span> command prompt.</p>
+    </div>
+    <div id="para-div">
+      <p>Execute the following <span class="bold">/prompt</span> command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>bc: /prompt what does the tool annotation in python langchain for</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The agentic CLI will process the prompt and stream the response.</p>
+    </div>
+    <div id="para-div">
+      <p>Now, execute the following <span class="bold">/skill</span> command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>bc: /skill summarize</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical trimmed output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>INFO 2026-08-14 23:33:18,563 - HTTP Request: POST http://192.168.1.25:8000/chat/completions "HTTP/1.1 200 OK"
+- **Key Fact:** The `@tool` decorator in LangChain automatically converts Python functions into LLM-ready tools by generating Pydantic argument schemas, enforcing type validation, and using docstrings as natural language descriptions for the model.
+- **Technical Note/Decision:** Modern LangChain (`>=0.2`) explicitly recommends importing from `langchain_core.tools` rather than the deprecated `langchain.tools` namespace to ensure proper async support, type safety, and long-term compatibility.
+- **Open Question/Next Step:** The conversation is currently conceptual; practical implementation details (e.g., wiring `@tool` into a specific agent framework like `create_tool_calling_agent` or handling tool error/retry logic) remain open pending your specific use case.
+
+### want to add support for agent and subagents in the bcode cli. do not make changes just show me the approach</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the following <span class="bold">/exit</span> command will exit the agentic CLI <span class="bold">bcode</span>
+        !</p>
+    </div>
+    <div id="para-div">
+      <p>Will leave it to the explorer(s) to iterate the next version of <span class="bold">bcode</span> to support agent(s) !</p>
+      <p>An agent is very similar to a skill, defined in a markdown file (<span class="hi-vanila">agent.md</span>), but with its own
+        conversational context (independent of the main context).</p>
+    </div>
+    <div id="para-div">
+      <p>With this, we conclude <span class="bold">Part 2</span> of the series on building an agentic CLI from scratch !!!</p>
+    </div>
+    <br>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://polarsparc.github.io/GenAI/AgentFromScratch-1.html" target="_blank"><span class="bold">Agentic CLI From
+        Scratch - Part 1</span></a></p>
+      <p><a href="https://github.com/bhaskars-repo/bcode" target="_blank"><span class="bold">GitHub - BCode Repository</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
