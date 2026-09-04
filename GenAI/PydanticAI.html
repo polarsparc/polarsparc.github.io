@@ -598,7 +598,7 @@ async def shell_command_v2(ctx: RunContext[UserContext], command: str) -> str:
     print(e)
     return f'[V2] Error executing shell command - {command}'
 
-shell_tool = Tool(name='shell_command',
+shell_tool = Tool(name='shell_command_v2',
                   description='Tool to execute shell or system commands',
                   function=shell_command_v2,
                   takes_ctx=True)
@@ -679,6 +679,172 @@ print(response8.output)</pre>
     "suggested_action": "Please ensure the execution environment has the necessary permissions (e.g., running as root or with elevated privileges) to run network commands like 'ip addr show'."
 }
 ```</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>We will now switch gears to demonstrate the use of <span class="bold">Hooks</span>, which are interception points inside the
+        agent's run loop at different stages, such as, model requests, tool execution, etc.</p>
+    </div>
+    <div id="para-div">
+      <p>The first hook demonstration will be to intercept the agent's run loop before model processes the request. To create and
+        register the <span class="bold">Before Model Request</span> hook with the agent, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from pydantic_ai import Agent, ModelRequestContext, RunContext
+from pydantic_ai.capabilities import Hooks
+
+@hooks.on.before_model_request
+async def request_logger(ctx: RunContext, req_ctx: ModelRequestContext) -> ModelRequestContext:
+  print(f'REQ_LOG: run id: {ctx.run_id if ctx.run_id else "none"}, run step: {ctx.run_step}')
+  print(f'REQ_LOG: model id: {req_ctx.model.model_id}, message count: {len(req_ctx.messages)}')
+  return req_ctx
+
+ai_agent6 = Agent(ollama_model,
+                  retries=llm_max_retries,
+                  model_settings=llm_model_settings,
+                  instructions='You are a helpful mathematical genius',
+                  capabilities=[hooks])</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now, to test the agent with the before model request hook, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>response9 = ai_agent6.run_sync('what is the formula for the area of a circle')</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code would generate the following typical output:</p>
+    </div>
+    <br/>
+    <br/>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>REQ_LOG: run id: 01a06d95-43a7-76a6-a2fd-00760dc25f0e, run step: 1
+REQ_LOG: model id: ollama:gemma4:e4b, message count: 1</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The second hook demonstration will be to intercept the agent's run loop before a tool execution. Notice until now, we had
+        embedded the logic for admin user check in the shell tool. Such checks should have been performed before the tool execution
+        in a hook. That is exactly what we will demonstrate here. To create and register the <span class="bold">Before Tool execution
+        </span> hook with the agent, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>from pydantic_ai import Agent, RunContext, Tool, ToolDefinition
+from pydantic_ai.capabilities import Hooks, ValidatedToolArgs
+from pydantic_ai.exceptions import ToolFailed
+from pydantic_ai.messages import ToolCallPart
+
+
+@hooks.on.before_tool_execute(tools=['shell_command_v3'])
+async def audit_tools(ctx: RunContext, *,
+                      call: ToolCallPart,
+                      tool_def: ToolDefinition,
+                      args: ValidatedToolArgs) -> ValidatedToolArgs:
+  print(f'TOOL_LOG: tool call {call.tool_name}')
+  print(f'TOOL_LOG: function signature {tool_def.function_signature}')
+  print(f'TOOL_LOG: user id: {ctx.deps.user_id}')
+  print(f'TOOL_LOG: is admin: {ctx.deps.is_admin}')
+
+  if not ctx.deps.is_admin:
+    raise ToolFailed('TOOL_LOG: Error: Only admins can execute shell commands')
+
+  return args
+
+async def shell_command_v3(command: str) -> str:
+  """Tool to execute shell or system commands"""
+  print(f'[V3] Preparing to execute shell command: {command}')
+  try:
+    result = subprocess.run(command, shell=True, check=True, text=True, capture_output=True)
+    if result.returncode != 0:
+      return f'[V3] Error executing shell command - {command}'
+    return result.stdout
+  except subprocess.CalledProcessError as e:
+    print(e)
+    return f'[V3] Error executing shell command - {command}'
+
+shell_tool2 = Tool(name='shell_command_v3',
+                  description='Tool to execute shell or system commands',
+                  function=shell_command_v3)
+
+ai_agent7 = Agent(ollama_model,
+                  retries=llm_max_retries,
+                  model_settings=llm_model_settings,
+                  instructions='You ara a helpful assistant. Execute the appropriate tool(s) to complete the specific task',
+                  deps_type=UserContext,
+                  tools=[shell_tool2],
+                  capabilities=[hooks])</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Now, to test the agent with the before tool execution hook, execute the following code snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>response10 = ai_agent7.run_sync('Get the linux version',
+                                deps=UserContext(user_id='alice', is_admin=True))</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code would generate the following typical output:</p>
+    </div>
+    <br/>
+    <br/>
+    <div id="out-div">
+      <h4>Output.9</h4>
+      <pre>REQ_LOG: run id: 01a06d96-2ecf-7694-8fa5-014f4fccc6e8, run step: 1
+REQ_LOG: model id: ollama:gemma4:e4b, message count: 1
+TOOL_LOG: tool call shell_command_v3
+TOOL_LOG: function signature FunctionSignature(name='shell_command_v3', description=None, params={'command': FunctionParam(name='command', type=SimpleTypeExpr(name='str', kind='simple'), default=None, description=None, kind='param')}, return_type=SimpleTypeExpr(name='str', kind='simple'), referenced_types=[], is_async=False, kind='function')
+TOOL_LOG: user id: alice
+TOOL_LOG: is admin: True
+[V3] Preparing to execute shell command: cat /etc/os-release
+REQ_LOG: run id: 01a06d96-2ecf-7694-8fa5-014f4fccc6e8, run step: 2
+REQ_LOG: model id: ollama:gemma4:e4b, message count: 3</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Once again, to test the agent with the before tool execution hook using another run context, execute the following code
+        snippet:</p>
+    </div>
+    <br/>
+    <div id="src-outer-div-1">
+      <div class="gen-src-body">
+<pre>response10 = ai_agent7.run_sync('Get the linux version',
+                                deps=UserContext(user_id='bob', is_admin=False))
+
+print(response10.output)</pre>
+      </div>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Executing the above <span class="bold">Python</span> code would generate the following typical output:</p>
+    </div>
+    <br/>
+    <br/>
+    <div id="out-div">
+      <h4>Output.10</h4>
+      <pre>REQ_LOG: run id: 01a06d96-8261-7603-b1f0-439cd472ff8b, run step: 1
+REQ_LOG: model id: ollama:gemma4:e4b, message count: 1
+TOOL_LOG: tool call shell_command_v3
+TOOL_LOG: function signature FunctionSignature(name='shell_command_v3', description=None, params={'command': FunctionParam(name='command', type=SimpleTypeExpr(name='str', kind='simple'), default=None, description=None, kind='param')}, return_type=SimpleTypeExpr(name='str', kind='simple'), referenced_types=[], is_async=False, kind='function')
+TOOL_LOG: user id: bob
+TOOL_LOG: is admin: False
+REQ_LOG: run id: 01a06d96-8261-7603-b1f0-439cd472ff8b, run step: 2
+REQ_LOG: model id: ollama:gemma4:e4b, message count: 3
+I am unable to execute system commands like `uname -a` because the environment restricts shell commands to administrative users.</pre>
     </div>
     <br/>
     <div id="para-div">
