@@ -1,0 +1,462 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=windows-1252" />
+    <meta name="author" content="Bhaskar.S">
+    <meta name="description" content="Jev-Style Decision Model on Ollaya">
+    <meta name="subject" content="Jev-Style Decision Model on Ollaya">
+    <meta name="keywords" content="jev, ollaya, python">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <title>Jev-Style Decision Model on Ollaya</title>
+    <link href="../css/polarsparc-v2.4.css" type="text/css" rel="stylesheet" />
+  </head>
+  <body>
+    <br/>
+    <table borber="0">
+      <tr>
+        <td valign="bottom"><span id="ps-home"></span></td>
+        <td valign="bottom"><span id="home-a"><a id="home-a" href="https://polarsparc.github.io/">PolarSPARC</a></span></td>
+      </tr>
+    </table>
+    <br/>
+    <div id="title-div">
+      <p>Jev-Style Decision Model on Ollaya</p>
+    </div>
+    <br/>
+    <table id="ad-table">
+      <tbody>
+        <tr>
+          <td class="author-td">Bhaskar S</td>
+          <td class="date-td">09/26/2026</td>
+        </tr>
+      </tbody>
+    </table>
+    <hr class="line-hr"/>
+    <br/>
+    <div id="section-div">
+      <p>Overview</p>
+    </div>
+    <div id="para-div">
+      <p>For the last few days, the web has been abuzz with a new model known as <a href="https://docs.typesafe.ai/introduction"
+        target="_blank"><span class="hi-yellow">Jev</span></a>. Note that it is *<span class="underbold">NOT</span>* a frontier LLM
+        model, but a fast <span class="hi-vanilla">Decision</span> model (or a classifier) that outputs structured decisions (along
+        with a confidence scores) for a given input state and a set of question(s). It does *<span class="underbold">NOT</span>*
+        generate any text like the frontier LLM models. In other words, <span class="bold">Jev</span> just evaluates a set of given
+        question(s) against a provided state and returns the structured decision(s), along with their probability score(s).</p>
+      <p>Following the release of <span class="bold">Jev</span>, numerous open-weight model(s) have sprung up, along with an open
+        source platform for serving these open-weight decision model(s) called <a href="https://ollaya.dev/" target="_blank"><span
+        class="hi-yellow">Ollaya</span></a>.</p>
+      <p>In this article, we will *<span class="underbold">ONLY</span>* demonstrate the setup and usage on a open-weight decision
+        model on the local machine using a <span class="bold">Docker</span> image of the <span class="bold">Ollaya</span> platform.
+      </p>
+      <p>The <span class="bold">Ollaya</span> platform exposes an API endpoint, which enables developers to build business workflow
+        applications that can interact with the decision model(s) to decide on how to progress along in the workflow.</p>
+      <p>Last but not the least, the <span class="bold">Ollaya</span> platform effectively leverages the underlying system resouces
+        of the machine, such as CPU(s) and GPU(s), to efficiently and optimally run the decision model(s) for better performance.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Installation and Setup</p>
+    </div>
+    <div id="para-div">
+      <p>The installation and setup will can on a <span class="bold">Ubuntu 24.04 LTS</span> based Linux desktop. Ensure that <span
+        class="bold">Docker</span> is installed and setup on the desktop (see <a href="http://polarsparc.github.io/Docker/Docker.html"
+        target="_blank"> instructions</a>).</p>
+      <p>Also, ensure that the command-line utilities, such as, <span class="bold">skopeo</span>, <span class="bold">curl</span> and
+        <span class="bold">jq</span> are installed.</p>
+    </div>
+    <div id="para-div">
+      <p>We will setup a folder structure by executing the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ mkdir -p $HOME/.ollaya/models</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>To check the latest version of the docker image for <span class="bold">Ollaya</span>, execute the following command in a
+        terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ skopeo list-tags docker://ghcr.io/ollaya-dev/ollaya | grep -i cuda | tac | head -5</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.1</h4>
+      <pre>"0.7.1-cuda"
+"0.7.0-cuda",
+"0.6.1-cuda",
+"0.6.0-cuda",
+"0.5.0-cuda",</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>At the time of this article, the latest image tag was <span class="hi-red">0.7.1-cuda</span>. To pull the docker image with
+        this tag for <span class="bold">Ollaya</span>, execute the following command in a terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker pull ghcr.io/ollaya-dev/ollaya:0.7.1-cuda</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.2</h4>
+      <pre>0.7.1-cuda: Pulling from ollaya-dev/ollaya
+6b37362b3da7: Pull complete 
+160464519af9: Pull complete 
+6de6155d2434: Pull complete 
+6bd4dccd26f8: Pull complete 
+aa3bbac52a1f: Pull complete 
+4f4fb700ef54: Pull complete 
+7b31ff8718b2: Pull complete 
+66eb7ac6b0c8: Pull complete 
+Digest: sha256:6a4f4b4dfa6992d569a270ab3785b2e8a556a455f63a496ec8ac7bd6f150ce70
+Status: Downloaded newer image for ghcr.io/ollaya-dev/ollaya:0.7.1-cuda
+ghcr.io/ollaya-dev/ollaya:0.7.1-cuda</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>This completes all the system installation and setup for the <span class="bold">Ollaya</span> hands-on demonstration.</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>Hands-on with Ollaya</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Assuming that the ip address on the Linux desktop is <span class="hi-grey">192.168.1.25</span>, start the <span class="bold">
+        Ollaya</span> platform by executing the following command in the terminal window:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ docker run --rm --name ollaya --gpus=all -e OLLAYA_MAX_LOADED_MODELS=1 -e OLLAYA_KEEP_ALIVE=-1 -p 192.168.1.25:11435:11435 -v $HOME/.ollaya/:/home/ollaya/.ollaya ghcr.io/ollaya-dev/ollaya:0.7.1-cuda</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Note that one can optimize the <span class="bold">Ollaya</span> server instance by passing options via environment variables.
+        The following table summarizes some of the commonly used configuration options:</p>
+      <br/>
+      <table id="col2-table">
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="col2-c1-odd"><span class="bold">OLLAYA_NUM_PARALLEL</span></td>
+            <td class="col2-c2-odd">The maximum number of parallel requests each model can process at the same time. Default is 1</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-even"><span class="bold">OLLAYA_MAX_LOADED_MODELS</span></td>
+            <td class="col2-c2-even">The maximum number of models that can be loaded concurrently provided they fit in available memory.
+              Default is 1 for CPU and 3 for GPU</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-odd"><span class="bold">OLLAYA_KEEP_ALIVE</span></td>
+            <td class="col2-c2-odd">The maximum time models stay loaded in memory after last use (e.g., 5m, 1h, -1 for forever, 0
+              to unload immediately). Default is 5m</td>
+          </tr>
+          <tr>
+            <td class="col2-c1-even"><span class="bold">OLLAYA_MAX_QUEUE</span></td>
+            <td class="col2-c2-even">The maximum number of requests Ollama will queue when busy before rejecting additional requests.
+              Default is 512</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical output on Linux:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.3</h4>
+      <pre>2026-09-26T17:25:22.543181Z  WARN ollaya_server::http: listening on 0.0.0.0:11435, which is reachable from other machines, without OLLAYA_API_KEY: anyone who can reach it can run, pull and delete models
+2026-09-26T17:25:22.543190Z  INFO ollaya_server::http: Ollaya is running address=0.0.0.0:11435 version="0.7.1" models=/home/ollaya/.ollaya/models</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>For the hands-on demonstration, we will download and use the <span class="hi-purple">Kev 0.8B</span> open-weights decision
+        model.</p>
+    </div>
+    <div id="para-div">
+      <p>Open a new terminal window (referred to as T-1), execute the following <span class="bold">docker</span> command to download
+        the Kev 0.8B decision model:</p>
+    </div>
+    <div id="cmd-div">
+      <p>$ docker exec -it ollaya ollaya pull kev:0.8b</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.4</h4>
+      <pre>pulling manifest
+pulling ff892c703a72: 100%  |||||||||||||||     438 B/368 B     10.41 KiB/s
+pulling 25b60f5542bd: 100%  |||||||||||||||  9.91 MiB/9.91 MiB  41.30 MiB/s
+pulling c2b1e5a17d9c: 100%  |||||||||||||||  1.63 GiB/1.63 GiB  93.57 MiB/s
+pulling 9b908623acb1: 100%  ||||||||||||||| 41.33 MiB/41.33 MiB 70.18 MiB/s
+pulling f400bd12802b: 100%  |||||||||||||||  2.01 MiB/2.01 MiB  16.59 MiB/s
+pulling 06b9509352d2: 100%  ||||||||||||||| 19.06 MiB/19.06 MiB 47.93 MiB/s
+pulling 1eaff1136c67: 100%  |||||||||||||||  2.83 KiB/2.83 KiB  96.71 KiB/s
+pulling 8b2f8ed9ec53: 100%  |||||||||||||||     255 B/255 B      9.82 KiB/s
+pulling 8292f5d72c8e: 100%  ||||||||||||||| 10.21 KiB/10.21 KiB 329.44 KiB/s
+verifying sha256 digest
+writing manifest
+success</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>Open another new terminal window (referred to as T-2) and execute the following <span class="bold">curl</span> command to
+        list all the downloaded decision model(s):</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <p>$ curl -s http://192.168.1.25:11435/api/tags | jq</p>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.5</h4>
+      <pre>{
+  "models": [
+    {
+      "name": "kev:0.8b",
+      "model": "kev:0.8b",
+      "modified_at": "2026-09-26T17:49:57.101069929Z",
+      "size": 1822775186,
+      "digest": "8a0d4094df504ca7329bc999dabbb89c15ad5221f55728acde0ff61c2b3909f2",
+      "details": {
+        "parent_model": "",
+        "format": "onnx",
+        "family": "kev",
+        "families": [
+          "kev"
+        ],
+        "parameter_size": "0.76B",
+        "quantization_level": "F32"
+      }
+    }
+  ]
+}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The <span class="bold">Jev</span> style decision models support the following three types of question types:</p>
+      <ul id="blue-sqr-ul">
+        <li><p><span class="hi-yellow">Noul</span> :: Used for answering simple true or false questions</p></li>
+        <li><p><span class="hi-yellow">Choice</span> :: Used for picking an option from a defined list of choices</p></li>
+        <li><p><span class="bold">Score</span> :: Used for rating the question against a defined list of scores</p></li>
+      </ul>
+    </div>
+    <div id="para-div">
+      <p>The first use-case demonstrates the use of the <span class="bold">Noul</span> type. In the T-2 terminal window, execute the
+        following <span class="bold">curl</span> command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <pre>$ curl -s http://192.168.1.25:11435/api/decide -d '{
+    "model": "kev:0.8b",
+    "state": "It is very cold outside today",
+    "questions": {
+      "weather": {
+        "type": "noul",
+        "instructions": "is the user talking of the weather?"
+      }
+    }
+  }' | jq</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.6</h4>
+      <pre>{
+  "model": "kev:0.8b",
+  "answers": {
+    "weather": {
+      "type": "noul",
+      "noul": 0.9369
+    }
+  },
+  "usage": {
+    "input_tokens": 23,
+    "output_tokens": 0
+  },
+  "routing": null,
+  "state_truncated": false,
+  "done_reason": "decide",
+  "created_at": "2026-09-26T17:57:02.894384603Z",
+  "total_duration": 5379941736,
+  "load_duration": 5329975416,
+  "eval_duration": 49850722
+}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The second use-case demonstrates the use of the <span class="bold">Choice</span> type. In the T-2 terminal window, execute
+        the following <span class="bold">curl</span> command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <pre>$ curl -s http://192.168.1.25:11435/api/decide -d '{
+  "model": "kev:0.8b",
+  "state": "Want to build a slick web app. Trying to decide which language to write it in",
+  "questions": {
+    "languages": {
+      "type": "choice",
+      "instructions": "Which language the web app should be written in?",
+      "criteria": {
+        "golang": "Preferred when building cloud platform tools",
+        "java": "Preferred for platform portability and server side",
+        "typescript": "Preferred when building web applications"
+      }
+    }
+  }
+}' | jq</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.7</h4>
+      <pre>{
+  "model": "kev:0.8b",
+  "answers": {
+    "languages": {
+      "type": "choice",
+      "choice": "typescript",
+      "confidence": 0.3804,
+      "probabilities": {
+        "golang": 0.2334,
+        "java": 0.1797,
+        "typescript": 0.5869
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 62,
+    "output_tokens": 0
+  },
+  "routing": null,
+  "state_truncated": false,
+  "done_reason": "decide",
+  "created_at": "2026-09-26T17:58:02.156627978Z",
+  "total_duration": 5355350572,
+  "load_duration": 5304960640,
+  "eval_duration": 50276253
+}</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The final use-case demonstrates the use of the <span class="bold">Score</span> type. In the T-2 terminal window, execute
+        the following <span class="bold">curl</span> command:</p>
+    </div>
+    <br/>
+    <div id="cmd-div">
+      <pre>$ curl -s http://192.168.1.25:11435/api/decide -d '{
+  "model": "kev:0.8b",
+  "state": "Like to drink tea; it is my favortite beverage",
+  "questions": {
+    "beverage": {
+      "type": "score",
+      "instructions": "Help me decide a beverage?",
+      "criteria": ["Water", "Coffee", "Masala tea"]
+    }
+  }
+}' | jq</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>The following should be the typical output:</p>
+    </div>
+    <br/>
+    <div id="out-div">
+      <h4>Output.8</h4>
+      <pre>{
+  "model": "kev:0.8b",
+  "answers": {
+    "beverage": {
+      "type": "score",
+      "score": 1.6658,
+      "confidence": 0.5848,
+      "legend": {
+        "0": "Water",
+        "1": "Coffee",
+        "2": "Masala tea"
+      },
+      "probabilities": {
+        "0": 0.0574,
+        "1": 0.2194,
+        "2": 0.7232
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 32,
+    "output_tokens": 0
+  },
+  "routing": null,
+  "state_truncated": false,
+  "done_reason": "decide",
+  "created_at": "2026-09-26T17:58:40.422488254Z",
+  "total_duration": 69171915,
+  "load_duration": 0,
+  "eval_duration": 69078596
+}</pre>
+    </div>
+    <br/>
+    <br/>
+    <div id="warn-div">
+      <h4>!!! ATTENTION !!!</h4>
+      <pre>Given this space is fast moving and the ollaya platform is evolving, you are likely to encounter the following error:
+
+{
+  "error": "onnx runtime: Non-zero status code returned while running Scan node. Name:'node_scan__1' Status Message: /home/runner/work/ort-artifacts/ort-artifacts/onnxruntime/onnxruntime/core/framework/utils.cc:585 void onnxruntime::utils::UpdateWithParentStream(DeviceStreamCollection &, Stream *) Subgraph has nodes running on device: P while parent graph node running on device: \u0001, this is not supported yet.\n",
+  "code": "INFERENCE_FAILED"
+}
+
+In such a case, just restart the ollaya docker instance !!!
+</pre>
+    </div>
+    <br/>
+    <div id="para-div">
+      <p>With this, we conclude the various demonstrations on using the <span class="bold">Jev</span> style decision models via the
+        <span class="bold">Ollaya</span> platform locally !!!</p>
+    </div>
+    <br/>
+    <div id="section-div">
+      <p>References</p>
+    </div>
+    <div id="para-div">
+      <p><a href="https://ollaya.dev/" target="_blank"><span class="bold">Ollaya</span></a></p>
+      <p><a href="https://ollaya.dev/docs/api" target="_blank"><span class="bold">Ollaya API</span></a></p>
+    </div>
+    <br/>
+    <hr class="line-hr" />
+    <div>
+      <a id="footer-a" href="https://polarsparc.github.io/">&copy;&nbsp;PolarSPARC</a>
+    </div>
+  </body>
+</html>
